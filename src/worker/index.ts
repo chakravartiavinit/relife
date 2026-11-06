@@ -12,6 +12,7 @@ import { dailyNudge } from '@/ai/jobs/daily-nudge'
 import { weeklyReview } from '@/ai/jobs/weekly-review'
 import { startBot } from '@/bot/telegram'
 import { applySecrets } from '@/core/secrets'
+import { backfillXp, refreshXp } from '@/core/xp'
 import { remindTick } from './reminders'
 import { dueConnectors, missingEnv, runConnector } from './sync'
 import { env } from '@/core/env'
@@ -52,6 +53,14 @@ async function main() {
       const r = await runConnector(c.id)
       console.log(`[sync] ${c.id}: ${r.ok ? `${r.events} new` : `failed: ${r.error}`}`)
     }
+  })
+
+  // XP: back-fill history once, then keep today and yesterday current (synced data lands here too).
+  if (await backfillXp(user)) console.log('[xp] scored the last 90 days')
+  every('xp', '*/5 * * * *', async () => {
+    const news = await refreshXp(user)
+    if (news.levelUp) console.log(`[xp] level ${news.levelUp.level}: ${news.levelUp.title}`)
+    for (const a of news.unlocked) console.log(`[xp] achievement: ${a}`)
   })
 
   every('parse', '* * * * *', async () => {

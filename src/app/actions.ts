@@ -12,27 +12,46 @@ import { persist, processOne } from '@/core/ingest'
 import { localDate } from '@/core/time'
 import { buildRRule, WEEKDAYS } from '@/domain/recurrence'
 import { acceptInsight, dismissInsight } from '@/core/insights'
+import type { XpNews } from '@/core/xp'
 
 // Local single-user app: the server binds to 127.0.0.1 / Tailscale, and every action scopes
 // writes to getUser(). When multi-user lands, getUser() becomes the session check.
 
-export async function toggleCheck(scheduleId: string, occurrenceIso: string, status: 'done' | 'skipped' | null, value?: number) {
+/** Rescore today's XP after a log. Never lets a scoring problem block the log itself. */
+async function xpAfterLog(user: Awaited<ReturnType<typeof getUser>>): Promise<XpNews> {
+  try {
+    const { refreshXp } = await import('@/core/xp')
+    return await refreshXp(user)
+  } catch (e) {
+    console.error('[xp]', e instanceof Error ? e.message : e)
+    return { unlocked: [] }
+  }
+}
+
+export async function toggleCheck(scheduleId: string, occurrenceIso: string, status: 'done' | 'skipped' | null, value?: number): Promise<XpNews> {
   const user = await getUser()
   await setCheck(user, scheduleId, new Date(occurrenceIso), status, value)
+  const news = await xpAfterLog(user)
   refresh()
+  return news
 }
 
-export async function addToGoal(scheduleId: string, amount: number) {
-  await addGoalProgress(await getUser(), scheduleId, amount)
+export async function addToGoal(scheduleId: string, amount: number): Promise<XpNews> {
+  const user = await getUser()
+  await addGoalProgress(user, scheduleId, amount)
+  const news = await xpAfterLog(user)
   refresh()
+  return news
 }
 
-export async function quickLog(text: string): Promise<{ ok: boolean; message: string }> {
+export async function quickLog(text: string): Promise<{ ok: boolean; message: string; news?: XpNews }> {
   const q = parseQuickLog(text)
   if (!q) return { ok: false, message: 'Try “water 250”, “mood 4” or “spent 120 chai”.' }
-  const message = await applyQuickLog(await getUser(), q)
+  const user = await getUser()
+  const message = await applyQuickLog(user, q)
+  const news = await xpAfterLog(user)
   refresh()
-  return { ok: true, message }
+  return { ok: true, message, news }
 }
 
 const scheduleForm = z.object({
@@ -142,7 +161,9 @@ export async function logEntry(slug: string, value: number, date?: string) {
     date: date ?? localDate(new Date(), user.timezone),
     defaults: scale ? { kind: 'scale', aggregate: 'last', category: 'mind', target: 5 } : undefined,
   })
+  const news = await xpAfterLog(user)
   refresh()
+  return news
 }
 
 export async function archiveTracker(id: string) {
@@ -232,7 +253,9 @@ export async function updateLearningProgress(id: string, delta: { done?: number;
       source: 'manual', mode: 'add', defaults: { name: 'Learning', category: 'skills', unit: 'min', kind: 'duration' },
     })
   }
+  const news = await xpAfterLog(user)
   refresh()
+  return news
 }
 
 const personForm = z.object({
@@ -258,7 +281,9 @@ export async function markContacted(id: string) {
     kind: 'entry', tracker: 'people.contacts', date: localDate(new Date(), user.timezone), value: 1, source: 'manual',
     mode: 'add', defaults: { name: 'People contacted', category: 'relationships' },
   })
+  const news = await xpAfterLog(user)
   refresh()
+  return news
 }
 
 export async function saveProfile(_prev: FormState, form: FormData): Promise<FormState> {

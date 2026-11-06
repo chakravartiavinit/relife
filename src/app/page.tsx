@@ -20,6 +20,8 @@ import { EmptyState } from '@/ui/components/empty'
 import { buttonClass } from '@/ui/components/button'
 import { PetalBurst } from '@/ui/components/petals'
 import { showUpStreak } from '@/ui/components/life-kpis'
+import { LevelChip } from '@/ui/components/xp'
+import { xpSummary } from '@/core/xp'
 
 // Today is for doing: what's left, what's due, one next setup step. Reviewing lives on /overview.
 
@@ -41,7 +43,7 @@ async function Today() {
   const now = new Date()
   const today = localDate(now, user.timezone)
 
-  const [agenda, payments, trackers, insights, steps, streak] = await Promise.all([
+  const [agenda, payments, trackers, insights, steps, streak, xp] = await Promise.all([
     dayAgenda(user, today, now),
     upcomingPayments(user, now),
     trackerDays(user, today, today),
@@ -50,6 +52,7 @@ async function Today() {
       .orderBy(desc(schema.insights.createdAt)).limit(3),
     onboardingSteps(user),
     showUpStreak(user, today),
+    xpSummary(user, now),
   ])
 
   const valueOf = (slug: string) => trackers.find((t) => t.tracker.slug === slug)?.days.get(today)
@@ -113,9 +116,10 @@ async function Today() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="grid w-full grid-cols-2 gap-3 sm:flex sm:w-auto sm:flex-wrap sm:items-stretch [&>*]:min-h-[76px]">
+          <div className="col-span-2 sm:contents"><LevelChip s={xp} /></div>
           {total ? (
-            <div className="w-44 rounded-lg bg-surface px-4 py-3 shadow-1">
+            <div className="flex flex-col justify-center rounded-lg bg-surface px-4 py-3 shadow-1 sm:w-44">
               <div className="flex items-baseline justify-between text-[12px] text-ink-3">
                 <span>Today</span>
                 <span className="tabular-nums"><span className="font-semibold text-ink">{done}</span> / {total}</span>

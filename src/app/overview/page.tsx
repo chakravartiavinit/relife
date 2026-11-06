@@ -15,6 +15,8 @@ import { Card, CardHeader, PageHeader, Skeleton } from '@/ui/components/card'
 import { DailyBars, TrendArea } from '@/ui/components/charts'
 import { buttonClass } from '@/ui/components/button'
 import { LifeKpis, LifeKpisSkeleton } from '@/ui/components/life-kpis'
+import { LevelPanel } from '@/ui/components/xp'
+import { xpSummary } from '@/core/xp'
 import { loadAdherence } from '@/core/adherence'
 
 export const metadata: Metadata = { title: 'Overview' }
@@ -26,6 +28,7 @@ export default function OverviewPage() {
     <>
       <PageHeader eyebrow="Overview" title="How it’s going" description="The last few weeks across every area. Today’s to-dos live on Today." />
       <div className="flex flex-col gap-6">
+        <Suspense fallback={<Skeleton className="h-[260px] rounded-lg" />}><Level /></Suspense>
         <Suspense fallback={<LifeKpisSkeleton />}><Kpis /></Suspense>
         <Suspense fallback={<Skeleton className="h-[260px] rounded-lg" />}><Consistency /></Suspense>
         <Suspense fallback={<div className="grid gap-6 md:grid-cols-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-[250px] rounded-lg" />)}</div>}><Trends /></Suspense>
@@ -33,6 +36,12 @@ export default function OverviewPage() {
       </div>
     </>
   )
+}
+
+async function Level() {
+  await connection()
+  const user = await getUser()
+  return <LevelPanel s={await xpSummary(user)} />
 }
 
 async function Kpis() {

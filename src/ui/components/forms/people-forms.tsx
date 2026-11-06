@@ -5,7 +5,7 @@ import { Check, Plus } from 'lucide-react'
 import { createPerson, markContacted } from '@/app/actions'
 import { Button } from '../button'
 import { Field, Input } from '../form'
-import { useToast } from '../toast'
+import { announceXp, useToast } from '../toast'
 import { Dialog, FormError } from './dialog'
 
 export function ContactedButton({ id, name }: { id: string; name: string }) {
@@ -16,7 +16,7 @@ export function ContactedButton({ id, name }: { id: string; name: string }) {
       size="sm"
       disabled={pending}
       onClick={() => start(async () => {
-        try { await markContacted(id); toast(`Logged a catch-up with ${name}`, 'good') } catch { toast('Could not save. Try again.', 'bad') }
+        try { const news = await markContacted(id); toast(`Logged a catch-up with ${name}`, 'good'); announceXp(toast, news) } catch { toast('Could not save. Try again.', 'bad') }
       })}
     >
       <Check className="size-4" strokeWidth={2} />

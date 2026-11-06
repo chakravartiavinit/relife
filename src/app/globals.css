@@ -35,6 +35,11 @@
   --good: oklch(0.56 0.12 155);
   --bad: oklch(0.56 0.17 25);
   --warn: oklch(0.62 0.13 70);
+  /* Gamification medals */
+  --medal-bronze: oklch(0.62 0.11 55);
+  --medal-silver: oklch(0.68 0.015 250);
+  --medal-gold: oklch(0.74 0.14 85);
+  --medal-sakura: oklch(0.68 0.15 355);
 
   /* Category hues: validated categorical palette (lightness band, chroma, CVD, contrast) */
   --cat-health: oklch(0.58 0.17 2);
@@ -92,6 +97,10 @@
   --good: oklch(0.74 0.13 155);
   --bad: oklch(0.70 0.15 25);
   --warn: oklch(0.78 0.12 75);
+  --medal-bronze: oklch(0.70 0.11 55);
+  --medal-silver: oklch(0.80 0.015 250);
+  --medal-gold: oklch(0.82 0.13 85);
+  --medal-sakura: oklch(0.76 0.13 355);
 
   /* validated with the dataviz palette checker against #1A2129 */
   --cat-health: oklch(0.66 0.16 355);

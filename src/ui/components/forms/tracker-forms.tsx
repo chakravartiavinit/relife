@@ -7,7 +7,7 @@ import { CATEGORIES } from '@/db/schema'
 import { CATEGORY } from '@/ui/tokens'
 import { Button } from '../button'
 import { Field, Input, Select } from '../form'
-import { useToast } from '../toast'
+import { announceXp, useToast } from '../toast'
 import { Dialog, FormError } from './dialog'
 
 /** Inline "set today's value" for a tracker card. */
@@ -22,7 +22,7 @@ export function QuickLog({ slug, name, unit, step }: { slug: string; name: strin
     if (value === '' || !Number.isFinite(n)) return
     start(async () => {
       try {
-        await logEntry(slug, n)
+        announceXp(toast, await logEntry(slug, n))
         setValue('')
         setSaved(true)
         setTimeout(() => setSaved(false), 1200)

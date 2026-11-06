@@ -45,6 +45,8 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
   `src/parsers/index.ts` before the LLM fallback, plus a fixture in `src/parsers/fixtures/`
   (`{ event, expected }`). `npm test` runs every fixture.
 - **New alert:** one file in `src/rules/` added to `src/rules/index.ts`.
+- **New achievement:** append to `src/achievements/index.ts`. `check` reads the shared stats and returns
+  progress, so locked ones show how close you are.
 - **New AI job:** `src/ai/jobs/<id>.ts`, scheduled in `src/worker/index.ts`. Use `model(task)`
   from `src/ai` and log through `src/ai/run.ts`.
 - **Odd fields:** put them in the `meta` JSON column; promote to a real column only when queried.
@@ -59,6 +61,17 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
 - Read connector keys with `env()` from `core/env.ts`, never `process.env`. Never change `process.env` at
   runtime: inside `next dev` it makes Turbopack rebuild and reload the page in a loop.
 - Server actions scope every write to `getUser()`.
+
+## Gamification
+
+- XP rules are pure functions in `src/domain/xp.ts` (tested); `src/core/xp.ts` turns days into
+  `xp_events` rows. Every row has a unique `ref`, so rescoring a day replaces it instead of adding.
+- Two kinds of XP: **consistency** (up to 100 a day split across whatever was due, so adding routines
+  never raises the ceiling) and **standard** (fixed measures that mean the same for everyone).
+  Synced data earns full XP, typed-in data half and at most 40 a day. Streak multiplier up to ×1.5.
+- Fair play: a routine pays from the day after it was created; only today and yesterday are rescored.
+- Keep per-event `kind` and `verified`: a future ranked view will count only standard, verified XP.
+  There are no leaderboards or sharing yet.
 
 ## UI bar (non-negotiable)
 

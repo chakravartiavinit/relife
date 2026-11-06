@@ -5,7 +5,7 @@ import { Plus } from 'lucide-react'
 import { createLearningItem, updateLearningProgress } from '@/app/actions'
 import { Button } from '../button'
 import { Field, Input } from '../form'
-import { useToast } from '../toast'
+import { announceXp, useToast } from '../toast'
 import { Dialog, FormError } from './dialog'
 
 export function LearningActions({ id, title, hasModules }: { id: string; title: string; hasModules: boolean }) {
@@ -13,7 +13,7 @@ export function LearningActions({ id, title, hasModules }: { id: string; title: 
   const toast = useToast()
   const run = (delta: Parameters<typeof updateLearningProgress>[1], msg: string) =>
     start(async () => {
-      try { await updateLearningProgress(id, delta); toast(msg, 'good') } catch { toast('Could not save. Try again.', 'bad') }
+      try { const news = await updateLearningProgress(id, delta); toast(msg, 'good'); announceXp(toast, news) } catch { toast('Could not save. Try again.', 'bad') }
     })
   return (
     <div className="flex gap-2">

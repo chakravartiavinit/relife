@@ -51,3 +51,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     </Ctx.Provider>
   )
 }
+
+type XpNews = { levelUp?: { level: number; title: string }; unlocked: string[] } | undefined | void
+
+/** Toast a level-up and any achievements unlocked by the last log. Quiet otherwise. */
+export function announceXp(toast: Notify, news: XpNews) {
+  if (!news) return
+  if (news.levelUp) toast(`Level ${news.levelUp.level}: ${news.levelUp.title}`, 'good')
+  for (const name of news.unlocked) toast(`Achievement unlocked: ${name}`, 'good')
+}

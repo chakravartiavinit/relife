@@ -3,7 +3,7 @@
 import { useOptimistic, useTransition } from 'react'
 import { logEntry } from '@/app/actions'
 import { cn } from '../../cn'
-import { useToast } from '../toast'
+import { announceXp, useToast } from '../toast'
 
 const FACES = [
   { v: 1, label: 'Awful' },
@@ -30,7 +30,7 @@ export function ScaleLogger({ slug, name, value }: { slug: string; name: string;
             aria-checked={on}
             onClick={() => start(async () => {
               set(f.v)
-              try { await logEntry(slug, f.v) } catch { toast('Could not save. Try again.', 'bad') }
+              try { announceXp(toast, await logEntry(slug, f.v)) } catch { toast('Could not save. Try again.', 'bad') }
             })}
             className={cn(
               'flex h-16 flex-col items-center justify-center gap-1 rounded-md transition-[background-color,color,box-shadow,scale] duration-150 ease-out-quint active:scale-96',

@@ -293,3 +293,30 @@ export const heartbeats = pgTable('heartbeats', {
   name: text('name').primaryKey(),
   at: timestamp('at', { withTimezone: true }).notNull(),
 })
+
+// Gamification. One row per XP award; `ref` makes every award idempotent (e.g. "2026-11-06:plan:health",
+// "ach:week-one"), so rescoring a day replaces rather than adds. Kept per event so a future ranked
+// view can count only standard, verified XP.
+export const xpEvents = pgTable('xp_events', {
+  id: id(),
+  userId: userId(),
+  localDate: date('local_date').notNull(),
+  area: text('area').$type<Category | 'general'>().notNull(),
+  kind: text('kind').$type<'consistency' | 'standard' | 'bonus' | 'achievement'>().notNull(),
+  source: text('source').notNull(),
+  amount: integer('amount').notNull(),
+  verified: boolean('verified').notNull().default(true),
+  reason: text('reason'),
+  ref: text('ref').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('xp_events_user_ref').on(t.userId, t.ref),
+  index('xp_events_user_date').on(t.userId, t.localDate),
+])
+
+export const achievements = pgTable('achievements', {
+  id: id(),
+  userId: userId(),
+  key: text('key').notNull(),
+  unlockedAt: timestamp('unlocked_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [uniqueIndex('achievements_user_key').on(t.userId, t.key)])

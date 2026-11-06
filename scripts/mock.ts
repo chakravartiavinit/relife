@@ -155,7 +155,8 @@ async function main() {
     { name: 'Airtel postpaid', kind: 'bill', category: 'wealth', amount: 599, currency: 'INR', rrule: rule({ freq: 'monthly', times: ['10:00'], bymonthday: 5, start }), remindOffsetMin: 2 * 1440, meta: {} },
     { name: 'Car insurance', kind: 'renewal', category: 'wealth', amount: 14200, currency: 'INR', rrule: rule({ freq: 'yearly', times: ['10:00'], bymonthday: 28, bymonth: (Number(today.slice(5, 7)) % 12) + 1, start }), remindOffsetMin: 14 * 1440, meta: {} },
   ]
-  const schedules = await db.insert(schema.schedules).values(defs.map((s) => ({ ...s, userId: uid }))).returning()
+  const created = wallToUtc(new Date(`${addDays(start, -1)}T09:00:00Z`), tz)
+  const schedules = await db.insert(schema.schedules).values(defs.map((s) => ({ ...s, userId: uid, createdAt: created }))).returning()
   const checks: (typeof schema.checks.$inferInsert)[] = []
   const [from] = localDayRange(start, tz)
   for (const s of schedules) {
@@ -304,7 +305,12 @@ async function main() {
     inputTokens: r.int(400, 4000), outputTokens: r.int(60, 900), ms: r.int(700, 6000), createdAt: ago(r.int(0, 6)),
   })))
 
-  console.log(`Mock data ready in "${dbName}" (seed ${seed}): ${entries.length} entries, ${checks.length} checks, ${txns.length} transactions.`)
+  // XP and achievements for the whole period, as if the worker had run all along.
+  const { backfillXp, totalXp } = await import('@/core/xp')
+  await backfillXp(user, now, DAYS)
+  const xp = await totalXp(user)
+
+  console.log(`Mock data ready in "${dbName}" (seed ${seed}): ${entries.length} entries, ${checks.length} checks, ${txns.length} transactions, ${xp} XP.`)
   await sql.end()
 }
 

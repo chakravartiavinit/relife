@@ -7,7 +7,7 @@ import { addToGoal, toggleCheck } from '@/app/actions'
 import { cn } from '../cn'
 import { Button } from './button'
 import { Capsule } from './capsule'
-import { useToast } from './toast'
+import { announceXp, useToast } from './toast'
 
 export type AgendaRow = {
   key: string
@@ -36,7 +36,7 @@ export function Agenda({ rows }: { rows: AgendaRow[] }) {
     start(async () => {
       setOptimistic({ key: r.key, status: status ?? 'pending' })
       try {
-        await toggleCheck(r.scheduleId, r.occurrence, status)
+        announceXp(toast, await toggleCheck(r.scheduleId, r.occurrence, status))
       } catch {
         toast('Could not save. Try again.', 'bad')
       }
@@ -173,7 +173,7 @@ export function Goals({ rows }: { rows: GoalRow[] }) {
             size="sm"
             onClick={() => start(async () => {
               add({ id: g.scheduleId, step: g.step })
-              try { await addToGoal(g.scheduleId, g.step) }
+              try { announceXp(toast, await addToGoal(g.scheduleId, g.step)) }
               catch { toast('Could not save. Try again.', 'bad') }
             })}
             className="tabular-nums"

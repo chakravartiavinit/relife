@@ -1,14 +1,13 @@
 import Link from 'next/link'
 import { connection } from 'next/server'
 import { getUser } from '@/core/user'
-import { daysBetween, localDate } from '@/core/time'
+import { xpSummary } from '@/core/xp'
 
-/** "Day N of your ReLife": counts from the day the profile was created. */
+/** Name, level and title; opens the Profile page. */
 export async function SidebarProfile() {
   await connection()
   const user = await getUser()
-  const now = new Date()
-  const day = daysBetween(localDate(user.createdAt, user.timezone), localDate(now, user.timezone)) + 1
+  const xp = await xpSummary(user)
   const initial = (user.name.trim()[0] ?? 'R').toUpperCase()
   return (
     <Link href="/settings" className="group flex items-center gap-3 rounded-md p-1.5 transition-[background-color] duration-150 hover:bg-ink/[0.04] dark:hover:bg-white/[0.05]">
@@ -21,7 +20,7 @@ export async function SidebarProfile() {
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[13px] font-medium text-ink">{user.name}</span>
-        <span className="block text-[12px] text-ink-3 tabular-nums">Day {day} of your ReLife</span>
+        <span className="block truncate text-[12px] text-ink-3 tabular-nums">Lv {xp.level} · {xp.title}</span>
       </span>
     </Link>
   )

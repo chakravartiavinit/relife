@@ -7,7 +7,7 @@ import { useEffect, useState, useTransition } from 'react'
 import { ArrowUpRight, Plus, Search, Sparkles } from 'lucide-react'
 import { quickLog } from '@/app/actions'
 import { NAV, SYSTEM_NAV } from './nav'
-import { useToast } from './toast'
+import { announceXp, useToast } from './toast'
 
 /**
  * ⌘K: log anything, jump anywhere, ask your data.
@@ -81,6 +81,7 @@ export function CommandMenu() {
                         disabled={pending}
                         onSelect={() => start(async () => {
                           const r = await quickLog(value)
+                          announceXp(toast, r.news)
                           toast(r.message, r.ok ? 'good' : 'bad')
                           if (r.ok) close()
                         })}
