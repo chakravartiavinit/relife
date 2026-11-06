@@ -289,10 +289,15 @@ export async function markContacted(id: string) {
 export async function saveProfile(_prev: FormState, form: FormData): Promise<FormState> {
   const user = await getUser()
   const get = (k: string) => String(form.get(k) ?? '').trim().slice(0, 4000)
+  const tz = get('timezone') || user.timezone
+  try { new Intl.DateTimeFormat('en', { timeZone: tz }) } catch { return { ok: false, error: `“${tz}” isn’t a time zone. Pick one from the list, like Asia/Kolkata.` } }
+  const cur = (get('baseCurrency') || user.baseCurrency).toUpperCase()
+  const { isIsoCurrency } = await import('@/domain/money')
+  if (!isIsoCurrency(cur)) return { ok: false, error: `“${cur}” isn’t a currency code. Use three letters, like INR or USD.` }
   await db.update(schema.users).set({
     name: get('name') || user.name,
-    timezone: get('timezone') || user.timezone,
-    baseCurrency: (get('baseCurrency') || user.baseCurrency).toUpperCase(),
+    timezone: tz,
+    baseCurrency: cur,
     profile: { goals: get('goals'), constraints: get('constraints'), notes: get('notes') },
   }).where(eq(schema.users.id, user.id))
   const { clearUserCache } = await import('@/core/user')

@@ -5,15 +5,20 @@ import { Button } from './button'
 
 export const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('theme');if(!t)t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.dataset.theme=t}catch(e){}})()`
 
-/** Flip theme without every transition firing at once (suppress, reflow, restore). */
-function applyTheme(next: 'light' | 'dark') {
+export type ThemeChoice = 'light' | 'dark' | 'system'
+
+/** Set the theme without every transition firing at once (suppress, reflow, restore). "system" follows the OS. */
+export function applyTheme(choice: ThemeChoice) {
+  const next = choice === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : choice
   const style = document.createElement('style')
   style.textContent = '*,*::before,*::after{transition:none!important}'
   document.head.appendChild(style)
   document.documentElement.dataset.theme = next
-  localStorage.setItem('theme', next)
+  if (choice === 'system') localStorage.removeItem('theme')
+  else localStorage.setItem('theme', choice)
   void document.body.offsetHeight
   requestAnimationFrame(() => style.remove())
+  window.dispatchEvent(new Event('relife:theme'))
 }
 
 export function ThemeToggle() {
