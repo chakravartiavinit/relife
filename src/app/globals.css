@@ -1,0 +1,250 @@
+@import "tailwindcss";
+
+/* Dark mode follows [data-theme] on <html>, set before first paint by the inline script in layout. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/*
+ * ReLife design tokens. Sampled from the poster, tuned for contrast.
+ * Text-safe colors are AA (4.5:1) on their surface; sky / sakura / cardigan are fills only.
+ * Keep in sync with src/ui/tokens.ts (used by charts and future native clients).
+ */
+:root {
+  color-scheme: light;
+
+  --bg: oklch(0.982 0.006 236);           /* paper with a hint of sky */
+  --surface: oklch(1 0 0);
+  --surface-2: oklch(0.965 0.008 236);    /* inset wells, tracks */
+  --surface-3: oklch(0.935 0.012 236);    /* hover on surface-2 */
+  --ink: oklch(0.178 0 0);                /* wordmark black */
+  --ink-2: oklch(0.40 0.012 250);         /* secondary text, 9.6:1 */
+  --ink-3: oklch(0.52 0.012 250);         /* tertiary text, 5.6:1 */
+  --hairline: oklch(0.178 0 0 / 0.08);
+  --divider: oklch(0.178 0 0 / 0.07);
+
+  --pill: oklch(0.617 0.126 246.4);       /* #3B8BCC capsule blue: fills, focus ring */
+  --pill-ink: oklch(0.526 0.113 247.2);   /* #2A6FA8 text-safe blue */
+  --pill-wash: oklch(0.617 0.126 246.4 / 0.10);
+  --line-blue: oklch(0.703 0.109 245.2);  /* #61A6DF line-art */
+  --sky: oklch(0.813 0.114 231.8);        /* #6DCFFF */
+  --sky-soft: oklch(0.937 0.036 233.8);   /* #D4EFFF */
+  --sakura: oklch(0.867 0.081 351.8);     /* #FEBED9 */
+  --sakura-soft: oklch(0.93 0.04 352);    /* petals */
+  --cardigan: oklch(0.917 0.043 89.4);    /* #EFE3C4 */
+  --night: oklch(0.280 0.021 248.6);      /* #212A33 */
+
+  --good: oklch(0.56 0.12 155);
+  --bad: oklch(0.56 0.17 25);
+  --warn: oklch(0.62 0.13 70);
+
+  /* Category hues: validated categorical palette (lightness band, chroma, CVD, contrast) */
+  --cat-health: oklch(0.58 0.17 2);
+  --cat-mind: oklch(0.568 0.155 292.2);
+  --cat-skills: oklch(0.526 0.113 247.2);
+  --cat-wealth: oklch(0.563 0.112 76.7);
+  --cat-relationships: oklch(0.55 0.11 180);
+
+  /* Elevation: layered transparent shadows, no borders */
+  /* Shadows are tinted toward the sky hue and carry a 1px top highlight (light from above). */
+  --elev-1: inset 0 1px 0 oklch(1 0 0 / 0.9), 0 0 0 1px oklch(0.30 0.03 250 / 0.07), 0 1px 2px oklch(0.30 0.04 250 / 0.06), 0 4px 14px -6px oklch(0.30 0.05 250 / 0.10);
+  --elev-2: inset 0 1px 0 oklch(1 0 0 / 0.9), 0 0 0 1px oklch(0.30 0.03 250 / 0.07), 0 2px 4px oklch(0.30 0.04 250 / 0.05), 0 12px 32px -10px oklch(0.30 0.06 250 / 0.18);
+  --elev-3: inset 0 1px 0 oklch(1 0 0 / 0.9), 0 0 0 1px oklch(0.30 0.03 250 / 0.08), 0 4px 8px oklch(0.30 0.04 250 / 0.06), 0 28px 64px -16px oklch(0.30 0.06 250 / 0.28);
+  --elev-inset: inset 0 1px 2px oklch(0.30 0.04 250 / 0.08), inset 0 0 0 1px oklch(0.30 0.03 250 / 0.06);
+
+  /* App canvas: a sky wash at the top, a sakura blush on the left, fading into paper. */
+  --canvas-wash:
+    radial-gradient(1100px 520px at 78% -12%, oklch(0.88 0.075 233 / 0.55), transparent 70%),
+    radial-gradient(720px 420px at 8% -8%, oklch(0.92 0.05 352 / 0.45), transparent 70%),
+    radial-gradient(900px 600px at 50% 120%, oklch(0.95 0.03 85 / 0.35), transparent 70%);
+  --grain-opacity: 0.035;
+  --glass: oklch(1 0 0 / 0.62);
+
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --img-outline: oklch(0 0 0 / 0.1);
+
+  /* shadcn-style aliases so registry components (beui.dev) inherit the ReLife theme.
+     They reference ReLife tokens, so dark mode follows automatically. */
+  --foreground: var(--ink);
+  --background: var(--surface);
+  --muted-foreground: var(--ink-3);
+  --accent: var(--pill);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: oklch(0.205 0.016 252);
+  --surface: oklch(0.244 0.018 252);      /* #1A2129-ish */
+  --surface-2: oklch(0.280 0.021 248.6);  /* night navy */
+  --surface-3: oklch(0.32 0.022 248);
+  --ink: oklch(0.965 0.004 240);
+  --ink-2: oklch(0.80 0.012 245);
+  --ink-3: oklch(0.70 0.014 245);
+  --hairline: oklch(1 0 0 / 0.08);
+  --divider: oklch(1 0 0 / 0.07);
+
+  --pill: oklch(0.70 0.11 245);
+  --pill-ink: oklch(0.76 0.10 242);
+  --pill-wash: oklch(0.70 0.11 245 / 0.14);
+  --sky-soft: oklch(0.32 0.04 240);
+  --sakura-soft: oklch(0.34 0.05 352);
+  --cardigan: oklch(0.36 0.03 85);
+
+  --good: oklch(0.74 0.13 155);
+  --bad: oklch(0.70 0.15 25);
+  --warn: oklch(0.78 0.12 75);
+
+  /* validated with the dataviz palette checker against #1A2129 */
+  --cat-health: oklch(0.66 0.16 355);
+  --cat-mind: oklch(0.62 0.15 292);
+  --cat-skills: oklch(0.65 0.13 245);
+  --cat-wealth: oklch(0.665 0.12 75);
+  --cat-relationships: oklch(0.655 0.11 180);
+
+  --elev-1: inset 0 1px 0 oklch(1 0 0 / 0.06), 0 0 0 1px oklch(1 0 0 / 0.06), 0 1px 2px oklch(0 0 0 / 0.3), 0 6px 16px -8px oklch(0 0 0 / 0.5);
+  --elev-2: inset 0 1px 0 oklch(1 0 0 / 0.07), 0 0 0 1px oklch(1 0 0 / 0.07), 0 12px 32px -10px oklch(0 0 0 / 0.6);
+  --elev-3: inset 0 1px 0 oklch(1 0 0 / 0.08), 0 0 0 1px oklch(1 0 0 / 0.08), 0 28px 64px -16px oklch(0 0 0 / 0.7);
+  --elev-inset: inset 0 1px 2px oklch(0 0 0 / 0.35), inset 0 0 0 1px oklch(1 0 0 / 0.05);
+
+  /* Night sky: deep navy with a violet horizon. */
+  --canvas-wash:
+    radial-gradient(1100px 560px at 78% -12%, oklch(0.34 0.07 255 / 0.65), transparent 70%),
+    radial-gradient(720px 440px at 6% -8%, oklch(0.32 0.07 320 / 0.35), transparent 70%);
+  --grain-opacity: 0.05;
+  --glass: oklch(0.26 0.02 252 / 0.62);
+
+  --img-outline: oklch(1 0 0 / 0.1);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-hairline: var(--hairline);
+  --color-divider: var(--divider);
+  --color-pill: var(--pill);
+  --color-pill-ink: var(--pill-ink);
+  --color-pill-wash: var(--pill-wash);
+  --color-line-blue: var(--line-blue);
+  --color-sky: var(--sky);
+  --color-sky-soft: var(--sky-soft);
+  --color-sakura: var(--sakura);
+  --color-sakura-soft: var(--sakura-soft);
+  --color-cardigan: var(--cardigan);
+  --color-night: var(--night);
+  --color-good: var(--good);
+  --color-bad: var(--bad);
+  --color-warn: var(--warn);
+  --color-health: var(--cat-health);
+  --color-mind: var(--cat-mind);
+  --color-skills: var(--cat-skills);
+  --color-wealth: var(--cat-wealth);
+  --color-relationships: var(--cat-relationships);
+
+  /* shadcn-style names used by src/ui/beui components */
+  --color-card: var(--surface);
+  --color-background: var(--surface);
+  --color-foreground: var(--ink);
+  --color-muted: var(--surface-2);
+  --color-muted-foreground: var(--ink-3);
+  --color-primary: var(--ink);
+  --color-primary-foreground: var(--bg);
+  --color-border: var(--divider);
+  --color-ring: var(--pill);
+  --color-destructive: var(--bad);
+  --color-accent: var(--pill);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-outfit), var(--font-inter), ui-sans-serif, sans-serif;
+
+  /* Concentric radius scale: outer = inner + padding */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;   /* cards */
+  --radius-xl: 24px;   /* panels, sidebar */
+  --radius-2xl: 28px;  /* hero */
+
+  --shadow-1: var(--elev-1);
+  --shadow-2: var(--elev-2);
+  --shadow-3: var(--elev-3);
+  --shadow-inset: var(--elev-inset);
+  --color-glass: var(--glass);
+
+  --ease-out-quint: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@layer base {
+  html {
+    background: var(--bg);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "cv11", "ss01";
+  }
+  body {
+    font-family: var(--font-sans);
+    position: relative;
+    isolation: isolate;
+  }
+  /* Fixed atmosphere layers behind everything (no background-attachment: fixed, cheap on mobile). */
+  body::before,
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+  }
+  body::before {
+    background: var(--canvas-wash);
+  }
+  body::after {
+    opacity: var(--grain-opacity);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  h1, h2, h3 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  :focus-visible {
+    outline: 2px solid var(--pill);
+    outline-offset: 2px;
+  }
+  img {
+    outline: 1px solid var(--img-outline);
+    outline-offset: -1px;
+  }
+  ::selection {
+    background: var(--sakura);
+    color: oklch(0.178 0 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+[data-theme="dark"] body::after {
+  filter: invert(1);
+}
+
+/* One-time staged entrance for hero content (Today). Interactive states use transitions instead. */
+@keyframes relife-rise {
+  from { opacity: 0; transform: translateY(8px); filter: blur(4px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+.rise {
+  animation: relife-rise 0.6s cubic-bezier(0.2, 0, 0, 1) both;
+  animation-delay: calc(var(--i, 0) * 100ms);
+}
