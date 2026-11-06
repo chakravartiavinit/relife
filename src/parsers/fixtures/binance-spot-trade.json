@@ -1,0 +1,43 @@
+{
+  "note": "Fixture.",
+  "event": {
+    "source": "binance",
+    "externalId": "trade:BTC/USDT:42",
+    "at": "2026-11-02T10:00:00.000Z",
+    "body": {
+      "type": "trade",
+      "id": "42",
+      "symbol": "BTC/USDT",
+      "side": "buy",
+      "amount": 0.005,
+      "price": 98000,
+      "timestamp": 1762077600000,
+      "fee": {
+        "cost": 0.000005,
+        "currency": "BTC"
+      }
+    }
+  },
+  "expected": [
+    {
+      "kind": "trade",
+      "account": {
+        "key": "binance",
+        "kind": "exchange",
+        "name": "Binance",
+        "institution": "Binance",
+        "currency": "USD"
+      },
+      "at": "2025-11-02T10:00:00.000Z",
+      "symbol": "BTC/USDT",
+      "side": "buy",
+      "qty": 0.005,
+      "price": 98000,
+      "fee": 0.000005,
+      "feeAsset": "BTC",
+      "tradeKind": "spot",
+      "source": "binance",
+      "externalRef": "trade:BTC/USDT:42"
+    }
+  ]
+}

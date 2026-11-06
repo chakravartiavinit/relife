@@ -1,0 +1,74 @@
+{
+  "note": "Fixture.",
+  "event": {
+    "source": "github",
+    "externalId": "2026-11-05:abc",
+    "at": "2026-11-05T12:00:00.000Z",
+    "body": {
+      "date": "2026-11-05",
+      "contributions": 9,
+      "commits": 7,
+      "prs": 1,
+      "reviews": 1,
+      "issues": 0
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "tracker": "github.commits",
+      "date": "2026-11-05",
+      "value": 7,
+      "source": "github",
+      "verified": true,
+      "defaults": {
+        "name": "Commits",
+        "category": "skills",
+        "kind": "number",
+        "direction": "up"
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "github.prs",
+      "date": "2026-11-05",
+      "value": 1,
+      "source": "github",
+      "verified": true,
+      "defaults": {
+        "name": "Pull requests",
+        "category": "skills",
+        "kind": "number",
+        "direction": "up"
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "github.reviews",
+      "date": "2026-11-05",
+      "value": 1,
+      "source": "github",
+      "verified": true,
+      "defaults": {
+        "name": "Code reviews",
+        "category": "skills",
+        "kind": "number",
+        "direction": "up"
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "github.issues",
+      "date": "2026-11-05",
+      "value": 0,
+      "source": "github",
+      "verified": true,
+      "defaults": {
+        "name": "Issues",
+        "category": "skills",
+        "kind": "number",
+        "direction": "up"
+      }
+    }
+  ]
+}

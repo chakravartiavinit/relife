@@ -1,0 +1,28 @@
+{
+  "note": "Fixture.",
+  "event": {
+    "source": "shortcuts",
+    "externalId": "f10",
+    "at": "2026-11-05T18:25:00.000Z",
+    "body": {
+      "type": "steps",
+      "value": 8423,
+      "date": "2026-11-05"
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "tracker": "steps",
+      "date": "2026-11-05",
+      "value": 8423,
+      "source": "apple-health",
+      "verified": true,
+      "defaults": {
+        "name": "Steps",
+        "category": "health",
+        "target": 8000
+      }
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "note": "SAMPLE format with fake numbers; replace with your real messages.",
+  "event": {
+    "source": "sms",
+    "externalId": "f1",
+    "at": "2026-11-05T09:05:00.000Z",
+    "body": {
+      "text": "INR 250.00 debited\nA/c no. XX1234\n05-11-26, 14:32:10\nUPI/P2M/530912345678/ZOMATO LTD\nNot you? SMS BLOCKUPI Cust ID to 919951860002\nAxis Bank"
+    }
+  },
+  "expected": [
+    {
+      "kind": "transaction",
+      "account": {
+        "key": "axis:1234",
+        "kind": "bank",
+        "name": "Axis Bank ••1234",
+        "institution": "Axis Bank",
+        "currency": "INR"
+      },
+      "at": "2026-11-05T09:02:10.000Z",
+      "amount": -250,
+      "currency": "INR",
+      "merchant": "ZOMATO LTD",
+      "source": "axis",
+      "externalRef": "530912345678"
+    }
+  ]
+}

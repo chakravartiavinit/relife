@@ -1,0 +1,39 @@
+{
+  "note": "Fixture.",
+  "event": {
+    "source": "binance.csv",
+    "externalId": "abc123",
+    "at": "2025-03-01T08:15:30.000Z",
+    "body": {
+      "Date(UTC)": "2025-03-01 08:15:30",
+      "Pair": "ETHUSDT",
+      "Side": "SELL",
+      "Price": "2200.5",
+      "Executed": "0.25000000ETH",
+      "Amount": "550.12500000USDT",
+      "Fee": "0.55012500USDT"
+    }
+  },
+  "expected": [
+    {
+      "kind": "trade",
+      "account": {
+        "key": "binance",
+        "kind": "exchange",
+        "name": "Binance",
+        "institution": "Binance",
+        "currency": "USD"
+      },
+      "at": "2025-03-01T08:15:30.000Z",
+      "symbol": "ETH/USDT",
+      "side": "sell",
+      "qty": 0.25,
+      "price": 2200.5,
+      "fee": 0.550125,
+      "feeAsset": "USDT",
+      "tradeKind": "spot",
+      "source": "binance",
+      "externalRef": "csv:abc123"
+    }
+  ]
+}

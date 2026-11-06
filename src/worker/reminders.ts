@@ -1,0 +1,67 @@
+import { and, eq, isNotNull, lte } from 'drizzle-orm'
+import { db, schema } from '@/db'
+import { esc, sendMessage } from '@/core/notify'
+import type { Schedule } from '@/core/schedules'
+import { formatTime } from '@/core/time'
+import type { User } from '@/core/user'
+import { occurrencesBetween } from '@/domain/recurrence'
+import { isPayment, reminderMessage } from '@/bot/messages'
+import { delivery, occurrenceWindow, reminderAt } from './due'
+
+let lastTick: Date | undefined
+
+/** One reminder pass: new occurrences since the last tick, plus expired snoozes. */
+export async function remindTick(user: User, now = new Date()) {
+  // First tick after start looks back over the catch-up window (see due.ts).
+  const since = lastTick ?? new Date(0)
+  lastTick = now
+
+  const list = await db.select().from(schema.schedules)
+    .where(and(eq(schema.schedules.userId, user.id), eq(schema.schedules.active, true)))
+
+  const digest: { s: Schedule; occ: Date }[] = []
+  for (const s of list) {
+    const [from, to] = occurrenceWindow(s.remindOffsetMin, since, now)
+    for (const occ of occurrencesBetween(s.rrule, from, to, user.timezone)) {
+      if (await alreadyChecked(s.id, occ)) continue
+      const [row] = await db.insert(schema.reminders).values({ scheduleId: s.id, occurrence: occ })
+        .onConflictDoNothing().returning()
+      if (!row) continue // already reminded
+      if (delivery(reminderAt(occ, s.remindOffsetMin), now) === 'digest') {
+        digest.push({ s, occ })
+        continue
+      }
+      await sendReminder(user, s, occ, row.id)
+    }
+  }
+
+  if (digest.length) {
+    const lines = digest
+      .sort((a, b) => a.occ.getTime() - b.occ.getTime())
+      .map(({ s, occ }) => `• ${formatTime(occ, user.timezone)} ${esc(s.name)}${isPayment(s) ? ' (payment due soon)' : ''}`)
+    await sendMessage(`<b>While you were away</b>\n${lines.join('\n')}\n\nOpen /today to check them off.`)
+  }
+
+  // Snoozed reminders whose time has come.
+  const snoozed = await db.select({ r: schema.reminders, s: schema.schedules })
+    .from(schema.reminders)
+    .innerJoin(schema.schedules, eq(schema.reminders.scheduleId, schema.schedules.id))
+    .where(and(isNotNull(schema.reminders.snoozedUntil), lte(schema.reminders.snoozedUntil, now), eq(schema.schedules.userId, user.id)))
+  for (const { r, s } of snoozed) {
+    await db.update(schema.reminders).set({ snoozedUntil: null }).where(eq(schema.reminders.id, r.id))
+    if (await alreadyChecked(s.id, r.occurrence)) continue
+    await sendReminder(user, s, r.occurrence, r.id)
+  }
+}
+
+async function alreadyChecked(scheduleId: string, occurrence: Date) {
+  const [c] = await db.select({ id: schema.checks.id }).from(schema.checks)
+    .where(and(eq(schema.checks.scheduleId, scheduleId), eq(schema.checks.occurrence, occurrence)))
+  return !!c
+}
+
+async function sendReminder(user: User, s: Schedule, occ: Date, rid: string) {
+  const { text, buttons } = await reminderMessage(user, s, occ, rid)
+  const mid = await sendMessage(text, { buttons })
+  if (mid) await db.update(schema.reminders).set({ telegramMessageId: mid, sentAt: new Date() }).where(eq(schema.reminders.id, rid))
+}

@@ -1,0 +1,30 @@
+{
+  "note": "SAMPLE format with fake numbers; replace with your real messages.",
+  "event": {
+    "source": "sms",
+    "externalId": "f2",
+    "at": "2026-11-04T03:45:00.000Z",
+    "body": {
+      "text": "INR 1,500.00 credited\nA/c no. XX1234\n04-11-26, 09:12:44 IST\nUPI/P2A/530987654321/RAHUL KUMAR\nAvl Bal: INR 84,210.50\n- Axis Bank"
+    }
+  },
+  "expected": [
+    {
+      "kind": "transaction",
+      "account": {
+        "key": "axis:1234",
+        "kind": "bank",
+        "name": "Axis Bank ••1234",
+        "institution": "Axis Bank",
+        "currency": "INR"
+      },
+      "at": "2026-11-04T03:42:44.000Z",
+      "amount": 1500,
+      "currency": "INR",
+      "merchant": "RAHUL KUMAR",
+      "balance": 84210.5,
+      "source": "axis",
+      "externalRef": "530987654321"
+    }
+  ]
+}

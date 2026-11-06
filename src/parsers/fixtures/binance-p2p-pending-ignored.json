@@ -1,0 +1,21 @@
+{
+  "note": "Fixture.",
+  "event": {
+    "source": "binance",
+    "externalId": "p2p:2026110512346",
+    "at": "2026-11-05T12:00:00.000Z",
+    "body": {
+      "type": "p2p",
+      "orderNumber": "2026110512346",
+      "tradeType": "SELL",
+      "asset": "USDT",
+      "fiat": "INR",
+      "amount": "50",
+      "unitPrice": "93",
+      "totalPrice": "4650",
+      "orderStatus": "PENDING",
+      "createTime": 1762344000000
+    }
+  },
+  "expected": []
+}

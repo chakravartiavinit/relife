@@ -1,0 +1,67 @@
+{
+  "note": "Fixture.",
+  "event": {
+    "source": "binance",
+    "externalId": "balances:2026-11-05T12",
+    "at": "2026-11-05T12:00:00.000Z",
+    "body": {
+      "type": "balances",
+      "at": "2026-11-05T12:00:00.000Z",
+      "totalUsd": 1530,
+      "assets": [
+        {
+          "asset": "BTC",
+          "qty": 0.015,
+          "priceUsd": 100000
+        },
+        {
+          "asset": "USDT",
+          "qty": 30,
+          "priceUsd": 1
+        }
+      ]
+    }
+  },
+  "expected": [
+    {
+      "kind": "holding",
+      "account": {
+        "key": "binance",
+        "kind": "exchange",
+        "name": "Binance",
+        "institution": "Binance",
+        "currency": "USD"
+      },
+      "asset": "BTC",
+      "qty": 0.015,
+      "priceUsd": 100000,
+      "at": "2026-11-05T12:00:00.000Z"
+    },
+    {
+      "kind": "holding",
+      "account": {
+        "key": "binance",
+        "kind": "exchange",
+        "name": "Binance",
+        "institution": "Binance",
+        "currency": "USD"
+      },
+      "asset": "USDT",
+      "qty": 30,
+      "priceUsd": 1,
+      "at": "2026-11-05T12:00:00.000Z"
+    },
+    {
+      "kind": "balance",
+      "account": {
+        "key": "binance",
+        "kind": "exchange",
+        "name": "Binance",
+        "institution": "Binance",
+        "currency": "USD"
+      },
+      "amount": 1530,
+      "at": "2026-11-05T12:00:00.000Z"
+    }
+  ]
+}

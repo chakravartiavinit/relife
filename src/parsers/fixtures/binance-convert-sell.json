@@ -1,0 +1,39 @@
+{
+  "note": "Fixture.",
+  "event": {
+    "source": "binance",
+    "externalId": "convert:9001",
+    "at": "2026-11-05T12:00:00.000Z",
+    "body": {
+      "type": "convert",
+      "orderId": "9001",
+      "orderStatus": "SUCCESS",
+      "fromAsset": "ETH",
+      "fromAmount": "0.5",
+      "toAsset": "USDT",
+      "toAmount": "1750",
+      "createTime": 1762344000000
+    }
+  },
+  "expected": [
+    {
+      "kind": "trade",
+      "account": {
+        "key": "binance",
+        "kind": "exchange",
+        "name": "Binance",
+        "institution": "Binance",
+        "currency": "USD"
+      },
+      "at": "2025-11-05T12:00:00.000Z",
+      "symbol": "ETH/USDT",
+      "side": "sell",
+      "qty": 0.5,
+      "price": 3500,
+      "fee": 0,
+      "tradeKind": "convert",
+      "source": "binance",
+      "externalRef": "convert:9001"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "note": "SAMPLE format with fake numbers; replace with your real messages.",
+  "event": {
+    "source": "gmail",
+    "externalId": "f9",
+    "at": "2026-11-05T09:03:00.000Z",
+    "body": {
+      "id": "18c0b",
+      "from": "Axis Bank <alerts@axisbank.com>",
+      "subject": "Pre-debit notification",
+      "text": "INR 649.00 will be debited on 09-11-26 towards NETFLIX for your e-mandate."
+    }
+  },
+  "expected": []
+}

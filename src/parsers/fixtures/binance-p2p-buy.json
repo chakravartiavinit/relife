@@ -1,0 +1,48 @@
+{
+  "note": "Fixture.",
+  "event": {
+    "source": "binance",
+    "externalId": "p2p:2026110512345",
+    "at": "2026-11-05T12:00:00.000Z",
+    "body": {
+      "type": "p2p",
+      "orderNumber": "2026110512345",
+      "tradeType": "BUY",
+      "asset": "USDT",
+      "fiat": "INR",
+      "amount": "100.00",
+      "unitPrice": "92.50",
+      "totalPrice": "9250.00",
+      "commission": "0",
+      "orderStatus": "COMPLETED",
+      "createTime": 1762344000000,
+      "counterPartNickName": "seller1"
+    }
+  },
+  "expected": [
+    {
+      "kind": "trade",
+      "account": {
+        "key": "binance",
+        "kind": "exchange",
+        "name": "Binance",
+        "institution": "Binance",
+        "currency": "USD"
+      },
+      "at": "2025-11-05T12:00:00.000Z",
+      "symbol": "USDT/INR",
+      "side": "buy",
+      "qty": 100,
+      "price": 92.5,
+      "fee": 0,
+      "feeAsset": "USDT",
+      "tradeKind": "p2p",
+      "source": "binance",
+      "externalRef": "p2p:2026110512345",
+      "meta": {
+        "totalPrice": 9250,
+        "counterparty": "seller1"
+      }
+    }
+  ]
+}
