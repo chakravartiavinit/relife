@@ -116,7 +116,7 @@ async function Spending({ searchParams }: { searchParams: PageProps<'/wealth/spe
 
           <Card>
             <CardHeader title="Daily spending" description={monthLabel(m)} />
-            <DailyBars data={fillDays(perDay, from, to, 0)} color="var(--cat-wealth)" unit="₹" label={`Daily spending in ${monthLabel(m)}`} />
+            <DailyBars data={fillDays(perDay, from, monthEnd, 0)} color="var(--cat-wealth)" unit="₹" label={`Daily spending in ${monthLabel(m)}`} />
           </Card>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

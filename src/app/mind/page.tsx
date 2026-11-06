@@ -67,7 +67,7 @@ async function Mind() {
       {get('screen-time')?.days.size ? (
         <MetricCard title="Screen time" data={get('screen-time')} from={from} to={today} color={color} chart="bars" empty={{ title: '', description: '' }} />
       ) : null}
-      <RoutinesCard user={user} category="mind" />
+      <div className="xl:col-span-2"><RoutinesCard user={user} category="mind" /></div>
     </div>
     </div>
   )

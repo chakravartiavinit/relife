@@ -81,7 +81,7 @@ async function Inbox() {
             ))}
           </ul>
         ) : (
-          <EmptyState title="Nothing failed" description="Every message so far was understood." />
+          <p className="text-[13px] text-ink-3">Nothing failed. Every message so far was understood.</p>
         )}
       </Card>
 
@@ -105,7 +105,7 @@ async function Inbox() {
             ))}
           </ul>
         ) : (
-          <EmptyState title="Every payment has a category" />
+          <p className="text-[13px] text-ink-3">Every payment has a category.</p>
         )}
       </Card>
 

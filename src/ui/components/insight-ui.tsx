@@ -36,7 +36,7 @@ export function AskBox({ initial, enabled }: { initial?: string; enabled: boolea
           disabled={!enabled}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() } }}
-          placeholder={enabled ? 'How much did I spend on Zepto last month? Am I sleeping better than in October?' : 'Set LLM_DEFAULT and a provider key in .env to ask questions.'}
+          placeholder={enabled ? 'How much did I spend on Zepto last month? Am I sleeping better than in October?' : 'Connect an AI model on Connectors to ask questions.'}
           className="field-sizing-content max-h-40 min-h-9 flex-1 resize-none bg-transparent px-2 py-1.5 text-[15px] text-ink outline-none placeholder:text-ink-3 disabled:cursor-not-allowed"
         />
         <Button type="submit" variant="primary" size="icon" disabled={!enabled || pending || !q.trim()} aria-label="Ask">

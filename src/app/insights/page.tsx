@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
 import { and, desc, eq, ne } from 'drizzle-orm'
@@ -59,7 +60,7 @@ async function Insights({ searchParams }: { searchParams: PageProps<'/insights'>
           <AskBox initial={initial} enabled={enabled} />
           {!enabled ? (
             <p className="mt-2 px-1 text-[13px] text-ink-3">
-              Add <code className="rounded-xs bg-surface-2 px-1 py-0.5 text-[12px]">LLM_DEFAULT=anthropic:claude-sonnet-5-5</code> and your key to <code className="rounded-xs bg-surface-2 px-1 py-0.5 text-[12px]">.env</code>, or point it at a local model.
+              Open <Link href="/connectors" className="font-medium text-ink underline decoration-ink-3/40 underline-offset-2 hover:decoration-ink">Connectors</Link> and connect Anthropic, OpenAI, Gemini, OpenRouter or a local model with a default model.
             </p>
           ) : null}
         </section>
