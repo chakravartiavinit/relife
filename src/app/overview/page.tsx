@@ -15,7 +15,7 @@ import { Card, CardHeader, PageHeader, Skeleton } from '@/ui/components/card'
 import { DailyBars, TrendArea } from '@/ui/components/charts'
 import { buttonClass } from '@/ui/components/button'
 import { LifeKpis, LifeKpisSkeleton } from '@/ui/components/life-kpis'
-import { loadAdherence } from '@/ui/components/category/adherence-data'
+import { loadAdherence } from '@/core/adherence'
 
 export const metadata: Metadata = { title: 'Overview' }
 

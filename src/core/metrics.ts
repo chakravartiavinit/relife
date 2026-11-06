@@ -1,4 +1,4 @@
-import { and, eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm'
+import { and, eq, gt, gte, inArray, isNull, lte, or, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import type { Category } from '@/db/schema'
 import { convert } from './fx'
@@ -61,4 +61,19 @@ const NOT_SPEND = new Set(['Transfers', 'Investments', 'Income'])
 /** Money out, excluding transfers between own accounts and investments. */
 export function isSpend(t: { base: number; category: string | null }) {
   return t.base < 0 && !NOT_SPEND.has(t.category ?? '')
+}
+
+/** Days the user did something on purpose: a routine checked off, a manual log, or code shipped. Passive syncs (sleep, steps) don't count. */
+export async function activeDays(user: User, from: string) {
+  const [checks, entries] = await Promise.all([
+    db.selectDistinct({ d: schema.checks.localDate }).from(schema.checks)
+      .innerJoin(schema.schedules, eq(schema.schedules.id, schema.checks.scheduleId))
+      .where(and(eq(schema.schedules.userId, user.id), eq(schema.checks.status, 'done'), gte(schema.checks.localDate, from))),
+    db.selectDistinct({ d: schema.entries.localDate }).from(schema.entries)
+      .where(and(
+        eq(schema.entries.userId, user.id), gte(schema.entries.localDate, from),
+        or(eq(schema.entries.source, 'manual'), and(eq(schema.entries.source, 'github'), gt(schema.entries.value, 0))),
+      )),
+  ])
+  return new Set([...checks, ...entries].map((r) => r.d))
 }

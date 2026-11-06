@@ -9,7 +9,7 @@ import { Capsule } from '../capsule'
 import { EmptyState } from '../empty'
 import { buttonClass } from '../button'
 import { AdherenceStrip } from './adherence-strip'
-import { loadAdherence, type ScheduleAdherence } from './adherence-data'
+import { loadAdherence, type ScheduleAdherence } from '@/core/adherence'
 
 /** Routines (and medicines) of one category with 14-day adherence. Server component. */
 export async function RoutinesCard({ user, category, title = 'Routines', kinds = ['routine', 'medicine'] }: {

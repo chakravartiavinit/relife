@@ -1,10 +1,10 @@
 import Link from 'next/link'
-import { and, eq, gt, gte, inArray, or } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { ArrowDownRight, ArrowUpRight, Brain, Check, Code, Flame, HeartPulse, Users, Wallet } from 'lucide-react'
 import { db, schema } from '@/db'
 import type { Category } from '@/db/schema'
 import type { User } from '@/core/user'
-import { trackerDays, transactionsBetween, isSpend } from '@/core/metrics'
+import { activeDays, trackerDays, transactionsBetween, isSpend } from '@/core/metrics'
 import { addDays, daysBetween, localDate } from '@/core/time'
 import { streaks } from '@/domain/streaks'
 import { average, fillDays } from '@/domain/series'
@@ -47,21 +47,6 @@ function delta(now: number | null, before: number | null, fmt: (d: number) => st
   const d = now - before
   if (Math.abs(d) < 0.05) return undefined // would read as "0" after rounding
   return { text: fmt(d), up: d > 0, good: d > 0 === higherIsGood }
-}
-
-/** Days the user did something on purpose: a routine checked off, a manual log, or code shipped. Passive syncs (sleep, steps) don't count. */
-async function activeDays(user: User, from: string) {
-  const [checks, entries] = await Promise.all([
-    db.selectDistinct({ d: schema.checks.localDate }).from(schema.checks)
-      .innerJoin(schema.schedules, eq(schema.schedules.id, schema.checks.scheduleId))
-      .where(and(eq(schema.schedules.userId, user.id), eq(schema.checks.status, 'done'), gte(schema.checks.localDate, from))),
-    db.selectDistinct({ d: schema.entries.localDate }).from(schema.entries)
-      .where(and(
-        eq(schema.entries.userId, user.id), gte(schema.entries.localDate, from),
-        or(eq(schema.entries.source, 'manual'), and(eq(schema.entries.source, 'github'), gt(schema.entries.value, 0))),
-      )),
-  ])
-  return new Set([...checks, ...entries].map((r) => r.d))
 }
 
 /** The daily "showed up" streak, shared by Today's header and the Overview tile. */

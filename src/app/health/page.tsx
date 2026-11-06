@@ -14,7 +14,7 @@ import { KpiStrip, PageHeader } from '@/ui/components/card'
 import { CategorySkeleton } from '@/ui/components/category/skeleton'
 import { MetricCard } from '@/ui/components/category/metric-card'
 import { RoutinesCard } from '@/ui/components/category/routines-card'
-import { loadAdherence } from '@/ui/components/category/adherence-data'
+import { loadAdherence } from '@/core/adherence'
 
 export const metadata: Metadata = { title: 'Health' }
 const color = CATEGORY.health.color

@@ -8,7 +8,7 @@ import { EmptyState } from '../empty'
 import { buttonClass } from '../button'
 import { AdherenceLegend } from '../category/adherence-strip'
 import { AdherenceRow } from '../category/routines-card'
-import { loadAdherence, type ScheduleAdherence } from '../category/adherence-data'
+import { loadAdherence, type ScheduleAdherence } from '@/core/adherence'
 import { type ScheduleInitial } from '../forms/schedule-form'
 import { ScheduleActions } from '../forms/schedule-actions'
 
