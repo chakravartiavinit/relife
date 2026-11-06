@@ -10,7 +10,7 @@ export async function SidebarProfile() {
   const xp = await xpSummary(user)
   const initial = (user.name.trim()[0] ?? 'R').toUpperCase()
   return (
-    <Link href="/settings" className="group flex items-center gap-3 rounded-md p-1.5 transition-[background-color] duration-150 hover:bg-ink/[0.04] dark:hover:bg-white/[0.05]">
+    <Link href="/profile" className="group flex items-center gap-3 rounded-md p-1.5 transition-[background-color] duration-150 hover:bg-ink/[0.04] dark:hover:bg-white/[0.05]">
       <span
         aria-hidden
         className="grid size-9 shrink-0 place-items-center rounded-full font-display text-[15px] font-bold text-[oklch(0.178_0_0)] shadow-[inset_0_0_0_1px_oklch(1_0_0/0.6),0_1px_2px_oklch(0.3_0.04_250/0.2)]"

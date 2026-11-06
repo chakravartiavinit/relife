@@ -20,6 +20,8 @@ Local-first: everything runs on your machine, and your data stays in your own Po
   with its key numbers, then charts and routines.
 - **Habits**: every routine, medicine and tracker, with streaks and 14-day history.
 - **Insights**: ask questions about your data and review weekly reviews and plans from your model.
+- **Profile**: your level and title, area levels with medals, achievements, and XP per day. Keeping
+  your own plan earns up to 100 XP a day; fixed measures like 7 hours of sleep or a commit earn more.
 - **Connectors**: connect data sources, Telegram and AI providers.
 
 ## Run it

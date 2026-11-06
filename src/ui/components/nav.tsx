@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import {
-  Brain, Code, HeartPulse, Inbox, LayoutGrid, Menu, Plug, Repeat, Settings, Sparkles, Sunrise, Users, Wallet, type LucideIcon,
+  Brain, Code, HeartPulse, Inbox, LayoutGrid, Menu, Plug, Repeat, Settings, Sparkles, Sunrise, Trophy, Users, Wallet, type LucideIcon,
 } from 'lucide-react'
 import { Dialog } from './forms/dialog'
 import { cn } from '../cn'
@@ -41,6 +41,7 @@ export const NAV: { label?: string; items: Item[] }[] = [
     items: [
       { href: '/habits', label: 'Habits', icon: Repeat },
       { href: '/insights', label: 'Insights', icon: Sparkles },
+      { href: '/profile', label: 'Profile', icon: Trophy },
     ],
   },
 ]
