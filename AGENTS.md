@@ -28,6 +28,10 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
 - `src/connectors/`, `src/parsers/`, `src/rules/`, `src/ai/jobs/`: the four extension points.
 - `src/worker/`: long-running process (bot, reminders, syncs, rules, AI). `src/bot/`: Telegram.
 - `src/ui/`: tokens and components. `src/app/globals.css` holds the design tokens.
+- Logo: `assets/brand/relife-logo.png` is the source. `node scripts/brand.mjs assets/brand/relife-logo.png`
+  rebuilds `public/brand/` (light and dark logos, icons, with content-hashed names so browsers never
+  show a stale logo), `src/ui/brand-files.ts` (their paths) and `src/app/icon.png` / `apple-icon.png`.
+  Use `Wordmark` from `src/ui/components/logo.tsx`; never redraw the logo.
 - Vendored UI code: `src/ui/beui/` (beui.dev) and `src/ui/dither-kit/` (tripwire.sh, local patches in
   its README). Change them only to fit ReLife tokens.
 

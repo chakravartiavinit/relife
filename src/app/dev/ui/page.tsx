@@ -28,9 +28,9 @@ export default function UiGallery() {
 
       <Section title="Brand">
         <div className="flex flex-wrap items-end gap-10">
-          <Wordmark className="text-[56px]" kana />
-          <Wordmark className="text-[28px]" />
-          <CapsuleMark className="h-16 w-auto -rotate-12 [--logo-ink:var(--ink)]" title="ReLife capsule" />
+          <Wordmark className="h-20" />
+          <Wordmark className="h-10" />
+          <CapsuleMark className="size-16 shadow-1" title="ReLife app icon" />
         </div>
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
           {['ink', 'pill', 'pill-ink', 'line-blue', 'sky', 'sakura', 'cardigan', 'night'].map((c) => (

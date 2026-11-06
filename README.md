@@ -127,5 +127,6 @@ components keep their own MIT notices (see Credits).
 - Charts: [dither-kit](https://tripwire.sh/dither-kit) (MIT). Motion components: [beUI](https://beui.dev) (MIT).
 - Connector logos: [Simple Icons](https://simpleicons.org) (CC0) and [Lobe Icons](https://github.com/lobehub/lobe-icons) (MIT).
   Trademarks belong to their owners.
-- The ReLIFE name and capsule logo come from the anime (© YayoiSo/comico/ReLIFE Laboratory). They
-  are fine for a private build. Replace them before any public release.
+- The ReLIFE name and logo (`assets/brand/`, `public/brand/`, `src/app/icon.png`, `src/app/apple-icon.png`)
+  belong to their owners (© YayoiSo/comico/ReLIFE Laboratory) and are used as a fan tribute. They are
+  not covered by this project's AGPL license.

@@ -314,7 +314,7 @@ Category colors (charts, chips, capsule fills), harmonized with the brand:
 
 Logo: the wordmark with the "i" replaced by a capsule (blue top, white bottom, ink outline). App icon: the capsule alone, tilted, on the sky gradient. The capsule is also the core UI motif (below).
 
-> IP note: the ReLIFE name, wordmark and capsule-"i" are from the anime (© YayoiSo/comico/ReLIFE Laboratory). Fine for a private build. Before the public release, rename and redraw the mark; the palette and capsule motif can stay as inspiration.
+> IP note: the ReLIFE name, wordmark and capsule-"i" are from the anime (© YayoiSo/comico/ReLIFE Laboratory). The project uses the original logo as a fan tribute; it is excluded from the AGPL license (see README → Credits).
 
 ### 8.3 Typography
 
