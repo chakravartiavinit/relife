@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: relife
+      POSTGRES_PASSWORD: relife
+      POSTGRES_DB: relife
+    # Bound to localhost only. Port 5442 avoids clashing with other local Postgres instances.
+    ports: ["127.0.0.1:5442:5432"]
+    volumes: [relife-pg:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U relife"]
+      interval: 5s
+      retries: 10
+volumes:
+  relife-pg:

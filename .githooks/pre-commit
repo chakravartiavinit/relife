@@ -1,0 +1,47 @@
+#!/bin/sh
+# Blocks secrets and junk from being committed. Rules: AGENTS.md → "Git and commits".
+fail=0
+err() { printf '\033[31m✗ %s\033[0m\n' "$1" >&2; fail=1; }
+
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+[ -z "$staged" ] && exit 0
+
+# 1. Files that must never be committed.
+echo "$staged" | while IFS= read -r f; do
+  case "$f" in
+    .env.example) ;;
+    .env|.env.*|*/.env|*/.env.*) echo "$f: env files hold secrets" ;;
+    data/*) echo "$f: data/ holds the encryption key for saved connector keys" ;;
+    *.pem|*.key|*.p12|*.dump|*.sql.gz|service-account*.json) echo "$f: key or database dump" ;;
+    node_modules/*|.next/*|.next-mock/*|coverage/*) echo "$f: build output" ;;
+    *.DS_Store|*.log) echo "$f: OS or log file" ;;
+  esac
+  case "$(basename "$f")" in
+    *' '[0-9]|*' '[0-9].*) echo "$f: iCloud sync duplicate, delete it" ;;
+  esac
+done > /tmp/relife-precommit.$$
+if [ -s /tmp/relife-precommit.$$ ]; then
+  while IFS= read -r line; do err "$line"; done < /tmp/relife-precommit.$$
+fi
+rm -f /tmp/relife-precommit.$$
+
+# 2. Large files (screenshots in docs/images are fine under 2 MB).
+big=$(echo "$staged" | while IFS= read -r f; do
+  [ -f "$f" ] || continue
+  size=$(wc -c < "$f" | tr -d ' ')
+  [ "$size" -gt 2097152 ] && echo "$f: $((size / 1024)) KB, over the 2 MB limit"
+done)
+[ -n "$big" ] && err "$big"
+
+# 3. Secret-looking strings in added lines.
+patterns='sk-ant-[A-Za-z0-9_-]{20,}|sk-(proj-)?[A-Za-z0-9_-]{32,}|sk-or-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|xox[abprs]-[A-Za-z0-9-]{10,}|[0-9]{8,10}:AA[0-9A-Za-z_-]{30,}|-----BEGIN [A-Z ]*PRIVATE KEY-----'
+hits=$(git diff --cached -U0 --no-color -- . ':(exclude).githooks/*' | grep -E '^\+[^+]' | grep -En "$patterns")
+if [ -n "$hits" ]; then
+  err "possible secret in staged changes:"
+  echo "$hits" | cut -c1-120 >&2
+fi
+
+if [ "$fail" -ne 0 ]; then
+  echo "Commit blocked. Unstage with: git restore --staged <file>" >&2
+  exit 1
+fi

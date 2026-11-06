@@ -1,0 +1,7 @@
+#!/bin/sh
+# Typecheck and tests must pass before anything leaves this machine.
+set -e
+echo "pre-push: typecheck" >&2
+npm run --silent typecheck
+echo "pre-push: tests" >&2
+npm test --silent > /tmp/relife-prepush.log 2>&1 || { tail -30 /tmp/relife-prepush.log >&2; echo "Tests failed. Push blocked." >&2; exit 1; }
