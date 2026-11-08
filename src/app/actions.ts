@@ -1,6 +1,6 @@
 'use server'
 
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { refresh } from 'next/cache'
 import { z } from 'zod'
 import { db, schema } from '@/db'
@@ -114,6 +114,8 @@ export async function saveSchedule(_prev: FormState, form: FormData): Promise<Fo
   } else {
     await db.insert(schema.schedules).values(values)
   }
+  // A new or changed subscription is money data: let the nudges look at it now.
+  if (f.kind !== 'routine' && f.kind !== 'medicine') await (await import('@/jobs')).emit('data.changed')
   refresh()
   return { ok: true }
 }
@@ -153,6 +155,40 @@ export async function createTracker(_prev: FormState, form: FormData): Promise<F
   return { ok: true }
 }
 
+const hobbyForm = z.object({
+  name: z.string().trim().min(1, 'Name your hobby.').max(40),
+  weekly: z.coerce.number().int().min(10, 'Aim for at least 10 minutes a week.').max(3000).default(150),
+})
+
+/** Hobbies → Add a hobby: a minutes tracker in the Hobbies area. The weekly goal is stored as a daily target. */
+export async function createHobby(_prev: FormState, form: FormData): Promise<FormState> {
+  const parsed = hobbyForm.safeParse(Object.fromEntries(form.entries()))
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message }
+  const user = await getUser()
+  const { name, weekly } = parsed.data
+  const slug = slugify(name)
+  if (!slug) return { ok: false, error: 'Use letters or numbers in the name.' }
+  const values = { category: 'hobbies' as const, kind: 'duration' as const, unit: 'min', target: Math.round((weekly / 7) * 10) / 10, direction: 'up' as const, aggregate: 'sum' as const, archivedAt: null }
+  // A tracker with this name may exist already (e.g. "guitar 30" typed before): move it into Hobbies.
+  await db.insert(schema.trackers).values({ userId: user.id, slug, name, ...values })
+    .onConflictDoUpdate({ target: [schema.trackers.userId, schema.trackers.slug], set: values })
+  refresh()
+  return { ok: true }
+}
+
+/** Log practice minutes for a hobby. Returns XP news for the toast and celebrations. */
+export async function logPractice(slug: string, minutes: number) {
+  const user = await getUser()
+  const m = z.number().int().min(1).max(720).parse(minutes)
+  await persist(user, {
+    kind: 'entry', tracker: slug, value: m, source: 'manual', mode: 'add', date: localDate(new Date(), user.timezone),
+    defaults: { category: 'hobbies', unit: 'min', kind: 'duration' },
+  })
+  const news = await xpAfterLog(user)
+  refresh()
+  return news
+}
+
 export async function logEntry(slug: string, value: number, date?: string) {
   const user = await getUser()
   const scale = slug === 'mood' || slug === 'energy'
@@ -190,12 +226,15 @@ export async function recategorize(transactionId: string, category: string, reme
   refresh()
 }
 
-export async function retryRawEvent(id: string) {
+/** Re-read raw messages. Returns how they came out, so the Inbox can say "Saved" or "Still waiting". */
+export async function retryRawEvents(ids: string[]) {
   const user = await getUser()
-  const [row] = await db.select().from(schema.rawEvents)
-    .where(and(eq(schema.rawEvents.id, id), eq(schema.rawEvents.userId, user.id)))
-  if (row) await processOne(user, row)
+  const rows = ids.length ? await db.select().from(schema.rawEvents)
+    .where(and(inArray(schema.rawEvents.id, ids.slice(0, 200)), eq(schema.rawEvents.userId, user.id))) : []
+  const out = { parsed: 0, ignored: 0, failed: 0 }
+  for (const row of rows) out[await processOne(user, row)]++
   refresh()
+  return out
 }
 
 export async function ignoreRawEvent(id: string) {
@@ -242,9 +281,12 @@ export async function updateLearningProgress(id: string, delta: { done?: number;
     .where(and(eq(schema.learningItems.id, id), eq(schema.learningItems.userId, user.id)))
   if (!item) return
   const progressDone = Math.max(0, item.progressDone + (delta.done ?? 0))
+  const meta = (item.meta ?? {}) as { manualMinutes?: number }
   await db.update(schema.learningItems).set({
     progressDone: item.progressTotal ? Math.min(item.progressTotal, progressDone) : progressDone,
     minutesLogged: item.minutesLogged + (delta.minutes ?? 0),
+    // Kept apart from tracked time, which the extension recomputes from your activity.
+    meta: { ...meta, manualMinutes: (meta.manualMinutes ?? 0) + (delta.minutes ?? 0) },
     status: delta.status ?? (item.progressTotal && progressDone >= item.progressTotal ? 'done' : item.status),
   }).where(eq(schema.learningItems.id, id))
   if (delta.minutes) {
@@ -256,6 +298,39 @@ export async function updateLearningProgress(id: string, delta: { done?: number;
   const news = await xpAfterLog(user)
   refresh()
   return news
+}
+
+const libraryEdit = z.object({
+  title: z.string().trim().min(1).max(200),
+  kind: z.enum(['course', 'book', 'show', 'video', 'other']),
+  progressTotal: z.number().int().min(1).max(10_000).nullable(),
+  status: z.enum(['planned', 'active', 'paused', 'done']),
+})
+
+/** Library card ⋯ → Edit: name, type, total lessons or episodes, status. */
+export async function updateLibraryItem(id: string, input: unknown) {
+  const user = await getUser()
+  const v = libraryEdit.parse(input)
+  await db.update(schema.learningItems).set({ ...v, updatedAt: new Date() })
+    .where(and(eq(schema.learningItems.id, id), eq(schema.learningItems.userId, user.id)))
+  refresh()
+}
+
+export async function removeLibraryItem(id: string) {
+  const user = await getUser()
+  await db.delete(schema.learningItems).where(and(eq(schema.learningItems.id, id), eq(schema.learningItems.userId, user.id)))
+  refresh()
+}
+
+/** Activity → a site's "counts as". null goes back to the built-in rule. */
+export async function setSiteKindAction(domain: string, kind: string | null) {
+  const { ACTIVITY_KINDS } = await import('@/domain/activity')
+  const k = kind == null ? null : z.enum(ACTIVITY_KINDS).parse(kind)
+  const user = await getUser()
+  const { setSiteKind } = await import('@/core/activity')
+  const changed = await setSiteKind(user, z.string().min(1).max(200).parse(domain), k)
+  refresh()
+  return { changed }
 }
 
 const personForm = z.object({
@@ -298,7 +373,8 @@ export async function saveProfile(_prev: FormState, form: FormData): Promise<For
     name: get('name') || user.name,
     timezone: tz,
     baseCurrency: cur,
-    profile: { goals: get('goals'), constraints: get('constraints'), notes: get('notes') },
+    // Merge into the saved profile: replacing it would drop setup, areas, XP start and notification choices.
+    profile: { ...(await freshProfile(user.id)), goals: get('goals'), constraints: get('constraints'), notes: get('notes') },
   }).where(eq(schema.users.id, user.id))
   const { clearUserCache } = await import('@/core/user')
   clearUserCache()
@@ -306,20 +382,89 @@ export async function saveProfile(_prev: FormState, form: FormData): Promise<For
   return { ok: true }
 }
 
-export async function syncNow(connectorId: string) {
-  const { runConnector } = await import('@/worker/sync')
-  const r = await runConnector(connectorId)
+async function freshProfile(userId: string) {
+  const [u] = await db.select({ profile: schema.users.profile }).from(schema.users).where(eq(schema.users.id, userId))
+  return u?.profile ?? {}
+}
+
+const HHMM = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+const deliverySchema = z.object({
+  mode: z.enum(['off', 'once', 'repeat']),
+  everyMin: z.number().int().min(5).max(24 * 60),
+  times: z.number().int().min(0).max(10),
+  quiet: z.boolean(),
+  maxPerDay: z.number().int().min(1).max(50).nullable(),
+}).partial()
+
+/** Today: ask the System for today's quests now (normally the worker does it just after midnight). */
+export async function summonSystem() {
+  const { systemTick } = await import('@/core/system')
+  await systemTick(await getUser())
   refresh()
-  return r
+}
+
+/** Settings → The System: which stats to train first. */
+export async function saveSystemFocus(ids: string[]) {
+  const user = await getUser()
+  const improve = z.array(z.string().max(80)).max(20).parse(ids)
+  await db.update(schema.users).set({ profile: { ...(await freshProfile(user.id)), improve } }).where(eq(schema.users.id, user.id))
+  const { clearUserCache } = await import('@/core/user')
+  clearUserCache()
+  return { ok: true as const }
+}
+
+/** Settings → Notifications: quiet hours and per-category delivery. The worker reads it each minute. */
+export async function saveNotifications(input: unknown) {
+  const { NOTIFY_CATEGORIES } = await import('@/domain/notify')
+  const parsed = z.object({
+    quiet: z.object({ from: HHMM, to: HHMM }).nullable(),
+    categories: z.partialRecord(z.enum(NOTIFY_CATEGORIES), deliverySchema),
+  }).safeParse(input)
+  if (!parsed.success) return { ok: false as const, error: 'Those settings look wrong. Reload and try again.' }
+  const user = await getUser()
+  await db.update(schema.users).set({ profile: { ...(await freshProfile(user.id)), notifications: parsed.data } }).where(eq(schema.users.id, user.id))
+  const { clearUserCache } = await import('@/core/user')
+  clearUserCache()
+  return { ok: true as const }
+}
+
+/** "Sync now": the same job the worker runs on its schedule, so two syncs of one app never overlap. */
+export async function syncNow(connectorId: string): Promise<{ ok: boolean; events: number; error?: string }> {
+  const { runNow, parseNow } = await import('@/jobs')
+  const r = await runNow(`sync:${connectorId}`)
+  if (!r) return { ok: false, events: 0, error: 'Already syncing. It finishes on its own; check back in a minute.' }
+  if (r.ok) await parseNow() // show the new data right away
+  refresh()
+  return r.ok ? { ok: true, events: Number.parseInt(r.result) || 0 } : { ok: false, events: 0, error: r.result }
 }
 
 /** Connect dialog submit. Only the fields the integration declares are read. */
 export async function connectIntegration(id: string, _prev: FormState, form: FormData): Promise<FormState> {
   const user = await getUser()
+  // Shopping apps: pressing Connect means the login is done, so end the login window and keep its session.
+  const { SHOP_IDS } = await import('@/connectors/shop')
+  if (SHOP_IDS.has(id)) await (await import('@/connectors/shop/browser')).closeLoginWindow(id)
   const { connect } = await import('@/core/secrets')
   const r = await connect(user.id, id, Object.fromEntries(form.entries()))
+  // Connected: sync it now (the worker picks this up within seconds), then on its schedule.
+  if (r?.ok) await (await import('@/jobs')).emit(`connector.connected:${id}`)
   refresh()
   return r
+}
+
+/** Opens a Chrome window on a shopping app's login page. The session is saved for background syncs. */
+export async function openAppLogin(id: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { PLATFORMS } = await import('@/connectors/shop')
+  const p = PLATFORMS.find((x) => x.id === id)
+  if (!p) return { ok: false, error: 'Unknown app' }
+  try {
+    const { openLoginWindow } = await import('@/connectors/shop/browser')
+    await openLoginWindow(p.id, p.login)
+    return { ok: true }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    return { ok: false, error: /executable|chrome/i.test(msg) ? 'Google Chrome wasn’t found. Install it, or set CHROME_PATH in .env.' : msg.slice(0, 200) }
+  }
 }
 
 export async function disconnectIntegration(id: string) {
@@ -336,4 +481,101 @@ export async function ask(question: string): Promise<{ answer: string; error?: s
   const r = await askData(q)
   refresh()
   return r
+}
+
+const onboardingInput = z.object({
+  name: z.string().trim().min(1, 'Add your name').max(60),
+  timezone: z.string().trim().refine((tz) => { try { new Intl.DateTimeFormat('en', { timeZone: tz }); return true } catch { return false } }, 'Pick a time zone from the list'),
+  baseCurrency: z.string().trim().toUpperCase().refine((c) => Intl.supportedValuesOf('currency').includes(c), 'Use a currency code like INR or USD'),
+  areas: z.array(z.enum(CATEGORIES)).min(1, 'Pick at least one area'),
+  focus: z.enum(CATEGORIES).optional(),
+  templates: z.array(z.string().max(40)).max(40),
+  generated: z.array(z.object({
+    id: z.string().max(40), area: z.enum(CATEGORIES), name: z.string().trim().min(1).max(60), kind: z.enum(['routine', 'medicine']),
+    rule: z.object({
+      freq: z.enum(['daily', 'weekly']),
+      times: z.array(z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)).min(1).max(6),
+      byweekday: z.array(z.enum(WEEKDAYS)).max(7).optional(),
+    }),
+    note: z.string().max(60).optional(), dose: z.string().max(40).optional(),
+  })).max(10).optional(),
+  sleepHours: z.number().min(5).max(10),
+  steps: z.number().int().min(1000).max(30000),
+  waterMl: z.number().int().min(500).max(6000),
+  goals: z.string().max(2000),
+  constraints: z.string().max(2000),
+  tone: z.enum(['gentle', 'balanced', 'blunt']),
+})
+
+/** Finish the one-time setup on /welcome. */
+export async function finishOnboarding(input: unknown): Promise<
+  { ok: true; added: number; level: { level: number; title: string; progress: number } } | { ok: false; error: string }
+> {
+  const parsed = onboardingInput.safeParse(input)
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Check your answers' }
+  const user = await getUser()
+  const { completeOnboarding } = await import('@/core/onboarding')
+  const r = await completeOnboarding(user, parsed.data)
+  const { clearUserCache } = await import('@/core/user')
+  clearUserCache()
+  const [{ totalXp }, { levelFor, titleFor }] = await Promise.all([import('@/core/xp'), import('@/domain/xp')])
+  const lv = levelFor(await totalXp(user))
+  refresh()
+  return { ok: true, added: r.added, level: { level: lv.level, title: titleFor(lv.level), progress: lv.progress } }
+}
+
+/** Setup's routines step: routines the AI proposes from the user's own description. */
+export async function suggestOnboardingRoutines(input: { prompt: string; areas: string[]; focus?: string; goals?: string }): Promise<
+  { ok: true; routines: import('@/ai/routines').SuggestedRoutine[] } | { ok: false; error: string; noModel?: boolean }
+> {
+  const parsed = z.object({
+    prompt: z.string().trim().min(8, 'Say a little more about your day').max(1500),
+    areas: z.array(z.enum(CATEGORIES)).min(1),
+    focus: z.enum(CATEGORIES).optional(),
+    goals: z.string().max(2000).optional(),
+  }).safeParse(input)
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Check your answers' }
+  const { aiEnabled } = await import('@/ai')
+  if (!aiEnabled('plan')) return { ok: false, error: 'Connect an AI model first.', noModel: true }
+  const user = await getUser()
+  const existing = (await db.select({ name: schema.schedules.name }).from(schema.schedules).where(eq(schema.schedules.userId, user.id))).map((r) => r.name)
+  try {
+    const { suggestRoutines } = await import('@/ai/routines')
+    const routines = await suggestRoutines({ ...parsed.data, existing })
+    return routines.length ? { ok: true, routines } : { ok: false, error: 'The model came back empty. Add a bit more detail and try again.' }
+  } catch (err) {
+    return { ok: false, error: `The AI model didn’t answer: ${String(err instanceof Error ? err.message : err).slice(0, 140)}` }
+  }
+}
+
+/** Whether a model is connected, for the routines step (it can connect one inline). */
+export async function aiReady() {
+  await getUser() // loads saved keys
+  const { aiEnabled, modelId } = await import('@/ai')
+  return { ready: aiEnabled('plan'), model: modelId('plan') ?? null }
+}
+
+export async function skipOnboardingAction() {
+  const user = await getUser()
+  const { skipOnboarding } = await import('@/core/onboarding')
+  await skipOnboarding(user)
+  const { clearUserCache } = await import('@/core/user')
+  clearUserCache()
+  refresh()
+}
+
+/** Open one chest: pays its XP and keeps (or converts) its streak freeze. Safe to call twice. */
+export async function openChestAction(id: string): Promise<
+  | { ok: true; rarity: 'common' | 'rare' | 'epic'; xp: number; freeze: boolean; converted: boolean; reason: string; levelUp?: { level: number; title: string; from: number; newTitle: boolean } }
+  | { ok: false; error: string }
+> {
+  const parsed = z.string().uuid().safeParse(id)
+  if (!parsed.success) return { ok: false, error: 'Unknown chest' }
+  const user = await getUser()
+  const [{ openChest }, { titleFor }] = await Promise.all([import('@/core/quests'), import('@/domain/xp')])
+  const r = await openChest(user, parsed.data)
+  if (!r) return { ok: false, error: 'That chest is already open' }
+  refresh()
+  const { after, before } = r.level
+  return { ok: true, ...r.opened, levelUp: after > before ? { level: after, title: titleFor(after), from: before, newTitle: titleFor(after) !== titleFor(before) } : undefined }
 }

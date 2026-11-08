@@ -2,7 +2,9 @@ import { Output } from 'ai'
 import { z } from 'zod'
 import { CATEGORIES, type ProposedAction } from '@/db/schema'
 import { addInsight } from '@/core/insights'
-import { esc, sendMessage } from '@/core/notify'
+import { esc } from '@/core/notify'
+import { notify } from '@/core/outbox'
+import { head } from '@/bot/ui'
 import { localDate } from '@/core/time'
 import type { User } from '@/core/user'
 import { aiEnabled, model } from '../models'
@@ -60,16 +62,20 @@ export async function weeklyReview(user: User, now = new Date()) {
     payload: { actions: r.actions as ProposedAction[], dedupeKey: `review:${localDate(now, user.timezone)}` },
   })
   if (!row) return null
-  const text = [
-    `<b>Weekly review · ${esc(r.title)}</b>`,
-    ...r.wins.map((w) => `✅ ${esc(w)}`),
-    ...r.problems.map((p) => `⚠️ ${esc(p)}`),
-    '',
-    `<b>Next week:</b> ${esc(r.plan)}`,
-    r.actions.length ? `\nApprove to add: ${r.actions.map((a) => esc(a.name)).join(', ')}` : '',
-  ].join('\n')
-  await sendMessage(text, r.actions.length
-    ? { buttons: [[{ text: '✅ Approve', data: `i:a:${row.id}` }, { text: 'Dismiss', data: `i:d:${row.id}` }]] }
-    : {})
+  await notify(user, 'analysis', {
+    text: reviewText(r), ref: `insight:${row.id}`,
+    buttons: r.actions.length ? [[{ text: r.actions.length === 1 ? '✅ Add it' : `✅ Add all ${r.actions.length}`, data: `i:a:${row.id}` }, { text: 'Not now', data: `i:d:${row.id}` }]] : undefined,
+  })
   return row
+}
+
+/** The Sunday message: wins, things to watch, next week's change in a quote, and what approving adds. */
+export function reviewText(r: { title: string; wins: string[]; problems: string[]; plan: string; actions: { name: string }[] }) {
+  return [
+    head('🗓', r.title, 'Your week in review'),
+    r.wins.length ? `\n<b>Wins</b>\n${r.wins.map((w) => `✅ ${esc(w)}`).join('\n')}` : '',
+    r.problems.length ? `\n<b>Watch</b>\n${r.problems.map((p) => `🔍 ${esc(p)}`).join('\n')}` : '',
+    `\n<b>Next week</b>\n<blockquote>${esc(r.plan)}</blockquote>`,
+    r.actions.length ? `<b>Approve to add</b>\n${r.actions.map((a) => `➕ ${esc(a.name)}`).join('\n')}` : '',
+  ].filter(Boolean).join('\n')
 }

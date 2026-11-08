@@ -1,11 +1,13 @@
 import type { Metadata } from 'next'
+import { Smile } from 'lucide-react'
+import { AreaHeader } from '@/ui/components/area-header'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
 import { getUser } from '@/core/user'
 import { trackerDays } from '@/core/metrics'
 import { addDays, localDate } from '@/core/time'
 import { CATEGORY } from '@/ui/tokens'
-import { Card, CardHeader, KpiStrip, PageHeader } from '@/ui/components/card'
+import { Card, CardHeader, KpiStrip } from '@/ui/components/card'
 import { average, fillDays } from '@/domain/series'
 import { formatNumber } from '@/domain/money'
 import { MetricCard } from '@/ui/components/category/metric-card'
@@ -19,7 +21,7 @@ const color = CATEGORY.mind.color
 export default function MindPage() {
   return (
     <div>
-      <PageHeader eyebrow="Mind" title="Mood & focus" description="Mood, energy, screen time and the routines that help you think clearly." />
+      <AreaHeader area="mind" title="Mood & focus" description="Mood, energy, screen time and the routines that help you think clearly." />
       <Suspense fallback={<CategorySkeleton />}>
         <Mind />
       </Suspense>
@@ -48,24 +50,32 @@ async function Mind() {
       { label: 'Screen time, 7-day avg', value: fmt1(screen, 'h'), sub: get('screen-time')?.tracker.target ? `Aim under ${formatNumber(get('screen-time')!.tracker.target!, 1)}h` : undefined },
       { label: 'Meditation, 7 days', value: meditation ? `${formatNumber(meditation)} min` : '–' },
     ]} />
-    <div className="grid gap-6 xl:grid-cols-2">
-      <Card>
-        <CardHeader title="How are you today?" description="Rate your mood from 1 to 5." />
-        <ScaleLogger slug="mood" name="mood" value={get('mood')?.days.get(today)} />
-        <div className="mt-5">
-          <CardHeader title="Energy" className="mb-3" />
+    {/* Today's check-in: one slim row, both scales side by side. */}
+    <Card>
+      <CardHeader title="Today’s check-in" icon={<Smile strokeWidth={2} />} color="var(--cat-mind)" description="Tap once a day. Patterns show up after a week." />
+      <div className="grid gap-x-8 gap-y-5 lg:grid-cols-2">
+        <div>
+          <div className="mb-2 text-[13px] font-medium text-ink-2">Mood</div>
+          <ScaleLogger slug="mood" name="mood" value={get('mood')?.days.get(today)} />
+        </div>
+        <div>
+          <div className="mb-2 text-[13px] font-medium text-ink-2">Energy</div>
           <ScaleLogger slug="energy" name="energy" value={get('energy')?.days.get(today)} />
         </div>
-      </Card>
+      </div>
+    </Card>
+    <div className="grid gap-6 xl:grid-cols-2">
       <MetricCard
         title="Mood" data={get('mood')} from={from} to={today} color={color} chart="area" domain={[1, 5]}
-        empty={{ title: 'No mood logged yet', description: 'Tap a number on the left once a day. Patterns show up after a week.' }}
+        empty={{ title: 'No mood logged yet', description: 'Use the check-in above once a day. Patterns show up after a week.' }}
       />
       {get('energy')?.days.size ? (
         <MetricCard title="Energy" data={get('energy')} from={from} to={today} color={color} chart="area" domain={[1, 5]} empty={{ title: '', description: '' }} />
       ) : null}
       {get('screen-time')?.days.size ? (
-        <MetricCard title="Screen time" data={get('screen-time')} from={from} to={today} color={color} chart="bars" empty={{ title: '', description: '' }} />
+        <div className={get('energy')?.days.size ? 'xl:col-span-2' : undefined}>
+          <MetricCard title="Screen time" data={get('screen-time')} from={from} to={today} color={color} chart="bars" empty={{ title: '', description: '' }} />
+        </div>
       ) : null}
       <div className="xl:col-span-2"><RoutinesCard user={user} category="mind" /></div>
     </div>

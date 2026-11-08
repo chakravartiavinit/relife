@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { AreaHeader } from '@/ui/components/area-header'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
 import { and, eq } from 'drizzle-orm'
@@ -10,7 +11,7 @@ import type { ScheduleMeta } from '@/core/schedules'
 import { average, fillDays } from '@/domain/series'
 import { formatNumber } from '@/domain/money'
 import { CATEGORY } from '@/ui/tokens'
-import { KpiStrip, PageHeader } from '@/ui/components/card'
+import { KpiStrip } from '@/ui/components/card'
 import { CategorySkeleton } from '@/ui/components/category/skeleton'
 import { MetricCard } from '@/ui/components/category/metric-card'
 import { RoutinesCard } from '@/ui/components/category/routines-card'
@@ -22,7 +23,7 @@ const color = CATEGORY.health.color
 export default function HealthPage() {
   return (
     <div>
-      <PageHeader eyebrow="Health" title="Body & routines" description="Sleep, movement, water, medicines and the small things you do every day." />
+      <AreaHeader area="health" title="Body & routines" description="Sleep, movement, water, medicines and the small things you do every day." />
       <Suspense fallback={<CategorySkeleton />}>
         <Health />
       </Suspense>

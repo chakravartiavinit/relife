@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState, useEffect, useId, useState, useTransition } from 'react'
-import { Archive, Check, Plus } from 'lucide-react'
+import { Activity, Archive, Check, Plus } from 'lucide-react'
 import { archiveTracker, createTracker, logEntry } from '@/app/actions'
 import { CATEGORIES } from '@/db/schema'
 import { CATEGORY } from '@/ui/tokens'
@@ -62,7 +62,7 @@ export function NewTrackerButton() {
         <Plus className="size-4" strokeWidth={2} />
         New tracker
       </Button>
-      <Dialog open={open} onClose={() => setOpen(false)} title="New tracker" description="Anything you want to count daily. You can also just type “coffee 2” in ⌘K.">
+      <Dialog open={open} onClose={() => setOpen(false)} title="New tracker" icon={Activity} color='var(--pill)' description="Anything you want to count daily. You can also just type “coffee 2” in ⌘K.">
         {open ? <TrackerForm onDone={() => setOpen(false)} /> : null}
       </Dialog>
     </>

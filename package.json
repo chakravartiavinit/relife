@@ -10,11 +10,12 @@
     "build": "next build",
     "start": "concurrently -k -n web,worker \"next start -H 127.0.0.1 -p 3030\" \"tsx --env-file=.env src/worker/index.ts\"",
     "db:push": "drizzle-kit push",
+    "dev:vault": "dotsafe run -- env RELIFE_SECRETS=dotsafe npm run dev",
     "dev:mock": "npm run mock:seed && RELIFE_MOCK=1 next dev -H 127.0.0.1 -p 3001",
     "mock:seed": "tsx --env-file=.env scripts/mock.ts",
     "seed:demo": "tsx --env-file=.env scripts/seed-demo.ts",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --env-file=.env --test src/domain/*.test.ts src/core/*.test.ts src/parsers/*.test.ts src/worker/*.test.ts",
+    "test": "tsx --env-file=.env --test src/domain/*.test.ts src/core/*.test.ts src/connectors/shop/*.test.ts src/ai/*.test.ts src/parsers/*.test.ts src/worker/*.test.ts src/connectors/*.test.ts src/rules/*.test.ts",
     "prepare": "git config core.hooksPath .githooks 2>/dev/null || true"
   },
   "dependencies": {
@@ -35,6 +36,7 @@
     "lucide-react": "^1.69.0",
     "motion": "^14.9.1",
     "next": "16.4.5",
+    "playwright-core": "^1.65.0",
     "postgres": "^4.1.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",

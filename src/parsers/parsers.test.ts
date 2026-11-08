@@ -68,3 +68,22 @@ test('inbox lines map to raw events', () => {
   assert.equal(steps.source, 'shortcuts')
   assert.equal(lineToRawEvent('   ', now), null)
 })
+
+test('tradesFromStatement rebuilds trades from Binance statement lines', async () => {
+  const { tradesFromStatement } = await import('./binance')
+  const line = (t: string, op: string, coin: string, change: string, account = 'Spot') => ({ User_ID: '1', UTC_Time: t, Account: account, Operation: op, Coin: coin, Change: change, Remark: '' })
+  const { trades, skipped } = tradesFromStatement([
+    line('2024-10-01 10:00:00', 'Transaction Buy', 'SOL', '2'),
+    line('2024-10-01 10:00:00', 'Transaction Spend', 'USDT', '-300'),
+    line('2024-10-01 10:00:00', 'Transaction Fee', 'SOL', '-0.002'),
+    line('2024-10-02 09:00:00', 'Transaction Sold', 'SOL', '-1'),
+    line('2024-10-02 09:00:00', 'Transaction Revenue', 'USDT', '160'),
+    line('2024-10-03 09:00:00', 'Deposit', 'SOL', '5'), // not a trade
+    line('2024-10-04 09:00:00', 'Transaction Buy', 'SOL', '1', 'Funding'), // not spot
+  ])
+  assert.equal(skipped, 0)
+  assert.deepEqual(trades.map(({ base, quote, side, qty, price, fee, feeAsset }) => ({ base, quote, side, qty, price, fee, feeAsset })), [
+    { base: 'SOL', quote: 'USDT', side: 'buy', qty: 2, price: 150, fee: 0.002, feeAsset: 'SOL' },
+    { base: 'SOL', quote: 'USDT', side: 'sell', qty: 1, price: 160, fee: 0, feeAsset: undefined },
+  ])
+})

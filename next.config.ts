@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   partialPrefetching: true,
   // Server-only heavy packages stay as plain Node requires instead of being bundled.
   devIndicators: { position: 'bottom-right' },
-  serverExternalPackages: ['ccxt', 'grammy', 'postgres'],
+  serverExternalPackages: ['ccxt', 'grammy', 'postgres', 'playwright-core'],
   // Allow opening the dev server from your phone over Tailscale (MagicDNS names).
   allowedDevOrigins: ['*.ts.net'],
   turbopack: {

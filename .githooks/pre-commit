@@ -41,6 +41,13 @@ if [ -n "$hits" ]; then
   echo "$hits" | cut -c1-120 >&2
 fi
 
+# 4. Values from your dotsafe vault (only when dotsafe is installed and this repo is linked to it).
+DOTSAFE=$(command -v dotsafe || { [ -x /Applications/dotsafe.app/Contents/MacOS/dotsafe ] && echo /Applications/dotsafe.app/Contents/MacOS/dotsafe; })
+if [ -n "$DOTSAFE" ] && [ -f .dotsafe.json ]; then
+  "$DOTSAFE" scan --staged >/tmp/relife-dotsafe.$$ 2>&1 || { err "dotsafe found vault values in staged files:"; cat /tmp/relife-dotsafe.$$ >&2; }
+  rm -f /tmp/relife-dotsafe.$$
+fi
+
 if [ "$fail" -ne 0 ]; then
   echo "Commit blocked. Unstage with: git restore --staged <file>" >&2
   exit 1

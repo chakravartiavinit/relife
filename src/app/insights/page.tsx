@@ -1,9 +1,10 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { buttonClass } from '@/ui/components/button'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
 import { and, desc, eq, ne } from 'drizzle-orm'
-import { BellRing, CalendarRange, Lightbulb, Repeat, Sparkles, Target } from 'lucide-react'
+import { BellDot, BellRing, CalendarRange, History, Inbox, Lightbulb, Repeat, Sparkles, Target } from 'lucide-react'
 import { db, schema } from '@/db'
 import { getUser } from '@/core/user'
 import { aiEnabled, modelId } from '@/ai'
@@ -12,6 +13,8 @@ import { formatDay, localDate } from '@/core/time'
 import { Badge, Card, CardHeader, PageHeader, Skeleton } from '@/ui/components/card'
 import { EmptyState } from '@/ui/components/empty'
 import { AskBox, InsightActions } from '@/ui/components/insight-ui'
+import { PatternsCard } from '@/ui/components/patterns-card'
+import { loadPatterns } from '@/core/patterns'
 import { CATEGORY } from '@/ui/tokens'
 
 export const metadata: Metadata = { title: 'Insights' }
@@ -26,7 +29,7 @@ const KIND = {
 export default function InsightsPage({ searchParams }: PageProps<'/insights'>) {
   return (
     <>
-      <PageHeader eyebrow="Insights" title="Your observer" description="Weekly reviews, nudges and plans from the model you choose. Nothing changes until you approve it." />
+      <PageHeader eyebrow="Coach" title="Your coach" description="Morning nudges, Sunday reviews and plans, written by the AI model you choose. Nothing changes until you approve it." />
       <Suspense fallback={<Skeleton className="h-[420px] rounded-lg" />}>
         <Insights searchParams={searchParams} />
       </Suspense>
@@ -39,7 +42,7 @@ async function Insights({ searchParams }: { searchParams: PageProps<'/insights'>
   const sp = await searchParams
   const initial = typeof sp.ask === 'string' ? sp.ask : undefined
   const user = await getUser()
-  const [pending, history, plans] = await Promise.all([
+  const [pending, history, plans, patterns] = await Promise.all([
     db.select().from(schema.insights)
       .where(and(eq(schema.insights.userId, user.id), eq(schema.insights.status, 'pending')))
       .orderBy(desc(schema.insights.createdAt)).limit(30),
@@ -49,6 +52,7 @@ async function Insights({ searchParams }: { searchParams: PageProps<'/insights'>
     db.select().from(schema.plans)
       .where(and(eq(schema.plans.userId, user.id), eq(schema.plans.status, 'active')))
       .orderBy(desc(schema.plans.createdAt)),
+    loadPatterns(user),
   ])
   const enabled = aiEnabled('chat')
 
@@ -57,16 +61,13 @@ async function Insights({ searchParams }: { searchParams: PageProps<'/insights'>
       <div className="flex flex-col gap-6">
         <section aria-labelledby="ask-h">
           <h2 id="ask-h" className="sr-only">Ask your data</h2>
-          <AskBox initial={initial} enabled={enabled} />
-          {!enabled ? (
-            <p className="mt-2 px-1 text-[13px] text-ink-3">
-              Open <Link href="/connectors" className="font-medium text-ink underline decoration-ink-3/40 underline-offset-2 hover:decoration-ink">Connectors</Link> and connect Anthropic, OpenAI, Gemini, OpenRouter or a local model with a default model.
-            </p>
-          ) : null}
+          {enabled ? <AskBox initial={initial} enabled /> : <ConnectCoach />}
         </section>
 
+        <PatternsCard patterns={patterns} />
+
         <Card>
-          <CardHeader title="Waiting for you" description={pending.length ? `${pending.length} to review` : undefined} />
+          <CardHeader title="Waiting for you" icon={<BellDot strokeWidth={2} />} color="var(--pill)" description={pending.length ? `${pending.length} to review` : undefined} />
           {pending.length ? (
             <ul className="flex flex-col divide-y divide-divider">
               {pending.map((i) => {
@@ -104,7 +105,7 @@ async function Insights({ searchParams }: { searchParams: PageProps<'/insights'>
             </ul>
           ) : (
             <EmptyState
-              title="All caught up"
+              title="All caught up" icon={Inbox} color={'var(--cat-mind)'}
               description={enabled ? 'A nudge arrives each morning and a review every Sunday evening.' : 'Connect a model to get morning nudges and a Sunday review. Rule-based alerts work without one.'}
             />
           )}
@@ -113,7 +114,7 @@ async function Insights({ searchParams }: { searchParams: PageProps<'/insights'>
 
       <div className="flex flex-col gap-6">
         <Card>
-          <CardHeader title="Active plans" />
+          <CardHeader title="Active plans" icon={<Target strokeWidth={2} />} color="var(--cat-mind)" />
           {plans.length ? (
             <ul className="flex flex-col gap-3">
               {plans.map((p) => (
@@ -128,7 +129,7 @@ async function Insights({ searchParams }: { searchParams: PageProps<'/insights'>
           )}
         </Card>
         <Card>
-          <CardHeader title="History" />
+          <CardHeader title="History" icon={<History strokeWidth={2} />} color="var(--ink-3)" />
           {history.length ? (
             <ul className="flex flex-col gap-3">
               {history.map((i) => (
@@ -145,10 +146,29 @@ async function Insights({ searchParams }: { searchParams: PageProps<'/insights'>
             <p className="text-[13px] text-ink-3">Nothing yet.</p>
           )}
         </Card>
-        <p className="px-1 text-[12px] text-ink-3">
-          Model: {modelId('chat') ?? 'not configured'}
-        </p>
+        {modelId('chat') ? <p className="px-1 text-[12px] text-ink-3">Model: {modelId('chat')}</p> : null}
       </div>
+    </div>
+  )
+}
+
+/** No model yet: one clear next step instead of a disabled box and a paragraph of provider names. */
+function ConnectCoach() {
+  return (
+    <div className="flex flex-wrap items-center gap-4 rounded-[20px] bg-surface p-5 shadow-1">
+      <div aria-hidden className="flex -space-x-2">
+        {['anthropic', 'openai', 'gemini'].map((l) => (
+          <span key={l} className="grid size-10 place-items-center rounded-full bg-white shadow-[0_0_0_2px_var(--surface),0_0_0_3px_oklch(0_0_0/0.08)]">
+            {/* eslint-disable-next-line @next/next/no-img-element -- local logos */}
+            <img src={`/connectors/${l}.svg`} alt="" className="size-5" />
+          </span>
+        ))}
+      </div>
+      <div className="min-w-0 flex-1">
+        <h2 className="text-[15px] font-semibold text-ink">Connect an AI model to wake your coach</h2>
+        <p className="mt-0.5 text-[13px] text-ink-3">Then ask anything about your data, and get a nudge each morning and a review every Sunday. Rule-based alerts already work.</p>
+      </div>
+      <Link href="/connectors" className={buttonClass({ variant: 'primary' })}>Choose a model</Link>
     </div>
   )
 }

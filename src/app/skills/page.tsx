@@ -1,32 +1,33 @@
 import type { Metadata } from 'next'
+import { Activity, GitCommitHorizontal, GraduationCap, Laptop, Cable, Terminal } from 'lucide-react'
+import { AreaHeader } from '@/ui/components/area-header'
 import Link from 'next/link'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
-import { and, desc, eq } from 'drizzle-orm'
+import { desc, eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { getUser } from '@/core/user'
 import { trackerDays } from '@/core/metrics'
-import { addDays, formatDay, localDate } from '@/core/time'
-import { weekGrid, fillDays } from '@/domain/series'
-import { formatMoney, formatNumber } from '@/domain/money'
-import { CATEGORY } from '@/ui/tokens'
-import { Badge, Card, CardHeader, KpiStrip, PageHeader } from '@/ui/components/card'
-import { Capsule } from '@/ui/components/capsule'
-import { DailyBars } from '@/ui/components/charts'
+import { addDays, localDate } from '@/core/time'
+import { formatNumber } from '@/domain/money'
+import { Card, CardHeader, KpiStrip } from '@/ui/components/card'
 import { EmptyState } from '@/ui/components/empty'
+import { BrandLogo } from '@/ui/components/brand-logo'
+import { TrainingLog, type Stream } from '@/ui/components/training-log'
+import { streaks } from '@/domain/streaks'
+import { env } from '@/core/env'
+import { LibraryGrid } from '@/ui/components/library'
 import { buttonClass } from '@/ui/components/button'
-import { HeatCalendar } from '@/ui/beui/charts/heat-calendar'
 import { RoutinesCard } from '@/ui/components/category/routines-card'
 import { CategorySkeleton } from '@/ui/components/category/skeleton'
-import { LearningActions, NewLearningButton } from '@/ui/components/forms/learning-forms'
+import { NewLearningButton } from '@/ui/components/forms/learning-forms'
 
 export const metadata: Metadata = { title: 'Skills' }
-const color = CATEGORY.skills.color
 
 export default function SkillsPage() {
   return (
     <div>
-      <PageHeader eyebrow="Skills" title="Code & learning" description="Code you ship and courses you take, with the hours each one gets." />
+      <AreaHeader area="skills" title="Code & learning" description="Code you ship and courses you take, with the hours each one gets." />
       <Suspense fallback={<CategorySkeleton />}>
         <Skills />
       </Suspense>
@@ -39,11 +40,21 @@ async function Skills() {
   const user = await getUser()
   const today = localDate(new Date(), user.timezone)
   const from = addDays(today, -89)
-  const [data, items] = await Promise.all([
+  const [data, items, skillTrackers] = await Promise.all([
     trackerDays(user, from, today, { slugs: ['github.commits', 'github.prs', 'github.reviews', 'learning.minutes'] }),
     db.select().from(schema.learningItems).where(eq(schema.learningItems.userId, user.id))
       .orderBy(desc(schema.learningItems.updatedAt)),
+    trackerDays(user, from, today, { category: 'skills' }),
   ])
+  // Competitive programming: problems solved across sites, and each site's rating with its 30-day change.
+  const solved = skillTrackers.find((t) => t.tracker.slug === 'cp.solved')?.days ?? new Map<string, number>()
+  const cpActive = [...solved].filter(([d, v]) => v > 0 && d >= addDays(today, -27)).length
+  const cpSites = skillTrackers.filter((t) => t.tracker.slug.startsWith('cp.rating-') && t.days.size).map((t) => {
+    const sorted = [...t.days].sort((a, b) => a[0].localeCompare(b[0]))
+    const now = sorted.at(-1)![1]
+    const before = sorted.filter(([d]) => d <= addDays(today, -30)).at(-1)?.[1] ?? sorted[0][1]
+    return { name: t.tracker.name.replace(/ rating$/, ''), value: now, change: now - before }
+  })
   const get = (slug: string) => data.find((d) => d.tracker.slug === slug)?.days ?? new Map<string, number>()
   const sumLast = (m: Map<string, number>, n: number) => {
     const since = addDays(today, -(n - 1))
@@ -52,78 +63,82 @@ async function Skills() {
     return s
   }
   const commits = get('github.commits')
-  const activeDays = [...commits.entries()].filter(([d, v]) => v > 0 && d >= addDays(today, -27)).length
-  const learning = items.filter((i) => i.status !== 'done')
-  const done = items.filter((i) => i.status === 'done')
+  // Courses, books and video series (time on them counts as learning). Shows live on Hobbies.
+  const learningKinds = items.filter((i) => i.kind !== 'show')
+  const learning = learningKinds.filter((i) => i.status !== 'done')
+  const done = learningKinds.filter((i) => i.status === 'done')
 
-  const grid = weekGrid(commits, today, 13)
+  // Training log streams: one row per way of practising. Coding counts commits, PRs and reviews together.
+  const byslug = (slug: string) => skillTrackers.find((t) => t.tracker.slug === slug)?.days ?? new Map<string, number>()
+  const addUp = (...ms: Map<string, number>[]) => { const out = new Map<string, number>(); for (const m of ms) for (const [d, v] of m) out.set(d, (out.get(d) ?? 0) + v); return out }
+  const hm = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}h ${String(Math.round(min % 60)).padStart(2, '0')}m` : `${Math.round(min)}m`)
+  const coding = addUp(byslug('github.commits'), byslug('github.prs'), byslug('github.reviews'))
+  const learningMin = byslug('learning.minutes'), workMin = byslug('screen.work')
+  const streams: Stream[] = [
+    { key: 'learning', label: 'Learning', icon: GraduationCap, color: 'var(--cat-skills)', unit: 'min', days: learningMin, total: hm(sumLast(learningMin, 28)) },
+    { key: 'work', label: 'Deep work', icon: Laptop, color: 'var(--pill)', unit: 'min', days: workMin, total: hm(sumLast(workMin, 28)) },
+    { key: 'coding', label: 'Coding', icon: GitCommitHorizontal, color: 'var(--cat-mind)', unit: 'contributions', days: coding, total: `${formatNumber(sumLast(coding, 28))} contributions` },
+    { key: 'problems', label: 'Problems', icon: Terminal, color: 'var(--cat-hobbies)', unit: 'solved', days: solved, total: `${formatNumber(sumLast(solved, 28))} solved` },
+  ]
+  const practised = new Set(streams.flatMap((st) => [...st.days].filter(([, v]) => v > 0).map(([d]) => d)))
+  const streak = streaks([...practised], today)
+  const practisedDays28 = [...practised].filter((d) => d >= addDays(today, -27)).length
+  const rating = (site: string) => cpSites.find((c) => c.name.toLowerCase() === site.toLowerCase())
+  const sources = [
+    { name: 'GitHub', logo: 'GitHub', connected: !!env('GITHUB_TOKEN') || commits.size > 0, value: formatNumber(sumLast(coding, 28)), change: undefined as number | undefined, sub: 'contributions, 28 days' },
+    ...(['Codeforces', 'CodeChef', 'AtCoder'] as const).map((site) => {
+      const r = rating(site)
+      return { name: `${site} rating`, logo: site, connected: !!r || !!env(`${site.toUpperCase()}_HANDLE`), value: r ? formatNumber(r.value) : '–', change: r?.change, sub: '' }
+    }),
+    { name: 'Laptop activity', logo: 'Laptop activity', connected: !!env('ACTIVITY_TOKEN'), value: hm(sumLast(learningMin, 7) + sumLast(workMin, 7)), change: undefined, sub: 'learning + deep work, 7 days' },
+  ]
   return (
     <div className="flex flex-col gap-6">
       <KpiStrip items={[
-        { label: 'Commits, 28 days', value: formatNumber(sumLast(commits, 28)), sub: `${formatNumber(sumLast(commits, 7))} this week` },
-        { label: 'Active days, 28 days', value: `${activeDays}/28` },
-        { label: 'PRs and reviews, 28 days', value: formatNumber(sumLast(get('github.prs'), 28) + sumLast(get('github.reviews'), 28)), sub: `${formatNumber(sumLast(get('github.prs'), 28))} PRs · ${formatNumber(sumLast(get('github.reviews'), 28))} reviews` },
-        { label: 'Learning, 28 days', value: `${formatNumber(sumLast(get('learning.minutes'), 28) / 60, 1)}h`, sub: `${learning.length} in progress` },
+        { label: 'Days practised, 28 days', value: `${practisedDays28}/28`, sub: streak.current ? `${streak.current}-day streak` : 'Start a streak today' },
+        { label: 'Learning, 28 days', value: hm(sumLast(learningMin, 28)), sub: `${learning.length} in progress` },
+        { label: 'Coding, 28 days', value: formatNumber(sumLast(coding, 28)), sub: `${formatNumber(sumLast(commits, 7))} commits this week` },
+        { label: 'Problems solved, 28 days', value: formatNumber(sumLast(solved, 28)), sub: cpActive ? `${cpActive} active days` : cpSites.length ? 'None this month yet' : 'Connect a judge on Connectors' },
       ]} />
       <Card>
-        <CardHeader title="GitHub" description="Last 90 days" />
-        {commits.size ? (
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto]">
-            <DailyBars data={fillDays(commits, from, today)} color={color} label="Commits per day, last 90 days" />
-            <div role="group" aria-label="Commit activity, last 13 weeks">
-              <HeatCalendar values={grid.values} maxCount={grid.max} weeks={13} endDate={new Date(`${today}T00:00:00Z`)} color={color} unit="commits" />
-            </div>
-          </div>
-        ) : (
-          <EmptyState title="GitHub isn’t connected yet" description="Connect it on the Connectors page. Commits, PRs and reviews sync every hour." action={<Link href="/connectors" className={buttonClass({ variant: 'primary', size: 'sm' })}>Open connectors</Link>} />
-        )}
+        <CardHeader title="Training log" icon={<Activity strokeWidth={2} />} color="var(--cat-skills)" description="Every way you practise on one timeline, 8 weeks. Taller means more, compared with that row’s busiest day." />
+        <TrainingLog streams={streams} today={today} streak={streak} />
       </Card>
 
-      <div className="grid items-start gap-6 xl:grid-cols-2">
+      <Card>
+        <CardHeader title="Sources" icon={<Cable strokeWidth={2} />} color="var(--cat-skills)" description="Where the training log comes from" action={<Link href="/connectors" className={buttonClass({ variant: 'ghost', size: 'sm' })}>Connectors</Link>} />
+        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {sources.map((src) => (
+            <li key={src.name} className="flex items-center gap-3 rounded-[14px] bg-surface-2 p-3">
+              <BrandLogo name={src.logo} size="md" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[12.5px] text-ink-3">{src.name}</span>
+                {src.connected ? (
+                  <span className="flex items-baseline gap-2 tabular-nums">
+                    <span className="font-display text-[19px] leading-tight font-bold text-ink">{src.value}</span>
+                    {src.change ? <span className={src.change > 0 ? 'text-[12px] font-medium text-good' : 'text-[12px] font-medium text-bad'}>{src.change > 0 ? '▲' : '▼'} {formatNumber(Math.abs(src.change))}</span> : null}
+                    <span className="truncate text-[12px] text-ink-3">{src.sub}</span>
+                  </span>
+                ) : (
+                  <Link href="/connectors" className="text-[13px] font-medium text-pill-ink hover:underline">Connect</Link>
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </Card>
+
+      <div className="grid gap-6 xl:grid-cols-2">
         <Card>
           <CardHeader
-            title="Learning"
+            title="Learning" icon={<GraduationCap strokeWidth={2} />} color="var(--cat-skills)"
             description={`${formatNumber(sumLast(get('learning.minutes'), 28) / 60, 1)} h in the last 28 days`}
             action={<NewLearningButton />}
           />
-          {learning.length ? (
-            <ul className="-my-2 divide-y divide-divider">
-              {learning.map((i) => {
-                const hours = i.minutesLogged / 60
-                return (
-                  <li key={i.id} className="flex flex-col gap-3 py-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="truncate text-[15px] text-ink">
-                          {i.url ? <a href={i.url} target="_blank" rel="noreferrer" className="hover:underline">{i.title}</a> : i.title}
-                        </div>
-                        <div className="mt-0.5 flex flex-wrap gap-x-1.5 text-[13px] text-ink-3">
-                          {i.provider ? <span>{i.provider}</span> : null}
-                          <span className="tabular-nums">{formatNumber(hours, 1)} h logged</span>
-                          {i.cost && i.currency ? (
-                            <span className="tabular-nums">
-                              · {formatMoney(i.cost, i.currency)}{hours >= 1 ? ` · ${formatMoney(i.cost / hours, i.currency)}/h` : ''}
-                            </span>
-                          ) : null}
-                          {i.targetDate ? <span>· by {formatDay(i.targetDate)}</span> : null}
-                        </div>
-                      </div>
-                      {i.status === 'paused' ? <Badge>Paused</Badge> : null}
-                    </div>
-                    {i.progressTotal ? (
-                      <div className="flex items-center gap-3">
-                        <Capsule value={i.progressDone} max={i.progressTotal} color={color} label={`${i.title} progress`} />
-                        <span className="shrink-0 text-[12px] text-ink-3 tabular-nums">{i.progressDone}/{i.progressTotal}</span>
-                      </div>
-                    ) : null}
-                    <LearningActions id={i.id} title={i.title} hasModules={!!i.progressTotal} />
-                  </li>
-                )
-              })}
-            </ul>
-          ) : (
-            <EmptyState title="Nothing in progress" description="Add a course, a cohort or a book. Log 15-minute chunks and see what each hour cost you." />
-          )}
+          <LibraryGrid
+            items={learning}
+            empty={<EmptyState title="Nothing in progress" icon={GraduationCap} color={'var(--cat-skills)'} description="Add a course, a cohort or a book, or press Track this in the ReLife browser extension on any course page." />}
+          />
           {done.length ? <p className="mt-4 text-[13px] text-ink-3">{done.length} finished</p> : null}
         </Card>
         <RoutinesCard user={user} category="skills" />

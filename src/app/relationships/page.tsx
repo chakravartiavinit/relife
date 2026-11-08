@@ -1,11 +1,13 @@
 import type { Metadata } from 'next'
+import { Users } from 'lucide-react'
+import { AreaHeader } from '@/ui/components/area-header'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
 import { asc, eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { getUser } from '@/core/user'
 import { addDays, daysBetween, localDate } from '@/core/time'
-import { Badge, Card, CardHeader, KpiStrip, PageHeader } from '@/ui/components/card'
+import { Badge, Card, CardHeader, KpiStrip } from '@/ui/components/card'
 import { trackerDays } from '@/core/metrics'
 import { EmptyState } from '@/ui/components/empty'
 import { RoutinesCard } from '@/ui/components/category/routines-card'
@@ -17,12 +19,7 @@ export const metadata: Metadata = { title: 'People' }
 export default function RelationshipsPage() {
   return (
     <div>
-      <PageHeader
-        eyebrow="People"
-        title="Your people"
-        description="The people who matter, and how long it’s been."
-        actions={<NewPersonButton />}
-      />
+      <AreaHeader area="relationships" title="Your people" description="The people who matter, and how long it’s been." actions={<NewPersonButton />} />
       <Suspense fallback={<CategorySkeleton cards={2} />}>
         <People />
       </Suspense>
@@ -62,13 +59,20 @@ async function People() {
       { label: 'Catch-ups, 30 days', value: String(catchUps) },
       { label: 'Longest gap', value: longest ? `${longest.since}d` : '–', sub: longest?.name },
     ]} />
-    <div className="grid gap-6 xl:grid-cols-2">
+    <div className="grid items-start gap-6 xl:grid-cols-2">
       <Card>
-        <CardHeader title="Keep in touch" description={rows.length ? `${rows.filter((r) => r.overdue).length} overdue` : undefined} />
+        <CardHeader title="Keep in touch" icon={<Users strokeWidth={2} />} color="var(--cat-relationships)" description={rows.length ? `${rows.filter((r) => r.overdue).length} overdue` : undefined} />
         {rows.length ? (
           <ul className="-my-2 divide-y divide-divider">
             {rows.map(({ p, since, overdue }) => (
               <li key={p.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
+                <span
+                  aria-hidden
+                  className="grid size-10 shrink-0 place-items-center rounded-full text-[14px] font-bold"
+                  style={{ color: 'color-mix(in oklch, var(--cat-relationships) 80%, var(--ink))', background: overdue ? 'color-mix(in oklch, var(--warn) 18%, transparent)' : 'color-mix(in oklch, var(--cat-relationships) 16%, transparent)' }}
+                >
+                  {p.name.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase()}
+                </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="truncate text-[15px] text-ink">{p.name}</span>
@@ -83,7 +87,7 @@ async function People() {
             ))}
           </ul>
         ) : (
-          <EmptyState title="Add the people you want to stay close to" description="Add family and old friends, set how often you want to talk (say every 7 days), and see who you’ve drifted from." />
+          <EmptyState title="Add the people you want to stay close to" icon={Users} color={'var(--cat-relationships)'} description="Add family and old friends, set how often you want to talk (say every 7 days), and see who you’ve drifted from." />
         )}
       </Card>
       <RoutinesCard user={user} category="relationships" />

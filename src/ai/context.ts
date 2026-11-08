@@ -6,6 +6,8 @@ import { addDays, localDate, localDayRange } from '@/core/time'
 import type { User } from '@/core/user'
 import { convert } from '@/core/fx'
 import { streaks } from '@/domain/streaks'
+import { loadPatterns } from '@/core/patterns'
+import { screenTimeDigest } from '@/core/activity'
 import { mask } from './mask'
 
 const r1 = (n: number) => Math.round(n * 10) / 10
@@ -19,12 +21,14 @@ export async function buildDigest(user: User, now = new Date()) {
   const d7 = addDays(today, -6)
   const d28 = addDays(today, -27)
 
-  const [trackers, txns, payments, schedules, insights] = await Promise.all([
+  const [trackers, txns, payments, schedules, insights, patterns, screenTime] = await Promise.all([
     trackerDays(user, d28, today),
     transactionsBetween(user, d28, today),
     upcomingPayments(user, now),
     db.select().from(schema.schedules).where(and(eq(schema.schedules.userId, user.id), eq(schema.schedules.active, true))),
     db.select().from(schema.insights).where(eq(schema.insights.userId, user.id)).orderBy(desc(schema.insights.createdAt)).limit(10),
+    loadPatterns(user, now),
+    screenTimeDigest(user, now),
   ])
 
   const trackerSummary = trackers.map(({ tracker: t, days }) => {
@@ -89,6 +93,10 @@ export async function buildDigest(user: User, now = new Date()) {
       }).length,
     },
     subscriptions: { monthlyTotal: Math.round(subsMonthly), dueNext14: payments.filter((p) => p.daysLeft <= 14).map((p) => ({ name: p.schedule.name, daysLeft: p.daysLeft, amount: p.amount, currency: p.currency })) },
+    // Laptop time from the browser extension and Mac watcher: learning, work, entertainment, social.
+    screenTime,
+    // Statistical findings across areas (src/domain/patterns.ts): correlations over 90 days and this week's changes.
+    patterns: { thisWeek: patterns.changes.map((c) => c.text), movesTogether: patterns.links.map((l) => `${l.text} (${l.n} days)`) },
     recentInsights: insights.map((i) => ({ kind: i.kind, title: i.title, status: i.status, created: i.createdAt.toISOString().slice(0, 10) })),
   }
 }
@@ -102,4 +110,5 @@ export const COACH_SYSTEM = [
   'Base every statement on the data provided. Never invent numbers. Prefer one small, specific change over generic advice.',
   'Respect the profile (goals, constraints). Do not repeat suggestions the user dismissed recently; build on ones they accepted.',
   'Money is in the base currency unless stated. Keep it short.',
+  'The digest\'s patterns are correlations from the user\'s own data. Use them to connect areas (e.g. a mood dip that came with less sleep), say "tends to" rather than "causes", and turn the strongest one into a small experiment.',
 ].join(' ')

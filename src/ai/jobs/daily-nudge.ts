@@ -2,7 +2,9 @@ import { Output } from 'ai'
 import { z } from 'zod'
 import { CATEGORIES } from '@/db/schema'
 import { addInsight } from '@/core/insights'
-import { esc, sendMessage } from '@/core/notify'
+import { esc } from '@/core/notify'
+import { notify } from '@/core/outbox'
+import { head } from '@/bot/ui'
 import { localDate } from '@/core/time'
 import type { User } from '@/core/user'
 import { aiEnabled, model } from '../models'
@@ -32,8 +34,16 @@ export async function dailyNudge(user: User, now = new Date()) {
     const row = await addInsight(user, { kind: 'nudge', title: n.title, body: n.why, payload: { dedupeKey: `nudge:${day}:${n.title.toLowerCase().slice(0, 40)}` } })
     if (row) saved.push(n)
   }
-  if (saved.length) {
-    await sendMessage(`<b>Today</b>\n${saved.map((n) => `• ${esc(n.title)}\n  <i>${esc(n.why)}</i>`).join('\n')}`)
-  }
+  if (saved.length) await notify(user, 'coach', { text: nudgeText(saved), buttons: [[{ text: '📋 Today', data: 't:o' }, { text: '🙂 Log mood', data: 'm:o' }]] })
   return saved.length
+}
+
+const ICON = { health: '💪', mind: '🧠', skills: '🛠', wealth: '💰', hobbies: '🎨', relationships: '🤝' } as const
+
+/** The morning message: one numbered line per nudge, the reason under it. */
+export function nudgeText(nudges: { title: string; why: string; category: keyof typeof ICON }[]) {
+  return [
+    head('☀️', 'Good morning', nudges.length === 1 ? 'One thing for today' : `${nudges.length} things for today`),
+    ...nudges.map((n) => `\n${ICON[n.category]} <b>${esc(n.title)}</b>\n└ <i>${esc(n.why)}</i>`),
+  ].join('\n')
 }

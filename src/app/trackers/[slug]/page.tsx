@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
 import { and, desc, eq } from 'drizzle-orm'
-import { ChevronRight } from 'lucide-react'
+import { ChartLine, ChevronRight, History, PencilLine } from 'lucide-react'
 import { db, schema } from '@/db'
 import { getUser } from '@/core/user'
 import { addDays, formatDay, localDate } from '@/core/time'
@@ -63,7 +63,7 @@ async function TrackerDetail({ params }: { params: PageProps<'/trackers/[slug]'>
       />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
         <Card>
-          <CardHeader title="Last 90 days" description={t.aggregate === 'last' ? 'Daily value' : 'Daily total'} />
+          <CardHeader title="Last 90 days" icon={<ChartLine strokeWidth={2} />} color="var(--pill)" description={t.aggregate === 'last' ? 'Daily value' : 'Daily total'} />
           {t.aggregate === 'last' || t.kind === 'scale'
             ? <TrendArea data={series} color={color} unit={t.unit ?? undefined} target={t.target} height={260} label={`${t.name}, last 90 days`} domain={t.kind === 'scale' ? [1, 5] : undefined} />
             : <DailyBars data={series} color={color} unit={t.unit ?? undefined} target={t.target} height={260} label={`${t.name}, last 90 days`} />}
@@ -78,13 +78,13 @@ async function TrackerDetail({ params }: { params: PageProps<'/trackers/[slug]'>
             </div>
           </Card>
           <Card>
-            <CardHeader title="Log today" />
+            <CardHeader title="Log today" icon={<PencilLine strokeWidth={2} />} color="var(--pill)" />
             <QuickLog slug={t.slug} name={t.name} unit={t.unit} step={t.kind === 'scale' ? '1' : undefined} />
           </Card>
         </div>
       </div>
       <Card className="mt-6">
-        <CardHeader title="Recent entries" />
+        <CardHeader title="Recent entries" icon={<History strokeWidth={2} />} color="var(--pill)" />
         {recent.length ? (
           <ul className="-my-2 divide-y divide-divider">
             {recent.map((e) => (

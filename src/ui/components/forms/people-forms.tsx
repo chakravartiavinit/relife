@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState, useEffect, useId, useState, useTransition } from 'react'
-import { Check, Plus } from 'lucide-react'
+import { Check, Plus, UserPlus } from 'lucide-react'
 import { createPerson, markContacted } from '@/app/actions'
 import { Button } from '../button'
 import { Field, Input } from '../form'
@@ -33,7 +33,7 @@ export function NewPersonButton() {
         <Plus className="size-4" strokeWidth={2} />
         Add person
       </Button>
-      <Dialog open={open} onClose={() => setOpen(false)} title="Add someone" description="Set how often you want to be in touch and ReLife will nudge you.">
+      <Dialog open={open} onClose={() => setOpen(false)} title="Add someone" icon={UserPlus} color='var(--cat-relationships)' description="Set how often you want to be in touch and ReLife will nudge you.">
         {open ? <PersonForm onDone={() => setOpen(false)} /> : null}
       </Dialog>
     </>

@@ -33,7 +33,7 @@ export function ScaleLogger({ slug, name, value }: { slug: string; name: string;
               try { announceXp(toast, await logEntry(slug, f.v)) } catch { toast('Could not save. Try again.', 'bad') }
             })}
             className={cn(
-              'flex h-16 flex-col items-center justify-center gap-1 rounded-md transition-[background-color,color,box-shadow,scale] duration-150 ease-out-quint active:scale-96',
+              'flex h-14 flex-col items-center justify-center gap-0.5 rounded-[12px] transition-[background-color,color,box-shadow,scale] duration-150 ease-out-quint active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill',
               on ? 'bg-ink text-bg shadow-1' : 'bg-surface-2 text-ink-2 hover:bg-surface-3 hover:text-ink',
             )}
           >

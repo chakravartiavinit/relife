@@ -30,7 +30,7 @@ export default function UiGallery() {
         <div className="flex flex-wrap items-end gap-10">
           <Wordmark className="h-20" />
           <Wordmark className="h-10" />
-          <CapsuleMark className="size-16 shadow-1" title="ReLife app icon" />
+          <CapsuleMark className="size-16" title="ReLife app icon" />
         </div>
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
           {['ink', 'pill', 'pill-ink', 'line-blue', 'sky', 'sakura', 'cardigan', 'night'].map((c) => (

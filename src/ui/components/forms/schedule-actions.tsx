@@ -1,52 +1,26 @@
 'use client'
 
-import { Switch } from '@/ui/beui/motion/switch'
-import { useEffect, useOptimistic, useState, useTransition } from 'react'
-import { Pencil, Trash2 } from 'lucide-react'
+import { useOptimistic, useState, useTransition } from 'react'
+import { Pause, Pencil, Play, Trash2 } from 'lucide-react'
 import { deleteSchedule, setScheduleActive } from '@/app/actions'
-import { Button } from '../button'
 import { useToast } from '../toast'
+import { RowMenu } from '../row-menu'
 import { ScheduleDialog, type ScheduleInitial } from './schedule-form'
 
-/** Active switch, edit and two-step delete for one schedule row. */
+/** Edit, pause or resume, and a two-step delete for one routine, behind a single "⋯". */
 export function ScheduleActions({ initial, active, name }: { initial: ScheduleInitial; active: boolean; name: string }) {
   const [editing, setEditing] = useState(false)
-  const [confirming, setConfirming] = useState(false)
   const [on, setOn] = useOptimistic(active)
   const [, start] = useTransition()
   const toast = useToast()
-
-  useEffect(() => {
-    if (!confirming) return
-    const t = setTimeout(() => setConfirming(false), 3000)
-    return () => clearTimeout(t)
-  }, [confirming])
-
   return (
-    <div className="flex items-center gap-1">
-      <Switch
-        className="mr-1.5"
-        checked={on}
-        ariaLabel={`${name} active`}
-        onCheckedChange={(next) => start(async () => { setOn(next); await setScheduleActive(initial.id!, next) })}
-      />
-      <Button variant="ghost" size="icon" aria-label={`Edit ${name}`} onClick={() => setEditing(true)}>
-        <Pencil className="size-4" strokeWidth={1.5} />
-      </Button>
-      {confirming ? (
-        <Button
-          variant="danger"
-          size="sm"
-          onClick={() => start(async () => { await deleteSchedule(initial.id!); toast(`Deleted ${name}`) })}
-        >
-          Delete?
-        </Button>
-      ) : (
-        <Button variant="ghost" size="icon" aria-label={`Delete ${name}`} onClick={() => setConfirming(true)}>
-          <Trash2 className="size-4" strokeWidth={1.5} />
-        </Button>
-      )}
+    <>
+      <RowMenu label={name} items={[
+        { label: 'Edit', icon: Pencil, onSelect: () => setEditing(true) },
+        { label: on ? 'Pause' : 'Resume', icon: on ? Pause : Play, onSelect: () => start(async () => { setOn(!on); await setScheduleActive(initial.id!, !on); toast(on ? `Paused ${name}` : `Resumed ${name}`) }) },
+        { label: 'Delete', icon: Trash2, danger: true, onSelect: () => start(async () => { await deleteSchedule(initial.id!); toast(`Deleted ${name}`) }) },
+      ]} />
       <ScheduleDialog open={editing} initial={initial} onClose={() => setEditing(false)} />
-    </div>
+    </>
   )
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState, useEffect, useId, useState, useTransition } from 'react'
-import { Plus } from 'lucide-react'
+import { GraduationCap, Plus } from 'lucide-react'
 import { createLearningItem, updateLearningProgress } from '@/app/actions'
 import { Button } from '../button'
 import { Field, Input } from '../form'
@@ -29,11 +29,11 @@ export function NewLearningButton() {
   const [open, setOpen] = useState(false)
   return (
     <>
-      <Button size="sm" onClick={() => setOpen(true)}>
+      <Button size="sm" variant="ghost" onClick={() => setOpen(true)}>
         <Plus className="size-4" strokeWidth={2} />
         Add
       </Button>
-      <Dialog open={open} onClose={() => setOpen(false)} title="Add a course or book" description="Track progress, time spent and what it cost you.">
+      <Dialog open={open} onClose={() => setOpen(false)} title="Add a course or book" icon={GraduationCap} color='var(--cat-skills)' description="Track progress, time spent and what it cost you.">
         {open ? <LearningForm onDone={() => setOpen(false)} /> : null}
       </Dialog>
     </>

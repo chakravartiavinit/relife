@@ -75,6 +75,10 @@ async function main() {
     profile: {
       goals: 'Sleep 7.5h, ship code every weekday, spend less on food delivery, call family twice a week.',
       constraints: 'Office days Tue–Thu.',
+      areas: ['health', 'mind', 'skills', 'wealth', 'hobbies', 'relationships'],
+      focus: 'health',
+      tone: 'balanced',
+      // Not onboarded: mock opens on /welcome so setup (and its fresh start at Level 1) can be tried.
     },
     createdAt: wallToUtc(new Date(`${start}T09:00:00Z`), tz),
   }).returning()
@@ -96,6 +100,9 @@ async function main() {
     { slug: 'github.reviews', name: 'Reviews', category: 'skills' },
     { slug: 'learning.minutes', name: 'Learning', category: 'skills', kind: 'duration', unit: 'min', target: 45 },
     { slug: 'people.contacts', name: 'People contacted', category: 'relationships' },
+    { slug: 'guitar', name: 'Guitar', category: 'hobbies', kind: 'duration', unit: 'min', target: 30 },
+    { slug: 'drawing', name: 'Drawing', category: 'hobbies', kind: 'duration', unit: 'min', target: 15 },
+    { slug: 'chess', name: 'Chess', category: 'hobbies', kind: 'duration', unit: 'min', target: 10 },
   ]
   const trackers = await db.insert(schema.trackers).values(trackerDefs.map((t) => ({ ...t, userId: uid }))).returning()
   const tid = Object.fromEntries(trackers.map((t) => [t.slug, t.id]))
@@ -125,6 +132,10 @@ async function main() {
     if (logs && !weekend && r.chance(0.35)) entry('github.reviews', d, r.int(1, 3), 'github')
     if (logs && r.chance(0.6)) entry('learning.minutes', d, r.pick([15, 30, 30, 45, 60, 90]), 'manual')
     if (logs && r.chance(0.3)) entry('people.contacts', d, r.int(1, 2), 'manual')
+    // Hobbies: guitar most evenings, drawing on weekends, chess now and then.
+    if (logs && r.chance(weekend ? 0.5 : 0.65)) entry('guitar', d, r.pick([15, 20, 30, 30, 45, 60]), 'manual')
+    if (logs && r.chance(weekend ? 0.7 : 0.2)) entry('drawing', d, r.pick([20, 30, 45, 60, 90]), 'manual')
+    if (logs && r.chance(0.3)) entry('chess', d, r.pick([10, 15, 20, 30]), 'manual')
   })
   for (let i = 0; i < entries.length; i += 500) await db.insert(schema.entries).values(entries.slice(i, i + 500))
 
@@ -304,6 +315,17 @@ async function main() {
     task: r.pick(['parse', 'ask', 'weekly-review', 'nudge']), model: 'anthropic:claude-sonnet-5-5', ok: i % 9 !== 0,
     inputTokens: r.int(400, 4000), outputTokens: r.int(60, 900), ms: r.int(700, 6000), createdAt: ago(r.int(0, 6)),
   })))
+
+  // Net worth history: a gentle random walk ending at today's real total.
+  const { netWorthNow } = await import('@/core/net-worth')
+  const nw = await netWorthNow(user, now)
+  let v = nw.total
+  const snaps: (typeof schema.netWorthSnapshots.$inferInsert)[] = []
+  for (let i = 0; i < DAYS; i++) {
+    snaps.push({ userId: uid, localDate: addDays(today, -i), total: Math.round(v), cash: Math.round(nw.cash), crypto: Math.round(nw.crypto) })
+    v -= v * (0.0018 + (r.int(-100, 100) / 100) * 0.012)
+  }
+  await db.insert(schema.netWorthSnapshots).values(snaps)
 
   // XP and achievements for the whole period, as if the worker had run all along.
   const { backfillXp, totalXp } = await import('@/core/xp')

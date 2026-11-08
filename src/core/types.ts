@@ -39,13 +39,29 @@ export type Rec =
       price: number
       fee: number
       feeAsset?: string
-      tradeKind?: 'spot' | 'p2p' | 'convert' | 'futures'
+      tradeKind?: 'spot' | 'p2p' | 'fiat' | 'convert' | 'dust' | 'futures'
       source: string
       externalRef: string
       meta?: Record<string, unknown>
     }
   | { kind: 'holding'; account: AccountRef; asset: string; qty: number; priceUsd?: number; at: Date }
-  | { kind: 'balance'; account: AccountRef; amount: number; at: Date }
+  | { kind: 'balance'; account: AccountRef; amount: number; at: Date; /** Replaces the account's meta (e.g. open futures positions). */ meta?: Record<string, unknown> }
+  | {
+      /** Money moving in or out of an exchange account, or futures income. Signed: + into the account. */
+      kind: 'flow'
+      account: AccountRef
+      at: Date
+      flow: FlowKind
+      asset: string
+      amount: number
+      usd?: number // value when it happened, signed like amount
+      symbol?: string // futures contract, for P&L by symbol
+      source: string
+      externalRef: string
+      meta?: Record<string, unknown>
+    }
+
+export type FlowKind = 'deposit' | 'withdrawal' | 'reward' | 'futures_pnl' | 'funding' | 'commission' | 'transfer' | 'other'
 
 export type AccountRef = {
   key: string // stable id, e.g. 'axis:1234', 'binance'
@@ -97,6 +113,8 @@ export type Connector = {
   fields: SetupField[]
   /** Required env vars. Any missing = connector disabled (never crashes). */
   env: string[]
+  /** Connects by logging in to the app in a browser window instead of pasting a key (shopping apps). */
+  login?: { url: string }
   everyMinutes: number
   sync(ctx: ConnectorCtx): Promise<void>
 }
@@ -117,11 +135,25 @@ export type Alert = {
   title: string
   body: string
   category?: Category
+  /** Send once a week per key instead of once a day. */
+  weekly?: boolean
+  /** Leading emoji in Telegram; defaults to a warning sign. */
+  emoji?: string
+  /** Notification category: 'alerts' (default) or 'analysis' for findings from your data. */
+  channel?: 'alerts' | 'analysis'
+  /** Small italic line under the title, e.g. "Wealth · This week". */
+  meta?: string
+  /** One thing to do, shown on its own line after the body. */
+  action?: string
+  /** Exact numbers behind it, one per line, in a tap-to-expand box. */
+  data?: string[]
 }
 
 export type Rule = {
   id: string
   /** cron expression, evaluated in the user's timezone */
   every: string
+  /** Events that also run it at once, e.g. 'data.changed'. */
+  on?: string[]
   check(ctx: { user: User; db: Db; now: Date }): Promise<Alert[]>
 }

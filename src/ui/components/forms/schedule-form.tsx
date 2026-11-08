@@ -3,7 +3,7 @@
 import { Switch } from '@/ui/beui/motion/switch'
 import { useActionState, useEffect, useId, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, X } from 'lucide-react'
+import { Plus, Repeat, X } from 'lucide-react'
 import { saveSchedule } from '@/app/actions'
 import { CATEGORIES } from '@/db/schema'
 import { CATEGORY } from '@/ui/tokens'
@@ -51,7 +51,7 @@ export function ScheduleDialog({ open, onClose, initial }: { open: boolean; onCl
     <Dialog
       open={open}
       onClose={onClose}
-      title={initial.id ? `Edit ${initial.name}` : 'New routine'}
+      title={initial.id ? `Edit ${initial.name}` : 'New routine'} icon={Repeat} color='var(--pill)'
       description="Reminders arrive on Telegram at these times."
     >
       {/* Remount on open so the form starts from `initial` each time. */}
