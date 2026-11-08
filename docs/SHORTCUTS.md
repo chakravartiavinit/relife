@@ -11,7 +11,11 @@ Your Mac syncs that file to `~/Library/Mobile Documents/com~apple~CloudDocs/reli
 The worker reads new lines every minute. If your laptop is off, lines wait in the file and are
 processed later, so nothing is lost. Lines are de-duplicated, so a repeated line is harmless.
 
-Set `ICLOUD_INBOX_PATH` in `.env` only if you keep the file somewhere else.
+Newer iOS versions save **Append to Text File** into the Shortcuts folder instead (File Path `inbox.txt` →
+**iCloud Drive/Shortcuts/inbox.txt**, `~/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents/inbox.txt`
+on the Mac). ReLife finds either file on its own. Set **Inbox file** on the Connectors page (or `ICLOUD_INBOX_PATH`)
+only if you keep it somewhere else. Test runs of a message shortcut have no message, so their blank lines are skipped. iOS puts its line break before
+each entry, so the newest line has none after it; ReLife reads it as soon as it is complete JSON.
 
 ## Line formats
 

@@ -7,7 +7,7 @@ import { parsers } from '.'
 import { parseOrderEmail } from './order-email'
 import { sleepHours } from './sleep'
 import { splitPair } from './binance'
-import { lineToRawEvent } from '@/connectors/icloud-inbox'
+import { consumable, lineToRawEvent } from '@/connectors/icloud-inbox'
 
 // Every fixture: { event, expected }. The event runs through the parser list like ingest does
 // (first match wins); records are compared as JSON, so dates are ISO strings.
@@ -67,6 +67,13 @@ test('inbox lines map to raw events', () => {
   const steps = lineToRawEvent('{"type":"steps","value":"8,423","date":"2026-11-05"}', now)!
   assert.equal(steps.source, 'shortcuts')
   assert.equal(lineToRawEvent('   ', now), null)
+  // iOS appends "\n{entry}", so the newest entry has no line break after it: still read once it's whole JSON.
+  const b = (t: string) => Buffer.from(t)
+  assert.equal(consumable(b('{"a":1}\n{"b":2}')), 15)
+  assert.equal(consumable(b('{"a":1}\n{"b":')), 8) // half-synced last line waits
+  assert.equal(consumable(b('\n{"b":2}')), 8)
+  assert.equal(consumable(b('{"b":')), 0)
+  assert.equal(lineToRawEvent('{"type":"sms","text":"","at":"2026-11-08T20:57:33+05:30"}', now), null) // a test run of the shortcut: no message
 })
 
 test('tradesFromStatement rebuilds trades from Binance statement lines', async () => {
