@@ -13,6 +13,7 @@ import { formatDay, localDate } from '@/core/time'
 import { Badge, Card, CardHeader, PageHeader, Skeleton } from '@/ui/components/card'
 import { EmptyState } from '@/ui/components/empty'
 import { AskBox, InsightActions } from '@/ui/components/insight-ui'
+import { InsightBody } from '@/ui/components/insight-body'
 import { PatternsCard } from '@/ui/components/patterns-card'
 import { loadPatterns } from '@/core/patterns'
 import { CATEGORY } from '@/ui/tokens'
@@ -82,9 +83,7 @@ async function Insights({ searchParams }: { searchParams: PageProps<'/insights'>
                       <span>{formatDay(localDate(i.createdAt, user.timezone))}</span>
                     </div>
                     <h3 className="text-[16px] font-semibold tracking-[-0.01em] text-ink">{i.title}</h3>
-                    <div className="mt-1.5 flex max-w-[68ch] flex-col gap-2 text-[14px] leading-relaxed text-ink-2">
-                      {i.body.split(/\n{2,}/).map((p, n) => <p key={n} className="whitespace-pre-wrap">{p}</p>)}
-                    </div>
+                    <div className="mt-3"><InsightBody body={i.body} review={i.payload.review} /></div>
                     {actions.length ? (
                       <ul className="mt-3 flex flex-col gap-2">
                         {actions.map((a, n) => (

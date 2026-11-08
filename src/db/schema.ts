@@ -27,6 +27,10 @@ export const CATEGORIES = ['health', 'mind', 'skills', 'wealth', 'hobbies', 'rel
 export type Category = (typeof CATEGORIES)[number]
 
 /** Set in onboarding (/welcome) and Settings. The AI reads the whole object before every plan. */
+/** A weekly review in parts, so the app and Telegram can lay it out (src/ai/jobs/weekly-review.ts). */
+export type ReviewPoint = { area: Category; headline: string; detail: string }
+export type ReviewContent = { wins: ReviewPoint[]; watch: ReviewPoint[]; focus: string; plan: string }
+
 export type UserProfile = {
   goals?: string
   constraints?: string
@@ -299,7 +303,7 @@ export const insights = pgTable('insights', {
   title: text('title').notNull(),
   body: text('body').notNull(),
   // proposed actions the user can approve, e.g. [{ type: 'schedule', ... }]
-  payload: jsonb('payload').$type<{ actions?: ProposedAction[]; dedupeKey?: string; emoji?: string; meta?: string }>().notNull().default({}),
+  payload: jsonb('payload').$type<{ actions?: ProposedAction[]; dedupeKey?: string; emoji?: string; meta?: string; review?: ReviewContent }>().notNull().default({}),
   status: text('status').$type<'pending' | 'accepted' | 'dismissed' | 'done'>().notNull().default('pending'),
   sourceRunId: uuid('source_run_id'),
   ...stamps(),

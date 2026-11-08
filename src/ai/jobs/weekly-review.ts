@@ -1,10 +1,10 @@
 import { Output } from 'ai'
 import { z } from 'zod'
-import { CATEGORIES, type ProposedAction } from '@/db/schema'
+import { CATEGORIES, type ProposedAction, type ReviewContent, type ReviewPoint } from '@/db/schema'
 import { addInsight } from '@/core/insights'
 import { esc } from '@/core/notify'
 import { notify } from '@/core/outbox'
-import { head } from '@/bot/ui'
+import { fold, head } from '@/bot/ui'
 import { localDate } from '@/core/time'
 import type { User } from '@/core/user'
 import { aiEnabled, model } from '../models'
@@ -33,11 +33,18 @@ const action = z.discriminatedUnion('type', [
   }),
 ])
 
+const point = z.object({
+  area: z.enum(CATEGORIES),
+  headline: z.string().describe('under 8 words, with the key number, e.g. "Lights out 7 of 7 nights"'),
+  detail: z.string().describe('one short sentence with the numbers from the digest behind it'),
+})
+
 const schema = z.object({
   title: z.string().describe('headline of the week, under 8 words'),
-  wins: z.array(z.string()).max(3),
-  problems: z.array(z.string()).max(3),
-  plan: z.string().describe('the one change to make next week and why, 2-3 sentences'),
+  wins: z.array(point).max(3),
+  problems: z.array(point).max(3).describe('what slipped or needs watching'),
+  focus: z.string().describe("next week's one change, under 10 words, imperative"),
+  plan: z.string().describe('why that change and how, 1-2 short sentences'),
   actions: z.array(action).max(3).describe('schedules or trackers that implement the plan; the user approves them'),
 })
 
@@ -52,30 +59,41 @@ export async function weeklyReview(user: User, now = new Date()) {
   })
   const r = res.output
   if (!r) return null
+  const review: ReviewContent = { wins: r.wins, watch: r.problems, focus: r.focus, plan: r.plan }
+  // Plain text too, for "Why?", search and anything that can't lay out the parts.
   const body = [
-    r.wins.length ? `**Wins**\n${r.wins.map((w) => `- ${w}`).join('\n')}` : '',
-    r.problems.length ? `**Watch**\n${r.problems.map((p) => `- ${p}`).join('\n')}` : '',
-    `**Next week**\n${r.plan}`,
+    r.wins.length ? `Wins:\n${r.wins.map((w) => `- ${w.headline}. ${w.detail}`).join('\n')}` : '',
+    r.problems.length ? `Watch:\n${r.problems.map((p) => `- ${p.headline}. ${p.detail}`).join('\n')}` : '',
+    `Next week: ${r.focus}. ${r.plan}`,
   ].filter(Boolean).join('\n\n')
   const row = await addInsight(user, {
     kind: 'review', title: r.title, body,
-    payload: { actions: r.actions as ProposedAction[], dedupeKey: `review:${localDate(now, user.timezone)}` },
+    payload: { actions: r.actions as ProposedAction[], review, dedupeKey: `review:${localDate(now, user.timezone)}` },
   })
   if (!row) return null
   await notify(user, 'analysis', {
-    text: reviewText(r), ref: `insight:${row.id}`,
+    text: reviewText({ title: r.title, ...review, actions: r.actions }), ref: `insight:${row.id}`,
     buttons: r.actions.length ? [[{ text: r.actions.length === 1 ? '✅ Add it' : `✅ Add all ${r.actions.length}`, data: `i:a:${row.id}` }, { text: 'Not now', data: `i:d:${row.id}` }]] : undefined,
   })
   return row
 }
 
-/** The Sunday message: wins, things to watch, next week's change in a quote, and what approving adds. */
-export function reviewText(r: { title: string; wins: string[]; problems: string[]; plan: string; actions: { name: string }[] }) {
+const AREA_EMOJI: Record<string, string> = { health: '❤️', mind: '🧠', skills: '💻', wealth: '💰', hobbies: '🎨', relationships: '🤝' }
+
+/**
+ * The Sunday message, readable at a glance: one line per win and per thing to watch, next week's change in a quote,
+ * what approving adds, and the numbers behind each point folded until tapped.
+ */
+export function reviewText(r: ReviewContent & { title: string; actions: { name: string }[] }) {
+  // The section says win or watch; the emoji says which part of life it's about.
+  const line = (p: ReviewPoint) => `${AREA_EMOJI[p.area] ?? '•'} ${esc(p.headline)}`
+  const details = [...r.wins, ...r.watch].map((p) => `• <b>${esc(p.headline)}</b>: ${esc(p.detail)}`).join('\n')
   return [
     head('🗓', r.title, 'Your week in review'),
-    r.wins.length ? `\n<b>Wins</b>\n${r.wins.map((w) => `✅ ${esc(w)}`).join('\n')}` : '',
-    r.problems.length ? `\n<b>Watch</b>\n${r.problems.map((p) => `🔍 ${esc(p)}`).join('\n')}` : '',
-    `\n<b>Next week</b>\n<blockquote>${esc(r.plan)}</blockquote>`,
-    r.actions.length ? `<b>Approve to add</b>\n${r.actions.map((a) => `➕ ${esc(a.name)}`).join('\n')}` : '',
+    r.wins.length ? `\n<b>🏆 Wins</b>\n${r.wins.map(line).join('\n')}` : '',
+    r.watch.length ? `\n<b>👀 Watch</b>\n${r.watch.map(line).join('\n')}` : '',
+    `\n<b>🎯 Next week</b>\n<blockquote><b>${esc(r.focus)}</b>\n${esc(r.plan)}</blockquote>`,
+    r.actions.length ? `➕ <b>Approve to add:</b> ${r.actions.map((a) => esc(a.name)).join(', ')}` : '',
+    details ? `\n${fold(`📊 <b>The numbers</b>\n${details}`)}` : '',
   ].filter(Boolean).join('\n')
 }
