@@ -9,6 +9,7 @@
     "worker": "tsx watch --env-file=.env src/worker/index.ts",
     "build": "next build",
     "start": "concurrently -k -n web,worker \"next start -H 127.0.0.1 -p 3030\" \"tsx --env-file=.env src/worker/index.ts\"",
+    "service": "scripts/service.sh",
     "db:push": "drizzle-kit push",
     "dev:vault": "dotsafe run -- env RELIFE_SECRETS=dotsafe npm run dev",
     "dev:mock": "npm run mock:seed && RELIFE_MOCK=1 next dev -H 127.0.0.1 -p 3001",

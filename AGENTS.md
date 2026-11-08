@@ -160,3 +160,5 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
 - `npm run dev:mock`: random data in `relife_mock`, on port 3001. Stop `npm run dev` first; they
   share the build folder.
 - `npm test` · `npm run typecheck` · `npm run build` · `npm run db:push`
+- `npm run service -- install|restart|stop|logs`: the production app as a LaunchAgent (starts at login). Stop it
+  before `npm run dev`; they share port 3030.

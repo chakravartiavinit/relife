@@ -87,6 +87,23 @@ back off, and a connector syncs as soon as you connect it.
 ReLife uses port 3030 because 3000 is often taken by other projects, and two dev servers on one port make pages
 reload endlessly.
 
+### Run it in the background (recommended for daily use)
+
+```bash
+npm run build
+npm run service -- install      # starts at login, restarts if it crashes; http://127.0.0.1:3030
+npm run service -- restart      # after pulling or changing code: rebuilds, then restarts
+npm run service -- logs         # follow ~/Library/Logs/ReLife/relife.log
+npm run service -- stop         # before `npm run dev`, which uses the same port
+npm run service -- uninstall    # remove it
+```
+
+It runs the production build (`npm start`) from a LaunchAgent in `~/Library/LaunchAgents/com.relife.app.plist`.
+Postgres comes back on its own (`restart: unless-stopped`) once Docker Desktop starts at login.
+
+**Make it feel like an app:** open http://127.0.0.1:3030 in Chrome and choose **Install ReLife** in the address
+bar menu (Safari: **File → Add to Dock**). It gets a Dock icon and its own window.
+
 ## Connect your data
 
 Open **Connectors** in the sidebar. Nothing syncs until you connect it. **Connect** asks for that service's keys
@@ -134,6 +151,7 @@ http://127.0.0.1:3001, so you can check every page with something on it. Your re
 | `npm run dev:vault` | The same, with keys injected from a dotsafe vault |
 | `npm run dev:mock` | Random data in `relife_mock`, on port 3001 |
 | `npm run build && npm start` | Production mode |
+| `npm run service -- install` | Run in the background at login (see above) |
 | `npm test` | Domain, parser, connector, job engine, nudge and key-encryption tests |
 | `npm run typecheck` | TypeScript |
 | `npm run db:push` | Apply schema changes |
