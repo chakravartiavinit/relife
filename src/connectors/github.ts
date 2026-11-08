@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import type { Connector } from '@/core/types'
 import { env } from '@/core/env'
+import { addDays, localDate } from '@/core/time'
 
 // Daily contribution counts via GraphQL. First run backfills 365 days, then the last 14.
 // Fine-grained token with read access to your repos (see docs/CONNECTORS.md).
@@ -34,6 +35,29 @@ async function gql<T>(query: string, variables: Record<string, unknown> = {}): P
   return j.data!
 }
 
+/**
+ * Commits per local day over the last `days`, from commit search. The contribution calendar can take hours to count
+ * a push and groups days in US Pacific time; search sees a push within minutes and gives each commit's own time.
+ * ponytail: search returns at most 1,000 commits per query; narrow the window if you commit more in two weeks.
+ */
+async function recentCommits(login: string, since: string, tz: string) {
+  const out = new Map<string, number>()
+  for (let page = 1; page <= 10; page++) {
+    const q = encodeURIComponent(`author:${login} author-date:>=${since}`)
+    const res = await fetch(`https://api.github.com/search/commits?q=${q}&per_page=100&page=${page}`, {
+      headers: { Authorization: `Bearer ${env('GITHUB_TOKEN')}`, Accept: 'application/vnd.github+json', 'User-Agent': 'relife' },
+    })
+    if (!res.ok) throw new Error(`GitHub commit search: HTTP ${res.status}`)
+    const j = (await res.json()) as { items: { commit: { author: { date: string } } }[] }
+    for (const c of j.items) {
+      const d = localDate(new Date(c.commit.author.date), tz)
+      out.set(d, (out.get(d) ?? 0) + 1)
+    }
+    if (j.items.length < 100) break
+  }
+  return out
+}
+
 type Window = {
   user: {
     contributionsCollection: {
@@ -45,6 +69,8 @@ type Window = {
     }
   } | null
 }
+
+const RECENT_DAYS = 14
 
 export const github: Connector = {
   id: 'github',
@@ -79,15 +105,29 @@ export const github: Connector = {
         return d
       }
       for (const w of c.contributionCalendar.weeks) for (const d of w.contributionDays) day(d.date).contributions = d.contributionCount
+      // Commit counts come per day already grouped by GitHub (US Pacific), so older days keep GitHub's date;
+      // the last two weeks are recounted by your own day below. Pull requests, reviews and issues carry their time.
+      const local = (iso: string) => localDate(new Date(iso), ctx.user.timezone)
       for (const r of c.commitContributionsByRepository) for (const n of r.contributions.nodes) day(n.occurredAt.slice(0, 10)).commits += n.commitCount
-      for (const n of c.pullRequestContributions.nodes) day(n.occurredAt.slice(0, 10)).prs++
-      for (const n of c.pullRequestReviewContributions.nodes) day(n.occurredAt.slice(0, 10)).reviews++
-      for (const n of c.issueContributions.nodes) day(n.occurredAt.slice(0, 10)).issues++
+      for (const n of c.pullRequestContributions.nodes) day(local(n.occurredAt)).prs++
+      for (const n of c.pullRequestReviewContributions.nodes) day(local(n.occurredAt)).reviews++
+      for (const n of c.issueContributions.nodes) day(local(n.occurredAt)).issues++
     }
 
-    const today = now.toISOString().slice(0, 10)
+    // Recent commits by your own calendar day, as soon as they're pushed (see recentCommits).
+    const today = localDate(now, ctx.user.timezone)
+    const since = addDays(today, -RECENT_DAYS)
+    // Search dates are UTC; start a day early so the first local day is complete, then keep only local days >= since.
+    const recent = await recentCommits(login, addDays(since, -1), ctx.user.timezone)
+    for (const d of byDate.values()) if (d.date >= since) d.commits = 0
+    for (const [date, n] of recent) {
+      if (date < since) continue
+      if (!byDate.has(date)) byDate.set(date, { date, contributions: 0, commits: 0, prs: 0, reviews: 0, issues: 0 })
+      byDate.get(date)!.commits = n
+    }
+
     for (const d of byDate.values()) {
-      if (!d.contributions && d.date !== today) continue
+      if (!d.contributions && !d.commits && d.date !== today) continue
       // The id includes the counts, so a day re-syncs when it changes and is skipped when not.
       const hash = createHash('sha256').update(JSON.stringify(d)).digest('hex').slice(0, 12)
       await ctx.emit({ source: 'github', externalId: `${d.date}:${hash}`, at: now, body: d })
