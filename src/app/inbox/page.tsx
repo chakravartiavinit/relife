@@ -98,7 +98,7 @@ async function Inbox() {
 
       {uncategorized.length ? (
         <Card>
-          <CardHeader icon={<Tag className="size-4" strokeWidth={2} />} color="var(--pill)" title="Pick a category" description="Choose once and ReLife remembers it for that merchant." />
+          <CardHeader icon={<Tag className="size-4" strokeWidth={2} />} color="var(--pill)" title="Pick a category" description="Choose once and ReLife remembers it for that app, shop or person." />
           <ul className="flex flex-col divide-y divide-divider">
             {uncategorized.map((t) => (
               <li key={t.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 py-3 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_180px_auto]">

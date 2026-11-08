@@ -4,7 +4,7 @@ import { BasketSections } from '@/ui/components/wealth/basket'
 import Link from 'next/link'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
-import { ChartColumn, ChartPie, ChevronLeft, ChevronRight, ReceiptText, Store } from 'lucide-react'
+import { ChartColumn, ChartPie, ChevronLeft, ChevronRight, HandCoins, ReceiptText } from 'lucide-react'
 import { getUser } from '@/core/user'
 import { SPEND_CATEGORIES } from '@/core/categorize'
 import { transactionsBetween, isSpend } from '@/core/metrics'
@@ -129,30 +129,30 @@ async function Spending({ searchParams }: { searchParams: PageProps<'/wealth/spe
               {cats.length ? <RankedBars data={cats} color="var(--cat-wealth)" unit="₹" label="Spending by category" /> : <p className="text-[13px] text-ink-3">No spending this month.</p>}
             </Card>
             <Card>
-              <CardHeader title="Top merchants" icon={<Store strokeWidth={2} />} color="var(--cat-wealth)" />
+              <CardHeader title="Paid to most" icon={<HandCoins strokeWidth={2} />} color="var(--cat-wealth)" description="Apps, shops and people" />
               {merchants.length ? (
                 <ul className="flex flex-col gap-3">
                   {merchants.map((mm) => (
                     <li key={mm.label} className="flex items-center gap-3">
                       <BrandLogo name={mm.label} />
                       <span className="min-w-0 flex-1 truncate text-sm text-ink">{mm.label}</span>
-                      <span className="text-[12px] text-ink-3 tabular-nums">{mm.count}×</span>
+                      <span className="text-[12px] text-ink-3 tabular-nums">{mm.count} payment{mm.count === 1 ? '' : 's'}</span>
                       <span className="w-24 text-right text-sm font-medium text-ink tabular-nums">{formatMoney(mm.value, base, { decimals: 0 })}</span>
                     </li>
                   ))}
                 </ul>
-              ) : <p className="text-[13px] text-ink-3">No merchants yet.</p>}
+              ) : <p className="text-[13px] text-ink-3">No payments yet.</p>}
             </Card>
           </div>
 
           <BasketSections b={basket} month={m} base={base} />
 
           <Card className="px-0 pb-2">
-            <CardHeader title="Transactions" icon={<ReceiptText strokeWidth={2} />} color="var(--cat-wealth)" description={`${txns.length} in ${monthLabel(m)} · changing a category remembers it for that merchant`} className="px-5" />
+            <CardHeader title="Transactions" icon={<ReceiptText strokeWidth={2} />} color="var(--cat-wealth)" description={`${txns.length} in ${monthLabel(m)} · change a category once and it sticks for that name`} className="px-5" />
             <div role="table" aria-label="Transactions" className="text-sm">
               <div role="row" className="hidden grid-cols-[7rem_minmax(0,1fr)_11rem_7rem_7.5rem] gap-4 border-b border-divider px-5 pb-2 text-[12px] font-medium text-ink-3 sm:grid">
                 <span role="columnheader">Date</span>
-                <span role="columnheader">Merchant</span>
+                <span role="columnheader">To or from</span>
                 <span role="columnheader">Category</span>
                 <span role="columnheader">Source</span>
                 <span role="columnheader" className="text-right">Amount</span>
