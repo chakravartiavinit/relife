@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowDownLeft, ArrowUpRight } from 'lucide-react'
 import { newPayments, paymentsSeen } from '@/app/actions'
 import { useToast } from './toast'
+import { DATA_CHANGED } from './live-refresh'
 
 const SHOWN = 3
 const DURATION = 8000 // long enough to read an amount and a name
@@ -22,8 +23,9 @@ export function PaymentToasts() {
   const last = useRef(0)
 
   useEffect(() => {
-    const check = async () => {
-      if (document.visibilityState !== 'visible' || Date.now() - last.current < RECHECK_MS) return
+    const check = async (e?: Event) => {
+      // New data that just landed always counts; a tab switch only after RECHECK_MS.
+      if (document.visibilityState !== 'visible' || (e?.type !== DATA_CHANGED && Date.now() - last.current < RECHECK_MS)) return
       last.current = Date.now()
       const res = await newPayments().catch(() => null)
       if (!res?.upTo) return
@@ -45,7 +47,8 @@ export function PaymentToasts() {
     }
     void check()
     document.addEventListener('visibilitychange', check)
-    return () => document.removeEventListener('visibilitychange', check)
+    window.addEventListener(DATA_CHANGED, check)
+    return () => { document.removeEventListener('visibilitychange', check); window.removeEventListener(DATA_CHANGED, check) }
   }, [toast, router])
 
   return null

@@ -13,6 +13,7 @@ import { AppMotion } from '@/ui/components/motion-config'
 import { Celebration } from '@/ui/components/petals'
 import { Celebrations } from '@/ui/components/celebrate'
 import { PaymentToasts } from '@/ui/components/payment-toasts'
+import { LiveRefresh } from '@/ui/components/live-refresh'
 import { SidebarProfile, SidebarProfileSkeleton } from '@/ui/components/sidebar-profile'
 import './globals.css'
 
@@ -95,6 +96,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
           <Celebration />
           <Celebrations />
           <PaymentToasts />
+          <LiveRefresh />
         </ToastProvider>
         </AppMotion>
       </body>
