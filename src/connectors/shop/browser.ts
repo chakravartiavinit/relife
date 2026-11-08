@@ -7,7 +7,7 @@ import type { BrowserContext } from 'playwright-core'
 // (or CHROME_PATH), so nothing extra is downloaded.
 
 const profileDir = (id: string) => {
-  const dir = path.join(process.cwd(), 'data', 'browser', id)
+  const dir = path.join(/* turbopackIgnore: true */ process.cwd(), 'data', 'browser', id)
   mkdirSync(dir, { recursive: true })
   return dir
 }

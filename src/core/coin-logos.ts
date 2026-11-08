@@ -5,7 +5,7 @@ import { join } from 'node:path'
 // public API and kept in data/coins, so pages never load them from the web. data/ is never committed.
 // A symbol can belong to several coins; the one with the largest market cap wins.
 
-const DIR = join(process.cwd(), 'data', 'coins')
+const DIR = join(/* turbopackIgnore: true */ process.cwd(), 'data', 'coins')
 const INDEX = join(DIR, 'index.json')
 const RETRY_MS = 86_400_000 // a symbol CoinGecko didn't know is asked about again after a day
 

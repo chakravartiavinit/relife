@@ -28,9 +28,9 @@ function key() {
     if (k.length !== 32) throw new Error('RELIFE_SECRET_KEY must be 32 bytes, base64 encoded')
     return (cachedKey = k)
   }
-  const file = join(process.cwd(), 'data', 'secret.key')
+  const file = join(/* turbopackIgnore: true */ process.cwd(), 'data', 'secret.key')
   if (!existsSync(file)) {
-    mkdirSync(join(process.cwd(), 'data'), { recursive: true })
+    mkdirSync(join(/* turbopackIgnore: true */ process.cwd(), 'data'), { recursive: true })
     writeFileSync(file, randomBytes(32).toString('base64'), { mode: 0o600, flag: 'wx' })
   }
   return (cachedKey = Buffer.from(readFileSync(file, 'utf8').trim(), 'base64'))
