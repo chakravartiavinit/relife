@@ -5,7 +5,7 @@ const control =
   'transition-[box-shadow,background-color] duration-150 ease-out-quint ' +
   'focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_var(--pill)] disabled:opacity-50'
 
-export function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
+export function Input({ className, ...props }: React.ComponentProps<'input'>) {
   return <input className={cn(control, 'tabular-nums', className)} {...props} />
 }
 

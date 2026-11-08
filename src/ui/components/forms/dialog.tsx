@@ -1,26 +1,34 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { X } from 'lucide-react'
+import { X, type LucideIcon } from 'lucide-react'
 import { Button } from '../button'
 
 /**
  * Native <dialog> (focus trap, Esc, inert background for free).
  * Enter: opacity + translateY 8px, 200ms. Exit: same path, 150ms (softer).
  */
-export function Dialog({ open, onClose, title, description, children, width = 'max-w-[520px]' }: {
+export function Dialog({ open, onClose, title, description, children, width = 'max-w-[520px]', icon, color = 'var(--pill)' }: {
   open: boolean
+  /** Shown in a tinted tile beside the title, so every dialog says what it's about at a glance. */
+  icon?: LucideIcon
+  color?: string
   onClose: () => void
   title: React.ReactNode
   description?: React.ReactNode
   children: React.ReactNode
   width?: string
 }) {
+  const Icon = icon
   const ref = useRef<HTMLDialogElement>(null)
   useEffect(() => {
     const d = ref.current
     if (!d) return
-    if (open && !d.open) d.showModal()
+    if (open && !d.open) {
+      d.showModal()
+      // React's autoFocus fires before the dialog opens; mark the field to focus with data-autofocus instead.
+      d.querySelector<HTMLElement>('[data-autofocus]')?.focus()
+    }
     else if (!open && d.open) d.close()
   }, [open])
 
@@ -31,7 +39,8 @@ export function Dialog({ open, onClose, title, description, children, width = 'm
       // A click on the dialog element itself (not its content) is a backdrop click.
       onClick={(e) => { if (e.target === ref.current) onClose() }}
       className={[
-        'm-auto w-[calc(100%-2rem)] bg-transparent p-0 text-ink', width,
+        // text-start: a dialog inherits styles from where it sits in the DOM (e.g. a centred empty state), not the top layer it shows in.
+        'm-auto w-[calc(100%-2rem)] bg-transparent p-0 text-start text-ink', width,
         'translate-y-2 opacity-0 transition-[opacity,translate,display,overlay] transition-discrete duration-150 ease-out',
         'open:translate-y-0 open:opacity-100 open:duration-200 open:ease-out-quint',
         'starting:open:translate-y-2 starting:open:opacity-0',
@@ -41,7 +50,12 @@ export function Dialog({ open, onClose, title, description, children, width = 'm
     >
       <div className="max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain rounded-xl bg-surface shadow-3">
         <header className="sticky top-0 z-10 flex items-start justify-between gap-4 bg-surface px-6 pt-5 pb-3">
-          <div className="min-w-0">
+          {Icon ? (
+            <span aria-hidden className="grid size-11 shrink-0 place-items-center rounded-[12px]" style={{ color: `color-mix(in oklch, ${color} 80%, var(--ink))`, background: `color-mix(in oklch, ${color} 14%, transparent)` }}>
+              <Icon className="size-5" strokeWidth={2} />
+            </span>
+          ) : null}
+          <div className="min-w-0 flex-1">
             <h2 className="font-display text-[20px] font-bold tracking-[-0.02em] text-ink">{title}</h2>
             {description ? <p className="mt-1 text-[13px] text-ink-3">{description}</p> : null}
           </div>
