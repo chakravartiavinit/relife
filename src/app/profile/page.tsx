@@ -70,10 +70,11 @@ async function Profile() {
       </section>
       <Consistency user={user} now={now} />
 
-      {/* Main column: what you've earned and when. Rail: where you stand per area and how scoring works. */}
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="flex min-w-0 flex-col gap-8">
-          <AchievementsBoard items={board.map((a) => ({ ...a, unlockedAt: a.unlockedAt ? a.unlockedAt.toISOString() : null }))} />
+      {/* Achievements full width; then XP over time beside where it comes from, both columns ending together. */}
+      <AchievementsBoard items={board.map((a) => ({ ...a, unlockedAt: a.unlockedAt ? a.unlockedAt.toISOString() : null }))} />
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="flex min-w-0 flex-col gap-6 [&>*:last-child]:flex-1">
 
           <Card>
             <CardHeader title="XP per day" icon={<ChartColumn strokeWidth={2} />} color="var(--pill)" description={`Last 30 days · ${formatNumber([...daily.values()].reduce((a, b) => a + b, 0))} XP`} />
@@ -121,7 +122,7 @@ async function Profile() {
           </Card>
         </div>
 
-        <aside className="flex min-w-0 flex-col gap-6" aria-label="Scoring">
+        <aside className="flex min-w-0 flex-col gap-6 [&>*:last-child]:flex-1" aria-label="Scoring">
           <Card>
             <CardHeader title="Where XP comes from" icon={<ChartPie strokeWidth={2} />} color="var(--pill)" description="Last 30 days" />
             {mix.total ? (

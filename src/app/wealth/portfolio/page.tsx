@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Activity, ArrowDownLeft, ArrowLeftRight, Gift, ArrowUpRight, ChartPie, Coins, Layers, ListOrdered, Scale, TrendingDown, TrendingUp, TriangleAlert, Trophy } from 'lucide-react'
+import { Activity, ArrowDownLeft, ArrowLeftRight, ArrowUpRight, ChartPie, ChevronRight, Coins, Gift, Layers, ListOrdered, Scale, TrendingDown, TrendingUp, TriangleAlert, Trophy } from 'lucide-react'
 import Link from 'next/link'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
@@ -109,7 +109,7 @@ async function Portfolio({ searchParams }: { searchParams: PageProps<'/wealth/po
         </Card>
       ) : null}
 
-      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <Card className="px-0 pb-2">
           <CardHeader title="Spot holdings" icon={<Coins strokeWidth={2} />} color="var(--cat-wealth)" description="Prices in USD · cost from your trades and deposits" className="px-5" />
           {p.rows.length ? (
@@ -181,7 +181,7 @@ async function Portfolio({ searchParams }: { searchParams: PageProps<'/wealth/po
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         {/* Where the all-time number comes from: grouped by market, each with its subtotal. Bars grow from the zero line. */}
         <Card>
           <CardHeader title="Where the profit and loss came from" icon={<Scale strokeWidth={2} />} color="var(--cat-wealth)" description="From spot and futures orders only. Each part adds up to the total." />
@@ -239,40 +239,36 @@ async function Portfolio({ searchParams }: { searchParams: PageProps<'/wealth/po
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader title="Spot, coins sold" icon={<Trophy strokeWidth={2} />} color="var(--cat-wealth)" description="What each coin made or lost when sold" />
           {p.closed.length ? (
-            <ul className="flex flex-col gap-3">
-              {p.closed.map((c) => (
-                <li key={c.asset} className="flex items-center gap-3">
-                  <CoinLogo symbol={c.asset} logo={coin(c.asset).logo} size="sm" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[13px] font-medium text-ink">{c.asset}</span>
-                    <span className="block text-[11.5px] text-ink-3 tabular-nums">{c.sells} sale{c.sells === 1 ? '' : 's'}</span>
-                  </span>
-                  <span className={cn('text-[13px] font-semibold tabular-nums', signCls(c.gain))}>{money(c.gain, { sign: true })}</span>
-                </li>
-              ))}
-            </ul>
+            <Capped rows={p.closed.map((c) => (
+              <li key={c.asset} className="flex h-10 items-center gap-3">
+                <CoinLogo symbol={c.asset} logo={coin(c.asset).logo} size="sm" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13px] font-medium text-ink">{c.asset}</span>
+                  <span className="block text-[11.5px] text-ink-3 tabular-nums">{c.sells} sale{c.sells === 1 ? '' : 's'}</span>
+                </span>
+                <span className={cn('text-[13px] font-semibold tabular-nums', signCls(c.gain))}>{money(c.gain, { sign: true })}</span>
+              </li>
+            ))} />
           ) : <p className="text-[13px] text-ink-3">Nothing sold yet.</p>}
         </Card>
         {p.futures ? (
           <Card>
             <CardHeader title="Futures, closed by contract" icon={<Layers strokeWidth={2} />} color="var(--cat-wealth)" description={p.futures.since ? `Since ${formatDay(localDate(p.futures.since, user.timezone), { month: 'short', year: 'numeric' })}` : 'Closed positions'} />
             {p.futures.bySymbol.length ? (
-              <ul className="flex flex-col gap-3">
-                {p.futures.bySymbol.slice(0, 10).map((s) => {
-                  const c = contractCoin(s.symbol)
-                  return (
-                    <li key={s.symbol} className="flex items-center gap-3">
-                      <CoinLogo symbol={c} logo={coin(c).logo} size="sm" />
-                      <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink">{s.symbol}</span>
-                      <span className={cn('text-[13px] font-semibold tabular-nums', signCls(s.usd))}>{money(s.usd, { sign: true })}</span>
-                    </li>
-                  )
-                })}
-              </ul>
+              <Capped rows={p.futures.bySymbol.map((s) => {
+                const c = contractCoin(s.symbol)
+                return (
+                  <li key={s.symbol} className="flex h-10 items-center gap-3">
+                    <CoinLogo symbol={c} logo={coin(c).logo} size="sm" />
+                    <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink">{s.symbol}</span>
+                    <span className={cn('text-[13px] font-semibold tabular-nums', signCls(s.usd))}>{money(s.usd, { sign: true })}</span>
+                  </li>
+                )
+              })} />
             ) : <p className="text-[13px] text-ink-3">No closed futures trades yet.</p>}
           </Card>
         ) : null}
@@ -293,6 +289,27 @@ async function Portfolio({ searchParams }: { searchParams: PageProps<'/wealth/po
         ) : <p className="px-5 pb-3 text-[13px] text-ink-3">Nothing here yet.</p>}
       </Card>
     </div>
+  )
+}
+
+/**
+ * The first rows of a list, the rest behind "Show N more". Side-by-side lists capped at the same count with rows of
+ * the same height line up, however long either one is.
+ */
+function Capped({ rows, limit = 10 }: { rows: React.ReactNode[]; limit?: number }) {
+  return (
+    <>
+      <ul className="flex flex-col gap-1.5">{rows.slice(0, limit)}</ul>
+      {rows.length > limit ? (
+        <details className="group mt-1.5">
+          <summary className="flex h-9 cursor-pointer list-none items-center gap-1.5 text-[12.5px] font-medium text-ink-3 select-none hover:text-ink-2 [&::-webkit-details-marker]:hidden">
+            <ChevronRight className="size-3.5 transition-[rotate] duration-150 ease-out-quint group-open:rotate-90" strokeWidth={2} aria-hidden />
+            <span className="group-open:hidden">Show {rows.length - limit} more</span><span className="hidden group-open:inline">Show fewer</span>
+          </summary>
+          <ul className="flex flex-col gap-1.5">{rows.slice(limit)}</ul>
+        </details>
+      ) : null}
+    </>
   )
 }
 

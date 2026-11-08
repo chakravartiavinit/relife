@@ -59,7 +59,7 @@ async function People() {
       { label: 'Catch-ups, 30 days', value: String(catchUps) },
       { label: 'Longest gap', value: longest ? `${longest.since}d` : '–', sub: longest?.name },
     ]} />
-    <div className="grid items-start gap-6 xl:grid-cols-2">
+    <div className="grid gap-6 xl:grid-cols-2">
       <Card>
         <CardHeader title="Keep in touch" icon={<Users strokeWidth={2} />} color="var(--cat-relationships)" description={rows.length ? `${rows.filter((r) => r.overdue).length} overdue` : undefined} />
         {rows.length ? (

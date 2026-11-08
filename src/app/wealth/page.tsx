@@ -73,7 +73,7 @@ async function Wealth() {
         { label: 'Investment P&L', value: invest.empty ? '–' : money(invest.pnl, { sign: true }), tone: invest.empty ? undefined : invest.pnl >= 0 ? 'good' : 'bad', sub: invest.empty ? 'Binance not connected' : 'All time, spot and futures' },
       ]} />
 
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <MonthPace o={o} money={money} />
         <Nudges o={o} />
       </div>
@@ -91,12 +91,12 @@ async function Wealth() {
         />
       </Card>
 
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Apps o={o} money={money} />
         <RepeatBuys o={o} money={money} />
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Investments o={o} money={money} />
         <Subscriptions o={o} money={money} />
         <AllTime o={o} money={money} />

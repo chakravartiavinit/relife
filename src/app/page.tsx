@@ -159,7 +159,7 @@ async function Today() {
           : { label: 'Shipped', value: '–', sub: 'Connect GitHub or Codeforces' },
       ]} />
 
-      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="flex flex-col gap-6">
           <Card id="quest-log" className="scroll-mt-6 p-5 sm:p-6">
             <CardHeader
@@ -182,19 +182,19 @@ async function Today() {
             ) : null}
           </Card>
           {/* Money and yesterday sit under the quest log, so both columns end together. */}
-          <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-2">
+          <div className="grid flex-1 grid-cols-1 gap-6 md:grid-cols-2">
             <MoneyToday b={b} dueSoon={dueSoon} money={money} tz={user.timezone} base={user.baseCurrency} />
             <Yesterday b={b} money={money} />
           </div>
         </div>
 
-        <aside className="flex flex-col gap-6" aria-label="Also today">
+        <aside className="flex flex-col gap-6 [&>*:last-child]:flex-1" aria-label="Also today">
           <Quests
             system={{
               difficulty: system.difficulty, hasData: system.hasData,
               quests: system.quests.map((q) => ({
                 id: q.id, kind: q.kind, title: q.title, reason: q.reason, rank: q.rank, xp: q.xp, status: q.status,
-                progress: q.progress, target: q.target, op: q.op, unit: q.unit, toDate: q.toDate,
+                progress: q.progress, target: q.target, op: q.op, unit: q.unit, toDate: q.toDate, statId: q.statId, area: q.area,
               })),
             }}
             weekly={quests.weekly.map(questItem)}

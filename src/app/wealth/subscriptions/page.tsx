@@ -113,7 +113,7 @@ async function Subscriptions() {
         { label: 'Next charge', value: next ? dueLabel(next.daysLeft!) : '–', sub: next ? `${next.s.name}${next.s.amount ? ` · ${formatMoney(next.s.amount, next.cur)}` : ''}` : 'Nothing scheduled' },
       ]} />
 
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         {/* What charges next, as a dated timeline. */}
         <Card className="px-0 pb-2">
           <CardHeader title="Coming up" icon={<CalendarClock strokeWidth={2} />} color="var(--cat-wealth)" description={`Charges in the next ${UPCOMING_DAYS} days`} className="px-5" />
