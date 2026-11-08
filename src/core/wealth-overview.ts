@@ -16,9 +16,19 @@ import { toLiquidation } from '@/domain/watch'
 
 /** Where an order came from, as people call it. */
 const APP_NAME: Record<string, string> = { zomato: 'Zomato', swiggy: 'Swiggy', blinkit: 'Blinkit', zepto: 'Zepto', amazon: 'Amazon', flipkart: 'Flipkart' }
-export const SPEND_COLORS: Record<string, string> = { 'Food delivery': 'var(--cat-health)', Groceries: 'var(--cat-hobbies)', Shopping: 'var(--pill)' }
-const OTHER_COLOR = 'var(--cat-mind)'
-export const spendColor = (c: string) => SPEND_COLORS[c] ?? OTHER_COLOR
+// One colour per spending category (core/categorize SPEND_CATEGORIES), from the theme tokens and mixes of them,
+// so stacked bars and legends never show two categories in the same colour.
+const mix = (a: string, b: string, pa = 55) => `color-mix(in oklch, var(${a}) ${pa}%, var(${b}))`
+export const SPEND_COLORS: Record<string, string> = {
+  'Food delivery': 'var(--cat-health)', Groceries: 'var(--cat-hobbies)', Shopping: 'var(--pill)', Rent: 'var(--cat-wealth)',
+  Bills: 'var(--cat-relationships)', Transport: 'var(--cat-mind)', 'Dining out': mix('--cat-health', '--cat-wealth'), 'Eating out': mix('--cat-health', '--cat-wealth'),
+  Entertainment: mix('--cat-mind', '--cat-health', 60), Subscriptions: 'var(--cat-skills)', Travel: mix('--cat-relationships', '--cat-hobbies', 60),
+  Health: 'var(--bad)', 'Personal care': mix('--cat-mind', '--pill', 50), Education: 'var(--warn)', Gifts: mix('--cat-hobbies', '--cat-wealth', 50),
+}
+const PALETTE = [...new Set(Object.values(SPEND_COLORS))]
+/** A category's colour; anything new gets a stable one from the palette, money moved around is grey. */
+export const spendColor = (c: string) => SPEND_COLORS[c]
+  ?? (/^(Investments|Transfers|Income|Uncategorized|Other)$/.test(c) ? 'var(--ink-3)' : PALETTE[[...c].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7) % PALETTE.length])
 
 /** Topics of the money nudges in src/rules/watch.ts, plus the money rules. */
 const MONEY_ALERT = /^(watch:(spend|habit|portfolio|coin|futures|subscriptions)|low-balance)/

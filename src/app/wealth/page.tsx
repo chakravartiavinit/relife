@@ -118,7 +118,7 @@ function MonthPace({ o, money }: Props) {
     <Card>
       <CardHeader
         title={`${monthLabel(o.month)} so far`} icon={<Gauge strokeWidth={2} />} color={ACCENT}
-        description={`Day ${pace.day} of ${pace.daysInMonth} · from your order apps${pace.oneOff ? ` · ${money(pace.oneOff)} in one-off big orders, counted once` : ''}`}
+        description={`Day ${pace.day} of ${pace.daysInMonth}${pace.oneOff ? ` · ${money(pace.oneOff)} in one-off big orders, counted once` : ''}`}
       />
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
         <div>
