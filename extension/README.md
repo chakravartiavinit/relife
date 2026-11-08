@@ -20,10 +20,21 @@ on this computer. Nothing goes anywhere else.
   so every episode counts toward the same item. Its cover picture (or the site's icon) is copied once into
   ReLife's `data/library`.
 
+## Shows, anime and courses, on their own
+
+While an episode or lesson plays (Crunchyroll, Netflix, Hotstar, course sites, YouTube playlists…), its series is
+added to ReLife's Library by itself, no "Track this" needed: a show or anime on an entertainment site, a course on a
+learning one. Each episode is logged for good: its name, number and season, its length, how far in you got and the
+time spent. Library cards show the last one and open the full list. Detection reads the page's structured data
+(TVEpisode, Episode, VideoObject), its meta tags or the series link and heading; just browsing a show's page doesn't
+add it.
+
 ## Choosing what a site counts as
 
 The popup shows the site you're on (with its time today and what it counts as: tap a chip to change it), the course or show it belongs to, and today's time by kind. The gear opens the connection settings.
 ReLife re-sorts that site's past time too. The same picker is on ReLife's Activity page, next to each site.
+Sites and Mac apps the built-in list doesn't know are sorted once by your AI model (only the site or app name is
+sent), and your own choice always replaces that guess.
 
 Never recorded: incognito windows, sites you exclude from the popup, page contents, keystrokes, form fields.
 Click the **Tracking** pill at the top of the popup to pause everything until you resume; the eye button next to a site stops tracking that site.

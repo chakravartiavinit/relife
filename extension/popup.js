@@ -26,6 +26,7 @@ const hm = (sec) => { const m = Math.round(sec / 60); return m < 1 ? (sec > 0 ? 
 const icon = (name) => self.ICON[name] ?? ''
 for (const el of document.querySelectorAll('[data-icon]')) el.innerHTML = icon(el.dataset.icon)
 $('favicon').onerror = () => { $('favicon').style.visibility = 'hidden' }
+$('favicon').onload = () => { $('favicon').style.visibility = '' }
 $('openSettings').innerHTML = icon('settings')
 $('closeSettings').innerHTML = icon('back')
 
@@ -39,10 +40,12 @@ function keyOf(url) {
     return `${host}/${u.pathname.split('/').filter(Boolean).slice(0, 2).join('/')}`
   } catch { return null }
 }
+/** Same as background.js: `a` is the item `k` or a page under it ("site/course/1" isn't under "site/course/13"). */
+const under = (a, k) => a === k || a.startsWith(k.endsWith('/') ? k : `${k}/`)
 function trackedHere() {
   const own = tab?.url ? keyOf(tab.url) : null
   const series = page.series?.url ? keyOf(page.series.url) : null
-  const key = Object.keys(s.courses).find((k) => (own && own.startsWith(k)) || (series && (series === k || series.startsWith(k))))
+  const key = Object.keys(s.courses).find((k) => (own && under(own, k)) || (series && under(series, k)))
   return key ? s.courses[key] : null
 }
 
@@ -146,10 +149,11 @@ function renderToday(today) {
   if (!today) { $('todayTotal').textContent = '–'; $('todayBar').innerHTML = ''; $('todayLegend').innerHTML = ''; return }
   $('todayTotal').textContent = hm(today.seconds)
   const parts = today.byKind.filter((k) => k.seconds >= 30)
-  $('todayBar').innerHTML = parts.map((k) => `<span style="--c:${KIND[k.kind]?.color};flex:${k.seconds}"></span>`).join('')
-  $('todayBar').setAttribute('aria-label', `Today: ${parts.map((k) => `${KIND[k.kind]?.label} ${hm(k.seconds)}`).join(', ') || 'nothing yet'}`)
+  const kindOf = (k) => KIND[k] ?? KIND.other
+  $('todayBar').innerHTML = parts.map((k) => `<span style="--c:${kindOf(k.kind).color};flex:${Number(k.seconds) || 0}"></span>`).join('')
+  $('todayBar').setAttribute('aria-label', `Today: ${parts.map((k) => `${kindOf(k.kind).label} ${hm(k.seconds)}`).join(', ') || 'nothing yet'}`)
   $('todayLegend').innerHTML = parts.length
-    ? parts.slice(0, 4).map((k) => `<li style="--c:${KIND[k.kind]?.color}">${esc(KIND[k.kind]?.label ?? k.kind)}<span class="t">${hm(k.seconds)}</span></li>`).join('')
+    ? parts.slice(0, 4).map((k) => `<li style="--c:${kindOf(k.kind).color}">${esc(kindOf(k.kind).label)}<span class="t">${hm(k.seconds)}</span></li>`).join('')
     : '<li style="--c:var(--ink-3)">Nothing tracked yet today</li>'
 }
 
@@ -193,7 +197,8 @@ $('trackBtn').onclick = async () => {
   $('trackName').value = suggestName()
   $('scope').textContent = scopeText()
   $('cover').hidden = !page.image
-  if (page.image) $('cover').style.backgroundImage = `url("${page.image}")`
+  // The page chose this address; quoted as a CSS string so it can't break out of url().
+  if (page.image) $('cover').style.backgroundImage = `url(${JSON.stringify(page.image)})`
   openTrack(true)
   $('trackName').focus()
 }
