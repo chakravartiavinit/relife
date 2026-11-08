@@ -163,3 +163,17 @@ test('wealth: month pace, usual month and repeat buys', async () => {
   const top = repeatBuys([line('2026-11-01', 'Diet Coke Can (300 ml)', 40), line('2026-11-02', 'diet coke can', 40), line('2026-11-02', 'Diet Coke', 40), line('2026-11-05', 'Diet Coke', 40), line('2026-11-01', 'Bread', 30)])
   assert.deepEqual(top, [{ name: 'Diet Coke', days: 3, qty: 4, spend: 160 }])
 })
+
+test('runway: entry, price and liquidation on one track, in profit or in loss', async () => {
+  const { runway } = await import('./watch')
+  // A short in profit: price fell below entry, so "now" sits left of entry, not pinned to the edge.
+  const win = runway({ side: 'short', entry: 4055, mark: 4050, liquidation: 4175 })
+  assert.ok(win.mark > 0 && win.mark < win.entry && win.entry < 1)
+  assert.ok(win.favour > 0)
+  // A short in loss: price rose toward liquidation, "now" is right of entry.
+  const lose = runway({ side: 'short', entry: 4055, mark: 4150, liquidation: 4175 })
+  assert.ok(lose.entry < lose.mark && lose.mark < 1 && lose.favour < 0)
+  // A long mirrors it: liquidation below, still on the right.
+  const long = runway({ side: 'long', entry: 100, mark: 110, liquidation: 80 })
+  assert.ok(long.mark < long.entry && long.favour > 0)
+})

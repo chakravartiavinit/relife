@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Activity, ArrowDownLeft, ArrowLeftRight, ArrowUpRight, ChartPie, ChevronRight, Coins, Gift, Layers, ListOrdered, Scale, TrendingDown, TrendingUp, TriangleAlert, Trophy } from 'lucide-react'
+import { Activity, ArrowDownLeft, ArrowLeftRight, ArrowUpRight, ChartPie, ChevronRight, Coins, Gift, Layers, ListOrdered, Scale, Trophy } from 'lucide-react'
 import Link from 'next/link'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
@@ -8,7 +8,6 @@ import { formatDay, formatTime, localDate } from '@/core/time'
 import { formatMoney, formatNumber } from '@/domain/money'
 import { coinInfo } from '@/core/coin-logos'
 import { contractCoin, loadPortfolio, type ActivityRow, type Position } from '@/core/portfolio'
-import { toLiquidation } from '@/domain/watch'
 import { timeAgo } from '@/domain/wealth'
 import { CoinLogo } from '@/ui/components/coin-logo'
 import { Badge, Card, CardHeader, KpiStrip, PageHeader, Skeleton } from '@/ui/components/card'
@@ -17,6 +16,7 @@ import { buttonClass } from '@/ui/components/button'
 import { cn } from '@/ui/cn'
 import { Ticker } from '@/ui/components/ticker'
 import { ShareDonut } from '@/ui/components/charts'
+import { PositionCard, usd } from '@/ui/components/wealth/position-card'
 
 // Five coin hues; futures margin is ink and other coins grey, so no slice shares a colour.
 const ASSET_COLORS = ['var(--cat-wealth)', 'var(--pill)', 'var(--cat-mind)', 'var(--cat-relationships)', 'var(--cat-health)']
@@ -63,7 +63,7 @@ async function Portfolio({ searchParams }: { searchParams: PageProps<'/wealth/po
   const positions = p.futures?.positions ?? []
   const info = await coinInfo([...p.rows.map((h) => h.asset), ...p.dust.map((h) => h.asset), ...p.closed.map((c) => c.asset), ...page.map((a) => a.asset), ...positions.map((x) => contractCoin(x.symbol)), ...(p.futures?.bySymbol ?? []).slice(0, 8).map((x) => contractCoin(x.symbol))])
   const coin = (a: string) => info[a.toUpperCase()] ?? {}
-  const money = (usd: number, opts?: { sign?: boolean }) => formatMoney(usd * p.usdToBase, base, opts)
+  const money = (usd: number, opts?: { sign?: boolean; decimals?: number }) => formatMoney(usd * p.usdToBase, base, opts)
   const totalUsd = p.spotUsd + p.futuresUsd
   const heldUsd = p.held.reduce((s, h) => s + h.usd, 0)
   const maxBreak = Math.max(1, ...p.breakdown.flatMap((g) => g.items.map((i) => Math.abs(i.usd))))
@@ -100,7 +100,7 @@ async function Portfolio({ searchParams }: { searchParams: PageProps<'/wealth/po
                 const c = contractCoin(pos.symbol)
                 return (
                   <li key={pos.symbol + pos.side} className="border-t border-divider px-5 py-4 first:border-t-0">
-                    <PositionCard pos={pos} coin={c} name={coin(c).name ?? c} logo={coin(c).logo} pnl={money(pos.unrealized, { sign: true })} index={i} />
+                    <PositionCard pos={pos} coin={c} name={coin(c).name ?? c} logo={coin(c).logo} pnl={money(pos.unrealized, { sign: true, decimals: 0 })} index={i} />
                   </li>
                 )
               })}
@@ -350,94 +350,6 @@ function ActivityItem({ a, logo, tz, money }: { a: ActivityRow; logo?: boolean; 
         {a.usd == null ? '–' : money(a.usd, { sign: true })}
       </span>
     </li>
-  )
-}
-
-/** A USD price with sensible decimals: $1,264.87, $8.11, $0.1453. */
-const usd = (v: number) => formatMoney(v, 'USD', { decimals: v < 1 ? 4 : 2 })
-
-/** Risk colour for how far the price can move before liquidation (full class names, so Tailwind sees them). */
-const RISK = {
-  bad: { text: 'text-bad', fill: 'bg-bad', ring: 'border-bad' },
-  warn: { text: 'text-warn', fill: 'bg-warn', ring: 'border-warn' },
-  good: { text: 'text-good', fill: 'bg-good', ring: 'border-good' },
-}
-const riskTone = (away: number | null) => RISK[away == null || away > 0.15 ? 'good' : away > 0.05 ? 'warn' : 'bad']
-
-/**
- * One open futures position: what it is, its profit or loss, and its runway: the price path from entry to
- * liquidation with today's mark on it. On cross margin the distance to liquidation is the real risk, not the
- * loss on the position's own margin.
- */
-function PositionCard({ pos, coin, name, logo, pnl, index }: { pos: Position; coin: string; name: string; logo?: boolean; pnl: string; index: number }) {
-  const size = Math.abs(pos.size)
-  const mark = pos.mark ?? (size ? Math.abs(pos.notional) / size : 0)
-  const away = toLiquidation({ side: pos.side, mark, liquidation: pos.liquidation })
-  const roe = pos.margin ? pos.unrealized / pos.margin : null
-  const tone = riskTone(away)
-  // Share of the entry → liquidation path already used up (0 while the trade is in profit).
-  const used = pos.liquidation && pos.liquidation !== pos.entry ? Math.min(1, Math.max(0, (mark - pos.entry) / (pos.liquidation - pos.entry))) : null
-  const pnlCls = pos.unrealized >= 0 ? 'text-good' : 'text-bad'
-  return (
-    <article aria-label={`${pos.symbol} ${pos.side}`} className="flex flex-col gap-4">
-      <div className="flex items-start gap-3">
-        <CoinLogo symbol={coin} logo={logo} size="lg" />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <h3 className="truncate text-[15px] font-semibold text-ink">{pos.symbol}</h3>
-            <span className={cn('inline-flex h-5 items-center gap-1 rounded-full px-2 text-[11px] font-semibold', pos.side === 'long' ? 'bg-[color-mix(in_oklch,var(--good)_14%,transparent)] text-good' : 'bg-[color-mix(in_oklch,var(--bad)_14%,transparent)] text-bad')}>
-              {pos.side === 'long' ? <TrendingUp className="size-3" strokeWidth={2.5} /> : <TrendingDown className="size-3" strokeWidth={2.5} />}
-              {pos.side === 'long' ? 'Long' : 'Short'}
-            </span>
-            <span className="inline-flex h-5 items-center rounded-full bg-surface-2 px-2 text-[11px] font-semibold text-ink-2 tabular-nums">
-              {pos.leverage}× · {pos.marginType === 'isolated' ? 'isolated' : 'cross'}
-            </span>
-          </div>
-          <p className="mt-0.5 truncate text-[12.5px] text-ink-3 tabular-nums">
-            {name} · {formatNumber(size, size < 1 ? 4 : 2)} {coin} · {formatMoney(Math.abs(pos.notional), 'USD')}
-          </p>
-        </div>
-        <div className="shrink-0 text-right tabular-nums">
-          <p className={cn('text-[18px] font-semibold leading-tight', pnlCls)}>{pnl}</p>
-          {roe != null ? (
-            <p className={cn('mt-0.5 text-[12px]', pnlCls)}>
-              {pos.unrealized >= 0 ? '▲' : '▼'} {formatNumber(Math.abs(roe) * 100, 1)}% <span className="text-ink-3">on {formatMoney(pos.margin, 'USD')} margin</span>
-            </p>
-          ) : null}
-        </div>
-      </div>
-
-      {pos.liquidation ? (
-        <div className="rounded-[12px] bg-surface-2 px-4 py-3">
-          <div className="flex items-baseline justify-between gap-3 text-[12px]">
-            <span className="font-medium text-ink-2">Runway to liquidation</span>
-            {away != null ? (
-              <span className={cn('inline-flex items-center gap-1 font-semibold tabular-nums', tone.text)}>
-                {tone === RISK.bad ? <TriangleAlert className="size-3.5" strokeWidth={2} /> : null}
-                {(away * 100).toFixed(1)}% price move left
-              </span>
-            ) : null}
-          </div>
-          {used != null ? (
-            <div aria-hidden className="relative mt-2.5 h-2 rounded-full bg-[color-mix(in_oklch,var(--ink)_8%,transparent)]">
-              <span className={cn('reveal-hbar absolute inset-y-0 left-0 rounded-full', tone.fill)} style={{ width: `${used * 100}%`, transformOrigin: 'left', '--i': index } as React.CSSProperties} />
-              <span className={cn('absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 bg-surface shadow-sm', tone.ring)} style={{ left: `${used * 100}%` }} />
-              <span className="absolute inset-y-[-3px] right-0 w-0.5 rounded-full bg-bad" />
-            </div>
-          ) : null}
-          {/* Mark sits under its marker, kept clear of the Entry and Liquidation labels at the ends. */}
-          <dl className="relative mt-2.5 h-9 text-[12px] tabular-nums">
-            <div className="absolute left-0"><dt className="text-ink-3">Entry</dt><dd className="font-medium text-ink">{usd(pos.entry)}</dd></div>
-            <div className="absolute -translate-x-1/2 text-center" style={{ left: `clamp(6.5rem, ${(used ?? 0.5) * 100}%, calc(100% - 6.5rem))` }}>
-              <dt className="text-ink-3">Mark</dt><dd className="font-semibold text-ink">{usd(mark)}</dd>
-            </div>
-            <div className="absolute right-0 text-right"><dt className="text-ink-3">Liquidation</dt><dd className="font-medium text-bad">{usd(pos.liquidation)}</dd></div>
-          </dl>
-        </div>
-      ) : (
-        <p className="text-[12px] text-ink-3">Liquidation price not reported yet. Entry {usd(pos.entry)} · mark {usd(mark)}.</p>
-      )}
-    </article>
   )
 }
 

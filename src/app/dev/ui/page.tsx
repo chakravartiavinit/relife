@@ -12,6 +12,7 @@ import { EmptyState } from '@/ui/components/empty'
 import { CapsuleMark, Wordmark } from '@/ui/components/logo'
 import { DailyBars, RankedBars, Sparkline, TrendArea } from '@/ui/components/charts'
 import { BeuiGallery } from '@/ui/components/gallery-beui'
+import { PositionCard } from '@/ui/components/wealth/position-card'
 
 export const metadata: Metadata = { title: 'UI gallery' }
 
@@ -98,6 +99,16 @@ export default function UiGallery() {
           <Field label="Disabled" htmlFor="g-dis"><Input id="g-dis" disabled defaultValue="Read only" /></Field>
         </div>
         <div className="mt-4"><Segmented name="g-seg" defaultValue="daily" options={[{ value: 'daily', label: 'Daily' }, { value: 'weekly', label: 'Weekly' }, { value: 'monthly', label: 'Monthly' }]} /></div>
+      </Section>
+
+      <Section title="Open positions">
+        {/* Sample numbers: one trade in profit, one in loss and close to liquidation. */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <PositionCard index={0} coin="XAU" name="Gold" pnl="+₹687"
+            pos={{ symbol: 'XAUUSDT', side: 'short', size: -1.7, entry: 4055.27, mark: 4050.97, liquidation: 4174.9, unrealized: 7.3, leverage: 100, notional: -6879, margin: 68.79, marginType: 'cross' }} />
+          <PositionCard index={1} coin="ETH" name="Ethereum" pnl="−₹4,210"
+            pos={{ symbol: 'ETHUSDT', side: 'long', size: 0.5, entry: 3200, mark: 3080, liquidation: 2990, unrealized: -60, leverage: 20, notional: 1540, margin: 80, marginType: 'isolated' }} />
+        </div>
       </Section>
 
       <Section title="Charts">

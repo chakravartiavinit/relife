@@ -103,6 +103,21 @@ export function toLiquidation(p: Pick<Position, 'side' | 'mark' | 'liquidation'>
   return Math.max(0, p.side === 'long' ? (p.mark - p.liquidation) / p.mark : (p.liquidation - p.mark) / p.mark)
 }
 
+/**
+ * Where entry, the current price and liquidation sit on one track running toward liquidation (left to right for both
+ * a long and a short), as 0..1. The track starts a little before whichever of entry and the current price is further
+ * from liquidation, so a trade in profit has room on the left instead of pinning to the edge. `favour` is the move
+ * since entry as a share of the entry price: positive when the price went the trade's way.
+ */
+export function runway(p: { side: 'long' | 'short'; entry: number; mark: number; liquidation: number }) {
+  const d = (x: number) => (p.side === 'short' ? x : -x) // grows toward liquidation either way
+  const end = d(p.liquidation)
+  const near = Math.min(d(p.entry), d(p.mark))
+  const start = near - (end - near) * 0.12
+  const at = (x: number) => (end === start ? 0 : Math.min(1, Math.max(0, (d(x) - start) / (end - start))))
+  return { entry: at(p.entry), mark: at(p.mark), favour: p.entry ? (d(p.entry) - d(p.mark)) / p.entry : 0 }
+}
+
 export function portfolioRows(holdings: Holding[], positions: Position[], usdToBase: number, base: string, marginRatio?: number | null): Row[] {
   const rows: Row[] = []
   const held = holdings.filter((h) => h.qty * h.priceNow >= 10)
