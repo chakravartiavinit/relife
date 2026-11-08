@@ -13,16 +13,8 @@ export function Textarea({ className, ...props }: React.TextareaHTMLAttributes<H
   return <textarea className={cn(control, 'h-auto min-h-20 py-2 leading-relaxed', className)} {...props} />
 }
 
-export function Select({ className, children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return (
-    <div className="relative">
-      <select className={cn(control, 'appearance-none pr-8', className)} {...props}>{children}</select>
-      <svg aria-hidden viewBox="0 0 16 16" className="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-ink-3">
-        <path d="M4.5 6.5 8 10l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    </div>
-  )
-}
+/** ReLife's dropdown (src/ui/components/select.tsx): same API as a native <select>, styled list. */
+export { Select } from './select'
 
 export function Field({ label, hint, children, className, htmlFor }: {
   label: React.ReactNode; hint?: React.ReactNode; children: React.ReactNode; className?: string; htmlFor?: string
