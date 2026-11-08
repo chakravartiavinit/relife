@@ -46,7 +46,8 @@ PLIST
     ;;
   restart)
     (cd "$DIR" && npm run build)
-    launchctl kickstart -k "$DOMAIN/$LABEL"
+    # After `stop` the service is unloaded, so load it again instead of failing.
+    launchctl kickstart -k "$DOMAIN/$LABEL" 2>/dev/null || launchctl bootstrap "$DOMAIN" "$PLIST"
     ;;
   stop) launchctl bootout "$DOMAIN/$LABEL" ;;
   uninstall) launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true; rm -f "$PLIST" ;;
