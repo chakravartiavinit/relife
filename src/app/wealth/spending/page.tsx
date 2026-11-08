@@ -1,8 +1,10 @@
 import type { Metadata } from 'next'
+import { loadBasket } from '@/core/basket'
+import { BasketSections } from '@/ui/components/wealth/basket'
 import Link from 'next/link'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChartColumn, ChartPie, ChevronLeft, ChevronRight, ReceiptText, Store } from 'lucide-react'
 import { getUser } from '@/core/user'
 import { SPEND_CATEGORIES } from '@/core/categorize'
 import { transactionsBetween, isSpend } from '@/core/metrics'
@@ -17,6 +19,7 @@ import { buttonClass } from '@/ui/components/button'
 import { CategorySelect } from '@/ui/components/wealth/category-select'
 import { cn } from '@/ui/cn'
 import { Ticker } from '@/ui/components/ticker'
+import { BrandLogo } from '@/ui/components/brand-logo'
 
 export const metadata: Metadata = { title: 'Spending' }
 
@@ -39,7 +42,7 @@ async function Spending({ searchParams }: { searchParams: PageProps<'/wealth/spe
   const [from, monthEnd] = monthRange(m)
   const to = m === current ? today : monthEnd
 
-  const txns = await transactionsBetween(user, from, to)
+  const [txns, basket] = await Promise.all([transactionsBetween(user, from, to), loadBasket(user, m)])
   const spend = txns.filter(isSpend)
   const spent = spend.reduce((s, t) => s - t.base, 0)
   const income = txns.filter((t) => t.base > 0 && t.category !== 'Transfers').reduce((s, t) => s + t.base, 0)
@@ -83,11 +86,11 @@ async function Spending({ searchParams }: { searchParams: PageProps<'/wealth/spe
 
   return (
     <>
-      <PageHeader eyebrow="Wealth" title="Spending" description="Where your money went, by category and merchant." actions={nav} />
+      <PageHeader eyebrow="Wealth" title="Spending" description="Where your money went: by category, by item and by habit, with what’s above your usual month." actions={nav} />
       {txns.length === 0 ? (
         <Card>
           <EmptyState
-            title={`No transactions in ${monthLabel(m)}`}
+            title={`No transactions in ${monthLabel(m)}`} icon={ReceiptText} color={'var(--cat-wealth)'}
             description={<>Axis SMS arrive through the iPhone Shortcuts inbox, bank and order emails through Gmail, and you can log cash with ⌘K, e.g. “spent 120 chai”.</>}
             action={<Link href="/connectors" className={buttonClass({ variant: 'primary' })}>Set up sources</Link>}
           />
@@ -95,10 +98,11 @@ async function Spending({ searchParams }: { searchParams: PageProps<'/wealth/spe
       ) : (
         <div className="flex flex-col gap-6">
           <Card>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-6 md:grid-cols-5">
+            {/* Income and net only when a bank feeds income in; order apps alone only know spending. */}
+            <div className={cn('grid grid-cols-2 gap-x-6 gap-y-6', income ? 'md:grid-cols-5' : 'md:grid-cols-3')}>
               <Stat label="Spent" value={<Ticker value={spent} currency={base} />} sub={`${spend.length} payments`} />
-              <Stat label="Income" value={<Ticker value={income} currency={base} />} />
-              <Stat label="Net" value={formatMoney(income - spent, base, { sign: true })} tone={income - spent >= 0 ? 'good' : 'bad'} sub={income - spent >= 0 ? 'Saved' : 'Overspent'} />
+              {income ? <Stat label="Income" value={<Ticker value={income} currency={base} />} /> : null}
+              {income ? <Stat label="Net" value={formatMoney(income - spent, base, { sign: true })} tone={income - spent >= 0 ? 'good' : 'bad'} sub={income - spent >= 0 ? 'Saved' : 'Overspent'} /> : null}
               <Stat label="Daily average" value={<Ticker value={days ? spent / days : 0} currency={base} />} sub={`over ${days} days`} />
               <Stat label="Quick commerce" value={`${spent ? Math.round((quickTotal / spent) * 100) : 0}%`} sub={formatMoney(quickTotal, base)} />
             </div>
@@ -108,31 +112,32 @@ async function Spending({ searchParams }: { searchParams: PageProps<'/wealth/spe
                   <Badge color="var(--cat-mind)">{lateNight.length} late-night order{lateNight.length === 1 ? '' : 's'} · {formatMoney(lateNight.reduce((s, t) => s - t.base, 0), base)}</Badge>
                 ) : null}
                 {small.length ? (
-                  <Badge color="var(--cat-wealth)">{small.length} payments under ₹300 · {formatMoney(small.reduce((s, t) => s - t.base, 0), base)}</Badge>
+                  <Badge color="var(--cat-wealth)">{small.length} payment{small.length === 1 ? '' : 's'} under ₹300 · {formatMoney(small.reduce((s, t) => s - t.base, 0), base)}</Badge>
                 ) : null}
               </div>
             ) : null}
           </Card>
 
           <Card>
-            <CardHeader title="Daily spending" description={monthLabel(m)} />
+            <CardHeader title="Daily spending" icon={<ChartColumn strokeWidth={2} />} color="var(--cat-wealth)" description={monthLabel(m)} />
             <DailyBars data={fillDays(perDay, from, monthEnd, 0)} color="var(--cat-wealth)" unit="₹" label={`Daily spending in ${monthLabel(m)}`} />
           </Card>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <Card>
-              <CardHeader title="By category" />
+              <CardHeader title="By category" icon={<ChartPie strokeWidth={2} />} color="var(--cat-wealth)" />
               {cats.length ? <RankedBars data={cats} color="var(--cat-wealth)" unit="₹" label="Spending by category" /> : <p className="text-[13px] text-ink-3">No spending this month.</p>}
             </Card>
             <Card>
-              <CardHeader title="Top merchants" />
+              <CardHeader title="Top merchants" icon={<Store strokeWidth={2} />} color="var(--cat-wealth)" />
               {merchants.length ? (
                 <ul className="flex flex-col gap-3">
                   {merchants.map((mm) => (
                     <li key={mm.label} className="flex items-center gap-3">
+                      <BrandLogo name={mm.label} />
                       <span className="min-w-0 flex-1 truncate text-sm text-ink">{mm.label}</span>
                       <span className="text-[12px] text-ink-3 tabular-nums">{mm.count}×</span>
-                      <span className="w-24 text-right text-sm font-medium text-ink tabular-nums">{formatMoney(mm.value, base)}</span>
+                      <span className="w-24 text-right text-sm font-medium text-ink tabular-nums">{formatMoney(mm.value, base, { decimals: 0 })}</span>
                     </li>
                   ))}
                 </ul>
@@ -140,8 +145,10 @@ async function Spending({ searchParams }: { searchParams: PageProps<'/wealth/spe
             </Card>
           </div>
 
+          <BasketSections b={basket} month={m} base={base} />
+
           <Card className="px-0 pb-2">
-            <CardHeader title="Transactions" description={`${txns.length} in ${monthLabel(m)} · changing a category remembers it for that merchant`} className="px-5" />
+            <CardHeader title="Transactions" icon={<ReceiptText strokeWidth={2} />} color="var(--cat-wealth)" description={`${txns.length} in ${monthLabel(m)} · changing a category remembers it for that merchant`} className="px-5" />
             <div role="table" aria-label="Transactions" className="text-sm">
               <div role="row" className="hidden grid-cols-[7rem_minmax(0,1fr)_11rem_7rem_7.5rem] gap-4 border-b border-divider px-5 pb-2 text-[12px] font-medium text-ink-3 sm:grid">
                 <span role="columnheader">Date</span>
@@ -159,9 +166,12 @@ async function Spending({ searchParams }: { searchParams: PageProps<'/wealth/spe
                   <span role="cell" className="col-span-2 text-[12px] text-ink-3 tabular-nums sm:col-span-1 sm:text-[13px]">
                     {formatDay(t.localDate, { day: 'numeric', month: 'short' })} · {formatTime(t.at, user.timezone)}
                   </span>
-                  <span role="cell" className="min-w-0">
-                    <span className="block truncate text-ink">{t.merchant ?? t.upiId ?? 'Unknown'}</span>
-                    {t.upiId && t.upiId !== t.merchant ? <span className="block truncate text-[12px] text-ink-3">{t.upiId}</span> : null}
+                  <span role="cell" className="flex min-w-0 items-center gap-3">
+                    <BrandLogo name={t.merchant ?? t.upiId ?? '?'} />
+                    <span className="min-w-0">
+                      <span className="block truncate text-ink">{t.merchant ?? t.upiId ?? 'Unknown'}</span>
+                      {t.upiId && t.upiId !== t.merchant ? <span className="block truncate text-[12px] text-ink-3">{t.upiId}</span> : null}
+                    </span>
                   </span>
                   <span role="cell" className="order-last col-span-2 flex items-center gap-2 sm:order-none sm:col-span-1">
                     <CategorySelect id={t.id} value={t.category ?? 'Uncategorized'} options={[...SPEND_CATEGORIES]} merchant={t.merchant ?? t.upiId ?? 'merchant'} />
