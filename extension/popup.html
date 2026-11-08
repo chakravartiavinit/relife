@@ -1,0 +1,104 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header class="bar">
+    <img class="logo" src="icons/icon48.png" alt="" />
+    <b class="brand">ReLife</b>
+    <button class="status" id="status" type="button" aria-pressed="false"><span class="dot"></span><span class="status-text">…</span><span class="ic status-ic" id="statusIc"></span></button>
+    <button class="icon-btn" id="openSettings" type="button" aria-label="Connection settings"></button>
+  </header>
+
+  <div class="views" id="views">
+    <!-- Main view: this site, today, the library item. -->
+    <main class="view" id="mainView">
+      <section class="card now" id="nowCard">
+        <div class="halftone" aria-hidden="true"></div>
+        <div class="label"><span class="tick"></span>On this page</div>
+        <div class="site">
+          <span class="fav"><img id="favicon" alt="" /></span>
+          <span class="site-text">
+            <span class="site-name" id="site">–</span>
+            <span class="site-sub" id="siteSub">&nbsp;</span>
+          </span>
+          <button class="icon-btn" id="exclude" type="button" aria-pressed="false"></button>
+        </div>
+        <div class="chips" role="radiogroup" aria-label="This site counts as" id="kinds"></div>
+      </section>
+
+      <section class="card" id="libCard">
+        <div class="label"><span class="tick"></span>Library</div>
+        <div id="itemView" hidden>
+          <a class="item" id="itemLink" target="_blank" rel="noreferrer">
+            <span class="cover" id="itemCover"></span>
+            <span class="item-text">
+              <span class="item-kind" id="itemKind"></span>
+              <span class="item-title" id="itemTitle"></span>
+              <span class="item-sub" id="itemSub"></span>
+            </span>
+          </a>
+          <div class="capsule" id="itemBar" hidden><span class="fill"></span></div>
+        </div>
+        <div id="trackStart">
+          <button class="btn primary wide" id="trackBtn" type="button"><span class="ic" data-icon="plus"></span>Track this page</button>
+          <p class="hint">Add this course, show, series or book. Its time and progress then fill in by themselves.</p>
+        </div>
+        <div class="reveal" id="trackReveal">
+          <form class="reveal-inner" id="trackForm" inert>
+            <div class="chips types" role="radiogroup" aria-label="What is it?" id="types"></div>
+            <div class="cover wide" id="cover" hidden></div>
+            <label class="field">
+              <span>Name in ReLife</span>
+              <input id="trackName" maxlength="200" required />
+            </label>
+            <p class="hint" id="scope"></p>
+            <div class="row">
+              <button class="btn" type="button" id="trackCancel">Cancel</button>
+              <button class="btn primary" type="submit">Track</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="card today">
+        <div class="today-head">
+          <div class="label"><span class="tick"></span>Today</div>
+          <a class="link" id="openActivity" target="_blank" rel="noreferrer">Activity <span class="ic" data-icon="open"></span></a>
+        </div>
+        <div class="big" id="todayTotal">–</div>
+        <div class="stack" id="todayBar" role="img" aria-label="Today by kind"></div>
+        <ul class="legend" id="todayLegend"></ul>
+      </section>
+
+    </main>
+
+    <!-- Settings view: where ReLife runs and the token. -->
+    <section class="view" id="settingsView" aria-labelledby="settingsTitle" inert>
+      <div class="view-head">
+        <button class="icon-btn" id="closeSettings" type="button" aria-label="Back"></button>
+        <h1 id="settingsTitle">Connection</h1>
+      </div>
+      <p class="intro" id="setupIntro" hidden>Connect this browser to your ReLife. Copy the token from <b>Connectors → Laptop activity</b> in the app.</p>
+      <form class="card form" id="setupForm">
+        <label class="field">
+          <span>ReLife address</span>
+          <input id="server" placeholder="http://127.0.0.1:3030" inputmode="url" />
+        </label>
+        <label class="field">
+          <span>Token</span>
+          <input id="token" type="password" placeholder="From Connectors → Laptop activity" autocomplete="off" />
+        </label>
+        <button class="btn primary wide" type="submit">Save and test</button>
+      </form>
+      <div class="note"><span class="ic" data-icon="shield"></span><span>Only this address receives anything. Incognito windows are never tracked, and nothing goes anywhere else.</span></div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="icons.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
