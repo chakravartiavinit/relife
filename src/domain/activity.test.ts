@@ -24,3 +24,20 @@ test('classify sorts sites, apps and YouTube videos into kinds of time', () => {
   assert.equal(classify({ domain: 'beta.crunchyroll.com' }, rules), 'entertainment')
   assert.equal(classify({ domain: 'youtube.com', title: 'Funny cats' }, rules), 'learning')
 })
+
+test('activity: rules for Mac apps, by name', async () => {
+  const { classify, appKey } = await import('./activity')
+  const rules = new Map([[appKey('T3 Code (Beta)'), 'work' as const]])
+  assert.equal(classify({ app: 'T3 Code (Beta)' }, rules), 'work')
+  assert.equal(classify({ app: 'Some New App' }, rules), 'other')
+  assert.equal(classify({ app: 'T3 Code (Beta)', domain: 'example.com' }, rules), 'other') // a site's own rules come first
+})
+
+test('activity: page titles without unread counts and site names', async () => {
+  const { pageTitle } = await import('./activity')
+  assert.equal(pageTitle('(402) The Traders Battle Finale || Episode 4 - YouTube', 'youtube.com'), 'The Traders Battle Finale || Episode 4')
+  assert.equal(pageTitle('(405) YouTube', 'youtube.com'), null)
+  assert.equal(pageTitle('WhatsApp', 'WhatsApp'), null)
+  assert.equal(pageTitle('Pull request #12 · relife', 'github.com'), 'Pull request #12 · relife')
+  assert.equal(pageTitle(null, 'x.com'), null)
+})

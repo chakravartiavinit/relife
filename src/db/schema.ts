@@ -244,6 +244,27 @@ export const learningItems = pgTable('learning_items', {
   ...stamps(),
 })
 
+/**
+ * Every episode or lesson watched of a library item, kept for good (activity stretches go after 90 days): what it was,
+ * its number and season, its length, the furthest point reached and the time spent on it.
+ */
+export const libraryEpisodes = pgTable('library_episodes', {
+  id: id(),
+  userId: userId(),
+  itemId: uuid('item_id').notNull().references(() => learningItems.id, { onDelete: 'cascade' }),
+  /** One row per episode: "s1e5", or the title when there's no number. */
+  key: text('key').notNull(),
+  title: text('title'),
+  number: integer('number'),
+  season: integer('season'),
+  durationSec: integer('duration_sec'),
+  /** The furthest point reached in it, for "watched 92%". */
+  positionSec: integer('position_sec'),
+  watchedSec: integer('watched_sec').notNull().default(0),
+  firstAt: timestamp('first_at', { withTimezone: true }).notNull().defaultNow(),
+  lastAt: timestamp('last_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [uniqueIndex('library_episodes_item_key').on(t.itemId, t.key)])
+
 export const people = pgTable('people', {
   id: id(),
   userId: userId(),
@@ -350,6 +371,8 @@ export const activityRules = pgTable('activity_rules', {
   userId: userId(),
   domain: text('domain').notNull(),
   kind: text('kind').$type<ActivityKind>().notNull(),
+  /** 'user': your choice, always wins. 'ai': sorted once by the AI for a site the built-in list didn't know. */
+  source: text('source').$type<'user' | 'ai'>().notNull().default('user'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [uniqueIndex('activity_rules_user_domain').on(t.userId, t.domain)])
 

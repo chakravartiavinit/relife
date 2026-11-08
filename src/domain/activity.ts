@@ -49,6 +49,9 @@ export const LIBRARY = {
 export type LibraryKind = keyof typeof LIBRARY
 
 /** Your rules win (site → kind; a parent domain covers its subdomains), then the built-in ones. */
+/** Rules for Mac apps live next to site rules, keyed by app name. */
+export const appKey = (app: string) => `app:${app.trim().toLowerCase()}`
+
 export function classify(s: Segment, rules?: Map<string, ActivityKind>): ActivityKind {
   const domain = (s.domain ?? '').toLowerCase().replace(/^www\./, '')
   if (rules?.size && domain) {
@@ -63,8 +66,22 @@ export function classify(s: Segment, rules?: Map<string, ActivityKind>): Activit
   }
   if (domain) return DOMAINS.find(([, re]) => re.test(domain))?.[0] ?? 'other'
   const app = (s.app ?? '').trim()
+  const own = app && rules?.get(appKey(app))
+  if (own) return own
   return APPS.find(([, re]) => re.test(app))?.[0] ?? 'other'
 }
 
 /** Browsers the extension already covers; the Mac watcher skips them so time isn't counted twice. */
 export const BROWSER_APPS = /^(google chrome|chrome|arc|brave browser|microsoft edge|chromium|vivaldi|opera)$/i
+
+/**
+ * A page or window title as people would say it, or null when it says nothing beyond the site itself:
+ * "(402) Episode 4 - YouTube" → "Episode 4"; "(5) YouTube" → null; "WhatsApp" on whatsapp → null.
+ */
+export function pageTitle(title: string | null | undefined, place: string) {
+  let t = (title ?? '').replace(/^\(\d+\+?\)\s*/, '').replace(/\s[-–|·]\s(YouTube|Google Docs|Google Sheets|Gmail|X|Twitter|Reddit|LinkedIn|Instagram|Facebook|GitHub)$/i, '').trim()
+  const site = place.toLowerCase().replace(/^www\./, '').split('.').slice(-2)[0] ?? ''
+  if (t.length < 3 || t.toLowerCase() === site || t.toLowerCase() === place.toLowerCase()) return null
+  if (t.length > 140) t = `${t.slice(0, 139)}…`
+  return t
+}

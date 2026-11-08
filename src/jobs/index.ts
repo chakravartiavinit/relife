@@ -118,6 +118,11 @@ export const JOBS: Job[] = [
     const { dailyNudge } = await import('@/ai/jobs/daily-nudge')
     await dailyNudge(await getUser())
   } },
+  // New websites and Mac apps the built-in list doesn't know: the AI sorts each once (learning, deep work, …).
+  { id: 'activity:classify', schedule: { everyMinutes: 60 }, catchUpMinutes: 60, enabled: async () => { await loadKeys(); return (await import('@/ai/models')).aiEnabled('parse') }, run: async () => {
+    const { classifySites } = await import('@/ai/jobs/classify-sites')
+    return (await classifySites(await getUser())) ?? undefined
+  } },
   { id: 'ai:weekly-review', schedule: { cron: '0 21 * * 0' }, catchUpMinutes: 12 * 60, enabled: ai, run: async () => {
     const { weeklyReview } = await import('@/ai/jobs/weekly-review')
     await weeklyReview(await getUser())
