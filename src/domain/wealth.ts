@@ -46,3 +46,41 @@ export function monthLabel(m: string) {
 export function pctChange(now: number, before: number) {
   return before > 0 ? ((now - before) / before) * 100 : null
 }
+
+/**
+ * Month-to-date spending against a usual month: where spending would be today on a usual month, and where this
+ * month lands if it keeps the same daily pace. `vsUsual` is the projected month against the usual one (0.2 = 20% more).
+ */
+export function monthPace(spent: number, day: number, daysInMonth: number, usualMonth: number | null, oneOff = 0) {
+  // One-off big orders (a phone, a chair) happen once: count them as they are and project only the everyday rest.
+  const projected = day > 0 ? oneOff + ((spent - oneOff) / day) * daysInMonth : 0
+  const expected = usualMonth == null ? null : (usualMonth * day) / daysInMonth
+  const vsUsual = usualMonth ? (projected - usualMonth) / usualMonth : null
+  return { projected, expected, vsUsual }
+}
+
+/** Orders big enough to be one-offs: a quarter of a usual month or more (₹5,000+ without one). Their sum. */
+export function oneOffs(orders: number[], usualMonth: number | null, floor = 5000) {
+  const min = usualMonth ? Math.max(usualMonth * 0.25, 1) : floor
+  return orders.filter((v) => v >= min).reduce((a, b) => a + b, 0)
+}
+
+/** Average of the full months before `month` that had any spending (up to `n` of them). Null with fewer than 2. */
+export function usualMonth(byMonth: Map<string, number>, month: string, n = 6) {
+  const prior = Array.from({ length: n }, (_, i) => byMonth.get(shiftMonth(month, -(i + 1)))).filter((v): v is number => !!v)
+  return prior.length >= 2 ? prior.reduce((a, b) => a + b, 0) / prior.length : null
+}
+
+/** Things bought again and again: same first two words of the name, bought on at least `minDays` days, biggest spend first. */
+export function repeatBuys(lines: { date: string; name: string; qty: number; spend: number }[], { minDays = 3, n = 5 } = {}) {
+  const m = new Map<string, { name: string; days: Set<string>; qty: number; spend: number }>()
+  for (const l of lines) {
+    const name = l.name.split(/[|,(–—-]/)[0].trim().split(/\s+/).slice(0, 2).join(' ')
+    const k = name.toLowerCase()
+    if (!k) continue
+    const r = m.get(k) ?? m.set(k, { name, days: new Set(), qty: 0, spend: 0 }).get(k)!
+    r.days.add(l.date); r.qty += l.qty; r.spend += l.spend
+  }
+  return [...m.values()].filter((r) => r.days.size >= minDays).sort((a, b) => b.spend - a.spend).slice(0, n)
+    .map((r) => ({ name: r.name, days: r.days.size, qty: r.qty, spend: r.spend }))
+}
