@@ -17,23 +17,40 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
 
 ## Layout
 
-- Pages: Today (`/`, things to do now), Overview (`/overview`, looking back), five areas that share one
-  template (`PageHeader` → `KpiStrip` → cards), Habits (`/habits`, routines + trackers), Insights. Inbox,
-  Connectors and Settings sit in the sidebar footer. Navigation lives in `src/ui/components/nav.tsx`.
+- Pages: Today (`/`, the quest log: things to do now), Activity (`/activity`, laptop time from `extension/` and
+  the Mac watcher), Progress (`/profile`, the character sheet: level, streak,
+  week, consistency, achievements, XP; `/overview` redirects here), Habits, Insights, and six areas (Health, Mind, Skills, Wealth,
+  Hobbies, People) that share one template (`AreaHeader` → `KpiStrip` → cards). Inbox, Connectors and Settings sit in the sidebar footer.
+  Navigation lives in `src/ui/components/nav.tsx`. The game look comes from three banners: `CharacterBanner`
+  (`hud.tsx`, Today and Progress), `AreaHeader` (area pages) and `PageHeader` (everything else). Routine
+  pictures come from `src/ui/routine-icons.ts`.
+- Look ("ReLife capsule"): ink black, white and the logo's capsule blue, light-first. The signature shapes are
+  `CapsuleIcon` (`capsule-icon.tsx`, the tilted pill from the logo, for areas and avatars), `SystemLabel` (mono
+  area label in `card.tsx`) and the `.halftone` dot texture in header corners. No other decorative textures.
+- Motion: CSS easing tokens in `globals.css` (`--ease-out-quint`, `--ease-out-strong`, `--ease-in-out-strong`);
+  JS twins in `src/ui/beui/lib/ease.ts` (`EASE_OUT`, `EASE_OUT_STRONG`). Never retype the curves. Audits and
+  plans live in `plans/`.
 - `src/app/`: Next.js 16 App Router pages and `actions.ts` (all server actions). Cache Components is
   on: DB reads go in an async child component that calls `await connection()`, wrapped in
   `<Suspense>` with a skeleton sized like the content. See `src/app/page.tsx`.
 - `src/core/`: ingest pipeline, schedules, metrics, quick-log grammar, FX, time zones, connector keys.
 - `src/domain/`: pure TypeScript (recurrence, streaks, FIFO P&L, money formatting). No DB, no React.
 - `src/connectors/`, `src/parsers/`, `src/rules/`, `src/ai/jobs/`: the four extension points.
-- `src/worker/`: long-running process (bot, reminders, syncs, rules, AI). `src/bot/`: Telegram.
+- `src/worker/`: long-running process (bot, laptop activity, job scheduler). `src/jobs/`: every scheduled job.
+  `src/bot/`: Telegram.
 - `src/ui/`: tokens and components. `src/app/globals.css` holds the design tokens.
-- Logo: `assets/brand/relife-logo.png` is the source. `node scripts/brand.mjs assets/brand/relife-logo.png`
-  rebuilds `public/brand/` (light and dark logos, icons, with content-hashed names so browsers never
-  show a stale logo), `src/ui/brand-files.ts` (their paths) and `src/app/icon.png` / `apple-icon.png`.
-  Use `Wordmark` from `src/ui/components/logo.tsx`; never redraw the logo.
-- Vendored UI code: `src/ui/beui/` (beui.dev) and `src/ui/dither-kit/` (tripwire.sh, local patches in
-  its README). Change them only to fit ReLife tokens.
+- Logo: the original ReLIFE logo. `assets/brand/relife-logo.png` is the source;
+  `node scripts/brand.mjs assets/brand/relife-logo.png` rebuilds `public/brand/` (light and dark logos and
+  icons, with content-hashed names), `src/ui/brand-files.ts` (their paths) and `src/app/icon.png` /
+  `apple-icon.png`. Use `Wordmark` (or `CapsuleMark` for the icon) from `src/ui/components/logo.tsx`;
+  never redraw the logo.
+- Name: the app is ReLife (it was briefly called Savepoint). Internal identifiers use `relife` too (database
+  names, `relife:*` events and storage keys, the iCloud inbox path).
+- Vendored UI code: `src/ui/beui/` (beui.dev, installed from the `@beui` registry with imports rewritten
+  to `@/ui/beui`). Change it only to fit ReLife tokens.
+- Charts: use the wrappers in `src/ui/components/charts.tsx`, one per kind of number: `TrendArea` (a measure
+  over time), `DailyBars` (a count per day), `RankedBars` (a ranking), `ShareDonut` (shares of a whole),
+  `Sparkline` (stat tiles). Habit adherence keeps its shape-coded strip (beUI's status bar is colour-only).
 
 ## Adding things
 
@@ -48,10 +65,21 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
 - **New message format** (bank SMS, order email): one file in `src/parsers/` added to
   `src/parsers/index.ts` before the LLM fallback, plus a fixture in `src/parsers/fixtures/`
   (`{ event, expected }`). `npm test` runs every fixture.
-- **New alert:** one file in `src/rules/` added to `src/rules/index.ts`.
+- **New alert:** one file in `src/rules/` added to `src/rules/index.ts` (add `on: ['data.changed']` to also run it when new data lands). Give the `Alert` an `emoji` that says the topic, a `meta`
+  line ("Wealth · Today"), one `action` and the exact numbers in `data` (shown in the app and on "Why?", not in the message); `alertText` in `src/rules/run.ts` lays them out as a short, phone-notification-style message.
+- **New Telegram message:** send it with `notify(user, category, …)` from `src/core/outbox.ts`, never `sendMessage`
+  directly (only direct replies in `src/bot/telegram.ts` skip the outbox). The category (`reminders`, `alerts`,
+  `analysis`, `coach`, `events`; rules in `src/domain/notify.ts`) decides quiet hours, daily caps and repeats until a
+  button is tapped, as chosen in Settings → Notifications. Give messages with buttons a `ref` (`reminder:<id>`,
+  `insight:<id>`) so repeats stop once it's handled in the app. Build text with the helpers in `src/bot/ui.ts`.
 - **New achievement:** append to `src/achievements/index.ts`. `check` reads the shared stats and returns
   progress, so locked ones show how close you are.
-- **New AI job:** `src/ai/jobs/<id>.ts`, scheduled in `src/worker/index.ts`. Use `model(task)`
+- **New scheduled or event-driven job:** one entry in `JOBS` in `src/jobs/index.ts`: an `id`, a `schedule`
+  (`{ cron }` in the user's time zone, or `{ everyMinutes }`) and `run()`. Add `on: ['some.event']` to also run it
+  the moment `emit('some.event')` fires. The engine (`src/core/jobs.ts`) keeps one run at a time across the worker
+  and the web, remembers next runs across restarts, catches up missed cron runs and backs off after failures.
+  New connectors get a `sync:<id>` job automatically and sync as soon as they're connected.
+- **New AI job:** `src/ai/jobs/<id>.ts`, added to `JOBS` in `src/jobs/index.ts`. Use `model(task)`
   from `src/ai` and log through `src/ai/run.ts`.
 - **Odd fields:** put them in the `meta` JSON column; promote to a real column only when queried.
 
@@ -62,6 +90,8 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
 - Re-running any sync or parse must be safe: dedupe on `(source, externalId)` / `externalRef`.
 - Nothing syncs until the user connects it on /connectors. Keys typed there are stored encrypted in
   `connections.secrets_encrypted` and loaded into a key map (`core/secrets.ts`); `.env` only fills blanks.
+- Keys can also come from a dotsafe vault: `npm run dev:vault` runs the app under `dotsafe run`, which injects
+  them as environment variables (see docs/CONNECTORS.md). Never print or log their values.
 - Read connector keys with `env()` from `core/env.ts`, never `process.env`. Never change `process.env` at
   runtime: inside `next dev` it makes Turbopack rebuild and reload the page in a loop.
 - Server actions scope every write to `getUser()`.
@@ -74,6 +104,20 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
   never raises the ceiling) and **standard** (fixed measures that mean the same for everyone).
   Synced data earns full XP, typed-in data half and at most 40 a day. Streak multiplier up to ×1.5.
 - Fair play: a routine pays from the day after it was created; only today and yesterday are rescored.
+- **The System** (Solo Leveling style) issues the daily quests: `src/core/system.ts` reads every signal from
+  `src/core/patterns.ts`, the AI (`plan` model) picks what to train from the stats the user wants to improve
+  (Settings → The System, `profile.improve`) and what's slipping, and words it. `src/domain/system.ts` (tested)
+  keeps it fair: targets are clamped near the usual, ranks E–S come from how often past days met the target,
+  quests you'd clear anyway are skipped, difficulty follows your clear rate, connector data clears quests, a
+  missed daily becomes a penalty quest the next day, and sharp bad changes call an emergency quest.
+  It also reads spending habits from order items (impulse categories and items bought on many days, like a soft
+  drink; `habitSignals` in `src/domain/basket.ts`): at most one habit quest a day, only when that habit is above
+  its usual, never the one cleared yesterday (`balanceHabits`). A sudden spike can still call an emergency quest. Without an
+  AI model the rule-based fallback sets the quests. Quests live in `system_quests`; the worker runs it every
+  5 minutes and warns at 21:00 (notification category `system`).
+- Weekly quests, chests and streak freezes: rules in `src/domain/quests.ts` (tested), wiring in `src/core/quests.ts`.
+  Quests aren't stored: picks are seeded by date and progress is read from `xp_events`. Chests are earned once
+  per `ref` and pay XP when opened; freezes cap at 2 and are spent automatically to save a streak.
 - Keep per-event `kind` and `verified`: a future ranked view will count only standard, verified XP.
   There are no leaderboards or sharing yet.
 

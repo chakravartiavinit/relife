@@ -14,7 +14,7 @@ Status: v0 design, personal local-first build. Public open-source release comes 
 
 | # | Requirement | Category |
 |---|---|---|
-| F1 | Binance: trades (spot, P2P, convert), deposits/withdrawals, holdings, FIFO P&L, Indian crypto tax (30% + 1% TDS) | Wealth |
+| F1 | Binance: trades (spot, P2P, convert), deposits/withdrawals, holdings, FIFO P&L | Wealth |
 | F2 | Spending from UPI/cards (Zepto, Zomato, Blinkit, etc.), categorized, plus near-live balance for Axis accounts | Wealth |
 | F3 | GitHub: daily commits, PRs, reviews, streaks | Skills |
 | F4 | Manual learning items (courses, subscriptions like boot.dev): cost, progress, time logged | Skills |
@@ -78,7 +78,8 @@ Status: v0 design, personal local-first build. Public open-source release comes 
 Two processes, one repo, one database:
 
 - **web**: Next.js App Router. Renders the dashboard, mutates via server actions, exposes a tiny HTTP surface (`/api/ingest`, `/api/health`).
-- **worker**: long-running Node process. Owns everything time-based: bot, cron, syncs, reminders, rules, AI jobs.
+- **worker**: long-running Node process. Runs the bot and the job scheduler; every time-based or event-driven task
+  (syncs, parsing, reminders, rules, XP, AI) is a job in `src/jobs/index.ts`.
 
 Why split: Next.js request handlers are not a good home for long-lived loops (bot polling, timers). Keeping them in a worker means the dashboard can restart freely without dropping reminders.
 
@@ -260,7 +261,7 @@ Today            sky header (time of day) · capsule progress per category · du
 Health           sleep, steps, water, medicines, routines
 Mind             mood, screen time, journal
 Skills           GitHub, learning items, practice time
-Wealth           net worth · Spending (category, merchant, trends) · Portfolio (Binance P&L, tax)
+Wealth           net worth · Spending (category, merchant, trends) · Portfolio (Binance P&L)
                  · Subscriptions (next due, monthly/yearly total)
 Relationships    people, last contacted, quality time
 Insights         weekly reviews, pending suggestions, plans
@@ -287,7 +288,7 @@ Trade-off to decide at mobile time: Expo gives the best native feel and HealthKi
 
 ### 8.2 Brand: ReLife theme
 
-Sampled from the poster and tuned for UI:
+Sky and sakura, tuned for UI:
 
 | Token | Hex | Source / use |
 |---|---|---|
@@ -312,9 +313,11 @@ Category colors (charts, chips, capsule fills), harmonized with the brand:
 | Wealth | cardigan gold (deepened for contrast) |
 | Relationships | sky teal |
 
-Logo: the wordmark with the "i" replaced by a capsule (blue top, white bottom, ink outline). App icon: the capsule alone, tilted, on the sky gradient. The capsule is also the core UI motif (below).
+Logo: the wordmark with the "i" replaced by a capsule (blue top, white bottom, ink outline). App icon: the capsule on its own. Source: `assets/brand/relife-logo.png`; `node scripts/brand.mjs assets/brand/relife-logo.png` builds the light and dark logos and the icons. The capsule is also the core UI motif (below).
 
 > IP note: the ReLIFE name, wordmark and capsule-"i" are from the anime (© YayoiSo/comico/ReLIFE Laboratory). The project uses the original logo as a fan tribute; it is excluded from the AGPL license (see README → Credits).
+
+The project was briefly called Savepoint, with its own crystal logo, in November 2026, then went back to ReLife and the original logo. Internal names (the `relife` database, the iCloud `relife/inbox.txt` path, browser storage keys and event names) never changed.
 
 ### 8.3 Typography
 
@@ -380,7 +383,25 @@ Logo: the wordmark with the "i" replaced by a capsule (blue top, white bottom, i
 | LLM down / no key | AI jobs skip silently; rules still alert. |
 | Worker dead | Heartbeat banner on dashboard; `launchd` agent restarts it on login. |
 
-Observability is just tables: `sync_runs`, `llm_runs`, `raw_events.status`, heartbeat. A Settings → System page renders them.
+Observability is just tables: `jobs`, `sync_runs`, `llm_runs`, `raw_events.status`, heartbeat.
+
+### Jobs
+
+Every scheduled or event-driven task is one entry in `src/jobs/index.ts`; the engine is `src/core/jobs.ts`.
+
+- **State in Postgres** (`jobs`): next run, last result, failures in a row, and a lease (`locked_until`). A run
+  takes the lease with one conditional `UPDATE`, so the worker and the web's "Sync now" never run the same job
+  at once. Leases of dead local processes are freed on the next tick; others expire after `timeoutMinutes`.
+- **Schedules**: `{ everyMinutes }` (first run at once, so a new connector syncs immediately) or `{ cron }` in the
+  user's time zone. A cron run missed while the worker was off runs once on start if within `catchUpMinutes`.
+- **Requests and events**: `requestJob(id)` / `emit(event)` mark jobs to run now and wake the worker through
+  Postgres `NOTIFY` (about half a second); a 15-second tick is the fallback. Events: `connector.connected:<id>`,
+  `raw.added`, `data.changed`.
+- **Backoff**: connector jobs wait failures × interval (at most 6 hours) after errors.
+- **Concurrency**: up to 4 jobs at once, each in the background, so a long first sync never blocks the rest.
+- **Ingest path**: a sync writes raw events in batches of 250 (`insert … on conflict do nothing`), then emits
+  `raw.added`; the single `parse` job turns them into rows. Every derived table has a unique key
+  (`source, external_ref` and the like), so re-running any sync or parse never duplicates data.
 
 ---
 
@@ -451,7 +472,7 @@ relife/
 | M0 | Repo, Docker Postgres, Drizzle schema, tokens, `/dev/ui` skeleton, `CLAUDE.md` | `docker compose up && npm run dev` runs web + worker |
 | M1 | Telegram bot + schedules engine (routines, water, medicines, subscriptions) | Used daily for 7 days |
 | M2 | Dashboard v1: Today, schedules/trackers CRUD, subscriptions, tracker page, ⌘K | Everything managed from UI; passes `better-interface` review |
-| M3 | Binance: trades, P2P, holdings, FIFO P&L, tax | Portfolio matches Binance within fees |
+| M3 | Binance: trades, P2P, holdings, FIFO P&L | Portfolio matches Binance within fees |
 | M4 | GitHub connector | Daily contributions match GitHub graph |
 | M5 | iCloud inbox: Axis SMS parser, steps, sleep; Spending page | A month of spend categorized with < 5% manual fixes |
 | M6 | Gmail: Axis alerts, order emails, pre-debit emails | Item-level food/grocery spend visible |

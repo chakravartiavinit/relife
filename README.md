@@ -1,6 +1,6 @@
 # ReLife
 
-A second chance, built from small daily changes. ReLife tracks Health, Mind, Skills, Wealth and
+Level up your real life, one day at a time. ReLife is a life RPG: it tracks Health, Mind, Skills, Wealth and
 People in one place, pulls in what it can automatically (Binance, GitHub, bank SMS, Gmail), reminds
 you on Telegram, and lets an AI model of your choice turn the data into nudges and plans.
 
@@ -14,8 +14,8 @@ Local-first: everything runs on your machine, and your data stays in your own Po
 ## What's inside
 
 - **Today**: what to do now. Routines, medicines, daily goals like water, payments due, suggestions.
-- **Overview**: how it's going. Daily streak, one headline number per area, a consistency grid and
-  trends.
+- **Progress**: your character sheet. Level, title, streak, the week per area, consistency,
+  achievements, quests and chests.
 - **Areas**: Health, Mind, Skills, Wealth (spending, portfolio, subscriptions) and People. Each opens
   with its key numbers, then charts and routines.
 - **Habits**: every routine, medicine and tracker, with streaks and 14-day history.
@@ -124,9 +124,10 @@ components keep their own MIT notices (see Credits).
 
 ## Credits
 
-- Charts: [dither-kit](https://tripwire.sh/dither-kit) (MIT). Motion components: [beUI](https://beui.dev) (MIT).
-- Connector logos: [Simple Icons](https://simpleicons.org) (CC0) and [Lobe Icons](https://github.com/lobehub/lobe-icons) (MIT).
+- Charts and motion components: [beUI](https://beui.dev) (MIT).
+- Connector and brand logos (`public/connectors`, `public/brands`): [Simple Icons](https://simpleicons.org) (CC0) and [Lobe Icons](https://github.com/lobehub/lobe-icons) (MIT).
   Trademarks belong to their owners.
+- Hobby and shopping-category pictures (`public/hobbies`, `public/categories`): [Fluent Emoji](https://github.com/microsoft/fluentui-emoji) by Microsoft (MIT).
 - The ReLIFE name and logo (`assets/brand/`, `public/brand/`, `src/app/icon.png`, `src/app/apple-icon.png`)
   belong to their owners (© YayoiSo/comico/ReLIFE Laboratory) and are used as a fan tribute. They are
   not covered by this project's AGPL license.
