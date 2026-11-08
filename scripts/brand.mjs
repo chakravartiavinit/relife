@@ -73,6 +73,17 @@ await icon(512, 'src/app/icon.png', 112)
 await icon(180, 'src/app/apple-icon.png', 0)
 await icon(512, 'public/brand/icon-512.png', 0)
 await icon(192, 'public/brand/icon-192.png', 0)
+// Chrome extension icons: just the capsule on transparent, as tall as the icon (it's only a few pixels wide at
+// 16px), sharpened at the toolbar sizes so its outline stays crisp. Chrome wants 16px of space around the
+// 128px icon's art.
+for (const size of [16, 32, 48, 128]) {
+  const art = size === 128 ? 96 : size
+  const small = size <= 32
+  let inner = sharp(cap).resize({ height: small ? art : art - 2, fit: 'inside' })
+  if (small) inner = inner.sharpen({ sigma: 0.5 })
+  await sharp({ create: { width: size, height: size, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+    .composite([{ input: await inner.toBuffer(), gravity: 'centre' }]).png().toFile(`extension/icons/icon${size}.png`)
+}
 // Content-hashed names so browsers never show a stale logo after a rebuild.
 for (const f of readdirSync('public/brand')) if (/\.[0-9a-f]{8}\.png$/.test(f)) rmSync(`public/brand/${f}`)
 const files = {}
