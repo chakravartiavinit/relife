@@ -1,0 +1,82 @@
+{
+  "note": "Fixture: one Chess.com day.",
+  "event": {
+    "source": "chesscom",
+    "externalId": "2026-11-06:abc",
+    "at": "2026-11-07T10:00:00.000Z",
+    "body": {
+      "platform": "chesscom",
+      "date": "2026-11-06",
+      "games": 5,
+      "wins": 3,
+      "draws": 1,
+      "losses": 1,
+      "minutes": 42,
+      "rating": 1234,
+      "control": "blitz"
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "date": "2026-11-06",
+      "source": "chesscom",
+      "verified": true,
+      "tracker": "chess",
+      "value": 42,
+      "defaults": {
+        "name": "Chess",
+        "category": "hobbies",
+        "kind": "duration",
+        "unit": "min",
+        "direction": "up"
+      }
+    },
+    {
+      "kind": "entry",
+      "date": "2026-11-06",
+      "source": "chesscom",
+      "verified": true,
+      "tracker": "chess.games",
+      "value": 5,
+      "defaults": {
+        "name": "Chess games",
+        "category": "hobbies",
+        "kind": "number"
+      }
+    },
+    {
+      "kind": "entry",
+      "date": "2026-11-06",
+      "source": "chesscom",
+      "verified": true,
+      "tracker": "chess.wins",
+      "value": 3,
+      "defaults": {
+        "name": "Chess wins",
+        "category": "hobbies",
+        "kind": "number",
+        "direction": "up"
+      }
+    },
+    {
+      "kind": "entry",
+      "date": "2026-11-06",
+      "source": "chesscom",
+      "verified": true,
+      "tracker": "chess.rating-chesscom",
+      "value": 1234,
+      "meta": {
+        "control": "blitz"
+      },
+      "defaults": {
+        "name": "Chess.com rating",
+        "category": "hobbies",
+        "kind": "number",
+        "aggregate": "last",
+        "direction": "up",
+        "target": 1300
+      }
+    }
+  ]
+}

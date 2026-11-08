@@ -1,0 +1,62 @@
+{
+  "note": "Fixture: one Codeforces day.",
+  "event": {
+    "source": "codeforces",
+    "externalId": "2026-11-06:abc",
+    "at": "2026-11-07T10:00:00.000Z",
+    "body": {
+      "platform": "codeforces",
+      "date": "2026-11-06",
+      "solved": 3,
+      "submissions": 7,
+      "contests": 1,
+      "rating": 1642
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "date": "2026-11-06",
+      "source": "codeforces",
+      "verified": true,
+      "tracker": "cp.solved",
+      "value": 3,
+      "defaults": {
+        "name": "Problems solved",
+        "category": "skills",
+        "kind": "number",
+        "direction": "up",
+        "target": 1
+      }
+    },
+    {
+      "kind": "entry",
+      "date": "2026-11-06",
+      "source": "codeforces",
+      "verified": true,
+      "tracker": "cp.submissions",
+      "value": 7,
+      "defaults": {
+        "name": "Submissions",
+        "category": "skills",
+        "kind": "number"
+      }
+    },
+    {
+      "kind": "entry",
+      "date": "2026-11-06",
+      "source": "codeforces",
+      "verified": true,
+      "tracker": "cp.rating-codeforces",
+      "value": 1642,
+      "defaults": {
+        "name": "Codeforces rating",
+        "category": "skills",
+        "kind": "number",
+        "aggregate": "last",
+        "direction": "up",
+        "target": 1700
+      }
+    }
+  ]
+}
