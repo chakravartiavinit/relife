@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
 import { and, eq, gte, isNotNull, sql } from 'drizzle-orm'
-import { ArrowUpRight, Bot, Brain, Database, KeyRound, Palette, ShieldCheck, UserRound, type LucideIcon } from 'lucide-react'
+import { ArrowUpRight, BellRing, Bot, Swords, Brain, Database, KeyRound, Palette, ShieldCheck, UserRound, type LucideIcon } from 'lucide-react'
 import { databaseUrl, db, isMock, schema } from '@/db'
 import { getUser } from '@/core/user'
 import { aiEnabled, modelId, type Task } from '@/ai'
@@ -11,12 +11,17 @@ import { Badge, PageHeader, Skeleton } from '@/ui/components/card'
 import { buttonClass } from '@/ui/components/button'
 import { ProfileForm, ThemePicker } from '@/ui/components/settings-ui'
 import { SettingsRow, SettingsSection } from '@/ui/components/settings-layout'
+import { NotificationSettings } from '@/ui/components/notification-settings'
+import { SystemFocus } from '@/ui/components/system-focus'
+import { loadSignals } from '@/core/patterns'
 
 export const metadata: Metadata = { title: 'Settings' }
 
 const SECTIONS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: 'profile', label: 'Profile', icon: UserRound },
   { id: 'coaching', label: 'Goals & coaching', icon: Brain },
+  { id: 'system', label: 'The System', icon: Swords },
+  { id: 'notifications', label: 'Notifications', icon: BellRing },
   { id: 'appearance', label: 'Appearance', icon: Palette },
   { id: 'ai', label: 'AI', icon: Bot },
   { id: 'privacy', label: 'Data & privacy', icon: ShieldCheck },
@@ -31,7 +36,12 @@ const TASKS: { task: Task; label: string; hint: string }[] = [
 export default function SettingsPage() {
   return (
     <>
-      <PageHeader eyebrow="Settings" title="Settings" description="Your profile, how ReLife looks, which AI it uses and where your data lives. Data sources and API keys are on Connectors." />
+      <PageHeader
+        eyebrow="Settings"
+        title="Settings"
+        description="Your profile, how ReLife looks, which AI it uses and where your data lives. Data sources and API keys are on Connectors."
+        actions={<Link href="/welcome" className={buttonClass({ variant: 'secondary', size: 'sm' })}>Run setup again</Link>}
+      />
       <div className="grid gap-8 lg:grid-cols-[200px_minmax(0,1fr)] xl:gap-12">
         <nav aria-label="Settings sections" className="hidden lg:block">
           <ul className="sticky top-9 flex flex-col gap-0.5">
@@ -59,7 +69,7 @@ async function Settings() {
   await connection()
   const user = await getUser()
   const since = new Date(Date.now() - 30 * 86_400_000)
-  const [[llm], [keys], [beat]] = await Promise.all([
+  const [[llm], [keys], [beat], { signals }] = await Promise.all([
     db.select({
       calls: sql<number>`count(*)::int`,
       failed: sql<number>`count(*) filter (where not ${schema.llmRuns.ok})::int`,
@@ -68,6 +78,7 @@ async function Settings() {
     db.select({ n: sql<number>`count(*)::int` }).from(schema.connections)
       .where(and(eq(schema.connections.userId, user.id), eq(schema.connections.enabled, true), isNotNull(schema.connections.secretsEncrypted))),
     db.select().from(schema.heartbeats).where(eq(schema.heartbeats.name, 'worker')),
+    loadSignals(user),
   ])
   const dbName = new URL(databaseUrl).pathname.slice(1)
   const workerUp = beat && Date.now() - beat.at.getTime() < 3 * 60_000
@@ -81,6 +92,13 @@ async function Settings() {
         timezones={Intl.supportedValuesOf('timeZone')} currencies={Intl.supportedValuesOf('currency')}
       />
 
+      <SystemFocus
+        initial={user.profile.improve ?? []}
+        stats={signals.filter((s) => s.direction !== 'none').map((s) => ({ id: s.id, name: s.name, area: s.area, better: s.direction === 'down' ? 'less' as const : 'more' as const }))}
+      />
+
+      <NotificationSettings initial={user.profile.notifications} />
+
       <SettingsSection id="appearance" title="Appearance" description="Saved in this browser. The sun and moon button in the sidebar switches too.">
         <SettingsRow label="Theme" hint="System follows your Mac or phone.">
           <ThemePicker />
@@ -93,7 +111,11 @@ async function Settings() {
         description="The model you connect on Connectors handles everything. Use LLM_PARSE, LLM_PLAN or LLM_CHAT in .env to give one job a different model."
         action={<Link href="/connectors" className={buttonClass({ variant: 'secondary', size: 'sm' })}>AI providers <ArrowUpRight className="size-4" strokeWidth={1.5} /></Link>}
       >
-        {TASKS.map(({ task, label, hint }) => {
+        {!TASKS.some(({ task }) => modelId(task)) ? (
+          <SettingsRow label="No model yet" hint="Reading odd messages, plans, reviews and Ask all need one.">
+            <Link href="/connectors" className={buttonClass({ variant: 'primary', size: 'sm' })}>Connect an AI model</Link>
+          </SettingsRow>
+        ) : TASKS.map(({ task, label, hint }) => {
           const id = modelId(task)
           const ok = aiEnabled(task)
           return (

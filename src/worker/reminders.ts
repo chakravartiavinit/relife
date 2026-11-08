@@ -1,11 +1,13 @@
 import { and, eq, isNotNull, lte } from 'drizzle-orm'
 import { db, schema } from '@/db'
-import { esc, sendMessage } from '@/core/notify'
+import { esc } from '@/core/notify'
+import { notify } from '@/core/outbox'
 import type { Schedule } from '@/core/schedules'
 import { formatTime } from '@/core/time'
 import type { User } from '@/core/user'
 import { occurrencesBetween } from '@/domain/recurrence'
 import { isPayment, reminderMessage } from '@/bot/messages'
+import { head } from '@/bot/ui'
 import { delivery, occurrenceWindow, reminderAt } from './due'
 
 let lastTick: Date | undefined
@@ -38,8 +40,12 @@ export async function remindTick(user: User, now = new Date()) {
   if (digest.length) {
     const lines = digest
       .sort((a, b) => a.occ.getTime() - b.occ.getTime())
-      .map(({ s, occ }) => `• ${formatTime(occ, user.timezone)} ${esc(s.name)}${isPayment(s) ? ' (payment due soon)' : ''}`)
-    await sendMessage(`<b>While you were away</b>\n${lines.join('\n')}\n\nOpen /today to check them off.`)
+      .map(({ s, occ }) => `▫️ ${formatTime(occ, user.timezone)} ${esc(s.name)}${isPayment(s) ? ' <i>· payment due soon</i>' : ''}`)
+    await notify(user, 'reminders', {
+      text: `${head('👋', 'While you were away', `${digest.length} ${digest.length === 1 ? 'reminder' : 'reminders'}`)}\n${lines.join('\n')}`,
+      buttons: [[{ text: '📋 Check them off', data: 't:o' }]],
+      once: true,
+    })
   }
 
   // Snoozed reminders whose time has come.
@@ -62,6 +68,5 @@ async function alreadyChecked(scheduleId: string, occurrence: Date) {
 
 async function sendReminder(user: User, s: Schedule, occ: Date, rid: string) {
   const { text, buttons } = await reminderMessage(user, s, occ, rid)
-  const mid = await sendMessage(text, { buttons })
-  if (mid) await db.update(schema.reminders).set({ telegramMessageId: mid, sentAt: new Date() }).where(eq(schema.reminders.id, rid))
+  await notify(user, 'reminders', { text, buttons, ref: `reminder:${rid}` })
 }

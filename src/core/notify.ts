@@ -56,6 +56,14 @@ export async function editMessage(messageId: number, text: string, buttons?: But
   }
 }
 
+/** Remove a message (an older copy of a repeated reminder). Fails quietly: Telegram only deletes recent ones. */
+export async function deleteMessage(messageId: number) {
+  const c = client()
+  const chat = env('TELEGRAM_ALLOWED_CHAT_ID')
+  if (!c || !chat) return
+  await c.deleteMessage(chat, messageId).catch(() => {})
+}
+
 /** Escape text for Telegram HTML parse mode. */
 export function esc(s: string) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

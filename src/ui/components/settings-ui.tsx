@@ -5,6 +5,7 @@ import { Monitor, Moon, Sun } from 'lucide-react'
 import { saveProfile, type FormState } from '@/app/actions'
 import { Button } from './button'
 import { Input, Textarea } from './form'
+import { CurrencyPicker, TimezonePicker } from './region-picker'
 import { SettingsRow, SettingsSection } from './settings-layout'
 import { applyTheme, type ThemeChoice } from './theme-toggle'
 import { useToast } from './toast'
@@ -20,6 +21,10 @@ export function ProfileForm({ name, timezone, baseCurrency, goals, constraints, 
 }) {
   const [state, action, pending] = useActionState<FormState, FormData>(saveProfile, null)
   const [dirty, setDirty] = useState(false)
+  const [resets, setResets] = useState(0)
+  // This device's zone, offered first in the picker. Read after mount so SSR markup matches.
+  const [device, setDevice] = useState<string | null>(null)
+  useEffect(() => setDevice(Intl.DateTimeFormat().resolvedOptions().timeZone), [])
   const form = useRef<HTMLFormElement>(null)
   const toast = useToast()
 
@@ -37,7 +42,7 @@ export function ProfileForm({ name, timezone, baseCurrency, goals, constraints, 
       // Submit by hand: a form `action` resets the fields afterwards, which would wipe edits when a save fails.
       onSubmit={(e) => { e.preventDefault(); const data = new FormData(e.currentTarget); startTransition(() => action(data)) }}
       onChange={() => setDirty(true)}
-      onReset={() => setDirty(false)}
+      onReset={() => { setDirty(false); setResets((n) => n + 1) }}
       className="flex flex-col gap-10"
     >
       <SettingsSection id="profile" title="Profile" description="Used for day boundaries, money conversion and every AI prompt.">
@@ -49,12 +54,10 @@ export function ProfileForm({ name, timezone, baseCurrency, goals, constraints, 
           hint={<>Decides when your day starts and when reminders fire.{localTime ? <> It’s <span className="tabular-nums">{localTime}</span> there now.</> : null}</>}
           htmlFor="p-tz"
         >
-          <Input id="p-tz" name="timezone" defaultValue={timezone} list="tz-list" spellCheck={false} autoComplete="off" className="max-w-sm" />
-          <datalist id="tz-list">{timezones.map((z) => <option key={z} value={z} />)}</datalist>
+          <TimezonePicker key={`tz${resets}`} id="p-tz" name="timezone" defaultValue={timezone} options={timezones} suggested={[device]} onChange={() => setDirty(true)} className="max-w-sm" />
         </SettingsRow>
         <SettingsRow label="Base currency" hint="Every amount is converted into this for totals and charts. Originals are kept." htmlFor="p-cur">
-          <Input id="p-cur" name="baseCurrency" defaultValue={baseCurrency} list="cur-list" maxLength={5} spellCheck={false} autoComplete="off" className="max-w-[9rem] uppercase" />
-          <datalist id="cur-list">{currencies.map((c) => <option key={c} value={c} />)}</datalist>
+          <CurrencyPicker key={`cur${resets}`} id="p-cur" name="baseCurrency" defaultValue={baseCurrency} options={currencies} onChange={() => setDirty(true)} className="max-w-[12rem]" />
         </SettingsRow>
       </SettingsSection>
 
@@ -79,8 +82,8 @@ export function ProfileForm({ name, timezone, baseCurrency, goals, constraints, 
         className={cn(
           // Floats over the page (no layout space): centred on the content column, above the phone tab bar.
           'fixed bottom-24 left-1/2 z-40 flex w-[min(560px,calc(100%-2rem))] -translate-x-1/2 items-center justify-between gap-3 rounded-lg bg-ink py-2.5 pr-2.5 pl-4 text-bg shadow-3 lg:bottom-6 lg:left-[calc(50%+132px)]',
-          'transition-[opacity,translate] duration-200 ease-[cubic-bezier(0.2,0,0,1)]',
-          dirty ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-2 opacity-0',
+          'transition-[opacity,translate] duration-200 ease-out-quint',
+          dirty ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-2 opacity-0 motion-reduce:translate-y-0',
         )}
       >
         <span className="flex min-w-0 items-center gap-2 text-[13.5px] font-medium">
@@ -125,7 +128,7 @@ export function ThemePicker() {
             aria-checked={on}
             onClick={() => { applyTheme(key); setChoice(key) }}
             className={cn(
-              'flex h-[72px] flex-col items-center justify-center gap-1.5 rounded-md text-[13px] font-medium transition-[background-color,color,box-shadow,scale] duration-150 ease-[cubic-bezier(0.2,0,0,1)] active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill',
+              'flex h-[72px] flex-col items-center justify-center gap-1.5 rounded-md text-[13px] font-medium transition-[background-color,color,box-shadow,scale] duration-150 ease-out-quint active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill',
               on ? 'bg-surface text-ink shadow-[0_0_0_2px_var(--pill)]' : 'bg-surface-2 text-ink-3 hover:text-ink',
             )}
           >
