@@ -31,7 +31,7 @@ export function HeatCalendarTooltip({
           ? children(tooltip)
           : (children ?? (
               <>
-                <span className="inline-flex items-center gap-1 font-mono tabular-nums">
+                <span className="inline-flex items-center gap-1 font-semibold tabular-nums">
                   <NumberTicker
                     value={tooltip.days > 1 ? tooltip.total : tooltip.count}
                     duration={0.35}
