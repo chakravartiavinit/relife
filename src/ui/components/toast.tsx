@@ -1,5 +1,6 @@
 'use client'
 
+import { celebrateAchievement, celebrateLevel } from './celebrate'
 import { createContext, useContext, useMemo } from 'react'
 import { AnimatedToastStack, useAnimatedToastStack, type ToastStatus } from '@/ui/beui/motion/animated-toast-stack'
 
@@ -43,7 +44,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         maxVisible={3}
         classNames={{
           // Above the phone tab bar; shadows instead of a border, ReLife radius.
-          root: 'bottom-24 lg:bottom-6',
+          // z-[75]: above pop-ups (chests, setup) so their errors and level-ups stay readable.
+          root: 'bottom-24 z-[75] lg:bottom-6',
           surface: 'rounded-lg border-0 bg-surface/95 p-2.5 pr-3 shadow-3',
           title: 'text-[13.5px] font-medium text-ink',
         }}
@@ -52,11 +54,16 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   )
 }
 
-type XpNews = { levelUp?: { level: number; title: string }; unlocked: string[] } | undefined | void
+type XpNews = import('@/core/xp').XpNews | undefined | void
 
-/** Toast a level-up and any achievements unlocked by the last log. Quiet otherwise. */
+/**
+ * Level-ups and achievements play their own animations (celebrate.tsx); quest chests get a toast.
+ * Quiet when nothing changed.
+ */
 export function announceXp(toast: Notify, news: XpNews) {
   if (!news) return
-  if (news.levelUp) toast(`Level ${news.levelUp.level}: ${news.levelUp.title}`, 'good')
-  for (const name of news.unlocked) toast(`Achievement unlocked: ${name}`, 'good')
+  for (const a of news.unlocked) celebrateAchievement(a)
+  // The level-up screen goes last so it sits over the banners.
+  if (news.levelUp) setTimeout(() => celebrateLevel(news.levelUp!), news.unlocked.length ? 900 : 0)
+  if (news.chests) toast(news.chests === 1 ? 'Quest complete. A chest is waiting on Today' : `${news.chests} quests complete. Chests are waiting on Today`, 'good')
 }

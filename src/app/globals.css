@@ -4,26 +4,27 @@
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 /*
- * ReLife design tokens. Sampled from the poster, tuned for contrast.
+ * ReLife design tokens: the ReLIFE capsule. Ink black, clean white and capsule blue, light-first,
+ * with halftone dots as the one decorative texture. Tuned for contrast.
  * Text-safe colors are AA (4.5:1) on their surface; sky / sakura / cardigan are fills only.
  * Keep in sync with src/ui/tokens.ts (used by charts and future native clients).
  */
 :root {
   color-scheme: light;
 
-  --bg: oklch(0.982 0.006 236);           /* paper with a hint of sky */
+  --bg: oklch(0.984 0.003 245);           /* clean white paper, barely cool */
   --surface: oklch(1 0 0);
-  --surface-2: oklch(0.965 0.008 236);    /* inset wells, tracks */
-  --surface-3: oklch(0.935 0.012 236);    /* hover on surface-2 */
+  --surface-2: oklch(0.962 0.006 245);    /* inset wells, tracks */
+  --surface-3: oklch(0.93 0.009 245);     /* hover on surface-2 */
   --ink: oklch(0.178 0 0);                /* wordmark black */
   --ink-2: oklch(0.40 0.012 250);         /* secondary text, 9.6:1 */
   --ink-3: oklch(0.52 0.012 250);         /* tertiary text, 5.6:1 */
   --hairline: oklch(0.178 0 0 / 0.08);
   --divider: oklch(0.178 0 0 / 0.07);
 
-  --pill: oklch(0.617 0.126 246.4);       /* #3B8BCC capsule blue: fills, focus ring */
-  --pill-ink: oklch(0.526 0.113 247.2);   /* #2A6FA8 text-safe blue */
-  --pill-wash: oklch(0.617 0.126 246.4 / 0.10);
+  --pill: oklch(0.655 0.14 250);          /* #4A9BE8 the logo's capsule blue: fills, focus ring */
+  --pill-ink: oklch(0.52 0.13 252);       /* text-safe blue, 5.3:1 on white */
+  --pill-wash: oklch(0.655 0.14 250 / 0.10);
   --line-blue: oklch(0.703 0.109 245.2);  /* #61A6DF line-art */
   --sky: oklch(0.813 0.114 231.8);        /* #6DCFFF */
   --sky-soft: oklch(0.937 0.036 233.8);   /* #D4EFFF */
@@ -46,7 +47,8 @@
   --cat-mind: oklch(0.568 0.155 292.2);
   --cat-skills: oklch(0.526 0.113 247.2);
   --cat-wealth: oklch(0.563 0.112 76.7);
-  --cat-relationships: oklch(0.55 0.11 180);
+  --cat-hobbies: oklch(0.58 0.14 145);
+  --cat-relationships: oklch(0.55 0.1 200);
 
   /* Elevation: layered transparent shadows, no borders */
   /* Shadows are tinted toward the sky hue and carry a 1px top highlight (light from above). */
@@ -55,15 +57,11 @@
   --elev-3: inset 0 1px 0 oklch(1 0 0 / 0.9), 0 0 0 1px oklch(0.30 0.03 250 / 0.08), 0 4px 8px oklch(0.30 0.04 250 / 0.06), 0 28px 64px -16px oklch(0.30 0.06 250 / 0.28);
   --elev-inset: inset 0 1px 2px oklch(0.30 0.04 250 / 0.08), inset 0 0 0 1px oklch(0.30 0.03 250 / 0.06);
 
-  /* App canvas: a sky wash at the top, a sakura blush on the left, fading into paper. */
-  --canvas-wash:
-    radial-gradient(1100px 520px at 78% -12%, oklch(0.88 0.075 233 / 0.55), transparent 70%),
-    radial-gradient(720px 420px at 8% -8%, oklch(0.92 0.05 352 / 0.45), transparent 70%),
-    radial-gradient(900px 600px at 50% 120%, oklch(0.95 0.03 85 / 0.35), transparent 70%);
-  --grain-opacity: 0.035;
+  /* App canvas: clean paper with one capsule-blue glow at the top right. */
+  --canvas-wash: radial-gradient(1100px 520px at 85% -14%, oklch(0.9 0.06 248 / 0.5), transparent 70%);
+  --grain-opacity: 0.025;
   --glass: oklch(1 0 0 / 0.62);
 
-  --ease: cubic-bezier(0.2, 0, 0, 1);
   --img-outline: oklch(0 0 0 / 0.1);
 
   /* shadcn-style aliases so registry components (beui.dev) inherit the ReLife theme.
@@ -87,9 +85,9 @@
   --hairline: oklch(1 0 0 / 0.08);
   --divider: oklch(1 0 0 / 0.07);
 
-  --pill: oklch(0.70 0.11 245);
-  --pill-ink: oklch(0.76 0.10 242);
-  --pill-wash: oklch(0.70 0.11 245 / 0.14);
+  --pill: oklch(0.70 0.13 250);
+  --pill-ink: oklch(0.78 0.11 248);
+  --pill-wash: oklch(0.70 0.13 250 / 0.14);
   --sky-soft: oklch(0.32 0.04 240);
   --sakura-soft: oklch(0.34 0.05 352);
   --cardigan: oklch(0.36 0.03 85);
@@ -107,17 +105,16 @@
   --cat-mind: oklch(0.62 0.15 292);
   --cat-skills: oklch(0.65 0.13 245);
   --cat-wealth: oklch(0.665 0.12 75);
-  --cat-relationships: oklch(0.655 0.11 180);
+  --cat-hobbies: oklch(0.7 0.14 145);
+  --cat-relationships: oklch(0.68 0.1 200);
 
   --elev-1: inset 0 1px 0 oklch(1 0 0 / 0.06), 0 0 0 1px oklch(1 0 0 / 0.06), 0 1px 2px oklch(0 0 0 / 0.3), 0 6px 16px -8px oklch(0 0 0 / 0.5);
   --elev-2: inset 0 1px 0 oklch(1 0 0 / 0.07), 0 0 0 1px oklch(1 0 0 / 0.07), 0 12px 32px -10px oklch(0 0 0 / 0.6);
   --elev-3: inset 0 1px 0 oklch(1 0 0 / 0.08), 0 0 0 1px oklch(1 0 0 / 0.08), 0 28px 64px -16px oklch(0 0 0 / 0.7);
   --elev-inset: inset 0 1px 2px oklch(0 0 0 / 0.35), inset 0 0 0 1px oklch(1 0 0 / 0.05);
 
-  /* Night sky: deep navy with a violet horizon. */
-  --canvas-wash:
-    radial-gradient(1100px 560px at 78% -12%, oklch(0.34 0.07 255 / 0.65), transparent 70%),
-    radial-gradient(720px 440px at 6% -8%, oklch(0.32 0.07 320 / 0.35), transparent 70%);
+  /* Night: deep ink-navy with the capsule-blue glow. */
+  --canvas-wash: radial-gradient(1100px 560px at 85% -14%, oklch(0.34 0.08 252 / 0.6), transparent 70%);
   --grain-opacity: 0.05;
   --glass: oklch(0.26 0.02 252 / 0.62);
 
@@ -151,6 +148,7 @@
   --color-mind: var(--cat-mind);
   --color-skills: var(--cat-skills);
   --color-wealth: var(--cat-wealth);
+  --color-hobbies: var(--cat-hobbies);
   --color-relationships: var(--cat-relationships);
 
   /* shadcn-style names used by src/ui/beui components */
@@ -183,7 +181,9 @@
   --shadow-inset: var(--elev-inset);
   --color-glass: var(--glass);
 
-  --ease-out-quint: cubic-bezier(0.2, 0, 0, 1);
+  --ease-out-quint: cubic-bezier(0.2, 0, 0, 1);         /* UI state changes: hover, press, toggles */
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);    /* entrances and chart reveals */
+  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1); /* on-screen movement */
 }
 
 @layer base {
@@ -226,22 +226,26 @@
     outline: 2px solid var(--pill);
     outline-offset: 2px;
   }
+  /* Photos get a faint edge; logos and icons opt out with outline-none. */
   img {
     outline: 1px solid var(--img-outline);
     outline-offset: -1px;
   }
   ::selection {
-    background: var(--sakura);
+    background: color-mix(in oklch, var(--pill) 30%, transparent);
     color: oklch(0.178 0 0);
   }
 }
 
+/* Reduced motion means fewer, gentler animations, not none: movement goes, fades and colour stay.
+   Motion (motion/react) animations follow the same rule through <MotionConfig reducedMotion="user">. */
+@keyframes relife-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
+  .rise { animation-name: relife-fade; }
+  .animate-pulse { animation: none; }
 }
 
 [data-theme="dark"] body::after {
@@ -254,6 +258,93 @@
   to { opacity: 1; transform: none; filter: none; }
 }
 .rise {
-  animation: relife-rise 0.6s cubic-bezier(0.2, 0, 0, 1) both;
-  animation-delay: calc(var(--i, 0) * 100ms);
+  animation: relife-rise 0.5s var(--ease-out-strong) both;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+/* Chart entrances: a one-time keyframe on first render (keyframes run on page load; @starting-style
+   transitions don't for server-rendered content). Later value changes, like water +250, use the
+   transition instead, so they retarget from the current state rather than restarting. */
+@keyframes reveal-fill {
+  from { clip-path: inset(0 100% 0 0 round 9999px); }
+}
+@keyframes reveal-ring {
+  from { stroke-dashoffset: var(--len); }
+}
+@keyframes reveal-cell {
+  from { opacity: 0; scale: 0.6; }
+}
+.reveal-fill {
+  clip-path: inset(0 calc(100% - var(--fill, 100%)) 0 0 round 9999px);
+  transition: clip-path 300ms var(--ease-out-quint);
+  animation: reveal-fill 700ms var(--ease-out-strong) backwards;
+  animation-delay: calc(var(--i, 0) * 50ms);
+}
+.reveal-ring {
+  stroke-dashoffset: var(--off);
+  transition: stroke-dashoffset 300ms var(--ease-out-quint);
+  animation: reveal-ring 1000ms var(--ease-out-strong) 150ms backwards;
+}
+.reveal-cell {
+  animation: reveal-cell 400ms var(--ease-out-strong) backwards;
+  animation-delay: calc(var(--col, 0) * 30ms);
+}
+/* Training log bars grow from the baseline, a week at a time. */
+@keyframes reveal-bar {
+  from { transform: scaleY(0); }
+}
+.reveal-bar {
+  transform-origin: bottom;
+  animation: reveal-bar 500ms var(--ease-out-strong) backwards;
+  animation-delay: calc(var(--col, 0) * 40ms);
+}
+/* Horizontal bars that grow out from a zero line (profit right, loss left). Set transform-origin per bar. */
+@keyframes reveal-hbar {
+  from { scale: 0 1; }
+}
+.reveal-hbar {
+  animation: reveal-hbar 600ms var(--ease-out-strong) backwards;
+  animation-delay: calc(var(--i, 0) * 50ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal-fill, .reveal-ring, .reveal-cell, .reveal-bar, .reveal-hbar { animation: none; }
+}
+
+/* Halftone dots: the app's one decorative texture (manga screentone), fading out from a header's
+   top-right corner. Colour comes from --tone. Purely decorative: pointer-events off, aria-hidden. */
+.halftone {
+  position: absolute;
+  pointer-events: none;
+  background-image: radial-gradient(circle, var(--tone, var(--pill)) 1.05px, transparent 1.6px);
+  background-size: 9px 9px;
+  -webkit-mask-image: radial-gradient(110% 120% at 100% 0%, #000 0%, transparent 62%);
+  mask-image: radial-gradient(110% 120% at 100% 0%, #000 0%, transparent 62%);
+  opacity: 0.32;
+}
+[data-theme="dark"] .halftone { opacity: 0.22; }
+
+/* <details> content fades in with its rotating chevron. Opacity only, so it needs no reduced-motion
+   variant; browsers without ::details-content simply open instantly. */
+details::details-content {
+  opacity: 0;
+  transition: opacity 150ms var(--ease-out-quint), content-visibility 150ms allow-discrete;
+}
+details[open]::details-content { opacity: 1; }
+
+/* Sidebar sub-pages (Wealth → Spending…): height reveal so the rows below slide rather than jump.
+   A transition, so clicking away mid-open reverses smoothly. Reduced motion keeps only the fade. */
+.nav-sub {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 220ms var(--ease-out-strong), opacity 150ms var(--ease-out-quint);
+}
+.nav-sub[data-open] { grid-template-rows: 1fr; opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .nav-sub { transition: opacity 150ms var(--ease-out-quint); }
+}
+
+/* A scroll area that fades out at its edges, so rows cut off below read as "more to scroll". */
+.scroll-fade {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 10px, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 10px, #000 calc(100% - 28px), transparent);
 }

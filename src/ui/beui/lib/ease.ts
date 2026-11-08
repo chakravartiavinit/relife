@@ -1,5 +1,8 @@
-// ReLife: aligned with the app-wide curve (globals.css --ease).
+// ReLife: the JS twins of the CSS tokens in globals.css. Import these; never retype the arrays.
+/** = --ease-out-quint: UI state changes (hover, press, toggles, menus). */
 export const EASE_OUT = [0.2, 0, 0, 1] as const;
+/** = --ease-out-strong: entrances, reveals and celebrations. */
+export const EASE_OUT_STRONG = [0.23, 1, 0.32, 1] as const;
 /** Accelerating curve for things that fall (a dropped ball, a toppled block). Not for UI entrances. */
 export const EASE_IN = [0.55, 0, 1, 0.45] as const;
 export const EASE_IN_OUT = [0.77, 0, 0.175, 1] as const;
