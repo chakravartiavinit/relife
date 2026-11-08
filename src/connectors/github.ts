@@ -57,7 +57,7 @@ export const github: Connector = {
     { env: 'GITHUB_USER', label: 'Username', optional: true, placeholder: 'octocat', hint: 'Leave blank to use the token’s owner.' },
   ],
   env: ['GITHUB_TOKEN'],
-  everyMinutes: 60,
+  everyMinutes: 30,
   async sync(ctx) {
     const login = env('GITHUB_USER') || (await gql<{ viewer: { login: string } }>('query { viewer { login } }')).viewer.login
     const cursor = (ctx.cursor as Cursor | null) ?? {}

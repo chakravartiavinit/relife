@@ -64,7 +64,7 @@ export const binance: Connector = {
     { env: 'BINANCE_API_SECRET', label: 'API secret', secret: true, hint: 'Create a read-only key in Binance API Management. Leave trading and withdrawals off.' },
   ],
   env: ['BINANCE_API_KEY', 'BINANCE_API_SECRET'],
-  everyMinutes: 60,
+  everyMinutes: 15, // balances and prices for the portfolio; later runs only fetch what's new
   async sync(ctx) {
     const ex = client()
     const cursor: Cursor = { symbols: {}, ...((ctx.cursor as Cursor | null) ?? {}) }

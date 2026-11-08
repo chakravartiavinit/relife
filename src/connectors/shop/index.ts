@@ -50,6 +50,8 @@ export const PLATFORMS: Platform[] = [
   { id: 'amazon', name: 'Amazon India', login: 'https://www.amazon.in/gp/css/order-history', orders: 'https://www.amazon.in/gp/css/order-history', provides: ['Orders', 'Returns'], description: 'Amazon.in orders and returns.', history: amazonHistory },
 ]
 
+const QUICK = new Set(['zomato', 'swiggy', 'blinkit', 'zepto'])
+
 const LOGIN_PAGE = /\/(log-?in|sign-?in|ap\/signin|auth)\b/i
 const envKey = (id: string) => `${id.toUpperCase()}_ORDERS_URL`
 
@@ -63,7 +65,9 @@ function shopConnector(p: Platform): Connector {
     login: { url: p.login },
     fields: [{ env: envKey(p.id), label: 'Order history page', optional: true, placeholder: p.orders, hint: 'Leave blank. Only if the app moves its orders page: open your orders in Chrome and paste the address bar (not an API link).' }],
     env: [],
-    everyMinutes: 6 * 60,
+    // Food and grocery orders matter the same day; big-store orders less often. A bank SMS paying one of these apps
+    // also syncs it at once (src/jobs/index.ts). Each sync opens a hidden Chrome window, so not more often.
+    everyMinutes: QUICK.has(p.id) ? 2 * 60 : 6 * 60,
     async sync(ctx) {
       const tz = ctx.user.timezone
       // Plain order lists first, then server-driven order cards (Blinkit, Zomato); merged by order id.

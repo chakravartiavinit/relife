@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, gte, inArray } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { connectors } from '@/connectors'
 import { rules } from '@/rules'
@@ -69,13 +69,17 @@ export const JOBS: Job[] = [
   // Parse new raw events, 500 at a time until none are left. One run at a time, so an event is never parsed twice.
   { id: 'parse', schedule: { everyMinutes: 1 }, on: ['raw.added'], timeoutMinutes: 30, run: async () => {
     const { processNew } = await import('@/core/ingest')
+    const started = new Date()
     const total = { parsed: 0, ignored: 0, failed: 0 }
     for (let i = 0; i < 200; i++) {
       const c = await processNew(500)
       total.parsed += c.parsed; total.ignored += c.ignored; total.failed += c.failed
       if (c.parsed + c.ignored + c.failed < 500) break
     }
-    if (total.parsed) await emit('data.changed')
+    if (total.parsed) {
+      await emit('data.changed')
+      await syncAppsPaidFrom(started)
+    }
     return total.parsed || total.failed ? `parsed ${total.parsed}, ignored ${total.ignored}, failed ${total.failed}` : undefined
   } },
   // Failed parses get one more chance a day (a parser may have improved, or the matching bank debit arrived).
@@ -119,6 +123,22 @@ export const JOBS: Job[] = [
     await weeklyReview(await getUser())
   } },
 ]
+
+/** Order apps by how they appear on a bank SMS or UPI line. */
+const PAID_APP: [RegExp, string][] = [[/zomato/i, 'zomato'], [/swiggy|instamart/i, 'swiggy'], [/blinkit|grofers/i, 'blinkit'], [/zepto|kiranakart/i, 'zepto'], [/amazon/i, 'amazon'], [/flipkart/i, 'flipkart']]
+
+/**
+ * A bank payment to an order app just arrived: sync that app now, so the order and its items follow within minutes
+ * instead of at the next scheduled run. Apps that aren't connected are skipped by the scheduler.
+ */
+async function syncAppsPaidFrom(since: Date) {
+  const user = await getUser()
+  const rows = await db.select({ merchant: schema.transactions.merchant, upi: schema.transactions.upiId }).from(schema.transactions)
+    .innerJoin(schema.accounts, eq(schema.transactions.accountId, schema.accounts.id))
+    .where(and(eq(schema.transactions.userId, user.id), inArray(schema.accounts.kind, ['bank', 'card']), gte(schema.transactions.createdAt, since)))
+  const apps = new Set(rows.flatMap((r) => PAID_APP.filter(([re]) => re.test(`${r.merchant ?? ''} ${r.upi ?? ''}`)).map(([, id]) => id)))
+  for (const id of apps) await requestJob(`sync:${id}`)
+}
 
 /** Something happened: run every job listening for it, as soon as possible. */
 export const emit = (event: string) => emitEvent(event, JOBS)
