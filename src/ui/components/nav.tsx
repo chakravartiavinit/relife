@@ -3,20 +3,22 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
-import {
-  Brain, Code, HeartPulse, Inbox, LayoutGrid, Menu, Plug, Repeat, Settings, Sparkles, Sunrise, Trophy, Users, Wallet, type LucideIcon,
-} from 'lucide-react'
+import { Brain, Code, HeartPulse, Inbox, Menu, MonitorSmartphone, Palette, Cable, Repeat, Settings, Sparkles, Sunrise, Trophy, Users, Wallet, type LucideIcon } from 'lucide-react'
 import { Dialog } from './forms/dialog'
+import { SystemLabel } from './card'
 import { cn } from '../cn'
 
 type Item = { href: string; label: string; icon: LucideIcon; color?: string; children?: { href: string; label: string }[] }
 
-// Do (Today) · Review (Overview) · Areas · Plan. Setup pages sit in a small footer group.
+// Play (Today, Progress, Habits, Insights) · Areas. Setup pages sit in a small footer group.
 export const NAV: { label?: string; items: Item[] }[] = [
   {
     items: [
       { href: '/', label: 'Today', icon: Sunrise },
-      { href: '/overview', label: 'Overview', icon: LayoutGrid },
+      { href: '/profile', label: 'Progress', icon: Trophy },
+      { href: '/habits', label: 'Habits', icon: Repeat },
+      { href: '/insights', label: 'Coach', icon: Sparkles },
+      { href: '/activity', label: 'Activity', icon: MonitorSmartphone },
     ],
   },
   {
@@ -33,22 +35,15 @@ export const NAV: { label?: string; items: Item[] }[] = [
           { href: '/wealth/subscriptions', label: 'Subscriptions' },
         ],
       },
+      { href: '/hobbies', label: 'Hobbies', icon: Palette, color: 'var(--cat-hobbies)' },
       { href: '/relationships', label: 'People', icon: Users, color: 'var(--cat-relationships)' },
-    ],
-  },
-  {
-    label: 'Plan',
-    items: [
-      { href: '/habits', label: 'Habits', icon: Repeat },
-      { href: '/insights', label: 'Insights', icon: Sparkles },
-      { href: '/profile', label: 'Profile', icon: Trophy },
     ],
   },
 ]
 
 export const SYSTEM_NAV: Item[] = [
   { href: '/inbox', label: 'Inbox', icon: Inbox },
-  { href: '/connectors', label: 'Connectors', icon: Plug },
+  { href: '/connectors', label: 'Connectors', icon: Cable },
   { href: '/settings', label: 'Settings', icon: Settings },
 ]
 
@@ -56,17 +51,30 @@ function isActive(path: string, href: string) {
   if (href === '/') return path === '/'
   // Trackers' detail pages belong to Habits.
   if (href === '/habits' && path.startsWith('/trackers')) return true
+  if (href === '/profile' && path === '/overview') return true
   return path === href || path.startsWith(href + '/')
 }
 
-export function Nav({ badges = {} }: { badges?: Record<string, number> }) {
-  const path = usePathname()
+const AREA_HREF: Record<string, string> = { health: '/health', mind: '/mind', skills: '/skills', wealth: '/wealth', hobbies: '/hobbies', relationships: '/relationships' }
+
+/** `areas` (from onboarding) hides the area pages the user didn't pick; empty shows all. */
+export function Nav(props: { badges?: Record<string, number>; areas?: string[] }) {
+  return <NavView {...props} path={usePathname()} />
+}
+
+/** Same rows with nothing marked active, for Suspense fallbacks (reading the URL there blocks prerendering). */
+export function NavPlaceholder() {
+  return <NavView path="" />
+}
+
+function NavView({ badges = {}, areas, path }: { badges?: Record<string, number>; areas?: string[]; path: string }) {
+  const hidden = new Set(areas?.length ? Object.entries(AREA_HREF).filter(([c]) => !areas.includes(c)).map(([, h]) => h) : [])
   return (
     <nav aria-label="Main" className="flex flex-col gap-5">
       {NAV.map((group, gi) => (
         <div key={gi} className="flex flex-col gap-0.5">
-          {group.label ? <div className="px-2.5 pb-1.5 text-[11px] font-semibold tracking-[0.08em] text-ink-3 uppercase">{group.label}</div> : null}
-          {group.items.map((item) => <NavRow key={item.href} item={item} path={path} badge={badges[item.href]} />)}
+          {group.label ? <div className="px-2.5 pb-2"><SystemLabel color="var(--ink-3)">{group.label}</SystemLabel></div> : null}
+          {group.items.filter((item) => !hidden.has(item.href) || isActive(path, item.href)).map((item) => <NavRow key={item.href} item={item} path={path} badge={badges[item.href]} />)}
         </div>
       ))}
     </nav>
@@ -100,22 +108,27 @@ function NavRow({ item, path, badge }: { item: Item; path: string; badge?: numbe
         <span className="flex-1 truncate">{item.label}</span>
         {badge ? <Count n={badge} /> : null}
       </Link>
-      {item.children && active ? (
-        <div className="mt-1 mb-1.5 ml-[20px] flex flex-col gap-0.5 border-l border-divider pl-3.5">
-          {item.children.map((c) => (
-            <Link
-              key={c.href}
-              href={c.href}
-              aria-current={path === c.href ? 'page' : undefined}
-              className={cn(
-                'relative flex h-8 items-center rounded-sm px-2 text-[13px] transition-[background-color,color] duration-150',
-                path === c.href ? 'font-medium text-ink' : 'text-ink-3 hover:bg-ink/[0.04] hover:text-ink dark:hover:bg-white/[0.05]',
-              )}
-            >
-              {path === c.href ? <span aria-hidden className="absolute top-1.5 bottom-1.5 -left-[16px] w-[3px] rounded-full" style={{ background: color }} /> : null}
-              {c.label}
-            </Link>
-          ))}
+      {item.children ? (
+        // Rows below slide down instead of jumping when the sub-pages open (grid 0fr to 1fr).
+        <div className="nav-sub grid" data-open={active || undefined} inert={!active}>
+          <div className="min-h-0 overflow-hidden">
+            <div className="mt-1 mb-1.5 ml-[20px] flex flex-col gap-0.5 border-l border-divider pl-3.5">
+              {item.children.map((c) => (
+                <Link
+                  key={c.href}
+                  href={c.href}
+                  aria-current={path === c.href ? 'page' : undefined}
+                  className={cn(
+                    'relative flex h-8 items-center rounded-sm px-2 text-[13px] transition-[background-color,color] duration-150',
+                    path === c.href ? 'font-medium text-ink' : 'text-ink-3 hover:bg-ink/[0.04] hover:text-ink dark:hover:bg-white/[0.05]',
+                  )}
+                >
+                  {path === c.href ? <span aria-hidden className="absolute top-1.5 bottom-1.5 -left-[16px] w-[3px] rounded-full" style={{ background: color }} /> : null}
+                  {c.label}
+                </Link>
+              ))}
+            </div>
+          </div>
         </div>
       ) : null}
     </div>
@@ -127,25 +140,34 @@ function Count({ n }: { n: number }) {
 }
 
 /** Setup pages: quieter rows above the profile. */
-export function SystemNav({ badges = {} }: { badges?: Record<string, number> }) {
-  const path = usePathname()
+export function SystemNav(props: { badges?: Record<string, number> }) {
+  return <SystemNavView {...props} path={usePathname()} />
+}
+
+export function SystemNavPlaceholder() {
+  return <SystemNavView path="" />
+}
+
+function SystemNavView({ badges = {}, path }: { badges?: Record<string, number>; path: string }) {
   return (
-    <nav aria-label="Setup" className="flex flex-col">
+    <nav aria-label="Setup" className="grid grid-cols-3 gap-0.5">
       {SYSTEM_NAV.map(({ href, label, icon: Icon }) => {
         const active = isActive(path, href)
+        const n = badges[href]
         return (
           <Link
             key={href}
             href={href}
             aria-current={active ? 'page' : undefined}
+            aria-label={n ? `${label}, ${n} to review` : undefined}
             className={cn(
-              'flex h-9 items-center gap-2.5 rounded-md px-2.5 text-[13px] transition-[background-color,color] duration-150',
+              'relative flex h-[52px] flex-col items-center justify-center gap-1 rounded-md text-[11px] tracking-[-0.01em] transition-[background-color,color,scale] duration-150 ease-[var(--ease-out-quint)] active:scale-[0.96]',
               active ? 'bg-surface font-medium text-ink shadow-1' : 'text-ink-3 hover:bg-ink/[0.04] hover:text-ink dark:hover:bg-white/[0.05]',
             )}
           >
             <Icon className="size-4" strokeWidth={active ? 2 : 1.5} aria-hidden />
-            <span className="flex-1">{label}</span>
-            {badges[href] ? <Count n={badges[href]} /> : null}
+            <span className="max-w-full truncate">{label}</span>
+            {n ? <span aria-hidden className="absolute top-1.5 left-[calc(50%+4px)] min-w-4 rounded-full bg-ink px-1 text-center text-[10px] leading-4 font-semibold text-bg tabular-nums shadow-[0_0_0_2px_var(--glass)]">{n > 99 ? '99+' : n}</span> : null}
           </Link>
         )
       })}
@@ -153,7 +175,7 @@ export function SystemNav({ badges = {} }: { badges?: Record<string, number> }) 
   )
 }
 
-const TABS = ['/', '/overview', '/habits', '/insights']
+const TABS = ['/', '/profile', '/habits', '/insights']
 
 /** Bottom tab bar for phones: the four daily pages plus a menu with everything else. */
 export function TabBar() {
