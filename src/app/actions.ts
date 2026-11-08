@@ -44,6 +44,15 @@ export async function addToGoal(scheduleId: string, amount: number): Promise<XpN
   return news
 }
 
+/** A quantity goal's daily target (water: 3,000 ml). Scoped to the user; refreshes Today. */
+export async function setGoalTarget(scheduleId: string, target: number) {
+  const t = z.number().positive().max(1_000_000).parse(target)
+  const user = await getUser()
+  await db.update(schema.schedules).set({ target: t })
+    .where(and(eq(schema.schedules.id, scheduleId), eq(schema.schedules.userId, user.id)))
+  refresh()
+}
+
 export async function quickLog(text: string): Promise<{ ok: boolean; message: string; news?: XpNews }> {
   const q = parseQuickLog(text)
   if (!q) return { ok: false, message: 'Try “water 250”, “mood 4” or “spent 120 chai”.' }

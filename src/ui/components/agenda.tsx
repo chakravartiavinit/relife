@@ -4,7 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useOptimistic, useState, useTransition } from 'react'
 import { Check, RotateCcw, SkipForward } from 'lucide-react'
 import { RoutineArt } from './routine-art'
-import { addToGoal, toggleCheck } from '@/app/actions'
+import { addToGoal, setGoalTarget, toggleCheck } from '@/app/actions'
 import { cn } from '../cn'
 import { Button } from './button'
 import { Capsule } from './capsule'
@@ -22,6 +22,8 @@ export type AgendaRow = {
   /** Life area, for the routine's icon fallback. */
   area: string
   detail?: string
+  /** Short facts by kind: a medicine's dose and doses left, a walk's step target. 'warn' tints it (running low). */
+  chips?: { text: string; warn?: boolean }[]
   status: 'done' | 'skipped' | 'pending' | 'missed'
   /** This routine's share of today's plan XP, shown as the quest reward. */
   xp?: number
@@ -149,7 +151,7 @@ function CheckButton({ r, onToggle, size = 'md', forceDone }: { r: AgendaRow; on
   )
 }
 
-/** One quest card: the routine's picture, what and when, its XP, and the check on the trailing edge. */
+/** One quest: when (a time column, red when overdue), the routine's picture, what with its facts, XP, and the check. */
 function Row({ r, onToggle, onSkip }: { r: AgendaRow; onToggle: () => void; onSkip: () => void }) {
   const missed = r.status === 'missed'
   const reduce = useReducedMotion()
@@ -168,6 +170,7 @@ function Row({ r, onToggle, onSkip }: { r: AgendaRow; onToggle: () => void; onSk
       transition={{ duration: 0.3, ease: EASE_OUT_STRONG }}
       className="group/row relative flex min-h-[64px] items-center gap-3.5 rounded-[14px] bg-ink/[0.025] px-3 py-2 transition-[background-color] duration-150 hover:bg-ink/[0.045] dark:bg-white/[0.035] dark:hover:bg-white/[0.06]"
     >
+      <span className={cn('w-11 shrink-0 text-[13px] font-semibold tabular-nums', missed ? 'text-bad' : 'text-ink-2')}>{r.time}</span>
       <motion.span
         aria-hidden
         animate={won ? { scale: [1, 1.12, 1], rotate: [0, -8, 0] } : undefined}
@@ -179,14 +182,19 @@ function Row({ r, onToggle, onSkip }: { r: AgendaRow; onToggle: () => void; onSk
       </motion.span>
       <div className="min-w-0 flex-1">
         <div className={cn('truncate text-[15px] font-medium transition-[color] duration-200', won ? 'text-ink-3' : 'text-ink')}>{r.name}</div>
-        <div className="mt-0.5 truncate text-[12.5px] text-ink-3 tabular-nums">
-          <span className={missed ? 'font-medium text-bad' : undefined}>{missed ? `Overdue · ${r.time}` : r.time}</span>
-          {r.detail ? <> · {r.detail}</> : null}
-        </div>
+        {r.chips?.length || r.detail || missed ? (
+          <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 text-[12.5px] text-ink-3 tabular-nums">
+            {missed ? <span className="inline-flex h-5 items-center rounded-full bg-bad/10 px-2 text-[11.5px] font-semibold text-bad">Overdue</span> : null}
+            {r.chips?.map((c) => (
+              <span key={c.text} className={cn('inline-flex h-5 items-center rounded-full px-2 text-[11.5px] font-medium', c.warn ? 'bg-warn/12 text-warn' : 'bg-ink/[0.05] text-ink-2 dark:bg-white/[0.07]')}>{c.text}</span>
+            ))}
+            {r.detail ? <span className="min-w-0 truncate">{r.detail}</span> : null}
+          </div>
+        ) : null}
       </div>
       <Button variant="ghost" size="sm" onClick={onSkip} className="text-ink-3 opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 max-lg:hidden">Skip</Button>
       {r.xp ? (
-        <span className="relative shrink-0 text-[12px] font-semibold tabular-nums" style={{ color: 'color-mix(in oklch, var(--medal-gold) 80%, var(--ink))' }}>
+        <span className="relative inline-flex h-6 shrink-0 items-center rounded-full px-2 text-[11.5px] font-semibold tabular-nums max-sm:hidden" style={{ color: 'color-mix(in oklch, var(--medal-gold) 80%, var(--ink))', background: 'color-mix(in oklch, var(--medal-gold) 12%, transparent)' }}>
           +{r.xp} XP
           <AnimatePresence>
             {won ? (
@@ -261,42 +269,107 @@ export type GoalRow = {
   unit: string
   step: number
   color: string
+  area?: string
+  /** The next reminder time today, if any. */
+  next?: string
 }
 
-/** Quantity routines (water): one capsule per goal with a quick-add button. */
+/** Daily targets offered for water, in ml (2L … 4L). */
+const WATER_TARGETS = [2000, 2500, 3000, 3500, 4000]
+
+/**
+ * Quantity routines (water): how much so far against today's target, one segment per glass (or a bar for big
+ * targets), quick adds (one glass, two, a litre), undo, and for ml goals the daily target in one tap.
+ */
 export function Goals({ rows }: { rows: GoalRow[] }) {
-  const [optimistic, add] = useOptimistic(rows, (state, { id, step }: { id: string; step: number }) =>
-    state.map((g) => (g.scheduleId === id ? { ...g, value: g.value + step } : g)))
+  const [optimistic, change] = useOptimistic(rows, (state, a: { id: string; add?: number; target?: number }) =>
+    state.map((g) => (g.scheduleId === a.id ? { ...g, value: Math.max(0, g.value + (a.add ?? 0)), target: a.target ?? g.target } : g)))
   const [, start] = useTransition()
   const toast = useToast()
+  const add = (g: GoalRow, amount: number) => start(async () => {
+    change({ id: g.scheduleId, add: amount })
+    try { announceXp(toast, await addToGoal(g.scheduleId, amount)) } catch { toast('Could not save. Try again.', 'bad') }
+  })
+  const retarget = (g: GoalRow, target: number) => start(async () => {
+    change({ id: g.scheduleId, target })
+    try { await setGoalTarget(g.scheduleId, target); toast(`${g.name}: ${fmtAmount(target, g.unit)} a day`, 'good') } catch { toast('Could not save. Try again.', 'bad') }
+  })
+
   return (
-    <ul className="flex flex-col gap-4">
-      {optimistic.map((g) => (
-        <li key={g.scheduleId} className="flex items-center gap-4">
-          <div className="min-w-0 flex-1">
-            <div className="mb-2 flex items-baseline justify-between gap-3">
-              <span className="truncate text-[15px] text-ink">{g.name}</span>
-              <span className="text-[13px] text-ink-3 tabular-nums">
-                <span className="font-medium text-ink">{fmt(g.value)}</span> / {fmt(g.target)} {g.unit}
+    <ul className="flex flex-col gap-3">
+      {optimistic.map((g) => {
+        const done = g.value >= g.target
+        const left = Math.max(0, g.target - g.value)
+        const glasses = Math.round(g.target / g.step)
+        const ml = g.unit.toLowerCase() === 'ml'
+        return (
+          <li key={g.scheduleId} className="rounded-[16px] p-4" style={{ background: `color-mix(in oklch, ${g.color} 7%, transparent)` }}>
+            <div className="flex items-start gap-3">
+              <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-[11px]" style={{ background: `color-mix(in oklch, ${g.color} 16%, transparent)` }}>
+                <RoutineArt name={g.name} kind="routine" area={g.area ?? 'health'} />
               </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[15px] font-medium text-ink">{g.name}</p>
+                <p className={cn('mt-0.5 text-[12.5px] tabular-nums', done ? 'font-medium text-good' : 'text-ink-3')}>
+                  {done ? `Goal reached · ${fmtAmount(g.value, g.unit)}` : `${fmtAmount(left, g.unit)} to go`}
+                  {!done && g.next ? ` · next reminder ${g.next}` : ''}
+                </p>
+              </div>
+              <p className="shrink-0 text-right tabular-nums">
+                <span className="text-[20px] leading-none font-bold tracking-[-0.02em] text-ink">{fmtAmount(g.value, g.unit)}</span>
+                <span className="block text-[12px] text-ink-3">of {fmtAmount(g.target, g.unit)}</span>
+              </p>
             </div>
-            <Capsule value={g.value} max={g.target} color={g.color} label={`${g.name} progress`} />
-          </div>
-          <Button
-            size="sm"
-            onClick={() => start(async () => {
-              add({ id: g.scheduleId, step: g.step })
-              try { announceXp(toast, await addToGoal(g.scheduleId, g.step)) }
-              catch { toast('Could not save. Try again.', 'bad') }
-            })}
-            className="tabular-nums"
-          >
-            +{fmt(g.step)} {g.unit}
-          </Button>
-        </li>
-      ))}
+
+            {/* One segment per glass, so "3 more glasses" is visible at a glance; a bar when that would be too many. */}
+            {glasses <= 24 ? (
+              <div className="mt-3 flex gap-1" role="img" aria-label={`${fmt(g.value)} of ${fmt(g.target)} ${g.unit}`}>
+                {Array.from({ length: glasses }, (_, i) => {
+                  const fill = Math.min(1, Math.max(0, (g.value - i * g.step) / g.step))
+                  return (
+                    <span key={i} className="relative h-2.5 flex-1 overflow-hidden rounded-full bg-ink/[0.07] dark:bg-white/[0.08]">
+                      <span className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-300 ease-out-quint" style={{ width: `${fill * 100}%`, background: done ? 'var(--good)' : g.color }} />
+                    </span>
+                  )
+                })}
+              </div>
+            ) : <Capsule value={g.value} max={g.target} color={done ? 'var(--good)' : g.color} label={`${g.name} progress`} className="mt-3" />}
+
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap gap-1.5">
+                {[g.step, g.step * 2, ...(ml && g.step * 4 !== 1000 ? [1000] : [g.step * 4])].filter((v, i, a) => a.indexOf(v) === i).map((amount) => (
+                  <Button key={amount} size="sm" variant="secondary" onClick={() => add(g, amount)} className="tabular-nums">+{fmtAmount(amount, g.unit)}</Button>
+                ))}
+                {g.value > 0 ? (
+                  <Button size="sm" variant="ghost" onClick={() => add(g, -Math.min(g.step, g.value))} aria-label={`Undo ${fmtAmount(g.step, g.unit)}`} className="text-ink-3">
+                    <RotateCcw className="size-3.5" strokeWidth={1.5} />Undo
+                  </Button>
+                ) : null}
+              </div>
+              {ml ? (
+                <div role="radiogroup" aria-label={`${g.name} daily target`} className="inline-flex rounded-full bg-ink/[0.05] p-0.5 dark:bg-white/[0.06]">
+                  {WATER_TARGETS.map((t) => (
+                    <button
+                      key={t} type="button" role="radio" aria-checked={g.target === t} onClick={() => g.target !== t && retarget(g, t)}
+                      className="h-7 rounded-full px-2.5 text-[12px] font-medium text-ink-3 tabular-nums transition-[background-color,color] duration-150 hover:text-ink aria-checked:bg-surface aria-checked:text-ink aria-checked:shadow-1 focus-visible:outline-2 focus-visible:outline-pill"
+                    >
+                      {t / 1000}L
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </li>
+        )
+      })}
     </ul>
   )
+}
+
+/** 2500 ml → "2.5 L", 1250 ml → "1.25 L", 250 ml → "250 ml". */
+function fmtAmount(v: number, unit: string) {
+  if (unit.toLowerCase() === 'ml' && Math.abs(v) >= 1000) return `${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(v / 1000)} L`
+  return `${fmt(v)} ${unit}`.trim()
 }
 
 function fmt(n: number) {

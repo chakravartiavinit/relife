@@ -78,7 +78,10 @@ async function Today() {
       if (!goals.some((g) => g.scheduleId === s.id)) {
         goals.push({
           scheduleId: s.id, name: s.name, value: valueOf(meta.trackerSlug) ?? 0, target: s.target,
-          unit: s.unit ?? '', step: meta.step ?? Math.max(1, Math.round(s.target / 8)), color: CATEGORY[s.category].color,
+          unit: s.unit ?? '', step: meta.step ?? Math.max(1, Math.round(s.target / 8)), area: s.category,
+          // Water reads as water: the capsule blue rather than its area's colour.
+          color: meta.trackerSlug === 'water' ? 'var(--pill)' : CATEGORY[s.category].color,
+          next: agenda.filter((x) => x.schedule.id === s.id && x.occurrence > now).map((x) => formatTime(x.occurrence, user.timezone))[0],
         })
       }
       continue
@@ -92,9 +95,11 @@ async function Today() {
       kind: s.kind,
       color: CATEGORY[s.category].color,
       area: s.category,
-      detail: s.kind === 'medicine'
-        ? [meta.dose, typeof meta.stock === 'number' ? `${meta.stock} left` : null].filter(Boolean).join(' · ')
-        : meta.notes,
+      // Medicines: the dose and how many are left (amber when it's time to refill). Routines: their note.
+      chips: s.kind === 'medicine'
+        ? [...(meta.dose ? [{ text: meta.dose }] : []), ...(typeof meta.stock === 'number' ? [{ text: `${meta.stock} left`, warn: meta.stock <= (meta.refillAt ?? 7) }] : [])]
+        : undefined,
+      detail: s.kind === 'medicine' ? undefined : meta.notes,
       status: i.status,
     })
   }
