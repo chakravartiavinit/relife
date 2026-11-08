@@ -15,6 +15,16 @@ export async function emitRaw(userId: string, e: RawEvent): Promise<boolean> {
   return rows.length > 0
 }
 
+/** Store many raw events in one statement. Duplicates are skipped. Returns how many were new. */
+export async function emitRawMany(userId: string, events: RawEvent[]): Promise<number> {
+  if (!events.length) return 0
+  const rows = await db.insert(schema.rawEvents)
+    .values(events.map((e) => ({ userId, source: e.source, externalId: e.externalId, at: e.at, body: e.body as object })))
+    .onConflictDoNothing()
+    .returning({ id: schema.rawEvents.id })
+  return rows.length
+}
+
 /** Parse every `new` raw event. Returns counts for logging. */
 export async function processNew(limit = 500) {
   const user = await getUser()
@@ -102,6 +112,15 @@ export async function persist(user: User, rec: Rec, rawEventId?: string) {
     case 'balance': {
       const account = await ensureAccount(user.id, rec.account)
       await setBalance(account.id, rec.amount, rec.at)
+      if (rec.meta) await db.update(schema.accounts).set({ meta: rec.meta }).where(eq(schema.accounts.id, account.id))
+      return
+    }
+    case 'flow': {
+      const account = await ensureAccount(user.id, rec.account)
+      await db.insert(schema.cryptoFlows).values({
+        userId: user.id, accountId: account.id, at: rec.at, kind: rec.flow, asset: rec.asset, amount: rec.amount, usd: rec.usd,
+        symbol: rec.symbol, source: rec.source, externalRef: rec.externalRef, meta: rec.meta ?? {},
+      }).onConflictDoNothing()
       return
     }
   }
@@ -155,5 +174,6 @@ function guessCategory(slug: string) {
   if (/^(spend|save|money|invest)/.test(s)) return 'wealth' as const
   if (/^(mood|journal|meditat|screen|focus|energy)/.test(s)) return 'mind' as const
   if (/^(call|people|friends|family)/.test(s)) return 'relationships' as const
+  if (/^(guitar|piano|music|sing|draw|paint|sketch|photo|chess|cook|bake|garden|game|knit|craft|dance|hobby)/.test(s)) return 'hobbies' as const
   return 'health' as const
 }

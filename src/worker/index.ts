@@ -1,23 +1,18 @@
-import { Cron } from 'croner'
-import { eq } from 'drizzle-orm'
-import { db, schema, sql } from '@/db'
-import { processNew } from '@/core/ingest'
+import { sql } from '@/db'
 import { getUser } from '@/core/user'
 import { telegramConfigured } from '@/core/notify'
 import { connectors } from '@/connectors'
-import { rules } from '@/rules'
-import { runRule } from '@/rules/run'
+import { startMacActivity } from './mac-activity'
 import { aiEnabled } from '@/ai/models'
-import { dailyNudge } from '@/ai/jobs/daily-nudge'
-import { weeklyReview } from '@/ai/jobs/weekly-review'
 import { startBot } from '@/bot/telegram'
 import { applySecrets } from '@/core/secrets'
-import { backfillXp, refreshXp } from '@/core/xp'
-import { remindTick } from './reminders'
-import { dueConnectors, missingEnv, runConnector } from './sync'
+import { backfillXp } from '@/core/xp'
+import { missingEnv } from './sync'
+import { startScheduler } from '@/core/jobs'
+import { JOBS } from '@/jobs'
 import { env } from '@/core/env'
 
-// The worker owns everything time-based: bot, reminders, syncs, parsing, rules, AI jobs.
+// The worker runs the bot, laptop activity and the job scheduler (src/jobs): syncs, parsing, reminders, rules, AI.
 
 async function main() {
   const user = await getUser()
@@ -35,58 +30,25 @@ async function main() {
 
   // ponytail: the bot starts once a token is connected; changing or removing the token needs a worker restart.
   let bot = startBot()
-  const jobs: Cron[] = []
-  const every = (name: string, pattern: string, fn: () => Promise<unknown>) => {
-    jobs.push(new Cron(pattern, { timezone: tz, protect: true, name, catch: (e) => console.error(`[${name}]`, e instanceof Error ? e.message : e) }, async () => { await fn() }))
-  }
+  // Keys typed on /connectors since the last minute; start the bot once its token arrives.
+  const secrets = setInterval(() => {
+    void applySecrets(user.id).then(() => { if (!bot && env('TELEGRAM_BOT_TOKEN')) bot = startBot() }).catch((e) => console.error('[secrets]', e))
+  }, 60_000)
 
-  every('heartbeat', '* * * * *', () =>
-    db.insert(schema.heartbeats).values({ name: 'worker', at: new Date() })
-      .onConflictDoUpdate({ target: schema.heartbeats.name, set: { at: new Date() } }))
-
-  every('reminders', '* * * * *', () => remindTick(user))
-
-  every('connectors', '* * * * *', async () => {
-    await applySecrets(user.id) // pick up what was connected or disconnected on the web
-    if (!bot && env('TELEGRAM_BOT_TOKEN')) bot = startBot()
-    for (const c of await dueConnectors()) {
-      const r = await runConnector(c.id)
-      console.log(`[sync] ${c.id}: ${r.ok ? `${r.events} new` : `failed: ${r.error}`}`)
-    }
-  })
-
-  // XP: back-fill history once, then keep today and yesterday current (synced data lands here too).
+  // XP: back-fill history once; the xp job keeps today and yesterday current.
   if (await backfillXp(user)) console.log('[xp] scored the last 90 days')
-  every('xp', '*/5 * * * *', async () => {
-    const news = await refreshXp(user)
-    if (news.levelUp) console.log(`[xp] level ${news.levelUp.level}: ${news.levelUp.title}`)
-    for (const a of news.unlocked) console.log(`[xp] achievement: ${a}`)
-  })
 
-  every('parse', '* * * * *', async () => {
-    const n = await processNew()
-    if (n.parsed || n.failed) console.log(`[parse] parsed ${n.parsed}, ignored ${n.ignored}, failed ${n.failed}`)
-  })
-
-  // Failed parses get one more chance a day (a parser may have improved, or the matching bank debit arrived).
-  every('retry-failed', '30 3 * * *', async () => {
-    await db.update(schema.rawEvents).set({ status: 'new' }).where(eq(schema.rawEvents.status, 'failed'))
-    await processNew()
-  })
-
-  for (const rule of rules) every(`rule:${rule.id}`, rule.every, () => runRule(rule, user))
-
-  every('ai:daily-nudge', '0 8 * * *', () => dailyNudge(user))
-  every('ai:weekly-review', '0 21 * * 0', () => weeklyReview(user))
-
-  // Run reminders and parsing once right away instead of waiting for the first minute.
-  await remindTick(user).catch((e) => console.error('[reminders]', e))
-  await processNew().catch((e) => console.error('[parse]', e))
-  console.log(`[worker] ready: ${jobs.length} jobs`)
+  // Everything time-based or event-driven is a job (src/jobs): syncs, parsing, rules, XP, AI.
+  const scheduler = startScheduler(JOBS, tz)
+  // Laptop activity: the app in front, every 15s (macOS only, when connected).
+  const stopMac = startMacActivity(user)
+  console.log(`[worker] ready: ${JOBS.length} jobs`)
 
   const stop = async (signal: string) => {
     console.log(`[worker] ${signal}, stopping`)
-    jobs.forEach((j) => j.stop())
+    clearInterval(secrets)
+    await scheduler.stop()
+    stopMac?.()
     await bot?.stop().catch(() => {})
     await sql.end({ timeout: 5 }).catch(() => {})
     process.exit(0)

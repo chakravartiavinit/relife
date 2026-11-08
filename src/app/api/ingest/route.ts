@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'node:crypto'
-import { emitRaw, processNew } from '@/core/ingest'
+import { emitRaw } from '@/core/ingest'
+import { parseNow } from '@/jobs'
 import { getUser } from '@/core/user'
 import { lineToRawEvent } from '@/connectors/icloud-inbox'
 
@@ -39,6 +40,6 @@ export async function POST(req: Request) {
     received++
     if (await emitRaw(user.id, ev)) inserted++
   }
-  const counts = await processNew()
-  return Response.json({ received, inserted, ...counts })
+  const parsed = inserted ? await parseNow() : 'nothing new'
+  return Response.json({ received, inserted, parsed })
 }
