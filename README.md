@@ -220,7 +220,8 @@ own MIT notices (see Credits).
 
 ## Credits
 
-- Charts and motion components: [beUI](https://beui.dev) (MIT).
+- Charts: [EvilCharts](https://evilcharts.com) (MIT), on [Recharts](https://recharts.org) (MIT).
+- Motion components: [beUI](https://beui.dev) (MIT).
 - Connector and brand logos (`public/connectors`, `public/brands`): [Simple Icons](https://simpleicons.org)
   (CC0) and [Lobe Icons](https://github.com/lobehub/lobe-icons) (MIT); a few brands Simple Icons doesn't carry
   use their own app icons. Coin logos come from [CoinGecko](https://www.coingecko.com) and are cached locally.

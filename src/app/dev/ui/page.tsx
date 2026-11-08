@@ -1,4 +1,6 @@
 import type { Metadata } from 'next'
+import { connection } from 'next/server'
+import { Suspense } from 'react'
 import { Plus } from 'lucide-react'
 import { CATEGORIES } from '@/db/schema'
 import { CATEGORY } from '@/ui/tokens'
@@ -99,12 +101,8 @@ export default function UiGallery() {
       </Section>
 
       <Section title="Charts">
-        <div className="grid gap-6 lg:grid-cols-2">
-          <div><div className="mb-2 text-[13px] text-ink-2">Daily bars with target</div><DailyBars data={days} target={7} unit="h" label="Daily bars sample" color={CATEGORY.skills.color} /></div>
-          <div><div className="mb-2 text-[13px] text-ink-2">Trend with gap</div><TrendArea data={days} target={7} unit="h" label="Trend sample" color={CATEGORY.health.color} /></div>
-          <div><div className="mb-2 text-[13px] text-ink-2">Ranked</div><RankedBars label="Ranked sample" unit="₹" data={[{ label: 'Food delivery', value: 6120 }, { label: 'Groceries', value: 4380 }, { label: 'Transport', value: 1920 }]} color={CATEGORY.wealth.color} /></div>
-          <div><div className="mb-2 text-[13px] text-ink-2">Sparkline</div><div className="w-40"><Sparkline data={days} color={CATEGORY.mind.color} /></div></div>
-        </div>
+        {/* EvilCharts reads the clock while animating, so the samples render per request, not at build time. */}
+        <Suspense fallback={<Skeleton className="h-[420px]" />}><ChartSamples /></Suspense>
       </Section>
 
       <Section title="From beui.dev">
@@ -117,6 +115,18 @@ export default function UiGallery() {
           <div className="flex flex-col gap-3 rounded-md bg-surface-2 p-4"><Skeleton className="h-5 w-40" /><Skeleton className="h-24" /><Skeleton className="h-5 w-24" /></div>
         </div>
       </Section>
+    </div>
+  )
+}
+
+async function ChartSamples() {
+  await connection()
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      <div><div className="mb-2 text-[13px] text-ink-2">Daily bars with target</div><DailyBars data={days} target={7} unit="h" label="Daily bars sample" color={CATEGORY.skills.color} /></div>
+      <div><div className="mb-2 text-[13px] text-ink-2">Trend with gap</div><TrendArea data={days} target={7} unit="h" label="Trend sample" color={CATEGORY.health.color} /></div>
+      <div><div className="mb-2 text-[13px] text-ink-2">Ranked</div><RankedBars label="Ranked sample" unit="₹" data={[{ label: 'Food delivery', value: 6120 }, { label: 'Groceries', value: 4380 }, { label: 'Transport', value: 1920 }]} color={CATEGORY.wealth.color} /></div>
+      <div><div className="mb-2 text-[13px] text-ink-2">Sparkline</div><div className="w-40"><Sparkline data={days} color={CATEGORY.mind.color} /></div></div>
     </div>
   )
 }

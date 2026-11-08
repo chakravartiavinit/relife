@@ -3,7 +3,7 @@
 import { Moon, Sun } from 'lucide-react'
 import { Button } from './button'
 
-export const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('theme');if(!t)t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.dataset.theme=t}catch(e){}})()`
+export const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('theme');if(!t)t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;document.documentElement.classList.toggle('dark',t==='dark')}catch(e){}})()`
 
 export type ThemeChoice = 'light' | 'dark' | 'system'
 
@@ -14,6 +14,8 @@ export function applyTheme(choice: ThemeChoice) {
   style.textContent = '*,*::before,*::after{transition:none!important}'
   document.head.appendChild(style)
   document.documentElement.dataset.theme = next
+  // EvilCharts (shadcn) picks its dark colours with a .dark class; ReLife's own styles read data-theme.
+  document.documentElement.classList.toggle('dark', next === 'dark')
   if (choice === 'system') localStorage.removeItem('theme')
   else localStorage.setItem('theme', choice)
   void document.body.offsetHeight

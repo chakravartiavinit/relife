@@ -49,9 +49,11 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
   names, `relife:*` events and storage keys, the iCloud inbox path).
 - Vendored UI code: `src/ui/beui/` (beui.dev, installed from the `@beui` registry with imports rewritten
   to `@/ui/beui`). Change it only to fit ReLife tokens.
-- Charts: use the wrappers in `src/ui/components/charts.tsx`, one per kind of number: `TrendArea` (a measure
+- Charts: [EvilCharts](https://evilcharts.com/docs), installed unmodified with `npx shadcn@latest add @evilcharts/recharts-<chart>`
+  into `src/components/evilcharts/`. Never edit those files (re-run the add command to update them); adapt in the
+  wrappers instead. Pages use the wrappers in `src/ui/components/charts.tsx`, one per kind of number: `TrendArea` (a measure
   over time), `DailyBars` (a count per day), `RankedBars` (a ranking), `ShareDonut` (shares of a whole),
-  `Sparkline` (stat tiles). Habit adherence keeps its shape-coded strip (beUI's status bar is colour-only).
+  `Sparkline` (stat tiles), plus `StackedBars`. Habit adherence keeps its shape-coded strip.
 
 ## Adding things
 
