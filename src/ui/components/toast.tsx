@@ -15,9 +15,11 @@ const STATUS: Record<Tone, ToastStatus> = { good: 'success', bad: 'error', neutr
 export type Notify = ((text: string, tone?: Tone) => void) & {
   loading: (text: string) => string
   update: (id: string, text: string, tone?: Tone) => void
+  /** A fuller toast: a second line, an icon, one action, a custom duration. */
+  show: (t: { title: string; description?: string; tone?: Tone; icon?: React.ReactNode; action?: { label: string; onClick: () => void }; duration?: number }) => void
 }
 
-const noop = Object.assign(() => {}, { loading: () => '', update: () => {} }) as Notify
+const noop = Object.assign(() => {}, { loading: () => '', update: () => {}, show: () => {} }) as Notify
 const Ctx = createContext<Notify>(noop)
 export const useToast = () => useContext(Ctx)
 
@@ -30,6 +32,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       loading: (text: string) => showToast({ title: text, status: 'loading', duration: 0, dismissible: false }),
       update: (id: string, text: string, tone: Tone = 'good') =>
         updateToast(id, { title: text, status: STATUS[tone], duration: 3200, dismissible: true }),
+      show: ({ tone = 'neutral', action, ...t }: Parameters<Notify['show']>[0]) =>
+        void showToast({ ...t, status: STATUS[tone], action: action && { label: action.label, onClick: () => action.onClick() } }),
     },
   ) as Notify, [showToast, updateToast])
 

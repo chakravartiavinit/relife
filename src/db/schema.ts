@@ -42,6 +42,8 @@ export type UserProfile = {
   xpSince?: string
   /** Telegram delivery per category and quiet hours (src/domain/notify.ts). Missing = defaults. */
   notifications?: NotifyPrefs
+  /** ISO time bank payments were last shown in the dashboard (src/core/payment-alerts.ts). */
+  paymentsSeenAt?: string
   /** Stats the System should train first (signal ids from src/core/patterns.ts). Empty = it decides. */
   improve?: string[]
 }

@@ -12,6 +12,7 @@ import { ToastProvider } from '@/ui/components/toast'
 import { AppMotion } from '@/ui/components/motion-config'
 import { Celebration } from '@/ui/components/petals'
 import { Celebrations } from '@/ui/components/celebrate'
+import { PaymentToasts } from '@/ui/components/payment-toasts'
 import { SidebarProfile, SidebarProfileSkeleton } from '@/ui/components/sidebar-profile'
 import './globals.css'
 
@@ -93,6 +94,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
           <CommandMenu />
           <Celebration />
           <Celebrations />
+          <PaymentToasts />
         </ToastProvider>
         </AppMotion>
       </body>

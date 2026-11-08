@@ -579,3 +579,15 @@ export async function openChestAction(id: string): Promise<
   const { after, before } = r.level
   return { ok: true, ...r.opened, levelUp: after > before ? { level: after, title: titleFor(after), from: before, newTitle: titleFor(after) !== titleFor(before) } : undefined }
 }
+
+/** Bank credits and debits recorded since the dashboard last showed them. */
+export async function newPayments() {
+  const { newPaymentsFor } = await import('@/core/payment-alerts')
+  return newPaymentsFor(await getUser())
+}
+
+/** The dashboard showed everything recorded up to `upTo`. */
+export async function paymentsSeen(upTo: string) {
+  const { markPaymentsSeen } = await import('@/core/payment-alerts')
+  await markPaymentsSeen(await getUser(), z.string().datetime().parse(upTo))
+}
