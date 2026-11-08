@@ -162,6 +162,12 @@ trades           account_id, at, symbol, side, qty, price, fee, fee_asset, kind 
 
 learning_items   title, provider, cost, currency, status, progress_done, progress_total,
                  target_date, schedule_id (optional link to a subscription)
+library_episodes item_id, key ('s1e5' or the title), title, number, season, duration_sec,
+                 position_sec, watched_sec, first_at, last_at  · unique(item_id, key)
+
+activity         source (browser|mac), domain or app, path, title, kind, started_at, ended_at,
+                 seconds, local_date, meta  (deleted after 90 days; daily totals live in entries)
+activity_rules   domain or 'app:<name>', kind, source ('user' wins | 'ai' sorted once)
 
 raw_events       source, external_id, received_at, body jsonb|text, status, error, parser_id
                  · unique(source, external_id)
@@ -176,7 +182,7 @@ llm_runs         task, model, prompt_tokens, completion_tokens, cost_usd, ms, re
 
 Money: amounts stored as `numeric(20,8)` in the original currency. Conversion to INR happens at read time using `fx_rates(date, base, quote, rate)` (daily, cached).
 
-Time: every event stores a `timestamptz`; anything "per day" also stores `local_date` computed in the user's timezone so streaks never break at midnight UTC.
+Time: every event stores a `timestamptz`; anything "per day" also stores `local_date` computed in the user's timezone so streaks never break at midnight UTC. Screens follow the same rule: dates, times and countdowns are formatted in the user's time zone (`core/time`), never the server's or the browser's, and a local `YYYY-MM-DD` is always formatted as a UTC calendar date so no offset can shift it a day. Sources that report in a fixed zone (Indian bank SMS, CodeChef) are read in that zone.
 
 ---
 
@@ -230,7 +236,8 @@ Testing: one `parsers.test.ts` loops over `fixtures/*.{txt,json}` and compares a
 | Binance | `ccxt` + raw REST for P2P (`/sapi/v1/c2c/orderMatch/listUserOrderHistory`) and convert history | Read-only key, IP-restricted. One-time CSV backfill. Spot `myTrades` is per symbol → derive symbol list from balances + backfill. FIFO lots computed in `wealth/pnl.ts`. |
 | Axis SMS | iOS Shortcuts automation ("message contains debited/credited", Run Immediately) → *Append to Text File* in iCloud Drive `relife/inbox.txt` | Mac reads `~/Library/Mobile Documents/com~apple~CloudDocs/relife/inbox.txt` from a stored byte offset. Works with laptop off. Parser built from real samples. |
 | Gmail | OAuth (read-only scope), query by sender | Axis alerts, statement PDFs, Zomato/Zepto/Blinkit order emails, pre-debit mandate emails. Refresh token encrypted in `connections.secrets_encrypted`. |
-| GitHub | Fine-grained PAT, GraphQL `contributionsCollection` | Daily commits/PRs/reviews → entries. |
+| GitHub | Fine-grained PAT, GraphQL `contributionsCollection` plus REST commit search | Daily commits/PRs/reviews/issues → entries. The last 14 days of commits come from search by local date, because the contribution graph lags and groups days in US Pacific time. |
+| Laptop activity | Chrome extension (MV3) posting to `/api/activity` with a bearer token; worker polls the front Mac app with `lsappinfo` | Stretches of focused time, sorted by kind (built-in list, then AI once, then your pick). Episodes of shows and courses are read from JSON-LD, meta tags or the series link and logged to `library_episodes`. Uploads are clipped and batched so one bad page can't block the queue. |
 | Steps / sleep | Shortcuts: 23:55 "Find Health Samples" (steps); "Sleep Focus on/off" and "Alarm stopped" automations | Appended to the same inbox file. `/sleep` and `/wake` in Telegram as fallback. |
 | Share sheet | Shortcut: Extract Text from Image → inbox | Universal fallback for screenshots of orders/bills. |
 | Telegram | `grammY`, long polling | Responds **only** to `TELEGRAM_ALLOWED_CHAT_ID`. |
@@ -313,7 +320,7 @@ Category colors (charts, chips, capsule fills), harmonized with the brand:
 | Wealth | cardigan gold (deepened for contrast) |
 | Relationships | sky teal |
 
-Logo: the wordmark with the "i" replaced by a capsule (blue top, white bottom, ink outline). App icon: the capsule on its own. Source: `assets/brand/relife-logo.png`; `node scripts/brand.mjs assets/brand/relife-logo.png` builds the light and dark logos and the icons. The capsule is also the core UI motif (below).
+Logo: the wordmark with the "i" replaced by a capsule (blue top, white bottom, ink outline). App icon: the capsule on its own. Source: `assets/brand/relife-logo.png`; `node scripts/brand.mjs assets/brand/relife-logo.png` builds the light and dark logos, the app icons and the extension's toolbar icons (the capsule alone on transparent, also used in the README header). The capsule is also the core UI motif (below).
 
 > IP note: the ReLIFE name, wordmark and capsule-"i" are from the anime (© YayoiSo/comico/ReLIFE Laboratory). The project uses the original logo as a fan tribute; it is excluded from the AGPL license (see README → Credits).
 

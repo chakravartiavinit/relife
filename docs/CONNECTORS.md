@@ -13,9 +13,19 @@ events carry stable ids.
 |---|---|---|---|
 | iPhone inbox | `ICLOUD_INBOX_PATH` (optional) | 1 min | Bank SMS, steps, health metrics, sleep, screenshot text |
 | Exchange rates | none | 12 h | Daily USD rates for currency conversion |
-| GitHub | `GITHUB_TOKEN`, `GITHUB_USER` (optional) | 1 h | Daily commits, PRs, reviews, issues |
-| Binance | `BINANCE_API_KEY`, `BINANCE_API_SECRET`, `BINANCE_QUOTES`, `BINANCE_SYMBOLS` (optional) | 1 h | Balances, spot trades, P2P orders, Convert history |
+| GitHub | `GITHUB_TOKEN`, `GITHUB_USER` (optional) | 30 min | Daily commits, PRs, reviews, issues |
+| Binance | `BINANCE_API_KEY`, `BINANCE_API_SECRET`, `BINANCE_QUOTES`, `BINANCE_SYMBOLS` (optional) | 15 min | Balances, spot and futures, P2P orders, Convert, transfers, rewards |
 | Gmail | `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`, `GMAIL_QUERY` (optional) | 15 min | Bank alert emails, food/grocery order emails |
+| Laptop activity | `ACTIVITY_TOKEN` | live | Time per site and Mac app, shows and courses you watch |
+| Codeforces, AtCoder, CodeChef | your handle | 1 h | Problems solved, contest ratings |
+| Lichess, Chess.com | your username | 1 h | Games, ratings |
+| Swiggy, Zomato, Blinkit, Zepto | a Chrome login | 2 h | Orders with items |
+| Flipkart, Amazon India | a Chrome login | 6 h | Orders and returns |
+
+An order app also syncs right away when a bank payment to it arrives, so a new order shows within a minute or two
+of paying. Open pages refresh on their own when any sync brings new data.
+
+Every per-day number is counted on your own calendar day, in the time zone from Settings.
 
 ## Keeping keys in dotsafe
 
@@ -50,9 +60,16 @@ transactions convert at the rate of their own day.
 3. Permissions: **Contents: Read-only** and **Metadata: Read-only**. Nothing else.
 4. Put it in `.env` as `GITHUB_TOKEN`. `GITHUB_USER` is only needed if the token's owner isn't you.
 
-The first sync backfills 365 days, later syncs refresh the last 14. Counts come from GitHub's
-contribution graph, so they match your profile (private contributions count only if you enabled
-"Private contributions" on your profile).
+The first sync backfills 365 days, later syncs refresh the last 14.
+
+- **Commits in the last 14 days** come from GitHub's commit search, counted on your local day. The contribution
+  graph can take hours to count a push and groups days in US Pacific time; search sees a push within minutes.
+- **Older commits** come from the contribution graph, so they match your profile but keep GitHub's day.
+- **Pull requests, reviews and issues** come from the contribution graph, each on the local day it happened.
+
+A commit counts only when its author email is linked to your GitHub account and you own, collaborate on, or have
+starred or forked the repository (GitHub's rule for contributions). Private repositories count only if the token
+can read them and "Private contributions" is on in your profile.
 
 ## Laptop activity (Chrome extension and Mac apps)
 
@@ -66,11 +83,18 @@ Two local trackers feed one timeline (Activity page):
   them. Set `ACTIVITY_APPS=off` to turn it off.
 
 Everything is sorted into learning, work, entertainment, social, messages, shopping, news or other
-(`src/domain/activity.ts`; YouTube by title and channel). Daily totals go to `learning.minutes`, `screen.work`,
-`screen.entertainment` and `screen.social`, so they count for XP, patterns and the System's quests, and the coach
-sees a 7-day summary (sites, apps and video titles; never URLs or page contents). Raw stretches are deleted after
-90 days. Pressing **Track this course** in the extension creates a course under Skills → Learning that fills in
-its own minutes and progress.
+(`src/domain/activity.ts`; YouTube by title and channel). A site or Mac app the built-in list doesn't know is
+sorted once by your AI model (the `activity:classify` job, hourly; only the name is sent). Your own pick, from the
+extension popup or the Activity page, always wins and re-sorts past time too.
+
+Daily totals go to `learning.minutes`, `screen.work`, `screen.entertainment` and `screen.social`, so they count for
+XP, patterns and the System's quests, and the coach sees a 7-day summary (sites, apps and page titles; never URLs or
+page contents). Raw stretches are deleted after 90 days.
+
+**Library.** Pressing **Track this** in the extension adds a course, show, video series or book. While an episode or
+lesson plays, its series is added by itself (a show on an entertainment site, a course on a learning one), and
+every episode is kept for good in `library_episodes`: its name, number, season, length, how far you got and the
+time spent. Library cards on Skills, Hobbies and Activity show the last one and open the full list.
 
 ## Codeforces, CodeChef and AtCoder
 

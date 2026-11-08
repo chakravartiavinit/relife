@@ -1,3 +1,5 @@
+<img src="icons/icon128.png" width="64" height="64" alt="" align="right">
+
 # ReLife browser extension
 
 Measures focused time on each site (and YouTube video, and course page) and sends it to **your own** ReLife
@@ -43,3 +45,12 @@ Click the **Tracking** pill at the top of the popup to pause everything until yo
 
 Every 30 seconds it posts the current stretch and any finished ones to `POST /api/activity` with your token.
 If ReLife isn't running, it keeps up to 2,000 stretches and sends them later.
+
+## Updating
+
+After pulling a new version, press the reload arrow on the ReLife card in `chrome://extensions`, then refresh the
+tabs that were already open. Chrome keeps the old copy running in open tabs until they reload; it stops on its own
+and no longer logs "Extension context invalidated", but it doesn't track either.
+
+Uploads are clipped to what ReLife accepts, so an unusually long page title can't block the queue, and a long
+offline backlog goes out in batches.

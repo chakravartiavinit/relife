@@ -1,15 +1,21 @@
-# ReLife
+<p align="center">
+  <img src="extension/icons/icon128.png" width="96" height="96" alt="">
+</p>
 
-Level up your real life, one day at a time. ReLife is a life RPG: it tracks Health, Mind, Skills, Wealth,
-Hobbies and People in one place, pulls in what it can on its own (Binance, your order apps, GitHub, your laptop,
-bank SMS, Gmail), gives you daily quests, and messages you on Telegram when something in your data deserves a
-look. An AI model of your choice turns the numbers into quests, nudges and plans.
+<h1 align="center">ReLife</h1>
+
+<p align="center">Level up your real life, one day at a time.</p>
+
+ReLife is a life RPG. It tracks Health, Mind, Skills, Wealth, Hobbies and People in one place, pulls in what it
+can on its own (Binance, your order apps, GitHub, your laptop, what you watch, bank SMS, Gmail), gives you daily
+quests, and messages you on Telegram when something in your data deserves a look. An AI model of your choice turns
+the numbers into quests, nudges and plans.
 
 Local-first: everything runs on your machine, and your data stays in your own Postgres.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/today-dark.png">
-  <img alt="ReLife Today page: level and XP, area levels with medals, the day's quest log, The System's quests and payments due soon" src="docs/images/today-light.png">
+  <img alt="ReLife Today page: what needs you first, the day's numbers, the quest log, money today, yesterday and The System's quests" src="docs/images/today-light.png">
 </picture>
 
 <picture>
@@ -24,8 +30,10 @@ diagrams (processes, data flow, data model, job engine, nudges, AI, security and
 
 ## What's inside
 
-- **Today** (`/`): the quest log. Routines and medicines due, daily goals like water, and The System's quests
-  for the day.
+- **Today** (`/`): a morning briefing. What needs you first (a position near liquidation, a renewal, a medicine
+  running low, a failing sync), the day's key numbers, the quest log (routines, medicines, and daily goals like
+  water in millilitres with a 2–4 L target), money spent today, a look at yesterday, and The System's quests.
+- **Live**: open pages refresh when new data lands, and each new bank debit or credit pops up once.
 - **The System**: daily quests in the style of Solo Leveling. The AI picks what to train from what's slipping and
   what you want to improve; tested rules keep it fair (targets near your usual, ranks E–S, penalty and emergency
   quests). It also spots spending habits from order items, like a soft drink bought on most days, and sets at
@@ -43,7 +51,12 @@ diagrams (processes, data flow, data model, job engine, nudges, AI, security and
     where the profit and loss came from (spot and futures only, FIFO), and every trade, P2P order, transfer and
     reward.
   - **Subscriptions**: what renews and when, with logos and an add or edit dialog.
-- **Activity** (`/activity`): time per site and app, from the Chrome extension and a Mac app watcher.
+- **Activity** (`/activity`): everything you do on the Mac, from the Chrome extension and a Mac app watcher:
+  time by kind (learning, deep work, fun, social…) and where it went, top sites and apps, and the pages and
+  videos it was spent on. New sites and apps are sorted once by your AI model; tap a kind to change it.
+- **Library**: courses, shows, anime and video series. While an episode plays (Crunchyroll, Netflix, YouTube
+  playlists, course sites), the extension adds the series by itself and logs each episode with its length and
+  how far you got.
 - **Habits**: every routine, medicine and tracker, with streaks and history.
 - **Insights**: alerts, nudges, weekly reviews and plans, and questions about your data.
 - **Inbox**: messages that couldn't be read and payments without a category.
@@ -116,7 +129,7 @@ and stores them encrypted in your local database; values already in `.env` fill 
 | Zomato, Swiggy, Blinkit, Zepto, Flipkart, Amazon orders with items | Log in once in a Chrome window ReLife opens | [CONNECTORS.md](docs/CONNECTORS.md) |
 | GitHub commits, PRs and reviews | Fine-grained token | [CONNECTORS.md](docs/CONNECTORS.md#github) |
 | Codeforces, AtCoder, CodeChef, Lichess, Chess.com | Your public handle | Connectors page |
-| Laptop time per site and app | The browser extension and a shared token | [extension/README.md](extension/README.md) |
+| Laptop time per site and app, shows and courses you watch | The browser extension and a shared token | [extension/README.md](extension/README.md) |
 | Bank SMS, steps, sleep (iPhone) | iOS Shortcuts writing to an iCloud Drive file | [SHORTCUTS.md](docs/SHORTCUTS.md) |
 | Bank alerts and order emails | Gmail OAuth (`scripts/gmail-auth.ts`) | [CONNECTORS.md](docs/CONNECTORS.md#gmail) |
 | Exchange rates | Nothing: connect FX | Connectors page |
@@ -128,6 +141,9 @@ Binance's API only reaches back about 1.5–2 years. For older trades, download 
 and run `npx tsx --env-file=.env scripts/binance-import.ts <file.csv>`.
 
 ## Daily use
+
+Every day, streak and time in ReLife follows the time zone in **Settings** (set on first run), not the
+server's or the browser's clock.
 
 - **⌘K** logs anything: `water 250`, `mood 4`, `read 30 min`, `spent 120 chai`.
 - **Telegram**: tap ✅ on reminders, 💬 Why? on a nudge, and use `/today`, `/quests`, `/status`, `/log`,
@@ -191,9 +207,10 @@ screenshots use fake data (`npm run dev:mock`).
 
 ## Phone access
 
-Install [Tailscale](https://tailscale.com) on the Mac and iPhone, run the dashboard with
-`next dev -H 0.0.0.0 -p 3030` or put it behind `tailscale serve`, and open it from Safari. Add it to the Home
-Screen to use it as an app. Nothing is exposed to the internet.
+Install [Tailscale](https://tailscale.com) on the Mac and iPhone, then run `tailscale serve --bg 3030` on the
+Mac. Open the `https://<your-mac>.<tailnet>.ts.net` address it prints in Safari and add it to the Home Screen to
+use it as an app. Only your own devices can reach it; nothing is exposed to the internet. Bank SMS keep flowing
+through the iCloud file even when the Mac is away (see [SHORTCUTS.md](docs/SHORTCUTS.md)).
 
 ## License
 
@@ -210,6 +227,7 @@ own MIT notices (see Credits).
   Trademarks belong to their owners.
 - Routine, hobby and shopping-category pictures (`public/routines`, `public/hobbies`, `public/categories`):
   [Fluent Emoji](https://github.com/microsoft/fluentui-emoji) by Microsoft (MIT).
-- The ReLIFE name and logo (`assets/brand/`, `public/brand/`, `src/app/icon.png`, `src/app/apple-icon.png`)
+- The ReLIFE name and logo (`assets/brand/`, `public/brand/`, `src/app/icon.png`, `src/app/apple-icon.png`,
+  `extension/icons/`)
   belong to their owners (© YayoiSo/comico/ReLIFE Laboratory) and are used as a fan tribute. They are not
   covered by this project's AGPL license.

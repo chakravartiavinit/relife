@@ -41,8 +41,9 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
 - `src/ui/`: tokens and components. `src/app/globals.css` holds the design tokens.
 - Logo: the original ReLIFE logo. `assets/brand/relife-logo.png` is the source;
   `node scripts/brand.mjs assets/brand/relife-logo.png` rebuilds `public/brand/` (light and dark logos and
-  icons, with content-hashed names), `src/ui/brand-files.ts` (their paths) and `src/app/icon.png` /
-  `apple-icon.png`. Use `Wordmark` (or `CapsuleMark` for the icon) from `src/ui/components/logo.tsx`;
+  icons, with content-hashed names), `src/ui/brand-files.ts` (their paths), `src/app/icon.png` /
+  `apple-icon.png` and the extension's toolbar icons (`extension/icons/`, the capsule alone on transparent; the
+  README header uses the 128 px one). Use `Wordmark` (or `CapsuleMark` for the icon) from `src/ui/components/logo.tsx`;
   never redraw the logo.
 - Name: the app is ReLife (it was briefly called Savepoint). Internal identifiers use `relife` too (database
   names, `relife:*` events and storage keys, the iCloud inbox path).
