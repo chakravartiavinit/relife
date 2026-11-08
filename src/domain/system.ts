@@ -64,7 +64,11 @@ export function fairTarget(s: Stat | undefined, spec: QuestSpec, d: number): num
 }
 
 /** Whole numbers for counts and money, one decimal for small measures (sleep hours, mood). */
-export function round(t: number, s: Pick<Stat, 'usual' | 'unit'>) {
+/** Counts (commits, pull requests, cans) stay whole: every logged day was a whole number. */
+const whole = (s: Pick<Stat, 'history'>) => !!s.history?.length && s.history.every(Number.isInteger)
+
+export function round(t: number, s: Pick<Stat, 'usual' | 'unit' | 'history'>) {
+  if (whole(s)) return Math.round(t)
   return Math.abs(s.usual ?? t) < 20 && !/^[A-Z]{3}$/.test(s.unit ?? '') ? Math.round(t * 10) / 10 : Math.round(t)
 }
 
@@ -120,9 +124,12 @@ export function judge(q: { op: Op; target: number; to: string; agg: Agg }, value
 }
 
 /** The penalty for a missed daily quest: the same stat tomorrow, a stretch harder. */
-export function penaltyFor(q: { op: Op; target: number; agg: Agg }, d: number): { op: Op; target: number } {
+export function penaltyFor(q: { op: Op; target: number; agg: Agg }, d: number, s?: Pick<Stat, 'usual' | 'unit' | 'history'>): { op: Op; target: number } {
   const k = Math.max(0.15, stretch(d))
-  return q.op === 'gte' ? { op: 'gte', target: q.target * (1 + k) } : { op: 'lte', target: q.target * (1 - 2 * k) }
+  if (q.op === 'lte') return { op: 'lte', target: s ? round(q.target * (1 - 2 * k), s) : q.target * (1 - 2 * k) }
+  const t = s ? round(q.target * (1 + k), s) : q.target * (1 + k)
+  // Rounding a small count can land back on yesterday's target; a penalty is always at least one more.
+  return { op: 'gte', target: s && whole(s) && t <= q.target ? q.target + 1 : t }
 }
 
 /** Without an AI model: one quest per focus stat (or the stats furthest off your usual), a stretch better. */

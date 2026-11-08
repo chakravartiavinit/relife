@@ -187,13 +187,14 @@ async function penalties(user: User, today: string, stats: Stat[]) {
   const issued: SystemQuest[] = []
   for (const q of failed) {
     const s = stats.find((x) => x.id === q.statId)
-    const p = penaltyFor(q, d)
-    const target = s ? round(p.target, s) : Math.round(p.target)
+    const p = penaltyFor(q, d, s)
+    const target = s ? p.target : Math.round(p.target)
     const rank: Rank = s ? rankFor(s, { statId: q.statId, op: p.op, target, days: 1 }) : 'C'
     const [row] = await db.insert(Q).values({
       userId: user.id, kind: 'penalty', fromDate: today, toDate: today, statId: q.statId, statName: q.statName, area: q.area, unit: q.unit,
       op: p.op, agg: q.agg, target, baseline: q.baseline, rank, xp: xpFor(rank, 'penalty'),
-      title: `Penalty: ${q.statName.toLowerCase()} ${p.op === 'gte' ? 'at least' : 'at most'} ${fmt(target, q.unit)}`,
+      // The section already says "Penalty quest", so the title reads like a daily one: "Push 4 pull requests".
+      title: s ? plainTitle(s, p.op, target, 1) : `${q.statName}: ${fmt(target, q.unit)} or ${p.op === 'gte' ? 'more' : 'less'}`,
       reason: `You failed “${q.title}” yesterday.`, parentId: q.id, ref: `penalty:${q.id}`,
     }).onConflictDoNothing().returning()
     if (row) issued.push(row)

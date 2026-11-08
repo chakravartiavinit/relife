@@ -61,6 +61,10 @@ test('windowValue totals counts and averages measures', () => {
 test('penalty is the same quest a stretch harder; fallback favours focus stats', () => {
   assert.ok(penaltyFor({ op: 'gte', target: 100, agg: 'sum' }, 2).target > 100)
   assert.ok(penaltyFor({ op: 'lte', target: 100, agg: 'sum' }, 2).target < 100)
+  // Counts stay whole and always go up by at least one: 3 pull requests becomes 4, never 3.5.
+  const prs = { usual: 2.9, unit: null, history: [3, 2, 4, 3] }
+  assert.equal(penaltyFor({ op: 'gte', target: 3, agg: 'sum' }, 2, prs).target, 4)
+  assert.equal(penaltyFor({ op: 'gte', target: 23, agg: 'sum' }, 2, prs).target % 1, 0)
   const qs = fallbackQuests([stat(), stat({ id: 'mood', name: 'Mood', usual: 3.5, recent: 3, agg: 'avg' })], ['mood'], 2, 1)
   assert.equal(qs[0].statId, 'mood')
   assert.equal(qs[0].target, 3.9)
