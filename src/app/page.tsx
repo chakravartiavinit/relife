@@ -1,29 +1,41 @@
 import Link from 'next/link'
 import { connection } from 'next/server'
+import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
 import { and, desc, eq } from 'drizzle-orm'
-import { ArrowUpRight, CalendarClock, Flame, Moon, Plus, Sparkles, Sun, Sunrise, Sunset } from 'lucide-react'
+import { BellRing, CalendarClock, CalendarRange, ChevronRight, Lightbulb, Moon, Plus, ScrollText, Sparkles, Sun, Sunrise, Sunset, Target } from 'lucide-react'
 import { db, schema } from '@/db'
 import { CATEGORIES } from '@/db/schema'
 import { getUser } from '@/core/user'
 import { dayAgenda, upcomingPayments, type ScheduleMeta } from '@/core/schedules'
 import { trackerDays } from '@/core/metrics'
-import { formatDay, formatTime, localDate, localHour } from '@/core/time'
+import { addDays, daysBetween, formatDay, formatTime, localDate, localHour } from '@/core/time'
 import { formatMoney } from '@/domain/money'
 import { dueLabel } from '@/domain/wealth'
 import { CATEGORY } from '@/ui/tokens'
 import { OnboardingCompact, onboardingSteps } from '@/ui/components/onboarding'
 import { Agenda, Goals, type AgendaRow, type GoalRow } from '@/ui/components/agenda'
-import { Badge, Card, CardHeader, Skeleton } from '@/ui/components/card'
+import { Card, CardHeader, Skeleton } from '@/ui/components/card'
 import { Capsule } from '@/ui/components/capsule'
 import { EmptyState } from '@/ui/components/empty'
 import { buttonClass } from '@/ui/components/button'
 import { PetalBurst } from '@/ui/components/petals'
 import { showUpStreak } from '@/ui/components/life-kpis'
-import { LevelChip } from '@/ui/components/xp'
+import { CharacterBanner } from '@/ui/components/hud'
+import { questBoard, type QuestView } from '@/core/quests'
+import { systemBoard } from '@/core/system'
+import { weekStart } from '@/domain/quests'
+import { Quests, type QuestItem } from '@/ui/components/quests'
 import { xpSummary } from '@/core/xp'
 
-// Today is for doing: what's left, what's due, one next setup step. Reviewing lives on /overview.
+const INSIGHT = {
+  nudge: { label: 'Nudge', icon: Lightbulb, color: 'var(--pill)' },
+  plan: { label: 'Plan', icon: Target, color: 'var(--good)' },
+  alert: { label: 'Alert', icon: BellRing, color: 'var(--warn)' },
+  review: { label: 'Weekly review', icon: CalendarRange, color: 'var(--cat-mind)' },
+} as const
+
+// Today is for doing: what's left, what's due, one next setup step. Looking back lives on Progress (/profile).
 
 export default function TodayPage() {
   return (
@@ -40,10 +52,11 @@ const PHASE = (h: number) =>
 async function Today() {
   await connection()
   const user = await getUser()
+  if (!user.profile.onboardedAt) redirect('/welcome')
   const now = new Date()
   const today = localDate(now, user.timezone)
 
-  const [agenda, payments, trackers, insights, steps, streak, xp] = await Promise.all([
+  const [agenda, payments, trackers, insights, steps, streak, xp, quests, system] = await Promise.all([
     dayAgenda(user, today, now),
     upcomingPayments(user, now),
     trackerDays(user, today, today),
@@ -53,6 +66,8 @@ async function Today() {
     onboardingSteps(user),
     showUpStreak(user, today),
     xpSummary(user, now),
+    questBoard(user, now),
+    systemBoard(user, now),
   ])
 
   const valueOf = (slug: string) => trackers.find((t) => t.tracker.slug === slug)?.days.get(today)
@@ -83,6 +98,7 @@ async function Today() {
       name: s.name,
       kind: s.kind,
       color: CATEGORY[s.category].color,
+      area: s.category,
       detail: s.kind === 'medicine'
         ? [meta.dose, typeof meta.stock === 'number' ? `${meta.stock} left` : null].filter(Boolean).join(' · ')
         : meta.notes,
@@ -94,6 +110,8 @@ async function Today() {
   for (const r of rows) { const c = catOf.get(r.scheduleId)!; byCat[c].total++; if (r.status === 'done') byCat[c].done++ }
   for (const g of goals) { const c = catOf.get(g.scheduleId)!; byCat[c].total++; if (g.value >= g.target) byCat[c].done++ }
   const total = rows.length + goals.length
+  // Each routine's share of today's 100 plan XP, shown as its quest reward.
+  for (const r of rows) r.xp = Math.round(100 / total)
   const done = Object.values(byCat).reduce((s, c) => s + c.done, 0)
   const left = total - done
   const dueSoon = payments.filter((p) => p.daysLeft <= 7)
@@ -103,64 +121,23 @@ async function Today() {
   const firstName = user.name.split(' ')[0]
 
   return (
-    <div className="flex flex-col gap-8">
-      <header className="flex flex-wrap items-end justify-between gap-x-8 gap-y-5 pt-1">
-        <div className="min-w-0">
-          <div className="mb-3 inline-flex h-7 items-center gap-2 rounded-full bg-glass px-3 text-[12px] font-medium text-ink-2 shadow-1 backdrop-blur-md">
-            <Icon className="size-3.5 text-pill-ink" strokeWidth={2} aria-hidden />
-            {formatDay(today, { weekday: 'long', day: 'numeric', month: 'long' })}
-          </div>
-          <h1 className="font-display text-[32px] leading-[1.05] font-extrabold tracking-[-0.035em] text-ink sm:text-[38px]">{greet}, {firstName}.</h1>
-          <p className="mt-2 text-[15px] text-ink-2">
-            {!total ? 'Nothing planned yet. Add one small routine to start.' : left ? `${left} left today, ${done} done.` : 'Everything for today is done.'}
-          </p>
-        </div>
-
-        <div className="grid w-full grid-cols-2 gap-3 sm:flex sm:w-auto sm:flex-wrap sm:items-stretch [&>*]:min-h-[76px]">
-          <div className="col-span-2 sm:contents"><LevelChip s={xp} /></div>
-          {total ? (
-            <div className="flex flex-col justify-center rounded-lg bg-surface px-4 py-3 shadow-1 sm:w-44">
-              <div className="flex items-baseline justify-between text-[12px] text-ink-3">
-                <span>Today</span>
-                <span className="tabular-nums"><span className="font-semibold text-ink">{done}</span> / {total}</span>
-              </div>
-              <Capsule value={done} max={total} size="sm" color="var(--pill)" label="Done today" className="mt-2" />
-            </div>
-          ) : null}
-          <Link
-            href="/overview"
-            className="flex items-center gap-3 rounded-lg bg-surface px-4 py-3 shadow-1 transition-[box-shadow] duration-150 hover:shadow-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill"
-          >
-            <span aria-hidden className={streak.current ? 'text-pill-ink' : 'text-ink-3'}><Flame className="size-5" strokeWidth={2} /></span>
-            <span>
-              <span className="block font-display text-[20px] leading-none font-bold text-ink tabular-nums">{streak.current}<span className="ml-1 font-sans text-[12px] font-medium text-ink-3">{streak.current === 1 ? 'day' : 'days'}</span></span>
-              <span className="mt-1 block text-[12px] text-ink-3">{streak.doneToday ? 'Streak kept today' : streak.current ? 'Keep your streak' : 'Start a streak'}</span>
-            </span>
-          </Link>
-        </div>
-      </header>
-
-      {CATEGORIES.some((c) => byCat[c].total) ? (
-        <ul aria-label="Today by area" className="-mt-3 flex flex-wrap gap-2">
-          {CATEGORIES.filter((c) => byCat[c].total).map((c) => (
-            <li key={c} className="flex h-8 items-center gap-2 rounded-full bg-surface px-3 text-[13px] text-ink-2 shadow-1">
-              <span aria-hidden className="size-2 rounded-full" style={{ background: CATEGORY[c].color }} />
-              {CATEGORY[c].label}
-              <span className="text-ink-3 tabular-nums">{byCat[c].done}/{byCat[c].total}</span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+    <div className="flex flex-col gap-6">
+      <CharacterBanner
+        s={xp} name={user.name} heading={`${greet}, ${firstName}.`}
+        eyebrow={<span className="inline-flex items-center gap-1.5"><Icon className="size-3.5 text-pill-ink" strokeWidth={2} aria-hidden />{formatDay(today, { weekday: 'long', day: 'numeric', month: 'long' })}</span>}
+        streak={streak} freezes={quests.freezes} areas={user.profile.areas}
+      />
 
       <PetalBurst complete={total > 0 && done === total} day={today} />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <Card className="p-6">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <Card className="p-5 sm:p-6">
           <CardHeader
-            title="Today’s plan"
-            description={total ? `${rows.length} routine${rows.length === 1 ? '' : 's'}${goals.length ? ` and ${goals.length} goal${goals.length === 1 ? '' : 's'}` : ''}` : undefined}
+            title="Today’s quest log" icon={<ScrollText strokeWidth={2} />} color="var(--pill)"
+            description={total ? (left ? `${done} of ${total} done · ${left} to go` : `All ${total} done. Nice.`) : undefined}
             action={<Link href="/habits?new=1" className={buttonClass({ variant: 'ghost', size: 'sm' })}><Plus className="size-4" strokeWidth={2} />Add</Link>}
           />
+          {total ? <Capsule value={done} max={total} size="sm" color="var(--pill)" label="Done today" className="-mt-2 mb-5" /> : null}
           {goals.length ? (
             <div className="mb-5 border-b border-divider pb-5"><Goals rows={goals} /></div>
           ) : null}
@@ -168,7 +145,7 @@ async function Today() {
             <Agenda rows={rows} />
           ) : !goals.length ? (
             <EmptyState
-              title="Nothing scheduled today"
+              title="Nothing scheduled today" icon={Sunrise} color={'var(--pill)'}
               description="Add routines like skincare or medicines and they’ll show up here, with reminders on Telegram."
               action={<Link href="/habits?new=1" className={buttonClass({ variant: 'primary' })}>Add a routine</Link>}
             />
@@ -176,6 +153,19 @@ async function Today() {
         </Card>
 
         <aside className="flex flex-col gap-6" aria-label="Also today">
+          <Quests
+            system={{
+              difficulty: system.difficulty, hasData: system.hasData,
+              quests: system.quests.map((q) => ({
+                id: q.id, kind: q.kind, title: q.title, reason: q.reason, rank: q.rank, xp: q.xp, status: q.status,
+                progress: q.progress, target: q.target, op: q.op, unit: q.unit, toDate: q.toDate,
+              })),
+            }}
+            weekly={quests.weekly.map(questItem)}
+            chests={quests.chests.map((c) => ({ id: c.id, rarity: c.rarity, reason: c.reason }))}
+            freezes={quests.freezes} frozeOn={quests.frozeOn}
+            weekLeft={daysBetween(today, addDays(weekStart(today), 6))}
+          />
           {steps.some((s) => !s.done) ? <OnboardingCompact steps={steps} /> : null}
 
           <Card>
@@ -186,17 +176,29 @@ async function Today() {
               action={<Link href="/wealth/subscriptions" className={buttonClass({ variant: 'ghost', size: 'sm' })}>All</Link>}
             />
             {dueSoon.length ? (
-              <ul className="flex flex-col gap-3">
-                {dueSoon.map((p) => (
-                  <li key={p.schedule.id} className="flex items-center gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm text-ink">{p.schedule.name}</div>
-                      <div className="text-[12px] text-ink-3">{dueLabel(p.daysLeft)}</div>
-                    </div>
-                    {p.daysLeft <= 1 ? <Badge color="var(--warn)">Soon</Badge> : null}
-                    {p.amount ? <span className="text-sm font-medium text-ink tabular-nums">{formatMoney(p.amount, p.currency ?? user.baseCurrency)}</span> : null}
-                  </li>
-                ))}
+              <ul className="-mx-2 flex flex-col">
+                {dueSoon.map((p) => {
+                  const soon = p.daysLeft <= 1
+                  const wd = new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: user.timezone }).format(p.due)
+                  const dd = new Intl.DateTimeFormat('en-GB', { day: 'numeric', timeZone: user.timezone }).format(p.due)
+                  return (
+                    <li key={p.schedule.id} className="flex items-center gap-3 rounded-md px-2 py-2">
+                      <span
+                        aria-hidden
+                        className={`grid size-10 shrink-0 place-content-center rounded-[10px] text-center leading-none ${soon ? 'text-warn' : 'text-ink'}`}
+                        style={{ background: soon ? 'color-mix(in oklch, var(--warn) 14%, transparent)' : 'var(--surface-2)', boxShadow: 'inset 0 0 0 1px var(--hairline)' }}
+                      >
+                        <span className="text-[9.5px] font-semibold tracking-[0.06em] uppercase opacity-70">{wd}</span>
+                        <span className="mt-0.5 font-display text-[16px] font-bold tabular-nums">{dd}</span>
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-[14px] text-ink">{p.schedule.name}</div>
+                        <div className={`text-[12px] ${soon ? 'font-medium text-warn' : 'text-ink-3'}`}>{dueLabel(p.daysLeft)}</div>
+                      </div>
+                      {p.amount ? <span className="text-[14px] font-medium text-ink tabular-nums">{formatMoney(p.amount, p.currency ?? user.baseCurrency)}</span> : null}
+                    </li>
+                  )
+                })}
               </ul>
             ) : (
               <p className="text-[13px] text-ink-3">Nothing due in the next 7 days.</p>
@@ -206,27 +208,35 @@ async function Today() {
           {insights.length ? (
             <Card>
               <CardHeader title="Suggestions" icon={<Sparkles strokeWidth={2} />} color="var(--pill)" action={<Link href="/insights" className={buttonClass({ variant: 'ghost', size: 'sm' })}>Review</Link>} />
-              <ul className="flex flex-col gap-3">
-                {insights.map((i) => (
-                  <li key={i.id}>
-                    <Link href="/insights" className="group flex items-start gap-3 rounded-md">
-                      <span className="min-w-0 flex-1 text-sm text-ink group-hover:underline">{i.title}</span>
-                      <ArrowUpRight className="size-4 shrink-0 text-ink-3" strokeWidth={1.5} />
-                    </Link>
-                  </li>
-                ))}
+              <ul className="-mx-2 flex flex-col">
+                {insights.map((i) => {
+                  const K = INSIGHT[i.kind]
+                  return (
+                    <li key={i.id}>
+                      <Link href="/insights" className="group flex items-center gap-3 rounded-md px-2 py-2 transition-[background-color] duration-150 hover:bg-ink/[0.03] focus-visible:outline-2 focus-visible:outline-pill dark:hover:bg-white/[0.04]">
+                        <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-[9px]" style={{ color: K.color, background: `color-mix(in oklch, ${K.color} 13%, transparent)` }}>
+                          <K.icon className="size-4" strokeWidth={2} />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-[11.5px] font-medium text-ink-3">{K.label}</span>
+                          <span className="block text-[13.5px] leading-snug text-ink">{i.title}</span>
+                        </span>
+                        <ChevronRight className="size-4 shrink-0 text-ink-3 transition-[translate,color] duration-150 group-hover:translate-x-0.5 group-hover:text-ink" strokeWidth={1.5} aria-hidden />
+                      </Link>
+                    </li>
+                  )
+                })}
               </ul>
             </Card>
           ) : null}
 
-          <p className="px-1 text-[12px] leading-relaxed text-ink-3">
-            Press <Badge>⌘K</Badge> to log anything: “water 250”, “mood 4”, “spent 120 chai”.
-          </p>
         </aside>
       </div>
     </div>
   )
 }
+
+const questItem = (q: QuestView): QuestItem => ({ key: q.key, title: q.title, area: q.area, measure: q.measure, target: q.target, progress: q.progress, done: q.done, rarity: q.rarity })
 
 function TodaySkeleton() {
   return (
@@ -235,7 +245,7 @@ function TodaySkeleton() {
         <div><Skeleton className="h-7 w-48 rounded-full" /><Skeleton className="mt-3 h-10 w-80" /><Skeleton className="mt-3 h-5 w-56" /></div>
         <Skeleton className="hidden h-16 w-80 rounded-lg sm:block" />
       </div>
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <Skeleton className="h-[420px] rounded-lg" />
         <div className="flex flex-col gap-6"><Skeleton className="h-[180px] rounded-lg" /><Skeleton className="h-[160px] rounded-lg" /></div>
       </div>

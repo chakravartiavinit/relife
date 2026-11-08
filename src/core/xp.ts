@@ -13,7 +13,7 @@ import type { User } from './user'
 // only rescores today and yesterday (and back-fills once when there is no XP yet).
 
 const BALANCE_XP = 50
-const TRACKERS = ['sleep.hours', 'steps', 'mood', 'meditation', 'github.commits', 'github.prs', 'learning.minutes', 'people.contacts']
+const TRACKERS = ['sleep.hours', 'steps', 'mood', 'meditation', 'github.commits', 'github.prs', 'learning.minutes', 'people.contacts', 'cp.solved']
 
 function median(xs: number[]) {
   if (!xs.length) return 0
@@ -24,14 +24,21 @@ function median(xs: number[]) {
 
 /** Recompute XP for every day in [from, to] (local dates). Safe to repeat. */
 export async function scoreRange(user: User, from: string, to: string, now = new Date()) {
+  // Nothing before the fresh start (first finished setup) earns XP.
+  const since = user.profile.xpSince
+  if (since && from < since) from = since
+  if (from > to) return
   const today = localDate(now, user.timezone)
   const window = daysBetween(from, today) + 1
-  const [adherence, trackers, txns, active] = await Promise.all([
+  const [adherence, trackers, txns, active, hobbies] = await Promise.all([
     loadAdherence(user, { kinds: ['routine', 'medicine'] }, window, window, now),
     trackerDays(user, from, to, { slugs: TRACKERS }),
     transactionsBetween(user, addDays(from, -30), to),
     activeDays(user, addDays(from, -400)),
+    trackerDays(user, from, to, { category: 'hobbies' }),
   ])
+  // Practice minutes only: chess.games, ratings and other hobby stats aren't time.
+  const hobbyMin = (d: string) => hobbies.filter((h) => h.tracker.unit === 'min').reduce((s, h) => s + (h.days.get(d) ?? 0), 0)
   const t = (slug: string) => trackers.find((x) => x.tracker.slug === slug)
   const spendByDay = new Map<string, number>()
   for (const x of txns) if (isSpend(x)) spendByDay.set(x.localDate, (spendByDay.get(x.localDate) ?? 0) - x.base)
@@ -51,7 +58,7 @@ export async function scoreRange(user: User, from: string, to: string, now = new
     const usual = median(prior)
     const spent = spendByDay.get(d) ?? 0
     let streak = 0
-    for (let x = d; active.has(x); x = addDays(x, -1)) streak++
+    for (let x = d; active.has(x) && (!since || x >= since); x = addDays(x, -1)) streak++
 
     const awards = scoreDay({
       plan,
@@ -62,8 +69,10 @@ export async function scoreRange(user: User, from: string, to: string, now = new
       commits: t('github.commits')?.days.get(d),
       prs: t('github.prs')?.days.get(d),
       learningMin: t('learning.minutes')?.days.get(d),
+      solved: t('cp.solved')?.days.get(d),
       frugal: prior.filter((v) => v > 0).length >= 7 && spent < usual ? true : undefined,
       catchUps: t('people.contacts')?.days.get(d),
+      hobbyMin: hobbyMin(d),
       streak,
     })
     for (const a of awards) {
@@ -84,7 +93,7 @@ export async function scoreRange(user: User, from: string, to: string, now = new
   await awardBalance(user, from, to)
 }
 
-/** +50 XP the first day each week (Mon–Sun) that all five areas have earned XP. */
+/** +50 XP the first day each week (Mon–Sun) that every area has earned XP. */
 async function awardBalance(user: User, from: string, to: string) {
   const monday = (d: string) => addDays(d, -((new Date(`${d}T00:00:00Z`).getUTCDay() + 6) % 7))
   const start = monday(from)
@@ -100,7 +109,7 @@ async function awardBalance(user: User, from: string, to: string) {
     if (!day) continue
     await db.insert(schema.xpEvents).values({
       userId: user.id, localDate: day, area: 'general', kind: 'bonus', source: 'balance', amount: BALANCE_XP, verified: true,
-      reason: 'XP in all five areas this week', ref: `balance:${wk}`,
+      reason: 'XP in every area this week', ref: `balance:${wk}`,
     }).onConflictDoUpdate({ target: [schema.xpEvents.userId, schema.xpEvents.ref], set: { localDate: day } })
   }
 }
@@ -116,11 +125,12 @@ export async function achievementStats(user: User, now = new Date()): Promise<Ac
   const [events, active, [totals], xp] = await Promise.all([
     db.select({ d: schema.xpEvents.localDate, source: schema.xpEvents.source, kind: schema.xpEvents.kind, amount: schema.xpEvents.amount })
       .from(schema.xpEvents).where(and(eq(schema.xpEvents.userId, user.id), ne(schema.xpEvents.kind, 'achievement'))),
-    activeDays(user, addDays(today, -800)),
+    activeDays(user, user.profile.xpSince ?? addDays(today, -800)),
     db.select({
       commits: sql<number>`coalesce(sum(${schema.entries.value}) filter (where ${schema.trackers.slug} = 'github.commits'), 0)::float`,
       learning: sql<number>`coalesce(sum(${schema.entries.value}) filter (where ${schema.trackers.slug} = 'learning.minutes'), 0)::float`,
-    }).from(schema.entries).innerJoin(schema.trackers, eq(schema.trackers.id, schema.entries.trackerId)).where(eq(schema.entries.userId, user.id)),
+    }).from(schema.entries).innerJoin(schema.trackers, eq(schema.trackers.id, schema.entries.trackerId))
+      .where(and(eq(schema.entries.userId, user.id), gte(schema.entries.localDate, user.profile.xpSince ?? '1970-01-01'))),
     totalXp(user),
   ])
   const sources = new Map<string, Set<string>>()
@@ -145,12 +155,12 @@ export async function achievementStats(user: User, now = new Date()): Promise<Ac
   }
 }
 
-/** Unlock anything newly earned. Returns the names unlocked now. */
+/** Unlock anything newly earned. Returns what was unlocked now, for the unlock animation. */
 export async function checkAchievements(user: User, now = new Date()) {
   const stats = await achievementStats(user, now)
   const have = new Set((await db.select({ key: schema.achievements.key }).from(schema.achievements).where(eq(schema.achievements.userId, user.id))).map((r) => r.key))
   const today = localDate(now, user.timezone)
-  const unlocked: string[] = []
+  const unlocked: Unlocked[] = []
   for (const a of ACHIEVEMENTS) {
     if (have.has(a.key) || !a.check(stats).done) continue
     const [row] = await db.insert(schema.achievements).values({ userId: user.id, key: a.key, unlockedAt: now }).onConflictDoNothing().returning()
@@ -161,21 +171,30 @@ export async function checkAchievements(user: User, now = new Date()) {
         reason: `Achievement: ${a.name}`, ref: `ach:${a.key}`,
       }).onConflictDoNothing()
     }
-    unlocked.push(a.name)
+    unlocked.push({ key: a.key, name: a.name, tier: a.tier, xp: a.xp })
   }
   return unlocked
 }
 
-export type XpNews = { levelUp?: { level: number; title: string }; unlocked: string[] }
+export type Unlocked = { key: string; name: string; tier: 'bronze' | 'silver' | 'gold'; xp: number }
+/** What a log just changed, for toasts and celebrations. `from` is the level before; `newTitle` when the title changed. */
+export type XpNews = { levelUp?: { level: number; title: string; from: number; newTitle: boolean }; unlocked: Unlocked[]; chests?: number }
 
-/** Rescore today and yesterday, unlock achievements, and report a level-up. Called after logging. */
+/**
+ * After logging (and on the worker's tick): spend streak freezes that save a streak, rescore today and
+ * yesterday, unlock achievements, then earn chests for finished quests and new levels.
+ */
 export async function refreshXp(user: User, now = new Date()): Promise<XpNews> {
   const today = localDate(now, user.timezone)
+  const { awardQuestChests, levelChests, useFreezes } = await import('./quests')
   const before = levelFor(await totalXp(user)).level
+  await useFreezes(user, now)
   await scoreRange(user, addDays(today, -1), today, now)
   const unlocked = await checkAchievements(user, now)
   const after = levelFor(await totalXp(user)).level
-  return { levelUp: after > before ? { level: after, title: titleFor(after) } : undefined, unlocked }
+  await levelChests(user, before, after)
+  const chests = await awardQuestChests(user, now)
+  return { levelUp: after > before ? { level: after, title: titleFor(after), from: before, newTitle: titleFor(after) !== titleFor(before) } : undefined, unlocked, chests }
 }
 
 /** First run: score the last 90 days so levels reflect history. */
@@ -245,7 +264,7 @@ export async function xpBreakdown(user: User, from: string, to: string) {
 export async function recentXp(user: User, limit = 40) {
   return db.select({
     d: schema.xpEvents.localDate, area: schema.xpEvents.area, kind: schema.xpEvents.kind, amount: schema.xpEvents.amount,
-    reason: schema.xpEvents.reason, verified: schema.xpEvents.verified, ref: schema.xpEvents.ref,
+    reason: schema.xpEvents.reason, verified: schema.xpEvents.verified, ref: schema.xpEvents.ref, source: schema.xpEvents.source,
   }).from(schema.xpEvents).where(eq(schema.xpEvents.userId, user.id))
     .orderBy(desc(schema.xpEvents.localDate), desc(schema.xpEvents.amount)).limit(limit)
 }

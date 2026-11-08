@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { eq } from 'drizzle-orm'
-import { ArrowDownRight, ArrowUpRight, Brain, Check, Code, Flame, HeartPulse, Users, Wallet } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, Brain, Check, Code, Flame, HeartPulse, Palette, Users, Wallet } from 'lucide-react'
 import { db, schema } from '@/db'
 import type { Category } from '@/db/schema'
 import type { User } from '@/core/user'
@@ -25,6 +25,7 @@ const ICON: Record<Category, React.ReactNode> = {
   mind: <Brain strokeWidth={2} />,
   skills: <Code strokeWidth={2} />,
   wealth: <Wallet strokeWidth={2} />,
+  hobbies: <Palette strokeWidth={2} />,
   relationships: <Users strokeWidth={2} />,
 }
 
@@ -65,11 +66,12 @@ export async function LifeKpis({ user, now }: { user: User; now: Date }) {
   const sameDay = `${shiftMonth(month, -1)}-${today.slice(8)}`
   const lastMonthSameDay = sameDay < lastMonthEnd ? sameDay : lastMonthEnd
 
-  const [trackers, txns, people, active] = await Promise.all([
+  const [trackers, txns, people, active, hobbyTrackers] = await Promise.all([
     trackerDays(user, from14, today, { slugs: ['sleep.hours', 'steps', 'mood', 'github.commits'] }),
     transactionsBetween(user, from14 < lastMonthStart ? from14 : lastMonthStart, today),
     db.select().from(schema.people).where(eq(schema.people.userId, user.id)),
     activeDays(user, addDays(today, -400)),
+    trackerDays(user, from14, today, { category: 'hobbies' }),
   ])
   const series = (slug: string) => {
     const t = trackers.find((x) => x.tracker.slug === slug)
@@ -156,18 +158,37 @@ export async function LifeKpis({ user, now }: { user: User; now: Date }) {
     }
     : { cat: 'relationships', href: '/relationships', label: 'In touch', value: null, sub: 'Add people you want to stay close to' }
 
+  // Hobbies: practice minutes this week, across every hobby.
+  const practice = new Map<string, number>()
+  const practiceTrackers = hobbyTrackers.filter((h) => h.tracker.unit === 'min')
+  for (const h of practiceTrackers) for (const [d, v] of h.days) practice.set(d, (practice.get(d) ?? 0) + v)
+  let hobbies: Tile = { cat: 'hobbies', href: '/hobbies', label: 'Practice, 7 days', value: null, sub: 'Add a hobby and log practice minutes' }
+  if (practiceTrackers.length) {
+    const s = fillDays(practice, from14, today, 0)
+    const [prev, cur] = week(s)
+    const a = sum(cur), b = sum(prev)
+    hobbies = {
+      cat: 'hobbies', href: '/hobbies', label: 'Practice, 7 days', spark: s,
+      value: <span><Ticker value={a} /><span className="text-ink-3"> min</span></span>,
+      sub: `${cur.filter((p) => (p.value ?? 0) > 0).length} of 7 days practised`,
+      delta: delta(a, b, (d) => `${formatNumber(Math.abs(d))} min`),
+    }
+  }
+
   const { current, best } = streaks(active, today)
   const last7 = Array.from({ length: 7 }, (_, i) => addDays(today, i - 6))
 
   return (
-    <section aria-label="Your life at a glance" className="grid grid-cols-2 gap-3 md:grid-cols-3">
-      <StreakTile current={current} best={best} doneToday={active.has(today)} days={last7.map((d) => ({ date: d, done: active.has(d), today: d === today }))} />
-      {[health, mind, skills, wealth, relationships].map((t) => <KpiTile key={t.cat} tile={t} />)}
+    <section aria-label="Your life at a glance" className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="col-span-2 grid">
+        <StreakTile current={current} best={best} doneToday={active.has(today)} days={last7.map((d) => ({ date: d, done: active.has(d), today: d === today }))} />
+      </div>
+      {[health, mind, skills, wealth, hobbies, relationships].map((t) => <KpiTile key={t.cat} tile={t} />)}
     </section>
   )
 }
 
-const TILE = 'rounded-lg p-4 shadow-1 transition-[box-shadow] duration-150 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill'
+const TILE = 'rounded-lg p-4 shadow-1 transition-[box-shadow] duration-150 ease-out-quint hover:shadow-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill'
 
 function DeltaBadge({ d }: { d: Delta }) {
   const Arrow = d.up ? ArrowUpRight : ArrowDownRight
@@ -200,7 +221,7 @@ function KpiTile({ tile: t }: { tile: Tile }) {
       </div>
       <div className={cn('mt-1.5 text-[12px] leading-snug', t.value == null ? 'text-ink-2' : 'text-ink-3')}>{t.sub}</div>
       <div className="mt-auto pt-3">
-        {t.spark ? <Sparkline data={t.spark} color={color} height={28} />
+        {t.spark ? <Sparkline data={t.spark} color={color} height={28} label={`${area} ${t.label}, last 14 days`} />
           : t.ratio ? <div className="flex h-7 items-center"><Capsule value={t.ratio[0]} max={t.ratio[1]} color={color} size="sm" label={`${t.ratio[0]} of ${t.ratio[1]} in touch`} /></div>
             : <div aria-hidden className="flex h-7 items-end"><div className="w-full border-t border-dashed border-divider" /></div>}
       </div>

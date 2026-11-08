@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Award, Lock } from 'lucide-react'
+import { Award, Lock, Trophy } from 'lucide-react'
 import type { Medal } from '@/domain/xp'
 import { formatNumber } from '@/domain/money'
 import { CATEGORY } from '../tokens'
@@ -59,7 +59,11 @@ export function LevelRing({ level, progress, size = 148 }: { level: number; prog
     <div className="relative shrink-0" style={{ width: size, height: size }} role="img" aria-label={`Level ${level}, ${Math.round(progress * 100)}% to the next level`}>
       <svg viewBox="0 0 100 100" className="absolute inset-0 -rotate-90">
         <circle cx="50" cy="50" r={r} fill="none" stroke="var(--hairline)" strokeWidth="7" />
-        <circle cx="50" cy="50" r={r} fill="none" stroke="var(--pill)" strokeWidth="7" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - Math.min(1, Math.max(0.02, progress)))} />
+        <circle
+          cx="50" cy="50" r={r} fill="none" stroke="var(--pill)" strokeWidth="7" strokeLinecap="round" strokeDasharray={c}
+          className="reveal-ring"
+          style={{ '--len': c, '--off': c * (1 - Math.min(1, Math.max(0.02, progress))) } as React.CSSProperties}
+        />
       </svg>
       <div className="absolute inset-[16%] grid place-items-center rounded-full bg-ink text-bg shadow-[inset_0_1px_0_oklch(1_0_0/0.15),0_8px_20px_-8px_oklch(0.2_0.04_250/0.5)]">
         <span className="flex flex-col items-center leading-none">
@@ -134,7 +138,7 @@ export function LevelPanel({ s }: { s: Summary }) {
   return (
     <Card className="p-6">
       <CardHeader
-        title="Level"
+        title="Level" icon={<Trophy strokeWidth={2} />} color="var(--medal-gold)"
         description="XP from keeping your plan and from measures that are the same for everyone"
         action={<Link href="/profile" className={buttonClass({ variant: 'ghost', size: 'sm' })}>Profile</Link>}
       />

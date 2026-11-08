@@ -6,7 +6,7 @@
 // - Standard: fixed measures that mean the same for everyone (7h sleep, 8k steps, a commit…). Data
 //   that syncs by itself earns full XP; typed-in data earns half, capped per day.
 
-export type Area = 'health' | 'mind' | 'skills' | 'wealth' | 'relationships'
+export type Area = 'health' | 'mind' | 'skills' | 'wealth' | 'hobbies' | 'relationships'
 export type XpKind = 'consistency' | 'standard' | 'bonus' | 'achievement'
 export type XpAward = { source: string; area: Area | 'general'; kind: XpKind; amount: number; verified: boolean; reason: string }
 
@@ -31,16 +31,23 @@ export function areaLevelFor(xp: number) {
   return levelFor(Math.round(xp * 3))
 }
 
+/**
+ * Titles, Solo Leveling style: the System wakes you up and every tier is a rank you earn. On this curve level 5
+ * takes about a week, 10 a month, 20 four months, 50 a couple of years of steady days.
+ */
 export const TITLES: { level: number; title: string }[] = [
-  { level: 1, title: 'Restart' },
-  { level: 5, title: 'Early Riser' },
-  { level: 10, title: 'Steady Hand' },
-  { level: 15, title: 'Momentum' },
-  { level: 20, title: 'Second Wind' },
-  { level: 25, title: 'Clear Path' },
-  { level: 30, title: 'Rebuilt' },
-  { level: 40, title: 'Unbroken' },
-  { level: 50, title: 'Relived' },
+  { level: 1, title: 'Awakened' },
+  { level: 5, title: 'Initiate' },
+  { level: 10, title: 'Pathfinder' },
+  { level: 15, title: 'Challenger' },
+  { level: 20, title: 'Vanguard' },
+  { level: 25, title: 'Ascendant' },
+  { level: 30, title: 'Elite' },
+  { level: 35, title: 'Paragon' },
+  { level: 40, title: 'Legend' },
+  { level: 45, title: 'Mythic' },
+  { level: 50, title: 'Sovereign' },
+  { level: 60, title: 'Transcendent' },
 ]
 
 export function titleFor(level: number) {
@@ -79,9 +86,13 @@ export type DayInput = {
   meditationMin?: number
   commits?: number; prs?: number
   learningMin?: number
+  /** Competitive programming problems accepted (Codeforces, CodeChef, AtCoder). */
+  solved?: number
   /** Spent less than your usual (median) day. undefined when there's no spending history. */
   frugal?: boolean
   catchUps?: number
+  /** Minutes practised across all hobbies. */
+  hobbyMin?: number
   /** Consecutive show-up days ending on this day. */
   streak: number
 }
@@ -111,8 +122,10 @@ export function scoreDay(d: DayInput): XpAward[] {
   if ((d.commits ?? 0) >= 1) std('commit', 'skills', 10, true, 'Committed code')
   if ((d.prs ?? 0) >= 1) std('pr', 'skills', 20, true, 'Opened a pull request')
   if ((d.learningMin ?? 0) >= 30) std('learn', 'skills', 15, false, 'Learned for 30 minutes')
+  if ((d.solved ?? 0) >= 1) std('solve', 'skills', 15, true, 'Solved a coding problem')
   if (d.frugal) std('frugal', 'wealth', 10, true, 'Spent less than a usual day')
   if ((d.catchUps ?? 0) >= 1) std('catchup', 'relationships', 15, false, 'Caught up with someone')
+  if ((d.hobbyMin ?? 0) >= 20) std('hobby', 'hobbies', 20, false, 'Practised a hobby for 20 minutes')
 
   // Cap typed-in XP so a day of self-reports can't outscore real data.
   let manual = 0
