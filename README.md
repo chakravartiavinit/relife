@@ -9,8 +9,15 @@ Local-first: everything runs on your machine, and your data stays in your own Po
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/today-dark.png">
-  <img alt="ReLife Today page: today's routines and water goal, the daily streak, payments due and suggestions" src="docs/images/today-light.png">
+  <img alt="ReLife Today page: level and XP, area levels with medals, the day's quest log, The System's quests and payments due soon" src="docs/images/today-light.png">
 </picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/wealth-dark.png">
+  <img alt="ReLife Wealth overview: net worth, this month's spending pace against a usual month, subscriptions, investment profit and 12 months of spending" src="docs/images/wealth-light.png">
+</picture>
+
+Screenshots use mock data (`npm run dev:mock`).
 
 **How it all works:** open [docs/architecture.html](docs/architecture.html) in a browser for the full guide with
 diagrams (processes, data flow, data model, job engine, nudges, AI, security and trade-offs).
