@@ -4,11 +4,14 @@ import Link from 'next/link'
 import { Suspense } from 'react'
 import { Wordmark } from '@/ui/components/logo'
 import { cn } from '@/ui/cn'
-import { Nav, SystemNav, TabBar } from '@/ui/components/nav'
-import { SystemNavWithCounts } from '@/ui/components/system-nav-server'
+import { NavPlaceholder, SystemNavPlaceholder, TabBar } from '@/ui/components/nav'
+import { NavForUser, SystemNavWithCounts } from '@/ui/components/system-nav-server'
 import { CommandButton, CommandMenu } from '@/ui/components/command-menu'
 import { ThemeToggle, THEME_SCRIPT } from '@/ui/components/theme-toggle'
 import { ToastProvider } from '@/ui/components/toast'
+import { AppMotion } from '@/ui/components/motion-config'
+import { Celebration } from '@/ui/components/petals'
+import { Celebrations } from '@/ui/components/celebrate'
 import { SidebarProfile, SidebarProfileSkeleton } from '@/ui/components/sidebar-profile'
 import './globals.css'
 
@@ -17,7 +20,7 @@ const outfit = Outfit({ variable: '--font-outfit', subsets: ['latin'], weight: [
 
 export const metadata: Metadata = {
   title: { default: 'ReLife', template: '%s · ReLife' },
-  description: 'A second chance, built from small daily changes.',
+  description: 'Level up your real life, one day at a time.',
   appleWebApp: { capable: true, title: 'ReLife', statusBarStyle: 'default' },
 }
 
@@ -54,6 +57,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className="min-h-dvh">
+        <AppMotion>
         <ToastProvider>
           <div className="mx-auto flex min-h-dvh max-w-[1480px]">
             <aside className="sticky top-0 hidden h-dvh w-[264px] shrink-0 p-3 lg:block">
@@ -67,12 +71,12 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
                 </div>
                 <CommandButton />
                 <MockBadge wide />
-                <div className="-mx-1 flex-1 overflow-y-auto px-1 pt-1">
+                <div className="scroll-fade -mx-1 -my-2 min-h-0 flex-1 overflow-y-auto px-1 pt-2 pb-7">
                   {/* Nav reads the pathname; keep it out of the static shell's blocking path. */}
-                  <Suspense fallback={null}><Nav /></Suspense>
+                  <Suspense fallback={<NavPlaceholder />}><NavForUser /></Suspense>
                 </div>
-                <div className="flex flex-col gap-2 border-t border-divider pt-2">
-                  <Suspense fallback={<SystemNav />}><SystemNavWithCounts /></Suspense>
+                <div className="flex flex-col gap-2">
+                  <Suspense fallback={<SystemNavPlaceholder />}><SystemNavWithCounts /></Suspense>
                   <Suspense fallback={<SidebarProfileSkeleton />}><SidebarProfile /></Suspense>
                 </div>
               </div>
@@ -87,7 +91,10 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
           </div>
           <Suspense fallback={null}><TabBar /></Suspense>
           <CommandMenu />
+          <Celebration />
+          <Celebrations />
         </ToastProvider>
+        </AppMotion>
       </body>
     </html>
   )

@@ -5,6 +5,7 @@ const CATEGORY_BY_LABEL: Record<string, string> = {
   mind: 'var(--cat-mind)',
   skills: 'var(--cat-skills)',
   wealth: 'var(--cat-wealth)',
+  hobbies: 'var(--cat-hobbies)',
   relationships: 'var(--cat-relationships)',
   people: 'var(--cat-relationships)',
 }
@@ -47,12 +48,13 @@ export function Stat({ label, value, sub, tone, icon, color, className }: {
   label: React.ReactNode; value: React.ReactNode; sub?: React.ReactNode; tone?: 'good' | 'bad'; icon?: React.ReactNode; color?: string; className?: string
 }) {
   return (
-    <div className={cn('min-w-0', className)}>
+    <div className={cn('@container min-w-0', className)}>
       <div className="flex items-center gap-2 text-[12.5px] font-medium text-ink-3">
         {icon ? <span aria-hidden className="[&_svg]:size-3.5" style={{ color: color ?? 'var(--ink-3)' }}>{icon}</span> : null}
         {label}
       </div>
-      <div className="mt-2 font-display text-[30px] leading-none font-bold tracking-[-0.025em] text-ink tabular-nums">{value}</div>
+      {/* Scales with its column (container query) so ₹14,14,684 never runs into its neighbour on a phone. */}
+      <div className="mt-2 font-display text-[clamp(20px,9cqi,30px)] leading-none font-bold tracking-[-0.025em] break-words text-ink tabular-nums">{value}</div>
       {sub ? (
         <div className={cn('mt-2 text-[12.5px] tabular-nums', tone === 'good' ? 'text-good' : tone === 'bad' ? 'text-bad' : 'text-ink-3')}>{sub}</div>
       ) : null}
@@ -75,25 +77,36 @@ export function Skeleton({ className }: { className?: string }) {
   return <div className={cn('animate-pulse rounded-md bg-ink/[0.05] dark:bg-white/[0.06]', className)} />
 }
 
-/** Page title block. The eyebrow becomes a glass chip; category pages get their colour dot automatically. */
+/**
+ * Page title block, as a banner in the game style (same shape as the area and character banners).
+ * Category pages get their colour automatically from the eyebrow.
+ */
 export function PageHeader({ title, description, actions, eyebrow }: {
   title: React.ReactNode; description?: React.ReactNode; actions?: React.ReactNode; eyebrow?: React.ReactNode
 }) {
-  const dot = typeof eyebrow === 'string' ? CATEGORY_BY_LABEL[eyebrow.toLowerCase()] ?? 'var(--pill)' : 'var(--pill)'
+  const c = typeof eyebrow === 'string' ? CATEGORY_BY_LABEL[eyebrow.toLowerCase()] ?? 'var(--pill)' : 'var(--pill)'
   return (
-    <header className="mb-8 flex flex-wrap items-end justify-between gap-4 pt-1">
-      <div className="min-w-0">
-        {eyebrow ? (
-          <div className="mb-3 inline-flex h-7 items-center gap-2 rounded-full bg-glass px-3 text-[12px] font-medium text-ink-2 shadow-1 backdrop-blur-md">
-            <span aria-hidden className="size-1.5 rounded-full" style={{ background: dot }} />
-            {eyebrow}
-          </div>
-        ) : null}
-        <h1 className="font-display text-[34px] leading-[1.05] font-extrabold tracking-[-0.035em] text-ink sm:text-[40px]">{title}</h1>
-        {description ? <p className="mt-2.5 max-w-[60ch] text-[15px] leading-relaxed text-ink-2">{description}</p> : null}
+    <header className="relative isolate mb-6 overflow-hidden rounded-[24px] bg-surface p-5 shadow-2 sm:p-6">
+      <div aria-hidden className="halftone inset-y-0 right-0 -z-10 w-2/3" style={{ '--tone': c } as React.CSSProperties} />
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          {eyebrow ? <SystemLabel color={c}>{eyebrow}</SystemLabel> : null}
+          <h1 className="mt-0.5 font-display text-[28px] leading-[1.05] font-extrabold tracking-[-0.03em] text-ink sm:text-[34px]">{title}</h1>
+          {description ? <p className="mt-1.5 max-w-[60ch] text-[14px] leading-relaxed text-ink-2">{description}</p> : null}
+        </div>
+        {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
       </div>
-      {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
     </header>
+  )
+}
+
+/** A small mono label in the System's voice: ▮ HEALTH. Used above page and area titles. */
+export function SystemLabel({ color = 'var(--pill)', children }: { color?: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2 font-mono text-[11.5px] font-semibold tracking-[0.14em] uppercase" style={{ color: `color-mix(in oklch, ${color} 70%, var(--ink))` }}>
+      <span aria-hidden className="h-3 w-1.5 rounded-full" style={{ background: color }} />
+      {children}
+    </div>
   )
 }
 

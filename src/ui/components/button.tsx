@@ -46,6 +46,6 @@ export function buttonClass({ variant = 'secondary', size = 'md', pressable = tr
 }
 
 export function Button({ variant, size, static: isStatic, className, type = 'button', ...props }:
-  React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: Size; static?: boolean }) {
+  React.ComponentProps<'button'> & { variant?: Variant; size?: Size; static?: boolean }) {
   return <button type={type} className={buttonClass({ variant, size, pressable: !isStatic, className })} {...props} />
 }

@@ -26,8 +26,8 @@ export function Capsule({
       className={cn('relative w-full overflow-hidden rounded-full bg-surface-2 shadow-[inset_0_0_0_1px_var(--hairline)]', h, className)}
     >
       <div
-        className="absolute inset-0 rounded-full transition-[clip-path] duration-500 ease-out-quint"
-        style={{ background: color, clipPath: `inset(0 ${(1 - pct) * 100}% 0 0 round 9999px)` }}
+        className="reveal-fill absolute inset-0 rounded-full"
+        style={{ background: color, '--fill': `${pct * 100}%` } as React.CSSProperties}
       />
     </div>
   )
@@ -47,7 +47,7 @@ export function CapsuleGauge({ value, max, color, label }: { value: number; max:
         className="relative h-14 w-6 overflow-hidden rounded-full bg-white/70 shadow-[inset_0_0_0_1.5px_oklch(0.178_0_0/0.85)] dark:bg-white/10 dark:shadow-[inset_0_0_0_1.5px_oklch(1_0_0/0.5)]"
       >
         <div
-          className="absolute inset-0 transition-[clip-path] duration-500 ease-out-quint"
+          className="absolute inset-0 transition-[clip-path] duration-300 ease-out-quint"
           style={{ background: color, clipPath: `inset(${(1 - pct) * 100}% 0 0 0)` }}
         />
       </div>

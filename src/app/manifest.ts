@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'ReLife',
     short_name: 'ReLife',
-    description: 'A second chance, built from small daily changes.',
+    description: 'Level up your real life, one day at a time.',
     start_url: '/',
     display: 'standalone',
     background_color: '#f7fafc',
