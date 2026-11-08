@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Activity } from 'lucide-react'
 import { CATEGORIES } from '@/db/schema'
 import type { User } from '@/core/user'
 import { trackerDays } from '@/core/metrics'
@@ -20,7 +21,7 @@ export async function TrackersGrid({ user }: { user: User }) {
   if (!all.length) {
     return (
       <Card>
-        <EmptyState title="No trackers yet" description="Create one, or type “water 250” in ⌘K and it appears here." />
+        <EmptyState title="No trackers yet" icon={Activity} color={'var(--pill)'} description="Create one, or type “water 250” in ⌘K and it appears here." />
       </Card>
     )
   }
@@ -60,7 +61,7 @@ export async function TrackersGrid({ user }: { user: User }) {
                         {shown === undefined ? <span className="text-ink-3">–</span> : formatNumber(shown, 1)}
                         {t.unit && shown !== undefined ? <span className="ml-1 font-sans text-[13px] font-normal text-ink-3">{t.unit}</span> : null}
                       </div>
-                      <div className="w-28"><Sparkline data={series} color={CATEGORY[c].color} /></div>
+                      <div className="w-28"><Sparkline data={series} color={CATEGORY[c].color} label={`${t.name}, last 14 days`} /></div>
                     </div>
                     {t.target ? (
                       <div className="flex items-center gap-2">

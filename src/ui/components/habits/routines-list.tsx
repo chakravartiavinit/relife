@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowUpRight } from 'lucide-react'
+import { ArrowUpRight, Pill, Repeat } from 'lucide-react'
 import type { User } from '@/core/user'
 import type { Schedule, ScheduleMeta } from '@/core/schedules'
 import { parseSimple } from '@/domain/recurrence'
@@ -21,7 +21,7 @@ export async function RoutinesList({ user }: { user: User }) {
     return (
       <Card>
         <EmptyState
-          title="Start with one small routine"
+          title="Start with one small routine" icon={Repeat} color={'var(--pill)'}
           description="Water, skincare, a vitamin or ten minutes of reading. Start with one thing you can do every day."
         />
       </Card>
@@ -48,7 +48,7 @@ export async function RoutinesList({ user }: { user: User }) {
 function Section({ title, rows, empty }: { title: string; rows: ScheduleAdherence[]; empty: string }) {
   return (
     <Card>
-      <CardHeader title={title} description={rows.length ? `${rows.filter((r) => r.schedule.active).length} active` : undefined} />
+      <CardHeader title={title} icon={title === 'Medicines' ? <Pill strokeWidth={2} /> : <Repeat strokeWidth={2} />} color={title === 'Medicines' ? 'var(--cat-health)' : 'var(--pill)'} description={rows.length ? `${rows.filter((r) => r.schedule.active).length} active` : undefined} />
       {rows.length ? (
         <ul className="-my-2 divide-y divide-divider">
           {rows.map((r) => (

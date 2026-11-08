@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Repeat } from 'lucide-react'
 import type { Category } from '@/db/schema'
 import type { User } from '@/core/user'
 import type { ScheduleMeta } from '@/core/schedules'
@@ -9,6 +10,7 @@ import { Capsule } from '../capsule'
 import { EmptyState } from '../empty'
 import { buttonClass } from '../button'
 import { AdherenceStrip } from './adherence-strip'
+import { RoutineArt } from '../routine-art'
 import { loadAdherence, type ScheduleAdherence } from '@/core/adherence'
 
 /** Routines (and medicines) of one category with 14-day adherence. Server component. */
@@ -19,7 +21,7 @@ export async function RoutinesCard({ user, category, title = 'Routines', kinds =
   return (
     <Card>
       <CardHeader
-        title={title}
+        title={title} icon={<Repeat strokeWidth={2} />} color={CATEGORY[category].color}
         description="Last 14 days"
         action={<Link href="/habits" className={buttonClass({ variant: 'ghost', size: 'sm' })}>Manage</Link>}
       />
@@ -29,7 +31,7 @@ export async function RoutinesCard({ user, category, title = 'Routines', kinds =
         </ul>
       ) : (
         <EmptyState
-          title={`No ${CATEGORY[category].label.toLowerCase()} routines yet`}
+          title={`No ${CATEGORY[category].label.toLowerCase()} routines yet`} icon={Repeat} color={CATEGORY[category].color}
           description="Routines you add here get reminders on Telegram and a streak."
           action={<Link href="/habits?new=1" className={buttonClass({ variant: 'primary', size: 'sm' })}>Add a routine</Link>}
         />
@@ -44,6 +46,9 @@ export function AdherenceRow({ r, actions }: { r: ScheduleAdherence; actions?: R
   const color = CATEGORY[s.category].color
   return (
     <li className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
+      <span aria-hidden className="grid size-10 shrink-0 place-items-center self-start rounded-[11px]" style={{ color: `color-mix(in oklch, ${color} 80%, var(--ink))`, background: `color-mix(in oklch, ${color} 16%, transparent)`, opacity: s.active ? 1 : 0.5 }}>
+        <RoutineArt name={s.name} kind={s.kind} area={s.category} className={s.active ? undefined : 'grayscale'} />
+      </span>
       <div className="min-w-0 flex-1 basis-56">
         <div className="flex items-center gap-2">
           <span className={`truncate text-[15px] ${s.active ? 'text-ink' : 'text-ink-3'}`}>{s.name}</span>
