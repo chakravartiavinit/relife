@@ -1,20 +1,37 @@
 import ccxt from 'ccxt'
+import { inflateRawSync } from 'node:zlib'
 import type { Connector, ConnectorCtx } from '@/core/types'
 import { USD_STABLES } from '@/domain/money'
 import { env } from '@/core/env'
 
-// Read-only Binance sync: balances, spot trades, P2P orders, Convert history.
-// Old history beyond what the API returns: export CSV and run scripts/binance-import.ts.
+// Read-only Binance sync: spot and funding balances, USDⓈ-M futures (wallet, open positions, income),
+// spot trades, P2P orders, Convert, and crypto deposits and withdrawals.
+//
+// The first sync reads the whole history: every spot pair is checked once (Binance has no "pairs you
+// traded" endpoint, so this takes about ten minutes), and P2P, Convert, deposits, withdrawals and futures
+// income are read from the start. Later syncs read only what's new.
 
 type Cursor = {
   verified?: boolean
   symbols?: Record<string, number> // symbol → last trade timestamp (ms)
   assets?: string[] // assets held last sync, so sold-out ones get a zero holding
+  scanned?: boolean // every spot pair checked once
   p2pFrom?: number
+  p2pFull?: boolean
   convertFrom?: number
+  convertFull?: boolean
+  flowsFrom?: number // deposits and withdrawals
+  futuresFrom?: number // futures income
+  futuresFull?: boolean // older futures history read from Binance's yearly downloads
+  payFrom?: number // Binance Pay
+  rewardsFrom?: number // airdrops, Launchpool and other rewards
+  fiatFrom?: number // crypto bought or sold with card or UPI
+  dustFrom?: number // small balances converted to BNB
 }
 
 const DAY = 86_400_000
+const START = Date.parse('2019-01-01') // before any account here; empty windows are cheap
+const SCAN_QUOTES = ['USDT', 'FDUSD', 'USDC', 'BTC', 'BNB', 'ETH', 'BUSD', 'TUSD']
 
 function client() {
   return new ccxt.binance({
@@ -40,8 +57,8 @@ export const binance: Connector = {
   id: 'binance',
   name: 'Binance',
   category: 'wealth',
-  description: 'Spot trades, P2P orders, converts and live balances, read-only. Feeds the portfolio, P&L and India tax estimate.',
-  provides: ['Trades', 'Balances', 'P2P', 'Converts'],
+  description: 'Spot, futures, P2P, Convert, deposits and withdrawals, read-only. Feeds the portfolio and all-time profit and loss.',
+  provides: ['Spot', 'Futures', 'P2P', 'Deposits'],
   fields: [
     { env: 'BINANCE_API_KEY', label: 'API key', secret: true },
     { env: 'BINANCE_API_SECRET', label: 'API secret', secret: true, hint: 'Create a read-only key in Binance API Management. Leave trading and withdrawals off.' },
@@ -57,10 +74,15 @@ export const binance: Connector = {
     }
     const markets = await ex.loadMarkets()
     const now = Date.now()
+    const prices = priceBook(ex, markets)
 
-    // Balances snapshot (one per hour), priced in USD via */USDT tickers.
+    // Balances snapshot (one per hour): Spot plus Funding (where P2P buys land), priced via */USDT.
     const bal = await ex.fetchBalance()
-    const totals = bal.total as unknown as Record<string, number>
+    const totals = { ...(bal.total as unknown as Record<string, number>) }
+    await optional(ctx, 'Funding wallet', async () => {
+      const funding = (await ex.fetchBalance({ type: 'funding' })).total as unknown as Record<string, number>
+      for (const [a, q] of Object.entries(funding)) if (q > 0) totals[a] = (totals[a] ?? 0) + q
+    })
     const held = Object.entries(totals).filter(([, q]) => q > 0)
     const priceable = (a: string) => (a.startsWith('LD') && markets[`${a.slice(2)}/USDT`] ? a.slice(2) : a) // Simple Earn "LDBTC"
     const symbols = [...new Set(held.map(([a]) => priceable(a)).filter((a) => !USD_STABLES.has(a) && markets[`${a}/USDT`]).map((a) => `${a}/USDT`))]
@@ -69,19 +91,99 @@ export const binance: Connector = {
     const assets = held.map(([asset, qty]) => ({ asset, qty, priceUsd: price(asset) }))
     for (const gone of (cursor.assets ?? []).filter((a) => !totals[a])) assets.push({ asset: gone, qty: 0, priceUsd: undefined })
     const totalUsd = assets.reduce((s, a) => s + a.qty * (a.priceUsd ?? 0), 0)
+    // USDⓈ-M futures: margin balance (wallet + unrealized) and open positions.
+    let futures: unknown = null
+    await optional(ctx, 'Futures account', async () => {
+      const a = (await ex.fapiPrivateV2GetAccount()) as { totalWalletBalance?: string; totalUnrealizedProfit?: string; totalMarginBalance?: string; totalMaintMargin?: string; positions?: Record<string, string>[] }
+      // Mark and liquidation prices come from position risk. On cross margin the whole wallet backs a
+      // position, so how close it is to liquidation can't be read from its own margin.
+      const risk = (await ex.fapiPrivateV2GetPositionRisk()) as Record<string, string>[]
+      const riskOf = (p: Record<string, string>) => risk.find((r) => r.symbol === p.symbol && r.positionSide === p.positionSide)
+      const positions = (a.positions ?? []).filter((p) => Number(p.positionAmt) !== 0).map((p) => {
+        const r = riskOf(p)
+        return {
+          symbol: p.symbol, size: Number(p.positionAmt), entry: Number(p.entryPrice), unrealized: Number(p.unrealizedProfit),
+          leverage: Number(p.leverage), notional: Number(p.notional), margin: Number(p.initialMargin), side: Number(p.positionAmt) > 0 ? 'long' : 'short',
+          mark: r ? Number(r.markPrice) : undefined, liquidation: r && Number(r.liquidationPrice) > 0 ? Number(r.liquidationPrice) : undefined,
+          marginType: r?.marginType,
+        }
+      })
+      const balance = Number(a.totalMarginBalance ?? 0)
+      // Binance's margin ratio: liquidation starts at 100%.
+      futures = { walletUsd: Number(a.totalWalletBalance ?? 0), unrealizedUsd: Number(a.totalUnrealizedProfit ?? 0), marginUsd: balance, marginRatio: balance > 0 ? Number(a.totalMaintMargin ?? 0) / balance : null, positions }
+    })
     const at = new Date(now).toISOString()
-    await ctx.emit({ source: 'binance', externalId: `balances:${at.slice(0, 13)}`, at: new Date(now), body: { type: 'balances', at, totalUsd, assets } })
+    await ctx.emit({ source: 'binance', externalId: `balances:${at.slice(0, 13)}`, at: new Date(now), body: { type: 'balances', at, totalUsd, assets, futures } })
     cursor.assets = held.map(([a]) => a)
 
+    if (!cursor.scanned) await scanSpot(ex, markets, ctx, cursor)
     await syncTrades(ex, markets, ctx, cursor, held.map(([a]) => priceable(a)))
     await optional(ctx, 'P2P', () => syncP2P(ex, ctx, cursor, now))
     await optional(ctx, 'Convert', () => syncConvert(ex, ctx, cursor, now))
+    await optional(ctx, 'Deposits and withdrawals', () => syncFlows(ex, ctx, cursor, now, prices))
+    await optional(ctx, 'Futures income', () => syncFutures(ex, ctx, cursor, now, prices))
+    await optional(ctx, 'Binance Pay', () => syncPay(ex, ctx, cursor, now, prices))
+    await optional(ctx, 'Rewards', () => syncRewards(ex, ctx, cursor, now, prices))
+    await optional(ctx, 'Card and UPI orders', () => syncFiat(ex, ctx, cursor, now))
+    await optional(ctx, 'Small balance conversions', () => syncDust(ex, ctx, cursor, now, prices))
     ctx.setCursor(cursor)
   },
 }
 
 async function optional(ctx: ConnectorCtx, what: string, fn: () => Promise<void>) {
   try { await fn() } catch (e) { ctx.log(`binance ${what} skipped: ${e instanceof Error ? e.message : e}`) }
+}
+
+/** USD price of an asset on a day (daily close against USDT), cached per run. Stablecoins are $1. */
+function priceBook(ex: Client, markets: Record<string, unknown>) {
+  const cache = new Map<string, number | null>()
+  return async (asset: string, ms: number): Promise<number | null> => {
+    const a = asset.toUpperCase()
+    if (USD_STABLES.has(a)) return 1
+    const day = Math.floor(ms / DAY) * DAY
+    const key = `${a}:${day}`
+    if (cache.has(key)) return cache.get(key)!
+    let p: number | null = null
+    try {
+      if (markets[`${a}/USDT`]) p = (await ex.fetchOHLCV(`${a}/USDT`, '1d', day, 1))[0]?.[4] ?? null
+    } catch { /* delisted or no history: left unvalued */ }
+    cache.set(key, p)
+    return p
+  }
+}
+
+type Trade = { id?: string; symbol?: string; side?: string; amount?: number; price?: number; timestamp?: number; fee?: unknown; order?: string }
+
+async function emitTrade(ctx: ConnectorCtx, cursor: Cursor, symbol: string, t: Trade) {
+  await ctx.emit({
+    source: 'binance', externalId: `trade:${symbol}:${t.id}`, at: new Date(t.timestamp!),
+    body: { type: 'trade', id: t.id, symbol, side: t.side, amount: t.amount, price: t.price, timestamp: t.timestamp, fee: t.fee, order: t.order },
+  })
+  cursor.symbols![symbol] = Math.max(cursor.symbols![symbol] ?? 0, t.timestamp!)
+}
+
+/**
+ * Once: check every spot pair against the common quotes, oldest trade first, so coins you bought and
+ * sold completely (never held at a sync) are counted too. Delisted pairs that refuse are skipped.
+ */
+async function scanSpot(ex: Client, markets: Record<string, unknown>, ctx: ConnectorCtx, cursor: Cursor) {
+  const pairs = Object.entries(markets).filter(([, m]) => { const x = m as { spot?: boolean; quote?: string }; return x.spot && SCAN_QUOTES.includes(x.quote ?? '') }).map(([s]) => s)
+  ctx.log(`binance: checking ${pairs.length} spot pairs for past trades (first sync only)`)
+  let found = 0
+  for (const symbol of pairs) {
+    try {
+      let fromId = 0
+      for (;;) {
+        const page = (await ex.fetchMyTrades(symbol, undefined, 1000, { fromId })) as Trade[]
+        for (const t of page) await emitTrade(ctx, cursor, symbol, t)
+        if (page.length) found += page.length
+        if (page.length < 1000) break
+        fromId = Number(page.at(-1)!.id) + 1
+      }
+    } catch { /* delisted pair */ }
+  }
+  ctx.log(`binance: ${found} spot trades across ${Object.keys(cursor.symbols ?? {}).length} pairs`)
+  cursor.scanned = true
 }
 
 async function syncTrades(ex: Client, markets: Record<string, unknown>, ctx: ConnectorCtx, cursor: Cursor, heldAssets: string[]) {
@@ -96,45 +198,228 @@ async function syncTrades(ex: Client, markets: Record<string, unknown>, ctx: Con
     if (!markets[symbol]) continue
     const last = cursor.symbols?.[symbol]
     // With a start time ccxt pages forward; without one Binance returns the latest 1000.
-    const trades = last
+    const trades = (last
       ? await ex.fetchMyTrades(symbol, last + 1, undefined, { paginate: true })
-      : await ex.fetchMyTrades(symbol, undefined, 1000)
-    for (const t of trades) {
-      await ctx.emit({
-        source: 'binance', externalId: `trade:${symbol}:${t.id}`, at: new Date(t.timestamp!),
-        body: { type: 'trade', id: t.id, symbol, side: t.side, amount: t.amount, price: t.price, timestamp: t.timestamp, fee: t.fee, order: t.order },
-      })
-      cursor.symbols![symbol] = Math.max(cursor.symbols![symbol] ?? 0, t.timestamp!)
-    }
+      : await ex.fetchMyTrades(symbol, undefined, 1000)) as Trade[]
+    for (const t of trades) await emitTrade(ctx, cursor, symbol, t)
   }
 }
 
 type P2POrder = { orderNumber: string; orderStatus: string; createTime: number; [k: string]: unknown }
 
 async function syncP2P(ex: Client, ctx: ConnectorCtx, cursor: Cursor, now: number) {
-  // Re-scan 2 days back each time: orders complete after they are created.
-  const from = Math.max((cursor.p2pFrom ?? now - 30 * DAY) - 2 * DAY, now - 365 * DAY)
-  for (const tradeType of ['BUY', 'SELL']) {
-    for (let page = 1; page <= 20; page++) {
-      const r = (await ex.sapiGetC2cOrderMatchListUserOrderHistory({ tradeType, startTimestamp: from, page, rows: 100 })) as { data?: P2POrder[] }
-      const rows = r.data ?? []
-      for (const o of rows.filter((x) => x.orderStatus === 'COMPLETED')) {
-        await ctx.emit({ source: 'binance', externalId: `p2p:${o.orderNumber}`, at: new Date(Number(o.createTime)), body: { type: 'p2p', ...o } })
+  // The first time from the start of P2P, then 2 days back each time (orders complete after they're created).
+  // The endpoint wants windows of at most 30 days.
+  const from = cursor.p2pFull ? Math.max((cursor.p2pFrom ?? now) - 2 * DAY, now - 365 * DAY) : Date.parse('2020-06-01')
+  for (let start = from; start < now; start += 30 * DAY) {
+    const end = Math.min(now, start + 30 * DAY)
+    for (const tradeType of ['BUY', 'SELL']) {
+      for (let page = 1; page <= 20; page++) {
+        const r = (await ex.sapiGetC2cOrderMatchListUserOrderHistory({ tradeType, startTimestamp: start, endTimestamp: end, page, rows: 100 })) as { data?: P2POrder[] }
+        const rows = r.data ?? []
+        for (const o of rows.filter((x) => x.orderStatus === 'COMPLETED')) {
+          await ctx.emit({ source: 'binance', externalId: `p2p:${o.orderNumber}`, at: new Date(Number(o.createTime)), body: { type: 'p2p', ...o } })
+        }
+        if (rows.length < 100) break
       }
-      if (rows.length < 100) break
     }
   }
   cursor.p2pFrom = now
+  cursor.p2pFull = true
 }
 
 async function syncConvert(ex: Client, ctx: ConnectorCtx, cursor: Cursor, now: number) {
-  // The endpoint wants windows of at most 30 days.
-  for (let start = Math.max((cursor.convertFrom ?? now - 90 * DAY) - DAY, now - 365 * DAY); start < now; start += 30 * DAY) {
+  // Windows of at most 30 days; the first time from 2021.
+  const from = cursor.convertFull ? Math.max((cursor.convertFrom ?? now) - DAY, now - 365 * DAY) : Date.parse('2021-01-01')
+  for (let start = from; start < now; start += 30 * DAY) {
     const end = Math.min(now, start + 30 * DAY)
-    const r = (await ex.sapiGetConvertTradeFlow({ startTime: start, endTime: end, limit: 1000 })) as { list?: { orderId: string | number; orderStatus: string; createTime: number }[] }
-    for (const o of (r.list ?? []).filter((x) => x.orderStatus === 'SUCCESS')) {
-      await ctx.emit({ source: 'binance', externalId: `convert:${o.orderId}`, at: new Date(Number(o.createTime)), body: { type: 'convert', ...o } })
-    }
+    try {
+      const r = (await ex.sapiGetConvertTradeFlow({ startTime: start, endTime: end, limit: 1000 })) as { list?: { orderId: string | number; orderStatus: string; createTime: number }[] }
+      for (const o of (r.list ?? []).filter((x) => x.orderStatus === 'SUCCESS')) {
+        await ctx.emit({ source: 'binance', externalId: `convert:${o.orderId}`, at: new Date(Number(o.createTime)), body: { type: 'convert', ...o } })
+      }
+    } catch { /* windows older than Binance keeps */ }
   }
   cursor.convertFrom = now
+  cursor.convertFull = true
+}
+
+type Price = (asset: string, ms: number) => Promise<number | null>
+
+/** Crypto deposits (credited) and withdrawals (completed), valued in USD on the day. 90-day windows. */
+async function syncFlows(ex: Client, ctx: ConnectorCtx, cursor: Cursor, now: number, price: Price) {
+  const from = cursor.flowsFrom ? cursor.flowsFrom - 3 * DAY : START
+  for (let start = from; start < now; start += 89 * DAY) {
+    const end = Math.min(now, start + 89 * DAY)
+    const deps = (await ex.sapiGetCapitalDepositHisrec({ startTime: start, endTime: end, limit: 1000 })) as Record<string, string | number>[]
+    for (const d of deps.filter((x) => Number(x.status) === 1 || Number(x.status) === 6)) {
+      const at = Number(d.insertTime)
+      const p = await price(String(d.coin), at)
+      await ctx.emit({
+        source: 'binance', externalId: `deposit:${d.id ?? d.txId}`, at: new Date(at),
+        body: { type: 'deposit', coin: d.coin, amount: Number(d.amount), network: d.network, at, usd: p == null ? null : p * Number(d.amount) },
+      })
+    }
+    const wds = (await ex.sapiGetCapitalWithdrawHistory({ startTime: start, endTime: end, limit: 1000 })) as Record<string, string | number>[]
+    for (const w of wds.filter((x) => Number(x.status) === 6)) {
+      const at = Date.parse(`${String(w.completeTime ?? w.applyTime).replace(' ', 'T')}Z`)
+      const amount = Number(w.amount) + Number(w.transactionFee ?? 0) // what left the account, fee included
+      const p = await price(String(w.coin), at)
+      await ctx.emit({
+        source: 'binance', externalId: `withdrawal:${w.id}`, at: new Date(at),
+        body: { type: 'withdrawal', coin: w.coin, amount, fee: Number(w.transactionFee ?? 0), network: w.network, at, usd: p == null ? null : p * amount },
+      })
+    }
+  }
+  cursor.flowsFrom = now
+}
+
+type Income = { time: number; incomeType: string; income: number; asset: string; symbol: string | null; tranId: string }
+
+async function emitIncome(ctx: ConnectorCtx, price: Price, r: Income) {
+  const p = await price(r.asset, r.time)
+  await ctx.emit({
+    // Same id from the download and the API, so the overlap isn't counted twice.
+    source: 'binance', externalId: `futures:${r.tranId}:${r.incomeType}:${r.symbol ?? ''}`, at: new Date(r.time),
+    body: { type: 'futures-income', incomeType: r.incomeType, asset: r.asset, amount: r.income, symbol: r.symbol, at: r.time, usd: p == null ? null : p * r.income },
+  })
+}
+
+/**
+ * USDⓈ-M futures income: realized P&L, funding, fees, transfers. The API only reaches back a few months,
+ * so the first sync also asks Binance for a yearly download of everything older (a zipped CSV).
+ * The API answers a too-wide range with only the last 7 days, so it's read in 90-day windows.
+ */
+async function syncFutures(ex: Client, ctx: ConnectorCtx, cursor: Cursor, now: number, price: Price) {
+  if (!cursor.futuresFull) {
+    // ponytail: three yearly files (Binance limits how many downloads you can ask for); older accounts need more.
+    for (let y = 3; y >= 1; y--) {
+      const rows = await downloadIncome(ex, now - y * 365 * DAY, now - (y - 1) * 365 * DAY - 1)
+      for (const r of rows) await emitIncome(ctx, price, r)
+      ctx.log(`binance: ${rows.length} older futures entries from year ${4 - y} of 3`)
+    }
+    cursor.futuresFull = true
+    cursor.futuresFrom = now - 30 * DAY // the newest days come from the API below
+  }
+  for (let from = cursor.futuresFrom ?? now - 90 * DAY; from < now; from += 90 * DAY) {
+    const to = Math.min(now, from + 90 * DAY)
+    let start = from
+    for (let guard = 0; guard < 200; guard++) {
+      const rows = (await ex.fapiPrivateGetIncome({ startTime: start, endTime: to, limit: 1000 })) as Record<string, string | number>[]
+      for (const r of rows) await emitIncome(ctx, price, { time: Number(r.time), incomeType: String(r.incomeType), income: Number(r.income), asset: String(r.asset), symbol: r.symbol ? String(r.symbol) : null, tranId: String(r.tranId) })
+      if (rows.length < 1000) break
+      start = Number(rows.at(-1)!.time) // re-reads the last millisecond; repeats are dropped by id
+    }
+  }
+  cursor.futuresFrom = now - DAY
+}
+
+/** Ask Binance to prepare a futures income file for a range (at most a year), wait for it, read it. */
+async function downloadIncome(ex: Client, start: number, end: number): Promise<Income[]> {
+  const { downloadId } = (await ex.fapiPrivateGetIncomeAsyn({ startTime: start, endTime: end })) as { downloadId: string }
+  for (let i = 0; i < 60; i++) {
+    await new Promise((res) => setTimeout(res, 5000))
+    const s = (await ex.fapiPrivateGetIncomeAsynId({ downloadId })) as { status: string; url?: string }
+    if (s.status !== 'completed' || !s.url) continue
+    const zip = Buffer.from(await (await fetch(s.url, { signal: AbortSignal.timeout(60_000) })).arrayBuffer())
+    return parseIncomeCsv(unzipFirst(zip).toString('utf8'))
+  }
+  throw new Error('Binance took too long to prepare the futures history file')
+}
+
+/** The first file in a zip, via its central directory. Enough for Binance's one-file downloads. */
+export function unzipFirst(buf: Buffer): Buffer {
+  const eocd = buf.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]))
+  if (eocd < 0) throw new Error('not a zip file')
+  const cd = buf.readUInt32LE(eocd + 16)
+  const method = buf.readUInt16LE(cd + 10)
+  const size = buf.readUInt32LE(cd + 20)
+  const local = buf.readUInt32LE(cd + 42)
+  const start = local + 30 + buf.readUInt16LE(local + 26) + buf.readUInt16LE(local + 28)
+  const data = buf.subarray(start, start + size)
+  return method === 0 ? data : inflateRawSync(data)
+}
+
+/** "Date(UTC)","type","Amount","Asset","Symbol","Transaction ID" → income rows. */
+export function parseIncomeCsv(csv: string): Income[] {
+  return csv.replace(/^\uFEFF/, '').split(/\r?\n/).slice(1).filter((l) => l.trim()).map((l) => {
+    const [date, type, amount, asset, symbol, tranId] = l.split(',').map((x) => x.trim().replace(/^"|"$/g, ''))
+    return { time: Date.parse(`${date.replace(' ', 'T')}Z`), incomeType: type, income: Number(amount), asset, symbol: symbol || null, tranId }
+  }).filter((r) => r.tranId && Number.isFinite(r.time) && Number.isFinite(r.income))
+}
+
+/**
+ * Binance Pay: sending to or receiving from other Binance users. Not in withdrawal history, so without it
+ * money paid out to people looks lost. 89-day windows back until Binance stops answering (about 18 months).
+ */
+async function syncPay(ex: Client, ctx: ConnectorCtx, cursor: Cursor, now: number, price: Price) {
+  const oldest = cursor.payFrom ? cursor.payFrom - 3 * DAY : now - 2 * 365 * DAY
+  for (let end = now; end > oldest; end -= 89 * DAY) {
+    const start = Math.max(oldest, end - 89 * DAY)
+    let r: { data?: Record<string, string | number>[] }
+    try { r = (await ex.sapiGetPayTransactions({ startTime: start, endTime: end, limit: 100 })) as typeof r } catch { break } // older than Binance keeps
+    for (const t of r.data ?? []) {
+      const at = Number(t.transactionTime)
+      const amount = Number(t.amount)
+      const p = await price(String(t.currency), at)
+      await ctx.emit({
+        source: 'binance', externalId: `pay:${t.transactionId}`, at: new Date(at),
+        body: { type: amount < 0 ? 'withdrawal' : 'deposit', coin: t.currency, amount: Math.abs(amount), via: 'pay', orderType: t.orderType, at, usd: p == null ? null : p * Math.abs(amount) },
+      })
+    }
+  }
+  cursor.payFrom = now
+}
+
+/**
+ * Airdrops, Launchpool and other rewards Binance paid into the account. Without them, selling a coin you
+ * were given looks like selling coins you never had. 90-day windows; the first time from 2019.
+ */
+async function syncRewards(ex: Client, ctx: ConnectorCtx, cursor: Cursor, now: number, price: Price) {
+  for (let start = cursor.rewardsFrom ? cursor.rewardsFrom - 3 * DAY : START; start < now; start += 90 * DAY) {
+    const end = Math.min(now, start + 90 * DAY)
+    const r = (await ex.sapiGetAssetAssetDividend({ startTime: start, endTime: end, limit: 500 })) as { rows?: Record<string, string | number>[] }
+    for (const d of r.rows ?? []) {
+      const at = Number(d.divTime)
+      const amount = Number(d.amount)
+      const p = await price(String(d.asset), at)
+      await ctx.emit({
+        source: 'binance', externalId: `reward:${d.tranId ?? d.id}`, at: new Date(at),
+        body: { type: 'reward', coin: d.asset, amount, info: d.enInfo, at, usd: p == null ? null : p * amount },
+      })
+    }
+  }
+  cursor.rewardsFrom = now
+}
+
+/** Crypto bought or sold with rupees by card, UPI or bank (Binance "Buy/Sell Crypto"), completed only. */
+async function syncFiat(ex: Client, ctx: ConnectorCtx, cursor: Cursor, now: number) {
+  const begin = cursor.fiatFrom ? cursor.fiatFrom - 3 * DAY : START
+  for (const transactionType of [0, 1]) { // 0 buy, 1 sell
+    for (let page = 1; page <= 50; page++) {
+      const r = (await ex.sapiGetFiatPayments({ transactionType, beginTime: begin, endTime: now, page, rows: 500 })) as { data?: Record<string, string | number>[] }
+      const rows = r.data ?? []
+      for (const o of rows.filter((x) => x.status === 'Completed')) {
+        await ctx.emit({ source: 'binance', externalId: `fiat:${o.orderNo}`, at: new Date(Number(o.createTime)), body: { type: 'fiat', side: transactionType === 0 ? 'buy' : 'sell', ...o } })
+      }
+      if (rows.length < 500) break
+    }
+  }
+  cursor.fiatFrom = now
+}
+
+/** "Convert small balances to BNB": each coin converted is a sale, valued in dollars on the day. */
+async function syncDust(ex: Client, ctx: ConnectorCtx, cursor: Cursor, now: number, price: Price) {
+  const r = (await ex.sapiGetAssetDribblet({ startTime: cursor.dustFrom ? cursor.dustFrom - 3 * DAY : START, endTime: now })) as { userAssetDribblets?: { userAssetDribbletDetails?: Record<string, string | number>[] }[] }
+  for (const d of r.userAssetDribblets ?? []) {
+    for (const x of d.userAssetDribbletDetails ?? []) {
+      const at = Number(x.operateTime)
+      const bnb = await price('BNB', at)
+      await ctx.emit({
+        source: 'binance', externalId: `dust:${x.transId}:${x.fromAsset}`, at: new Date(at),
+        body: { type: 'dust', fromAsset: x.fromAsset, amount: Number(x.amount), bnb: Number(x.transferedAmount), fee: Number(x.serviceChargeAmount), at, usd: bnb == null ? null : bnb * Number(x.transferedAmount) },
+      })
+    }
+  }
+  cursor.dustFrom = now
 }

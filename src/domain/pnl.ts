@@ -3,7 +3,8 @@
 export type Fill = {
   at: Date
   asset: string
-  side: 'buy' | 'sell'
+  /** 'in' and 'out' move coins without trading: a deposit adds a lot at that day's price, a withdrawal removes lots with no gain. */
+  side: 'buy' | 'sell' | 'in' | 'out'
   qty: number
   unitPrice: number // in valuation currency
   fee: number // in valuation currency
@@ -15,22 +16,25 @@ export type Lot = { qty: number; unitCost: number; at: Date }
 export type PnL = {
   realized: Realized[]
   open: Record<string, Lot[]>
-  totals: { realizedGain: number; gains: number; losses: number; fees: number }
-  /** Sells larger than known buys (history incomplete). Cost basis treated as 0. */
-  unmatched: { asset: string; qty: number }[]
+  /** movedGain: what withdrawn coins were worth when they left, minus what they cost. */
+  totals: { realizedGain: number; gains: number; losses: number; fees: number; movedGain: number }
+  /** Sold more than history explains, per asset. That part is counted at break-even, not as pure profit. */
+  unmatched: { asset: string; qty: number; soldQty: number; soldValue: number }[]
 }
 
 export function fifo(fills: Fill[]): PnL {
   const open: Record<string, Lot[]> = {}
   const realized: Realized[] = []
-  const unmatched: PnL['unmatched'] = []
+  const missing = new Map<string, { qty: number; soldQty: number; soldValue: number }>()
+  const miss = (a: string) => missing.get(a) ?? (missing.set(a, { qty: 0, soldQty: 0, soldValue: 0 }), missing.get(a)!)
+  let movedGain = 0
   let fees = 0
 
   for (const f of [...fills].sort((a, b) => a.at.getTime() - b.at.getTime())) {
     fees += f.fee
     const lots = (open[f.asset] ??= [])
-    if (f.side === 'buy') {
-      // Buy fees are part of the cost basis.
+    if (f.side === 'buy' || f.side === 'in') {
+      // Buy fees are part of the cost basis; a deposit costs what the coins were worth that day.
       lots.push({ qty: f.qty, unitCost: (f.qty * f.unitPrice + f.fee) / f.qty, at: f.at })
       continue
     }
@@ -44,30 +48,43 @@ export function fifo(fills: Fill[]): PnL {
       remaining -= take
       if (lot.qty <= 1e-12) lots.shift()
     }
-    if (remaining > 1e-12) unmatched.push({ asset: f.asset, qty: remaining })
+    if (f.side === 'out') { // moved elsewhere, not sold
+      movedGain += (f.qty - remaining) * f.unitPrice - cost
+      if (remaining > 1e-9) miss(f.asset).qty += remaining
+      continue
+    }
     const proceeds = f.qty * f.unitPrice - f.fee
+    if (remaining > 1e-12) {
+      const m = miss(f.asset)
+      m.qty += remaining
+      m.soldQty += remaining
+      m.soldValue += (remaining / f.qty) * proceeds
+      cost += (remaining / f.qty) * proceeds // unknown cost: break-even rather than a made-up gain
+    }
     realized.push({ at: f.at, asset: f.asset, qty: f.qty, proceeds, cost, gain: proceeds - cost })
   }
 
   const gains = realized.reduce((s, r) => s + Math.max(r.gain, 0), 0)
   const losses = realized.reduce((s, r) => s + Math.min(r.gain, 0), 0)
-  return { realized, open, totals: { realizedGain: gains + losses, gains, losses, fees }, unmatched }
+  const unmatched = [...missing].map(([asset, m]) => ({ asset, ...m }))
+  return { realized, open, totals: { realizedGain: gains + losses, gains, losses, fees, movedGain }, unmatched }
 }
+
+export type Movement = { kind: 'in' | 'out'; usd: number | null }
 
 /**
- * India VDA tax (Sec 115BBH): flat 30% on each profitable transfer; losses cannot be set off
- * or carried forward. Plus 4% cess. TDS (Sec 194S, 1%) is shown separately as an estimate.
- * ponytail: per-transfer gains, no surcharge slabs; check with a CA before filing.
+ * All-time result of an exchange account: what it's worth now, plus everything taken out, minus
+ * everything put in. Catches what trade-by-trade P&L misses (earn rewards, airdrops, dust, fees in BNB).
+ * Movements with no known value are counted, not guessed.
  */
-export function indiaCryptoTax(realized: Realized[]) {
-  const taxableGains = realized.reduce((s, r) => s + Math.max(r.gain, 0), 0)
-  const tax = taxableGains * 0.3 * 1.04
-  const sellValue = realized.reduce((s, r) => s + r.proceeds, 0)
-  return { taxableGains, tax, tdsEstimate: sellValue * 0.01 }
-}
-
-/** Indian financial year (Apr–Mar) label for a date, e.g. "FY 2026-27". */
-export function financialYear(d: Date): string {
-  const y = d.getUTCMonth() >= 3 ? d.getUTCFullYear() : d.getUTCFullYear() - 1
-  return `FY ${y}-${String((y + 1) % 100).padStart(2, '0')}`
+export function allTimePnl(valueUsd: number, moves: Movement[]) {
+  let invested = 0, withdrawn = 0, unvalued = 0
+  for (const m of moves) {
+    if (m.usd == null) { unvalued++; continue }
+    if (m.kind === 'in') invested += Math.abs(m.usd)
+    else withdrawn += Math.abs(m.usd)
+  }
+  const pnl = valueUsd + withdrawn - invested
+  const netIn = invested - withdrawn
+  return { pnl, invested, withdrawn, netIn, pct: netIn > 0 ? pnl / netIn : null, unvalued }
 }
