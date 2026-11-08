@@ -68,7 +68,7 @@ export default function UiGallery() {
           <div><div className="mb-2 text-[13px] text-ink">Empty</div><Capsule value={0} label="Empty" /></div>
           <div><div className="mb-2 text-[13px] text-ink">Sizes</div><div className="flex flex-col gap-2"><Capsule value={3} max={5} size="sm" label="sm" /><Capsule value={3} max={5} size="lg" label="lg" /></div></div>
         </div>
-        <div className="mt-6 flex items-end gap-4 rounded-lg p-4" style={{ background: 'linear-gradient(180deg, oklch(0.80 0.115 232), oklch(0.97 0.015 233))' }}>
+        <div className="mt-6 flex items-end gap-4 rounded-lg p-4" style={{ background: 'linear-gradient(180deg, var(--sky-soft), var(--surface-2))' }}>
           {CATEGORIES.map((c, i) => <CapsuleGauge key={c} value={i} max={4} color={CATEGORY[c].color} label={CATEGORY[c].label} />)}
         </div>
       </Section>
@@ -113,8 +113,8 @@ export default function UiGallery() {
 
       <Section title="Empty & loading">
         <div className="grid gap-6 sm:grid-cols-2">
-          <Card><EmptyState title="Nothing here yet" description="Empty states use the line-art style." action={<Button variant="primary">Add one</Button>} /></Card>
-          <Card className="flex flex-col gap-3"><Skeleton className="h-5 w-40" /><Skeleton className="h-24" /><Skeleton className="h-5 w-24" /></Card>
+          <div className="rounded-md bg-surface-2 p-4"><EmptyState title="Nothing here yet" description="Empty states use the line-art style." action={<Button variant="primary">Add one</Button>} /></div>
+          <div className="flex flex-col gap-3 rounded-md bg-surface-2 p-4"><Skeleton className="h-5 w-40" /><Skeleton className="h-24" /><Skeleton className="h-5 w-24" /></div>
         </div>
       </Section>
     </div>

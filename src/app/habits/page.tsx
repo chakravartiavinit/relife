@@ -46,7 +46,7 @@ async function Habits({ searchParams }: { searchParams: PageProps<'/habits'>['se
             href={t.key === 'routines' ? '/habits' : `/habits?tab=${t.key}`}
             aria-current={tab === t.key ? 'page' : undefined}
             className={cn(
-              'inline-flex h-9 items-center rounded-full px-4 text-[14px] font-medium transition-[background-color,color,box-shadow] duration-150',
+              'inline-flex h-10 items-center rounded-full px-4 text-[14px] font-medium transition-[background-color,color,box-shadow] duration-150',
               tab === t.key ? 'bg-surface text-ink shadow-1' : 'text-ink-3 hover:text-ink',
             )}
           >

@@ -206,8 +206,9 @@ function DeltaBadge({ d }: { d: Delta }) {
 
 function KpiTile({ tile: t }: { tile: Tile }) {
   const { color, label: area } = CATEGORY[t.cat]
+  // Child 1 of the grid is the streak, so an even last child means an odd tile count: stretch it on phones.
   return (
-    <Link href={t.href} className={cn(TILE, 'group flex min-w-0 flex-col bg-surface max-md:last:col-span-2')}>
+    <Link href={t.href} className={cn(TILE, 'group flex min-w-0 flex-col bg-surface max-md:even:last:col-span-2')}>
       <div className="flex items-center gap-2">
         <IconChip color={color} className="size-6 rounded-[7px] [&_svg]:size-3.5">{ICON[t.cat]}</IconChip>
         <span className="truncate text-[12.5px] font-semibold text-ink">{area}</span>
@@ -280,8 +281,8 @@ function StreakTile({ current, best, doneToday, days }: {
 
 export function LifeKpisSkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-3" aria-busy>
-      {Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className={cn('h-[176px] rounded-lg', i === 0 && 'col-span-2 md:col-span-1', i === 5 && 'max-md:col-span-2')} />)}
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-4" aria-busy>
+      {Array.from({ length: 7 }, (_, i) => <Skeleton key={i} className={cn('h-[176px] rounded-lg', i === 0 && 'col-span-2')} />)}
     </div>
   )
 }

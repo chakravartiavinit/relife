@@ -121,19 +121,22 @@ async function Activity() {
         </ul>
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader title="Top sites and apps" icon={<Monitor strokeWidth={2} />} color="var(--pill)" description="Last 7 days · change what a site counts as and its past time is re-sorted" />
           <ul className="flex flex-col divide-y divide-divider">
             {s.places.map((p) => (
-              <li key={p.name} className="flex items-center gap-3 py-2.5">
-                <BrandLogo name={p.name} />
-                <span className="min-w-0 flex-1">
+              // On a phone the kind picker drops under the name, so the name keeps the row's width.
+              <li key={p.name} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 py-2.5 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]">
+                <span className="max-sm:row-span-2 max-sm:self-start"><BrandLogo name={p.name} /></span>
+                <span className="min-w-0">
                   <span className="block truncate text-[14px] text-ink">{p.name}</span>
                   <span className="block text-[12px] text-ink-3">{p.source === 'mac' ? 'Mac app' : 'Website'}</span>
                 </span>
-                {p.source === 'browser' ? <SiteKind domain={p.name} kind={p.kind} /> : <KindTag kind={p.kind} />}
-                <span className="w-16 text-end text-[13px] font-medium text-ink tabular-nums">{hm(p.seconds)}</span>
+                <span className="max-sm:col-start-2 max-sm:row-start-2 max-sm:justify-self-start">
+                  {p.source === 'browser' ? <SiteKind domain={p.name} kind={p.kind} /> : <KindTag kind={p.kind} />}
+                </span>
+                <span className="w-16 text-end text-[13px] font-medium text-ink tabular-nums max-sm:col-start-3 max-sm:row-start-1">{hm(p.seconds)}</span>
               </li>
             ))}
           </ul>

@@ -47,17 +47,17 @@ export function ProfileForm({ name, timezone, baseCurrency, goals, constraints, 
     >
       <SettingsSection id="profile" title="Profile" description="Used for day boundaries, money conversion and every AI prompt.">
         <SettingsRow label="Name" hint="Shown on Today and your Profile." htmlFor="p-name">
-          <Input id="p-name" name="name" defaultValue={name} autoComplete="given-name" maxLength={60} className="max-w-sm" />
+          <Input id="p-name" name="name" defaultValue={name} autoComplete="given-name" maxLength={60} />
         </SettingsRow>
         <SettingsRow
           label="Time zone"
           hint={<>Decides when your day starts and when reminders fire.{localTime ? <> It’s <span className="tabular-nums">{localTime}</span> there now.</> : null}</>}
           htmlFor="p-tz"
         >
-          <TimezonePicker key={`tz${resets}`} id="p-tz" name="timezone" defaultValue={timezone} options={timezones} suggested={[device]} onChange={() => setDirty(true)} className="max-w-sm" />
+          <TimezonePicker key={`tz${resets}`} id="p-tz" name="timezone" defaultValue={timezone} options={timezones} suggested={[device]} onChange={() => setDirty(true)} />
         </SettingsRow>
         <SettingsRow label="Base currency" hint="Every amount is converted into this for totals and charts. Originals are kept." htmlFor="p-cur">
-          <CurrencyPicker key={`cur${resets}`} id="p-cur" name="baseCurrency" defaultValue={baseCurrency} options={currencies} onChange={() => setDirty(true)} className="max-w-[12rem]" />
+          <CurrencyPicker key={`cur${resets}`} id="p-cur" name="baseCurrency" defaultValue={baseCurrency} options={currencies} onChange={() => setDirty(true)} />
         </SettingsRow>
       </SettingsSection>
 

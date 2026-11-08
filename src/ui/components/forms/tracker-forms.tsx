@@ -41,9 +41,9 @@ export function QuickLog({ slug, name, unit, step }: { slug: string; name: strin
         onChange={(e) => setValue(e.target.value)}
         placeholder={unit ? `Today, ${unit}` : 'Today'}
         aria-label={`Set today’s ${name}`}
-        className="h-9"
+        className="h-10"
       />
-      <Button type="submit" size="icon" aria-label={`Save ${name}`} disabled={pending || value === ''}>
+      <Button type="submit" size="icon" className="size-10" aria-label={`Save ${name}`} disabled={pending || value === ''}>
         {/* Both icons mounted; cross-fade on save. */}
         <span className="relative grid size-4 place-items-center">
           <Plus className={`absolute size-4 transition-[opacity,scale,filter] duration-200 ease-out-quint ${saved ? 'scale-25 opacity-0 blur-[4px]' : ''}`} strokeWidth={2} />

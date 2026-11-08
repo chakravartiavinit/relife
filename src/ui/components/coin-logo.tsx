@@ -10,7 +10,7 @@ export function CoinLogo({ symbol, logo, size = 'md', className }: { symbol: str
     return (
       // v=2 in the URL: the 250px logos, past a week-old browser cache.
       // eslint-disable-next-line @next/next/no-img-element -- small local file from /api/coins
-      <img src={`/api/coins/${encodeURIComponent(symbol)}?v=2`} alt="" className={cn('shrink-0 rounded-full bg-white object-cover outline outline-1 -outline-offset-1 outline-[oklch(0_0_0/0.1)] dark:outline-[oklch(1_0_0/0.1)]', SIZE[size], className)} />
+      <img src={`/api/coins/${encodeURIComponent(symbol)}?v=2`} alt="" className={cn('shrink-0 rounded-full bg-white object-cover outline outline-1 -outline-offset-1 outline-[oklch(0_0_0/0.1)] dark:outline-[oklch(1_0_0/0.25)]', SIZE[size], className)} />
     )
   }
   const h = [...symbol].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 7)

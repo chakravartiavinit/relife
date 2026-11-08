@@ -53,7 +53,7 @@ async function Mind() {
     {/* Today's check-in: one slim row, both scales side by side. */}
     <Card>
       <CardHeader title="Today’s check-in" icon={<Smile strokeWidth={2} />} color="var(--cat-mind)" description="Tap once a day. Patterns show up after a week." />
-      <div className="grid gap-x-8 gap-y-5 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-x-8 gap-y-5 lg:grid-cols-2">
         <div>
           <div className="mb-2 text-[13px] font-medium text-ink-2">Mood</div>
           <ScaleLogger slug="mood" name="mood" value={get('mood')?.days.get(today)} />
@@ -64,7 +64,7 @@ async function Mind() {
         </div>
       </div>
     </Card>
-    <div className="grid gap-6 xl:grid-cols-2">
+    <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
       <MetricCard
         title="Mood" data={get('mood')} from={from} to={today} color={color} chart="area" domain={[1, 5]}
         empty={{ title: 'No mood logged yet', description: 'Use the check-in above once a day. Patterns show up after a week.' }}

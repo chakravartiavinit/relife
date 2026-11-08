@@ -129,7 +129,7 @@ async function Hobbies() {
         <DailyBars data={fillDays(all, addDays(today, -27), today, 0)} color={color} unit="min" label="Practice minutes per day" />
       </Card>
 
-      <section aria-label="Your hobbies" className="grid gap-6 md:grid-cols-2">
+      <section aria-label="Your hobbies" className="grid grid-cols-1 gap-6 md:grid-cols-2">
         {cards.map((c) => {
           return (
             <Card key={c.t.id} className="flex flex-col gap-4">
@@ -175,7 +175,7 @@ async function Hobbies() {
                   Play online? <Link href="/connectors" className="font-medium text-pill-ink hover:underline">Connect Lichess or Chess.com</Link> and your games, time and rating sync on their own.
                 </p>
               ) : null}
-              <Sparkline data={c.spark} color={color} height={40} label={`${c.t.name}, minutes per day for 4 weeks`} />
+              {c.spark.some((p) => (p.value ?? 0) > 0) ? <Sparkline data={c.spark} color={color} height={40} label={`${c.t.name}, minutes per day for 4 weeks`} /> : null}
               <PracticeButtons slug={c.t.slug} name={c.t.name} color={color} />
             </Card>
           )

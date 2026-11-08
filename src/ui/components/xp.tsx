@@ -79,15 +79,15 @@ export function LevelRing({ level, progress, size = 148 }: { level: number; prog
 export function TitleTrack({ level, titles }: { level: number; titles: { level: number; title: string }[] }) {
   const current = [...titles].reverse().find((t) => level >= t.level)!
   const ci = titles.indexOf(current)
-  // Phones show the two titles either side of the current one; wider screens show all.
-  const lo = Math.max(0, Math.min(ci - 2, titles.length - 5))
+  // Phones show four titles around the current one (one before, two after) so labels never touch; wider screens show all.
+  const lo = Math.max(0, Math.min(ci - 1, titles.length - 4))
   return (
     <div className="pb-1">
       <ol aria-label="Titles" className="flex">
         {titles.map((t, i) => {
           const reached = level >= t.level
           const isCurrent = t === current
-          const far = i < lo || i > lo + 4
+          const far = i < lo || i > lo + 3
           return (
             <li key={t.level} className={cn('relative flex flex-1 flex-col items-center text-center', far && 'max-md:hidden')} aria-current={isCurrent ? 'step' : undefined}>
               {i > 0 ? <span aria-hidden className={cn('absolute top-[15px] right-1/2 left-[-50%] h-[2px] rounded-full', i === lo && 'max-md:hidden', reached ? 'bg-ink' : 'bg-ink/10 dark:bg-white/12')} /> : null}
@@ -97,7 +97,7 @@ export function TitleTrack({ level, titles }: { level: number; titles: { level: 
               )}>
                 {t.level}
               </span>
-              <span className={cn('mt-2 text-[12px] leading-tight', isCurrent ? 'font-semibold text-ink' : reached ? 'text-ink-2' : 'text-ink-3')}>{t.title}</span>
+              <span className={cn('mt-2 text-[12px] leading-tight max-md:text-[11px]', isCurrent ? 'font-semibold text-ink' : reached ? 'text-ink-2' : 'text-ink-3')}>{t.title}</span>
             </li>
           )
         })}

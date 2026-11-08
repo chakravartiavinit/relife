@@ -12,7 +12,7 @@ import { cn } from '../cn'
 const ICON: Record<NotifyCategory, LucideIcon> = { system: Swords, reminders: BellRing, alerts: TriangleAlert, analysis: Search, coach: Lightbulb, events: Sparkles }
 const EVERY = [10, 15, 30, 60, 120, 240]
 const TIMES = [1, 2, 3, 5]
-const CAPS = [1, 2, 3, 5, 10]
+const CAPS = [1, 2, 3, 5, 6, 10]
 const every = (m: number) => (m < 60 ? `${m} min` : `${m / 60} ${m === 60 ? 'hour' : 'hours'}`)
 
 /** Settings → Notifications: quiet hours, then one row per category with how it's delivered. Saves as you change it. */
@@ -50,9 +50,9 @@ export function NotificationSettings({ initial }: { initial?: NotifyPrefs }) {
           <Switch checked={!!quiet} onCheckedChange={(on) => setQ(on ? lastQuiet.current : null)} ariaLabel="Quiet hours" />
           {quiet ? (
             <div className="flex items-center gap-2 text-[13px] text-ink-3">
-              <Input type="time" aria-label="Quiet from" value={quiet.from} onChange={(e) => e.target.value && setQ({ ...quiet, from: e.target.value })} className="w-[7.5rem] tabular-nums" />
+              <Input type="time" aria-label="Quiet from" value={quiet.from} onChange={(e) => e.target.value && setQ({ ...quiet, from: e.target.value })} className="w-36 tabular-nums" />
               to
-              <Input type="time" aria-label="Quiet until" value={quiet.to} onChange={(e) => e.target.value && setQ({ ...quiet, to: e.target.value })} className="w-[7.5rem] tabular-nums" />
+              <Input type="time" aria-label="Quiet until" value={quiet.to} onChange={(e) => e.target.value && setQ({ ...quiet, to: e.target.value })} className="w-36 tabular-nums" />
             </div>
           ) : <span className="text-[13px] text-ink-3">Off: messages arrive any time</span>}
         </div>
@@ -102,7 +102,7 @@ export function NotificationSettings({ initial }: { initial?: NotifyPrefs }) {
               {d.mode !== 'off' ? (
                 <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] text-ink-2">
                   <Switch checked={d.quiet} onCheckedChange={(v) => setCat(c, { quiet: v })} label="Hold during quiet hours" disabled={!quiet} />
-                  <label className="inline-flex items-center gap-2">
+                  <label className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap">
                     At most
                     <Select value={d.maxPerDay ?? ''} onChange={(e) => setCat(c, { maxPerDay: e.target.value ? Number(e.target.value) : null })} className="w-auto">
                       <option value="">no limit</option>

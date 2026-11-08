@@ -54,10 +54,9 @@ export function Stat({ label, value, sub, tone, icon, color, className }: {
         {label}
       </div>
       {/* Scales with its column (container query) so ₹14,14,684 never runs into its neighbour on a phone. */}
-      <div className="mt-2 font-display text-[clamp(20px,9cqi,30px)] leading-none font-bold tracking-[-0.025em] break-words text-ink tabular-nums">{value}</div>
-      {sub ? (
-        <div className={cn('mt-2 text-[12.5px] tabular-nums', tone === 'good' ? 'text-good' : tone === 'bad' ? 'text-bad' : 'text-ink-3')}>{sub}</div>
-      ) : null}
+      {/* A good or bad number is coloured itself; the line under it is an explanation and stays plain text. */}
+      <div className={cn('mt-2 font-display text-[clamp(20px,9cqi,30px)] leading-none font-bold tracking-[-0.025em] break-words tabular-nums', tone === 'good' ? 'text-good' : tone === 'bad' ? 'text-bad' : 'text-ink')}>{value}</div>
+      {sub ? <div className="mt-2 text-[12.5px] text-ink-3 tabular-nums">{sub}</div> : null}
     </div>
   )
 }
@@ -66,7 +65,8 @@ export function Badge({ children, color, className }: { children: React.ReactNod
   return (
     <span
       className={cn('inline-flex h-5 items-center rounded-full px-2 text-[11px] font-medium tracking-[0.01em] whitespace-nowrap', !color && 'bg-surface-2 text-ink-2', className)}
-      style={color ? { color, background: `color-mix(in oklch, ${color} 13%, transparent)` } : undefined}
+      // The colour tints the pill; the text is mixed toward ink so it stays readable (ochre on cream is ~3:1).
+      style={color ? { color: `color-mix(in oklch, ${color} 65%, var(--ink))`, background: `color-mix(in oklch, ${color} 13%, transparent)` } : undefined}
     >
       {children}
     </span>
@@ -116,8 +116,15 @@ export type Kpi = { label: React.ReactNode; value: React.ReactNode; sub?: React.
 export function KpiStrip({ items }: { items: Kpi[] }) {
   return (
     <Card className="p-6">
-      <div className="grid grid-cols-2 gap-x-6 gap-y-6 md:grid-cols-4">
-        {items.map((k, i) => <Stat key={i} label={k.label} value={k.value} sub={k.sub} tone={k.tone} />)}
+      {/* Each stat spans three rows of a shared grid (label, number, note), so when one label wraps on a phone
+          the numbers beside it still line up. */}
+      <div className="grid grid-cols-2 gap-x-6 md:grid-cols-4">
+        {items.map((k, i) => (
+          <Stat
+            key={i} label={k.label} value={k.value} sub={k.sub} tone={k.tone}
+            className="row-span-3 grid grid-rows-subgrid content-start [&:nth-child(n+3)]:pt-6 md:[&:nth-child(n+3)]:pt-0 md:[&:nth-child(n+5)]:pt-6"
+          />
+        ))}
       </div>
     </Card>
   )

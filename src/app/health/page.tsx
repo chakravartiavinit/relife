@@ -60,7 +60,7 @@ async function Health() {
         { label: waterGoal ? `${waterGoal.name} today` : 'Water today', value: water == null ? '–' : formatNumber(water), sub: waterGoal?.target ? `of ${formatNumber(waterGoal.target)} ${waterGoal.unit ?? ''}` : 'No daily goal yet' },
         { label: 'Medicines kept', value: kept == null ? '–' : `${Math.round(kept * 100)}%`, sub: meds.length ? `${meds.length} medicine${meds.length === 1 ? '' : 's'}, last 60 days` : 'None added' },
       ]} />
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2 xl:[&>*:last-child:nth-child(odd)]:col-span-2">
         <MetricCard
           title="Sleep" data={get('sleep.hours')} from={from} to={today} color={color} chart="area" target={get('sleep.hours')?.tracker.target ?? 7.5}
           empty={{ title: 'No sleep data yet', description: <>Send <code>/sleep</code> and <code>/wake</code> to the Telegram bot, or set up the Sleep Focus shortcut.</> }}

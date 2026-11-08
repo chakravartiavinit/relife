@@ -179,8 +179,8 @@ async function Spending({ searchParams }: { searchParams: PageProps<'/wealth/spe
                   </span>
                   <span role="cell" className="hidden sm:block"><Badge>{t.source}</Badge></span>
                   <span role="cell" className={cn('text-right font-medium tabular-nums', t.amount > 0 ? 'text-good' : 'text-ink')}>
-                    {formatMoney(t.amount, t.currency, { sign: t.amount > 0 })}
-                    {t.currency !== base ? <span className="block text-[12px] font-normal text-ink-3">{formatMoney(t.base, base)}</span> : null}
+                    {formatMoney(t.amount, t.currency, { sign: t.amount > 0, decimals: 0 })}
+                    {t.currency !== base ? <span className="block text-[12px] font-normal text-ink-3">{formatMoney(t.base, base, { decimals: 0 })}</span> : null}
                   </span>
                 </div>
               ))}

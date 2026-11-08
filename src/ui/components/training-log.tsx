@@ -14,7 +14,7 @@ export type Stream = {
   color: string
   unit: string
   days: Map<string, number>
-  /** Shown beside the label, e.g. "4h 20m" or "37". */
+  /** Shown beside the label, e.g. "4h 20m" or "37": the total over the log's weeks. */
   total: string
 }
 
@@ -55,7 +55,7 @@ export function TrainingLog({ streams, today, weeks = 8, streak }: {
   return (
     <div className="flex flex-col gap-3">
       {/* Month labels, aligned with the week columns. */}
-      <div className="grid grid-cols-[minmax(0,11rem)_minmax(0,1fr)] gap-4 max-sm:grid-cols-1">
+      <div className="grid grid-cols-[minmax(0,12.5rem)_minmax(0,1fr)] gap-4 max-sm:grid-cols-1">
         <span aria-hidden />
         <div className="grid text-[11px] text-ink-3" style={{ gridTemplateColumns: `repeat(${weeks}, minmax(0, 1fr))` }} aria-hidden>
           {months.map((m) => <span key={m.w} className="border-s border-divider ps-1">{m.label || '\u00a0'}</span>)}
@@ -65,14 +65,14 @@ export function TrainingLog({ streams, today, weeks = 8, streak }: {
       {streams.map((s) => {
         const max = Math.max(0, ...days.map((d) => s.days.get(d) ?? 0))
         return (
-          <div key={s.key} role="group" aria-label={`${s.label}, last ${weeks} weeks`} className="grid grid-cols-[minmax(0,11rem)_minmax(0,1fr)] items-center gap-4 max-sm:grid-cols-1 max-sm:gap-2">
+          <div key={s.key} role="group" aria-label={`${s.label}, last ${weeks} weeks`} className="grid grid-cols-[minmax(0,12.5rem)_minmax(0,1fr)] items-center gap-4 max-sm:grid-cols-1 max-sm:gap-2">
             <div className="flex min-w-0 items-center gap-2.5">
               <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-[9px]" style={{ color: `color-mix(in oklch, ${s.color} 80%, var(--ink))`, background: `color-mix(in oklch, ${s.color} 15%, transparent)` }}>
                 <s.icon className="size-4" strokeWidth={2} />
               </span>
               <span className="min-w-0">
                 <span className="block truncate text-[13px] font-medium text-ink">{s.label}</span>
-                <span className="block truncate text-[11.5px] text-ink-3 tabular-nums">{s.total} · 28 days</span>
+                <span className="block truncate text-[11.5px] text-ink-3 tabular-nums">{s.total}</span>
               </span>
             </div>
             <Bars color={s.color} values={(d) => s.days.get(d) ?? 0} max={max} title={(d, v) => `${fmtDay(d)}: ${v ? `${formatNumber(v)} ${s.unit}` : 'nothing'}`} />
@@ -80,7 +80,7 @@ export function TrainingLog({ streams, today, weeks = 8, streak }: {
         )
       })}
 
-      <div className="mt-1 grid grid-cols-[minmax(0,11rem)_minmax(0,1fr)] items-center gap-4 border-t border-divider pt-4 max-sm:grid-cols-1 max-sm:gap-2">
+      <div className="mt-1 grid grid-cols-[minmax(0,12.5rem)_minmax(0,1fr)] items-center gap-4 border-t border-divider pt-4 max-sm:grid-cols-1 max-sm:gap-2">
         <div className="min-w-0">
           <span className="block text-[13px] font-semibold text-ink">Any practice</span>
           <span className="block text-[11.5px] text-ink-3 tabular-nums">{streak.current ? `${streak.current}-day streak` : 'No streak yet'} · best {streak.best}</span>

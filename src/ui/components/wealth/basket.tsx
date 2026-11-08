@@ -45,11 +45,11 @@ export const ITEM_COLOR: Record<ItemCategory, string> = {
   'Personal care': 'var(--sakura)',
   'Household & cleaning': 'var(--medal-silver)',
   'Health & pharmacy': 'var(--good)',
-  'Baby & pets': 'var(--warn)',
+  'Baby & pets': 'color-mix(in oklch, var(--cat-hobbies), var(--medal-gold))',
   'Electronics & appliances': 'var(--cat-hobbies)',
-  Books: 'var(--line-blue)',
-  'Eating out': 'var(--warn)',
-  'Sports & fitness': 'var(--bad)',
+  Books: 'color-mix(in oklch, var(--cat-relationships), var(--cat-hobbies))',
+  'Eating out': 'var(--bad)',
+  'Sports & fitness': 'color-mix(in oklch, var(--cat-mind), var(--cat-health))',
   'Home & lifestyle': 'var(--cat-skills)',
   Other: 'var(--ink-3)',
 }
@@ -81,7 +81,7 @@ export function BasketSections({ b, month, base }: { b: Basket; month: string; b
           <ul className="flex flex-col gap-2">
             {notes.map((n, i) => (
               <li key={i} className={cn('flex items-start gap-3 rounded-[14px] px-3.5 py-3 text-[13.5px] leading-relaxed text-ink-2 [&_b]:font-semibold [&_b]:text-ink',
-                n.tone === 'bad' ? 'bg-bad/[0.07]' : n.tone === 'warn' ? 'bg-warn/[0.08]' : 'bg-ink/[0.03] dark:bg-white/[0.04]')}>
+                n.tone === 'bad' ? 'bg-bad/[0.07] dark:bg-bad/[0.14]' : n.tone === 'warn' ? 'bg-warn/[0.08] dark:bg-warn/[0.14]' : 'bg-ink/[0.03] dark:bg-white/[0.04]')}>
                 <n.icon className={cn('mt-0.5 size-4 shrink-0', n.tone === 'bad' ? 'text-bad' : n.tone === 'warn' ? 'text-warn' : 'text-ink-3')} strokeWidth={2} aria-hidden />
                 <span>{n.text}</span>
               </li>

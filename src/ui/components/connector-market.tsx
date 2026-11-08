@@ -152,7 +152,7 @@ function Tile({ c, ...props }: { c: ConnectorItem } & React.ButtonHTMLAttributes
           <span className="truncate text-[15px] font-semibold text-ink">{c.name}</span>
           {c.connected ? <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: status.color }} /> : null}
         </span>
-        <span className={cn('mt-0.5 line-clamp-1 text-[12.5px]', c.connected && c.status !== 'ok' && c.status !== 'ready' ? 'font-medium' : 'text-ink-3')} style={c.connected && c.status !== 'ok' && c.status !== 'ready' ? { color: status.color } : undefined}>
+        <span className={cn('mt-0.5 text-[12.5px]', c.connected ? 'line-clamp-1' : 'line-clamp-2', c.connected && c.status !== 'ok' && c.status !== 'ready' ? 'font-medium' : 'text-ink-3')} style={c.connected && c.status !== 'ok' && c.status !== 'ready' ? { color: status.color } : undefined}>
           {line}
         </span>
         <span className="sr-only">{status.label}</span>

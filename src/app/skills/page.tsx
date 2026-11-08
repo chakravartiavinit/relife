@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Activity, GitCommitHorizontal, GraduationCap, Laptop, Cable, Terminal } from 'lucide-react'
+import { Activity, GitCommitHorizontal, GraduationCap, Laptop, Cable, MonitorSmartphone, Terminal } from 'lucide-react'
 import { AreaHeader } from '@/ui/components/area-header'
 import Link from 'next/link'
 import { connection } from 'next/server'
@@ -74,11 +74,13 @@ async function Skills() {
   const hm = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}h ${String(Math.round(min % 60)).padStart(2, '0')}m` : `${Math.round(min)}m`)
   const coding = addUp(byslug('github.commits'), byslug('github.prs'), byslug('github.reviews'))
   const learningMin = byslug('learning.minutes'), workMin = byslug('screen.work')
+  // Row totals cover the same 8 weeks the training log draws.
+  const LOG_WEEKS = 8, LOG_DAYS = LOG_WEEKS * 7
   const streams: Stream[] = [
-    { key: 'learning', label: 'Learning', icon: GraduationCap, color: 'var(--cat-skills)', unit: 'min', days: learningMin, total: hm(sumLast(learningMin, 28)) },
-    { key: 'work', label: 'Deep work', icon: Laptop, color: 'var(--pill)', unit: 'min', days: workMin, total: hm(sumLast(workMin, 28)) },
-    { key: 'coding', label: 'Coding', icon: GitCommitHorizontal, color: 'var(--cat-mind)', unit: 'contributions', days: coding, total: `${formatNumber(sumLast(coding, 28))} contributions` },
-    { key: 'problems', label: 'Problems', icon: Terminal, color: 'var(--cat-hobbies)', unit: 'solved', days: solved, total: `${formatNumber(sumLast(solved, 28))} solved` },
+    { key: 'learning', label: 'Learning', icon: GraduationCap, color: 'var(--cat-skills)', unit: 'min', days: learningMin, total: hm(sumLast(learningMin, LOG_DAYS)) },
+    { key: 'work', label: 'Deep work', icon: Laptop, color: 'var(--pill)', unit: 'min', days: workMin, total: hm(sumLast(workMin, LOG_DAYS)) },
+    { key: 'coding', label: 'Coding', icon: GitCommitHorizontal, color: 'var(--cat-mind)', unit: 'contributions', days: coding, total: `${formatNumber(sumLast(coding, LOG_DAYS))} contributions` },
+    { key: 'problems', label: 'Problems', icon: Terminal, color: 'var(--cat-hobbies)', unit: 'solved', days: solved, total: `${formatNumber(sumLast(solved, LOG_DAYS))} solved` },
   ]
   const practised = new Set(streams.flatMap((st) => [...st.days].filter(([, v]) => v > 0).map(([d]) => d)))
   const streak = streaks([...practised], today)
@@ -90,7 +92,7 @@ async function Skills() {
       const r = rating(site)
       return { name: `${site} rating`, logo: site, connected: !!r || !!env(`${site.toUpperCase()}_HANDLE`), value: r ? formatNumber(r.value) : '–', change: r?.change, sub: '' }
     }),
-    { name: 'Laptop activity', logo: 'Laptop activity', connected: !!env('ACTIVITY_TOKEN'), value: hm(sumLast(learningMin, 7) + sumLast(workMin, 7)), change: undefined, sub: 'learning + deep work, 7 days' },
+    { name: 'Laptop activity', logo: '', connected: !!env('ACTIVITY_TOKEN'), value: hm(sumLast(learningMin, 7) + sumLast(workMin, 7)), change: undefined, sub: 'learning + deep work, 7 days' },
   ]
   return (
     <div className="flex flex-col gap-6">
@@ -101,8 +103,8 @@ async function Skills() {
         { label: 'Problems solved, 28 days', value: formatNumber(sumLast(solved, 28)), sub: cpActive ? `${cpActive} active days` : cpSites.length ? 'None this month yet' : 'Connect a judge on Connectors' },
       ]} />
       <Card>
-        <CardHeader title="Training log" icon={<Activity strokeWidth={2} />} color="var(--cat-skills)" description="Every way you practise on one timeline, 8 weeks. Taller means more, compared with that row’s busiest day." />
-        <TrainingLog streams={streams} today={today} streak={streak} />
+        <CardHeader title="Training log" icon={<Activity strokeWidth={2} />} color="var(--cat-skills)" description={`Every way you practise on one timeline, ${LOG_WEEKS} weeks. Taller means more, compared with that row’s busiest day.`} />
+        <TrainingLog streams={streams} today={today} weeks={LOG_WEEKS} streak={streak} />
       </Card>
 
       <Card>
@@ -110,12 +112,16 @@ async function Skills() {
         <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {sources.map((src) => (
             <li key={src.name} className="flex items-center gap-3 rounded-[14px] bg-surface-2 p-3">
-              <BrandLogo name={src.logo} size="md" />
+              {src.logo ? <BrandLogo name={src.logo} size="md" /> : (
+                <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-[11px] bg-[color-mix(in_oklch,var(--pill)_16%,transparent)] text-pill-ink">
+                  <MonitorSmartphone className="size-[22px]" strokeWidth={1.75} />
+                </span>
+              )}
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[12.5px] text-ink-3">{src.name}</span>
                 {src.connected ? (
-                  <span className="flex items-baseline gap-2 tabular-nums">
-                    <span className="font-display text-[19px] leading-tight font-bold text-ink">{src.value}</span>
+                  <span className="flex flex-wrap items-baseline gap-x-2 tabular-nums">
+                    <span className="shrink-0 font-display text-[19px] leading-tight font-bold whitespace-nowrap text-ink">{src.value}</span>
                     {src.change ? <span className={src.change > 0 ? 'text-[12px] font-medium text-good' : 'text-[12px] font-medium text-bad'}>{src.change > 0 ? '▲' : '▼'} {formatNumber(Math.abs(src.change))}</span> : null}
                     <span className="truncate text-[12px] text-ink-3">{src.sub}</span>
                   </span>
@@ -128,7 +134,7 @@ async function Skills() {
         </ul>
       </Card>
 
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <Card>
           <CardHeader
             title="Learning" icon={<GraduationCap strokeWidth={2} />} color="var(--cat-skills)"

@@ -28,7 +28,7 @@ const SHORT_MONTH = new Intl.DateTimeFormat('en-IN', { month: 'short', timeZone:
 const MONTH_YEAR = new Intl.DateTimeFormat('en-IN', { month: 'short', year: 'numeric', timeZone: 'UTC' })
 const pct = (v: number) => `${Math.round(Math.abs(v) * 100)}%`
 const more = (href: string, label: string) => (
-  <Link href={href} className={buttonClass({ variant: 'ghost', size: 'sm' })}>{label}<ArrowRight className="size-3.5" strokeWidth={2} /></Link>
+  <Link href={href} className={buttonClass({ variant: 'ghost', size: 'sm' })}><span className="max-sm:sr-only">{label}</span><ArrowRight className="size-3.5" strokeWidth={2} aria-hidden /></Link>
 )
 
 export default function WealthPage() {
@@ -116,7 +116,7 @@ function MonthPace({ o, money }: Props) {
   const over = pace.vsUsual != null && pace.vsUsual > 0.1
   const under = pace.vsUsual != null && pace.vsUsual < -0.1
   return (
-    <Card>
+    <Card className="flex flex-col">
       <CardHeader
         title={`${monthLabel(o.month)} so far`} icon={<Gauge strokeWidth={2} />} color={ACCENT}
         description={`Day ${pace.day} of ${pace.daysInMonth}${pace.oneOff ? ` · ${money(pace.oneOff)} in one-off big orders, counted once` : ''}`}
@@ -136,7 +136,9 @@ function MonthPace({ o, money }: Props) {
         </div>
       </div>
 
-      {/* Track: solid = spent, light = the rest of the month at this pace, line = a usual month. */}
+      {/* Track: solid = spent, light = the rest of the month at this pace, line = a usual month. Pinned to the
+          bottom, so a taller neighbour leaves the gap above it, not under the legend. */}
+      <div className="mt-auto">
       <div className="relative mt-6 mb-7" aria-hidden>
         <div className="relative h-3 overflow-hidden rounded-full bg-surface-2">
           <span className="reveal-fill absolute inset-y-0 left-0 w-full rounded-full opacity-30" style={{ '--fill': at(pace.projected), background: over ? 'var(--bad)' : ACCENT } as React.CSSProperties} />
@@ -161,6 +163,7 @@ function MonthPace({ o, money }: Props) {
           ))}
         </ul>
       ) : <p className="border-t border-divider pt-4 text-[13px] text-ink-3">No orders yet this month.</p>}
+      </div>
     </Card>
   )
 }

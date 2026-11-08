@@ -68,7 +68,7 @@ async function TrackerDetail({ params }: { params: PageProps<'/trackers/[slug]'>
             ? <TrendArea data={series} color={color} unit={t.unit ?? undefined} target={t.target} height={260} label={`${t.name}, last 90 days`} domain={t.kind === 'scale' ? [1, 5] : undefined} />
             : <DailyBars data={series} color={color} unit={t.unit ?? undefined} target={t.target} height={260} label={`${t.name}, last 90 days`} />}
         </Card>
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-6 [&>*:last-child]:flex-1">
           <Card>
             <div className="grid grid-cols-2 gap-x-4 gap-y-5">
               <Stat label="7-day avg" value={fmt(avg(7))} />

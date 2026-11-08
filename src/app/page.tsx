@@ -223,13 +223,13 @@ function CheckFirst({ items }: { items: Attention[] }) {
         Check first
         <span className="font-normal text-ink-3 tabular-nums">{items.length}</span>
       </h2>
-      <ul className="grid grid-cols-1 gap-2 md:grid-cols-2">
+      <ul className={cn('grid grid-cols-1 gap-2', items.length > 1 && 'md:grid-cols-2')}>
         {items.map((a) => {
           const Icon = KIND_ICON[a.kind]
           const c = TONE_COLOR[a.tone]
           return (
             <li key={a.key}>
-              <Link href={a.href} className="group flex items-center gap-3 rounded-[14px] px-3 py-2.5 transition-[background-color] duration-150 hover:bg-ink/[0.03] focus-visible:outline-2 focus-visible:outline-pill dark:hover:bg-white/[0.04]" style={{ background: `color-mix(in oklch, ${c} 7%, transparent)` }}>
+              <Link href={a.href} className="group flex items-center gap-3 rounded-[14px] bg-[color-mix(in_oklch,var(--tone)_7%,transparent)] px-3 py-2.5 transition-[background-color] duration-150 hover:bg-[color-mix(in_oklch,var(--tone)_13%,transparent)] focus-visible:outline-2 focus-visible:outline-pill" style={{ '--tone': c } as React.CSSProperties}>
                 <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-[10px]" style={{ color: c, background: `color-mix(in oklch, ${c} 14%, transparent)` }}>
                   <Icon className="size-[18px]" strokeWidth={2} />
                 </span>

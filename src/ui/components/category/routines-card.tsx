@@ -49,7 +49,7 @@ export function AdherenceRow({ r, actions }: { r: ScheduleAdherence; actions?: R
       <span aria-hidden className="grid size-10 shrink-0 place-items-center self-start rounded-[11px]" style={{ color: `color-mix(in oklch, ${color} 80%, var(--ink))`, background: `color-mix(in oklch, ${color} 16%, transparent)`, opacity: s.active ? 1 : 0.5 }}>
         <RoutineArt name={s.name} kind={s.kind} area={s.category} className={s.active ? undefined : 'grayscale'} />
       </span>
-      <div className="min-w-0 flex-1 basis-56">
+      <div className="min-w-0 flex-1 basis-40 sm:basis-56">
         <div className="flex items-center gap-2">
           <span className={`truncate text-[15px] ${s.active ? 'text-ink' : 'text-ink-3'}`}>{s.name}</span>
           {!s.active ? <Badge>Paused</Badge> : null}
@@ -75,14 +75,15 @@ export function AdherenceRow({ r, actions }: { r: ScheduleAdherence; actions?: R
           </div>
         ) : null}
       </div>
-      <div className="ml-auto flex flex-wrap items-center justify-end gap-x-4 gap-y-1">
+      {/* On a phone the strip and streak take their own line, so the menu stays beside the title. */}
+      <div className="ml-auto flex flex-wrap items-center justify-end gap-x-4 gap-y-1 max-sm:order-last max-sm:w-full">
         <AdherenceStrip days={r.days} color={color} name={s.name} />
         <div className="w-20 text-right">
           <div className="text-[15px] font-semibold text-ink tabular-nums">{r.streak}d</div>
           <div className="text-[12px] whitespace-nowrap text-ink-3 tabular-nums">{r.rate == null ? 'streak' : `${Math.round(r.rate * 100)}% kept`}</div>
         </div>
-        {actions}
       </div>
+      {actions ? <div className="shrink-0 max-sm:self-start">{actions}</div> : null}
     </li>
   )
 }

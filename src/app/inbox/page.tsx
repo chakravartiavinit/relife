@@ -181,7 +181,7 @@ function EventRow({ e, when, tone, dismiss = true, orphan = false }: { e: RawEve
 
         {s.items?.length ? (
           <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Items">
-            {s.items.map((it, i) => <li key={i} className="h-6 max-w-[16rem] truncate rounded-full bg-surface-2 px-2.5 text-[12px] leading-6 text-ink-2" title={it}>{it}</li>)}
+            {s.items.map((it, i) => <li key={i} className="h-6 max-w-full truncate sm:max-w-[28rem] rounded-full bg-surface-2 px-2.5 text-[12px] leading-6 text-ink-2" title={it}>{it}</li>)}
             {s.more ? <li className="flex h-6 items-center px-1 text-[12px] text-ink-3">+{s.more} more</li> : null}
           </ul>
         ) : s.text ? <p className="mt-1.5 line-clamp-2 text-[13px] break-words text-ink-2">{s.text}</p> : null}

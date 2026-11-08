@@ -91,6 +91,10 @@ async function Subscriptions() {
   const next = active.find((i) => i.daysLeft != null)
   const upcoming = active.filter((i) => i.due && i.daysLeft != null && i.daysLeft <= UPCOMING_DAYS)
   const byCost = [...active].filter((i) => i.monthlyBase > 0).sort((a, b) => b.monthlyBase - a.monthlyBase)
+  // The donut shows the top 5 services; anything past that, or under 5% of the total (a slice too thin to read), is folded.
+  const costTotal = byCost.reduce((s, i) => s + i.monthlyBase, 0)
+  const slices = byCost.slice(0, 5).filter((i) => i.monthlyBase >= costTotal * 0.05)
+  const folded = byCost.slice(slices.length)
 
   if (!items.length) {
     return (
@@ -145,8 +149,8 @@ async function Subscriptions() {
           <ShareDonut
             label="Monthly cost by service" unit={base === 'INR' ? '₹' : base} totalLabel="Per month"
             segments={[
-              ...byCost.slice(0, 5).map((i, n) => ({ id: i.s.id, name: i.s.name, color: SHARE_COLORS[n], value: i.monthlyBase })),
-              ...(byCost.length > 5 ? [{ id: 'other', name: 'Everything else', color: 'var(--ink-3)', value: byCost.slice(5).reduce((s, i) => s + i.monthlyBase, 0) }] : []),
+              ...slices.map((i, n) => ({ id: i.s.id, name: i.s.name, color: SHARE_COLORS[n], value: i.monthlyBase })),
+              ...(folded.length ? [{ id: 'other', name: 'Everything else', color: 'var(--ink-3)', value: folded.reduce((s, i) => s + i.monthlyBase, 0) }] : []),
             ]}
           />
         </Card>

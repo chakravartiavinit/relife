@@ -276,10 +276,10 @@ async function Portfolio({ searchParams }: { searchParams: PageProps<'/wealth/po
 
       <Card className="px-0 pb-2">
         <CardHeader title="Activity" icon={<ArrowLeftRight strokeWidth={2} />} color="var(--cat-wealth)" description={`${formatNumber(shown.length)} entries · latest ${page.length} shown`} className="px-5" />
-        <nav aria-label="Activity type" className="flex flex-wrap gap-1 px-5 pb-3">
+        <nav aria-label="Activity type" className="flex gap-1 overflow-x-auto px-5 pb-3 [scrollbar-width:none]">
           {TABS.map((t) => (
             <Link key={t.key} href={t.key === 'all' ? '/wealth/portfolio' : `/wealth/portfolio?tab=${t.key}`} scroll={false} aria-current={t.key === tab ? 'page' : undefined}
-              className={buttonClass({ variant: t.key === tab ? 'primary' : 'ghost', size: 'sm' })}>{t.label}</Link>
+              className={cn(buttonClass({ variant: t.key === tab ? 'primary' : 'ghost', size: 'sm' }), 'shrink-0')}>{t.label}</Link>
           ))}
         </nav>
         {page.length ? (

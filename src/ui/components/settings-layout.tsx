@@ -7,7 +7,7 @@ export function SettingsSection({ id, title, description, action, children }: {
 }) {
   return (
     <section id={id} aria-labelledby={`${id}-h`} className="scroll-mt-8">
-      <div className="mb-3 flex items-end justify-between gap-4 px-1">
+      <div className="mb-3 flex flex-col items-start gap-3 px-1 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
         <div>
           <h2 id={`${id}-h`} className="text-[17px] font-semibold tracking-[-0.01em] text-ink">{title}</h2>
           {description ? <p className="mt-0.5 max-w-[62ch] text-[13px] leading-relaxed text-ink-3">{description}</p> : null}

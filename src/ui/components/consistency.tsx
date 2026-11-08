@@ -8,7 +8,7 @@ import { CATEGORY } from '../tokens'
 import { Card, CardHeader } from './card'
 import { buttonClass } from './button'
 
-const DAYS = 14
+const DAYS = 14 // phones show only the last 7
 
 /** Share of scheduled routines done per area per day, last two weeks. */
 export async function Consistency({ user, now }: { user: User; now: Date }) {
@@ -35,12 +35,12 @@ export async function Consistency({ user, now }: { user: User; now: Date }) {
       <CardHeader title="Consistency" icon={<CalendarCheck strokeWidth={2} />} color="var(--pill)" description="Routines done each day, by area" action={<Link href="/habits" className={buttonClass({ variant: 'ghost', size: 'sm' })}>Habits</Link>} />
       {grid.length ? (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[560px] table-fixed border-separate border-spacing-1">
+          <table className="w-full table-fixed sm:min-w-[560px] border-separate border-spacing-1">
             <thead>
               <tr>
-                <th className="w-32" />
-                {days.map((d) => (
-                  <th key={d} scope="col" className={`text-center text-[11px] font-medium ${d === today ? 'text-ink' : 'text-ink-3'}`}>
+                <th className="w-20 sm:w-32" />
+                {days.map((d, i) => (
+                  <th key={d} scope="col" className={`text-center text-[11px] font-medium ${d === today ? 'text-ink' : 'text-ink-3'} ${i < DAYS - 7 ? 'max-sm:hidden' : ''}`}>
                     {new Intl.DateTimeFormat('en', { weekday: 'narrow', timeZone: 'UTC' }).format(new Date(`${d}T00:00:00Z`))}
                   </th>
                 ))}
@@ -75,7 +75,7 @@ function Cell({ c, d, due, done, col }: { c: Category; d: string; due: number; d
   const share = due ? done / due : 0
   const label = `${formatDay(d)}: ${due ? `${done} of ${due} done` : 'nothing scheduled'}`
   return (
-    <td className="p-0">
+    <td className={col < DAYS - 7 ? 'p-0 max-sm:hidden' : 'p-0'}>
       <div
         role="img"
         aria-label={label}

@@ -136,7 +136,7 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
   const all = useMemo(() => [...templates, ...v.generated], [templates, v.generated])
   const body = done ? <Personalizing v={v} templates={all} existing={existing} finished={!!result} fresh={fresh} level={level.level} /> : (
     <>
-      {i === 0 ? <StepYou v={v} set={set} device={device} timezones={timezones} currencies={currencies} /> : null}
+      {i === 0 ? <StepYou v={v} set={set} device={device} timezones={timezones} currencies={currencies} level={(result?.level ?? level).level} /> : null}
       {i === 1 ? <StepAreas v={v} set={set} /> : null}
       {i === 2 ? <StepRoutines v={v} set={set} templates={templates} existing={existing} today={today} /> : null}
       {i === 3 ? <StepTargets v={v} set={set} /> : null}
@@ -240,7 +240,7 @@ function Tick({ on, color = 'var(--pill)' }: { on: boolean; color?: string }) {
 
 const choice = 'transition-[background-color,box-shadow,scale] duration-150 ease-out-quint active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill'
 
-function StepYou({ v, set, device, timezones, currencies }: { v: V; set: Set; device: { tz: string; cur: string | null; now: Date } | null; timezones: string[]; currencies: string[] }) {
+function StepYou({ v, set, device, timezones, currencies, level }: { v: V; set: Set; device: { tz: string; cur: string | null; now: Date } | null; timezones: string[]; currencies: string[]; level: number }) {
   const id = useId()
   const now = useMemo(() => { try { return new Intl.DateTimeFormat('en-GB', { timeZone: v.timezone, hour: '2-digit', minute: '2-digit' }).format(new Date()) } catch { return null } }, [v.timezone])
   const name = v.name.trim()
@@ -252,7 +252,7 @@ function StepYou({ v, set, device, timezones, currencies }: { v: V; set: Set; de
       <motion.div variants={item} className="flex items-center gap-4 rounded-[20px] bg-surface p-4 shadow-1 lg:hidden">
         <span
           aria-hidden
-          className="grid size-14 shrink-0 place-items-center rounded-[16px] font-display text-[24px] font-extrabold text-[oklch(0.2_0.03_250)] shadow-[inset_0_1px_0_oklch(1_0_0/0.6)]"
+          className="grid size-14 shrink-0 place-items-center rounded-[16px] font-display text-[24px] font-extrabold text-night shadow-[inset_0_1px_0_oklch(1_0_0/0.6)]"
           style={{ background: 'linear-gradient(135deg, var(--sky) 0%, color-mix(in oklch, var(--sky) 45%, var(--sakura)) 55%, var(--sakura) 100%)' }}
         >
           <AnimatePresence mode="popLayout" initial={false}>
@@ -264,7 +264,7 @@ function StepYou({ v, set, device, timezones, currencies }: { v: V; set: Set; de
         <span className="min-w-0 flex-1">
           <span className={cn('block truncate font-display text-[20px] leading-tight font-extrabold tracking-[-0.02em]', name ? 'text-ink' : 'text-ink-3')}>{name || 'Your name'}</span>
           <span className="mt-1 flex items-center gap-2 text-[12.5px] text-ink-3 tabular-nums">
-            <span className="inline-flex h-5 items-center rounded-full bg-ink px-1.5 text-[11px] font-bold text-bg">Lv 1</span>
+            <span className="inline-flex h-5 items-center rounded-full bg-ink px-1.5 text-[11px] font-bold text-bg">Lv {level}</span>
             Awakened{now ? ` · ${now} local` : ''} · {v.baseCurrency.toUpperCase()}
           </span>
         </span>
@@ -272,7 +272,7 @@ function StepYou({ v, set, device, timezones, currencies }: { v: V; set: Set; de
 
       <motion.div variants={item} className="mt-6 flex flex-col gap-2 lg:mt-0">
         <label htmlFor={`${id}-n`} className="text-[13.5px] font-medium text-ink">What should we call you?</label>
-        <Input id={`${id}-n`} value={v.name} onChange={(e) => set('name', e.target.value)} placeholder="Your first name" autoComplete="given-name" maxLength={60} autoFocus className="h-12 text-[16px] sm:max-w-sm" />
+        <Input id={`${id}-n`} value={v.name} onChange={(e) => set('name', e.target.value)} placeholder="Your first name" autoComplete="given-name" maxLength={60} autoFocus className="h-12 text-[16px]" />
       </motion.div>
       <motion.div variants={item} className="mt-6 grid gap-5 sm:grid-cols-[minmax(0,1fr)_180px]">
         <div className="flex flex-col gap-2">
@@ -883,7 +883,7 @@ function Stage({ v, templates, existing, step, now, level }: { v: V; templates: 
               </div>
               <span className="mt-1 inline-flex h-6 shrink-0 items-center rounded-full bg-pill-wash px-2.5 text-[11.5px] font-semibold text-pill-ink tabular-nums">Lv {level}</span>
             </div>
-            <p className="mt-1 truncate text-[12px] text-ink-3 tabular-nums">{now ? stamp(now, v.timezone) : ' '} · {v.baseCurrency.toUpperCase()}</p>
+            <p className="mt-1 truncate text-[12px] text-ink-3 tabular-nums">{now ? `${stamp(now, v.timezone)} · ` : ' '}{v.baseCurrency.toUpperCase()}</p>
           </Block>
 
           <Block at={1} step={step} label="Areas">

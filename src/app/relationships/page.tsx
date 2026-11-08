@@ -59,9 +59,9 @@ async function People() {
       { label: 'Catch-ups, 30 days', value: String(catchUps) },
       { label: 'Longest gap', value: longest ? `${longest.since}d` : '–', sub: longest?.name },
     ]} />
-    <div className="grid gap-6 xl:grid-cols-2">
+    <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
       <Card>
-        <CardHeader title="Keep in touch" icon={<Users strokeWidth={2} />} color="var(--cat-relationships)" description={rows.length ? `${rows.filter((r) => r.overdue).length} overdue` : undefined} />
+        <CardHeader title="Keep in touch" icon={<Users strokeWidth={2} />} color="var(--cat-relationships)" description={rows.length ? `${rows.filter((r) => r.overdue).length} overdue` : 'Who you talk to, and how often'} />
         {rows.length ? (
           <ul className="-my-2 divide-y divide-divider">
             {rows.map(({ p, since, overdue }) => (
@@ -87,7 +87,7 @@ async function People() {
             ))}
           </ul>
         ) : (
-          <EmptyState title="Add the people you want to stay close to" icon={Users} color={'var(--cat-relationships)'} description="Add family and old friends, set how often you want to talk (say every 7 days), and see who you’ve drifted from." />
+          <EmptyState title="Add the people you want to stay close to" icon={Users} color={'var(--cat-relationships)'} description="Add family and old friends, set how often you want to talk (say every 7 days), and see who you’ve drifted from." action={<NewPersonButton />} />
         )}
       </Card>
       <RoutinesCard user={user} category="relationships" />

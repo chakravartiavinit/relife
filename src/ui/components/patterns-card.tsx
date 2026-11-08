@@ -53,8 +53,11 @@ export function PatternsCard({ patterns: p }: { patterns: Patterns }) {
                       <span className="size-2.5 rounded-full ring-2 ring-surface" style={{ background: areaColor(l.a.area) }} />
                       <span className="size-2.5 rounded-full ring-2 ring-surface" style={{ background: areaColor(l.b.area) }} />
                     </span>
-                    <p className="min-w-0 flex-1 text-[13.5px] leading-snug text-ink-2 tabular-nums">{l.text}</p>
-                    <Badge className="shrink-0">{Math.abs(l.rho) >= 0.6 ? 'Strong' : 'Clear'} · {l.n} days</Badge>
+                    {/* Phones: the badge drops under the sentence, lined up with its start. */}
+                    <div className="flex min-w-0 flex-1 flex-col items-start gap-1.5 sm:flex-row sm:gap-3">
+                      <p className="min-w-0 flex-1 text-[13.5px] leading-snug text-ink-2 tabular-nums">{l.text}</p>
+                      <Badge className="shrink-0">{Math.abs(l.rho) >= 0.6 ? 'Strong' : 'Clear'} · {l.n} days</Badge>
+                    </div>
                   </li>
                 ))}
               </ul>
