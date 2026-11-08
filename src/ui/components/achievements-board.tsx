@@ -9,12 +9,15 @@ import { cn } from '../cn'
 export type BoardItem = {
   key: string; name: string; description: string; tier: 'bronze' | 'silver' | 'gold'
   area: keyof typeof CATEGORY | 'general'; xp: number
-  unlockedAt: string | null; progress: { value: number; target: number }
+  unlockedAt: string | null
+  /** The day it unlocked, in the user's time zone. */
+  unlockedOn: string | null; progress: { value: number; target: number }
 }
 
 const TIER_LABEL = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold' }
 const fmt = (n: number) => new Intl.NumberFormat('en-IN').format(n)
-const date = (iso: string) => new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(iso))
+/** A local YYYY-MM-DD as "9 Nov 2026". */
+const date = (day: string) => new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${day}T00:00:00Z`))
 
 type Filter = 'all' | 'unlocked' | 'locked'
 
@@ -142,7 +145,7 @@ function Tile({ a }: { a: BoardItem }) {
         <span className="font-medium" style={{ color: `color-mix(in oklch, ${TIER[a.tier]} 70%, var(--ink))` }}>{TIER_LABEL[a.tier]}</span>
         {area ? <><span aria-hidden>·</span><span className="inline-flex items-center gap-1"><span aria-hidden className="size-1.5 rounded-full" style={{ background: area.color }} />{area.label}</span></> : null}
         <span aria-hidden>·</span>
-        {done ? <span>{date(a.unlockedAt!)}</span> : <span>{fmt(a.progress.value)}/{fmt(a.progress.target)}</span>}
+        {done ? <span>{date(a.unlockedOn!)}</span> : <span>{fmt(a.progress.value)}/{fmt(a.progress.target)}</span>}
       </p>
       <span className="sr-only">{done ? 'Unlocked' : 'Locked'}{a.xp ? `, worth ${a.xp} XP` : ''}</span>
     </li>

@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Award, Lock, Trophy } from 'lucide-react'
+import { Trophy } from 'lucide-react'
 import type { Medal } from '@/domain/xp'
 import { formatNumber } from '@/domain/money'
 import { CATEGORY } from '../tokens'
@@ -177,34 +177,5 @@ export function LevelPanel({ s }: { s: Summary }) {
         </ul>
       </div>
     </Card>
-  )
-}
-
-/** One achievement: coloured when unlocked, muted with progress when locked. */
-export function AchievementTile({ a }: {
-  a: { key: string; name: string; description: string; tier: 'bronze' | 'silver' | 'gold'; xp: number; unlockedAt: Date | null; progress: { value: number; target: number } }
-}) {
-  const done = !!a.unlockedAt
-  return (
-    <li className={cn('flex h-full gap-3 rounded-lg p-4', done ? 'bg-surface shadow-1' : 'bg-surface-2/60 shadow-[inset_0_0_0_1px_var(--hairline)]')}>
-      {done ? <MedalDisc medal={a.tier} size={36} label={`${a.tier} achievement`} /> : (
-        <span aria-label="Locked" className="grid size-9 shrink-0 place-items-center rounded-full text-ink-3 shadow-[inset_0_0_0_1.5px_var(--hairline)]"><Lock className="size-4" strokeWidth={1.5} aria-hidden /></span>
-      )}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-baseline justify-between gap-2">
-          <span className={cn('text-[14px] font-semibold', done ? 'text-ink' : 'text-ink-2')}>{a.name}</span>
-          {a.xp ? <span className="shrink-0 text-[12px] text-ink-3 tabular-nums">+{a.xp} XP</span> : null}
-        </div>
-        <p className="mt-0.5 text-[12.5px] leading-snug text-ink-3">{a.description}</p>
-        {done ? (
-          <p className="mt-2 text-[12px] text-ink-3">Unlocked {new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(a.unlockedAt!)}</p>
-        ) : (
-          <div className="mt-2 flex items-center gap-2">
-            <Capsule value={a.progress.value} max={a.progress.target} size="sm" color="var(--ink-3)" label={`${a.name} progress`} />
-            <span className="shrink-0 text-[11px] text-ink-3 tabular-nums">{formatNumber(a.progress.value)}/{formatNumber(a.progress.target)}</span>
-          </div>
-        )}
-      </div>
-    </li>
   )
 }

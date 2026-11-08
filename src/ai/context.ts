@@ -97,7 +97,7 @@ export async function buildDigest(user: User, now = new Date()) {
     screenTime,
     // Statistical findings across areas (src/domain/patterns.ts): correlations over 90 days and this week's changes.
     patterns: { thisWeek: patterns.changes.map((c) => c.text), movesTogether: patterns.links.map((l) => `${l.text} (${l.n} days)`) },
-    recentInsights: insights.map((i) => ({ kind: i.kind, title: i.title, status: i.status, created: i.createdAt.toISOString().slice(0, 10) })),
+    recentInsights: insights.map((i) => ({ kind: i.kind, title: i.title, status: i.status, created: localDate(i.createdAt, user.timezone) })),
   }
 }
 

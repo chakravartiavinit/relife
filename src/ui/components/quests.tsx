@@ -32,7 +32,7 @@ const areaColor = (a: string) => (a in CATEGORY ? CATEGORY[a as keyof typeof CAT
 
 /** Today's quests, this week's quest, chests waiting to be opened and streak freezes held. */
 export function Quests({ system, weekly, chests, freezes, frozeOn, weekLeft }: {
-  system: { quests: SystemQuestItem[]; difficulty: number; hasData: boolean }
+  system: { quests: SystemQuestItem[]; difficulty: number; hasData: boolean; timezone: string }
   weekly: QuestItem[]; chests: ChestItem[]; freezes: number; frozeOn: string[]; weekLeft: number
 }) {
   const [opening, setOpening] = useState(false)

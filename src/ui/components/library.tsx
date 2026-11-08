@@ -4,6 +4,7 @@ import { db, schema as tables } from '@/db'
 import type { schema } from '@/db'
 import { LIBRARY, type LibraryKind } from '@/domain/activity'
 import { formatMoney } from '@/domain/money'
+import { getUser } from '@/core/user'
 import { KIND_COLOR } from '../activity-colors'
 import { BrandLogo } from './brand-logo'
 import { Capsule } from './capsule'
@@ -29,6 +30,7 @@ function ago(d: Date | null) {
 
 export async function LibraryGrid({ items, empty }: { items: Item[]; empty?: React.ReactNode }) {
   if (!items.length) return <>{empty ?? null}</>
+  const { timezone } = await getUser()
   const eps = await db.select().from(tables.libraryEpisodes).where(inArray(tables.libraryEpisodes.itemId, items.map((i) => i.id))).orderBy(desc(tables.libraryEpisodes.lastAt))
   const byItem = new Map<string, Episode[]>()
   for (const e of eps) byItem.set(e.itemId, [...(byItem.get(e.itemId) ?? []), e])
@@ -37,13 +39,13 @@ export async function LibraryGrid({ items, empty }: { items: Item[]; empty?: Rea
     // instead of a narrow one with empty space beside it.
     <div className="@container">
       <ul className="grid gap-4 @xl:grid-cols-2">
-        {items.map((i) => <LibraryCard key={i.id} item={i} episodes={byItem.get(i.id) ?? []} />)}
+        {items.map((i) => <LibraryCard key={i.id} item={i} episodes={byItem.get(i.id) ?? []} timeZone={timezone} />)}
       </ul>
     </div>
   )
 }
 
-function LibraryCard({ item: i, episodes }: { item: Item; episodes: Episode[] }) {
+function LibraryCard({ item: i, episodes, timeZone }: { item: Item; episodes: Episode[]; timeZone: string }) {
   const kind = i.kind as LibraryKind
   const color = KIND_COLOR[LIBRARY[kind].counts]
   const Icon = LIBRARY_ICON[kind]
@@ -106,7 +108,7 @@ function LibraryCard({ item: i, episodes }: { item: Item; episodes: Episode[] })
           </div>
         ) : null}
 
-        {episodes.length ? <EpisodeLog episodes={episodes} unit={UNIT[kind]} color={color} /> : null}
+        {episodes.length ? <EpisodeLog episodes={episodes} unit={UNIT[kind]} color={color} timeZone={timeZone} /> : null}
 
         <div className="mt-auto flex items-center justify-between gap-3 pt-1">
           <span className="text-[12.5px] text-ink-3 tabular-nums">
@@ -125,10 +127,10 @@ const epLabel = (e: Episode) => (e.number == null ? null : `${e.season && e.seas
 /** How far into the episode you got, as a percentage of its length. */
 const pct = (e: Episode) => (e.durationSec && e.positionSec != null ? Math.min(100, Math.round((e.positionSec / e.durationSec) * 100)) : null)
 const mins = (sec: number | null) => (sec == null ? null : sec >= 3600 ? `${Math.floor(sec / 3600)}h ${String(Math.round((sec % 3600) / 60)).padStart(2, '0')}m` : `${Math.max(1, Math.round(sec / 60))}m`)
-const day = new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short' })
 
 /** Everything watched of one item, newest first: number, name, length, how far in, time spent, when. */
-function EpisodeLog({ episodes, unit, color }: { episodes: Episode[]; unit: string; color: string }) {
+function EpisodeLog({ episodes, unit, color, timeZone }: { episodes: Episode[]; unit: string; color: string; timeZone: string }) {
+  const day = new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', timeZone })
   const total = episodes.reduce((a, e) => a + e.watchedSec, 0)
   return (
     <details className="group -mx-1 rounded-[12px]">

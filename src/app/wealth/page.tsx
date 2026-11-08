@@ -23,8 +23,9 @@ export const metadata: Metadata = { title: 'Wealth' }
 type Overview = Awaited<ReturnType<typeof loadWealthOverview>>
 
 const ACCENT = 'var(--cat-wealth)'
-const SHORT_MONTH = new Intl.DateTimeFormat('en-IN', { month: 'short' })
-const MONTH_YEAR = new Intl.DateTimeFormat('en-IN', { month: 'short', year: 'numeric' })
+// These format local calendar dates ("2026-11"), so read them in UTC: no time zone may shift them a day.
+const SHORT_MONTH = new Intl.DateTimeFormat('en-IN', { month: 'short', timeZone: 'UTC' })
+const MONTH_YEAR = new Intl.DateTimeFormat('en-IN', { month: 'short', year: 'numeric', timeZone: 'UTC' })
 const pct = (v: number) => `${Math.round(Math.abs(v) * 100)}%`
 const more = (href: string, label: string) => (
   <Link href={href} className={buttonClass({ variant: 'ghost', size: 'sm' })}>{label}<ArrowRight className="size-3.5" strokeWidth={2} /></Link>

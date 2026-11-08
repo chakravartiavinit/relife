@@ -31,26 +31,26 @@ const GROUP: Record<SystemKind, { label: string; color: string; icon?: typeof Sk
   emergency: { label: 'Emergency quest', color: 'var(--warn)', icon: Siren },
 }
 
-/** Time left until local midnight, ticking each minute. */
-function useUntilMidnight() {
+/** Time left until midnight in the user's time zone (not the browser's), ticking each minute. */
+function useUntilMidnight(timeZone: string) {
   const [left, setLeft] = useState<string | null>(null)
   useEffect(() => {
+    const clock = new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
     const tick = () => {
-      const now = new Date()
-      const end = new Date(now); end.setHours(24, 0, 0, 0)
-      const m = Math.max(0, Math.round((end.getTime() - now.getTime()) / 60_000))
+      const [h, min] = clock.format(new Date()).split(':').map(Number)
+      const m = 1440 - (h * 60 + min)
       setLeft(`${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m`)
     }
     tick()
     const id = setInterval(tick, 30_000)
     return () => clearInterval(id)
-  }, [])
+  }, [timeZone])
   return left
 }
 
 /** The System's quests: daily ones set from your data, plus any penalty or emergency quest. */
-export function SystemQuests({ quests, difficulty, hasData }: { quests: SystemQuestItem[]; difficulty: number; hasData: boolean }) {
-  const left = useUntilMidnight()
+export function SystemQuests({ quests, difficulty, hasData, timezone }: { quests: SystemQuestItem[]; difficulty: number; hasData: boolean; timezone: string }) {
+  const left = useUntilMidnight(timezone)
   const kinds = (['emergency', 'penalty', 'daily'] as const).filter((k) => quests.some((q) => q.kind === k))
   const dailies = quests.filter((q) => q.kind === 'daily')
   const cleared = dailies.filter((q) => q.status === 'cleared').length

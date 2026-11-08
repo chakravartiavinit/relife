@@ -71,7 +71,7 @@ async function Profile() {
       <Consistency user={user} now={now} />
 
       {/* Achievements full width; then XP over time beside where it comes from, both columns ending together. */}
-      <AchievementsBoard items={board.map((a) => ({ ...a, unlockedAt: a.unlockedAt ? a.unlockedAt.toISOString() : null }))} />
+      <AchievementsBoard items={board.map((a) => ({ ...a, unlockedAt: a.unlockedAt ? a.unlockedAt.toISOString() : null, unlockedOn: a.unlockedAt ? localDate(a.unlockedAt, user.timezone) : null }))} />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="flex min-w-0 flex-col gap-6 [&>*:last-child]:flex-1">
