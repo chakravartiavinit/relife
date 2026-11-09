@@ -1,3 +1,4 @@
+import { spawn, type ChildProcess } from 'node:child_process'
 import { mkdirSync } from 'node:fs'
 import path from 'node:path'
 import type { BrowserContext } from 'playwright-core'
@@ -34,6 +35,11 @@ async function launch(id: string, headless: boolean): Promise<BrowserContext> {
     locale: 'en-IN',
     timezoneId: 'Asia/Kolkata',
     args: ['--disable-blink-features=AutomationControlled'],
+    // Look like the Chrome you use every day: no "controlled by automated software" flag, and the normal sandbox
+    // (Playwright turns it off by default, which shows a --no-sandbox warning). Bot walls like MakeMyTrip's
+    // treat either as a robot and answer with "You are offline".
+    ignoreDefaultArgs: ['--enable-automation', '--no-sandbox'],
+    chromiumSandbox: true,
   })
   const ctx = await acquire()
   if (headless) {
@@ -51,41 +57,43 @@ async function launch(id: string, headless: boolean): Promise<BrowserContext> {
 }
 
 // On globalThis so a code reload in dev doesn't forget a window that's still open.
-const g = globalThis as unknown as { __shopLogins?: Map<string, BrowserContext> }
-const open = (g.__shopLogins ??= new Map<string, BrowserContext>())
+const g = globalThis as unknown as { __shopLogins?: Map<string, ChildProcess> }
+const open = (g.__shopLogins ??= new Map<string, ChildProcess>())
+
+const CHROME = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
 /**
- * Opens a visible window on the login page. On a Mac, closing the last window leaves Chrome running,
- * so we end the session ourselves once no tabs are left (that also saves the login to disk).
+ * Opens the login page in a plain Chrome window on the app's profile. Not driven by Playwright: bot walls
+ * (MakeMyTrip's) spot a remote-controlled window and silently drop the login request. `--use-mock-keychain`
+ * matches what the hidden sync windows use, so they can read the cookies this window saves. On a Mac, closing the
+ * window leaves Chrome running; pressing Connect quits it (closeLoginWindow), which writes the login to disk.
  */
 export async function openLoginWindow(id: string, url: string) {
   await closeLoginWindow(id)
-  const ctx = await launch(id, false)
-  open.set(id, ctx)
-  ctx.on('close', () => open.delete(id))
-  const watch = (p: import('playwright-core').Page) => p.on('close', () => { if (!ctx.pages().length) closeLoginWindow(id) })
-  ctx.pages().forEach(watch)
-  ctx.on('page', watch)
-  const page = ctx.pages()[0] ?? (await ctx.newPage())
-  await page.goto(url, { waitUntil: 'domcontentloaded' }).catch(() => {})
+  // turbopackIgnore: the bundler would otherwise trace the profile folder (and crash on Chrome's lock links).
+  const args = [`--user-data-dir=${profileDir(id)}`, '--use-mock-keychain', '--no-first-run', '--no-default-browser-check', '--new-window', url]
+  const p = spawn(/* turbopackIgnore: true */ CHROME, args, { stdio: 'ignore' })
+  await new Promise<void>((resolve, reject) => { p.once('spawn', resolve); p.once('error', reject) })
+  open.set(id, p)
+  p.once('exit', () => { if (open.get(id) === p) open.delete(id) })
 }
 
-/** Ends a login session (keeps the saved cookies). Called when you press Connect, or when its last tab closes. */
+/** Quits a login window (keeps the saved cookies). Called when you press Connect. */
 export async function closeLoginWindow(id: string) {
-  const ctx = open.get(id)
-  if (!ctx) return
+  const p = open.get(id)
+  if (!p) return
   open.delete(id)
-  await ctx.close().catch(() => {})
+  if (p.exitCode != null || p.signalCode != null) return
+  const exited = new Promise((r) => p.once('exit', r))
+  p.kill('SIGTERM') // Chrome shuts down cleanly on SIGTERM and flushes its cookies
+  await Promise.race([exited, new Promise((r) => setTimeout(r, 10_000))])
 }
 
 export const loginWindowOpen = (id: string) => open.has(id)
 
 /** Loads a page in a hidden window with the saved session; collects the JSON it fetches and its text. */
 export async function readPage(id: string, url: string, opts: { scrolls?: number } = {}) {
-  // A login window with no tabs left is finished; one still showing a page means you're mid-login.
-  const login = open.get(id)
-  if (login && !login.pages().length) await closeLoginWindow(id)
-  if (open.has(id)) throw new Error('Finish logging in, then press Connect (or close the login window) and sync again.')
+  if (open.has(id)) throw new Error('Finish logging in, then press Connect and sync again.')
   const ctx = await launch(id, true)
   try {
     const page = ctx.pages()[0] ?? (await ctx.newPage())
@@ -140,9 +148,7 @@ export async function walk<T = undefined>(
   step: (json: unknown[], scraped: T | undefined) => Promise<string | null>,
   scrape?: () => T, max = 400,
 ) {
-  const login = open.get(id)
-  if (login && !login.pages().length) await closeLoginWindow(id)
-  if (open.has(id)) throw new Error('Finish logging in, then press Connect (or close the login window) and sync again.')
+  if (open.has(id)) throw new Error('Finish logging in, then press Connect and sync again.')
   const ctx = await launch(id, true)
   try {
     const page = ctx.pages()[0] ?? (await ctx.newPage())
@@ -178,9 +184,7 @@ export async function replayDetails(id: string, opts: {
   listUrl: string; click: RegExp; match: RegExp; urlFor: (template: string, key: string) => string; keys: string[]
   onJson: (i: number, json: unknown) => Promise<void>
 }) {
-  const login = open.get(id)
-  if (login && !login.pages().length) await closeLoginWindow(id)
-  if (open.has(id)) throw new Error('Finish logging in, then press Connect (or close the login window) and sync again.')
+  if (open.has(id)) throw new Error('Finish logging in, then press Connect and sync again.')
   const ctx = await launch(id, true)
   try {
     const page = ctx.pages()[0] ?? (await ctx.newPage())

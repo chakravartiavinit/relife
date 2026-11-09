@@ -261,8 +261,8 @@ function LoginStep({ c }: { c: ConnectorItem }) {
     <div className="flex flex-col gap-3 rounded-md bg-surface-2/60 p-4 shadow-[inset_0_0_0_1px_var(--hairline)]">
       <ol className="flex list-decimal flex-col gap-1 ps-4 text-[13.5px] text-ink-2">
         <li>Open a login window and sign in to {c.name} as usual (OTP included).</li>
-        <li>Close the window once you see your account.</li>
-        <li>Press {c.connected ? 'Save' : 'Connect'}. Orders sync in the background every few hours.</li>
+        <li>Once you see your account, come back here.</li>
+        <li>Press {c.connected ? 'Save' : 'Connect'}. ReLife closes the window, keeps the login and syncs orders every few hours.</li>
       </ol>
       <div className="flex flex-wrap items-center gap-3">
         <Button type="button" disabled={pending} onClick={() => start(async () => { const r = await openAppLogin(c.id); setState(r.ok ? 'open' : r.error) })}>

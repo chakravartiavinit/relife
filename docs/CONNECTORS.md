@@ -227,9 +227,10 @@ Order email templates change. If items or totals stop showing up, add a sample t
 These apps have no public API, so ReLife reads your own order history the way you would: in Chrome,
 logged in as you. Personal use only, and not an official integration.
 
-1. On Connectors, open the app and press **Open login window**. A normal Chrome window opens.
-2. Log in (phone OTP included) and close the window once you see your account.
-3. Press **Connect**. Every 6 hours the worker opens the order-history page in a hidden window with the
+1. On Connectors, open the app and press **Open login window**. A plain Chrome window opens (not
+   remote-controlled, so sites' bot checks let the login through).
+2. Log in (phone OTP included).
+3. Once you see your account, press **Connect**: ReLife closes the window and keeps the login. Every 6 hours the worker opens the order-history page in a hidden window with the
    saved session, reads the order data the page loads, and falls back to your AI model reading the page
    text when that data isn't recognised.
 
