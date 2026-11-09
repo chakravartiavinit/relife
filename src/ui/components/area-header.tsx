@@ -1,6 +1,5 @@
 import { connection } from 'next/server'
 import { Suspense } from 'react'
-import { Brain, Code, HeartPulse, Palette, Users, Wallet, type LucideIcon } from 'lucide-react'
 import type { Category } from '@/db/schema'
 import { getUser } from '@/core/user'
 import { xpSummary } from '@/core/xp'
@@ -9,19 +8,17 @@ import { formatNumber } from '@/domain/money'
 import { CATEGORY } from '../tokens'
 import { Capsule } from './capsule'
 import { MedalDisc } from './xp'
-import { CapsuleIcon } from './capsule-icon'
+import { AREA_ICON, CapsuleIcon } from './capsule-icon'
 import { SystemLabel } from './card'
 
 // Each area page opens like a stat screen in the game: the area's colour, its icon, and its own level.
 // The title and copy render at once; the level streams in (it needs the database).
 
-const ICON: Record<Category, LucideIcon> = { health: HeartPulse, mind: Brain, skills: Code, wealth: Wallet, hobbies: Palette, relationships: Users }
-
 export function AreaHeader({ area, title, description, actions }: {
   area: Category; title: string; description?: string; actions?: React.ReactNode
 }) {
   const c = CATEGORY[area].color
-  const Icon = ICON[area]
+  const Icon = AREA_ICON[area]
   return (
     <header className="relative isolate mb-6 overflow-hidden rounded-[24px] bg-surface p-5 shadow-2 sm:p-6">
       <div aria-hidden className="halftone inset-y-0 right-0 -z-10 w-2/3" style={{ '--tone': c } as React.CSSProperties} />

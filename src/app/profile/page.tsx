@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
-import { BookOpen, Brain, ChartColumn, ChartPie, Code, Flame, Footprints, Gift, GitCommitHorizontal, GitPullRequest, GraduationCap, HeartHandshake, HeartPulse, Moon, Palette, PiggyBank, Shapes, Smile, Sparkles, Trophy, Users, Wallet, Waves, type LucideIcon } from 'lucide-react'
+import { BookOpen, ChartColumn, ChartPie, Flame, Footprints, Gift, GitCommitHorizontal, GitPullRequest, GraduationCap, HeartHandshake, Moon, PiggyBank, Shapes, Smile, Sparkles, Trophy, Waves, type LucideIcon } from 'lucide-react'
 import type { Category } from '@/db/schema'
 import { getUser } from '@/core/user'
 import { addDays, formatDay, localDate } from '@/core/time'
@@ -15,6 +15,7 @@ import { DailyBars, ShareDonut } from '@/ui/components/charts'
 import { TitleTrack } from '@/ui/components/xp'
 import { AchievementsBoard } from '@/ui/components/achievements-board'
 import { CharacterBanner } from '@/ui/components/hud'
+import { AREA_ICON } from '@/ui/components/capsule-icon'
 import { Consistency } from '@/ui/components/consistency'
 import { LifeKpis } from '@/ui/components/life-kpis'
 import { freezesHeld } from '@/core/quests'
@@ -23,7 +24,6 @@ import { showUpStreak } from '@/ui/components/life-kpis'
 
 export const metadata: Metadata = { title: 'Progress' }
 
-const AREA_ICON: Record<Category, LucideIcon> = { health: HeartPulse, mind: Brain, skills: Code, wealth: Wallet, hobbies: Palette, relationships: Users }
 const KIND = [
   { kind: 'consistency', label: 'Your plan', color: 'var(--pill)' },
   { kind: 'standard', label: 'Fixed measures', color: 'var(--good)' },

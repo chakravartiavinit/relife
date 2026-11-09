@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Brain, Code, Flame, HeartPulse, Palette, Snowflake, Users, Wallet, type LucideIcon } from 'lucide-react'
+import { Flame, Snowflake } from 'lucide-react'
 import type { Category } from '@/db/schema'
 import type { xpSummary } from '@/core/xp'
 import { formatNumber } from '@/domain/money'
@@ -7,14 +7,13 @@ import { CATEGORY } from '../tokens'
 import { Capsule } from './capsule'
 import { MedalDisc } from './xp'
 import { cn } from '../cn'
-import { CapsuleIcon } from './capsule-icon'
+import { AREA_ICON, CapsuleIcon } from './capsule-icon'
 import { Ticker } from './ticker'
 
 // The character sheet at the top of Today and Progress: who you are in the game (level, title, XP),
 // your streak, and your areas as stats. One component so the two pages always agree.
 
 type Summary = Awaited<ReturnType<typeof xpSummary>>
-const AREA_ICON: Record<Category, LucideIcon> = { health: HeartPulse, mind: Brain, skills: Code, wealth: Wallet, hobbies: Palette, relationships: Users }
 const AREA_HREF: Record<Category, string> = { health: '/health', mind: '/mind', skills: '/skills', wealth: '/wealth', hobbies: '/hobbies', relationships: '/relationships' }
 
 export function CharacterBanner({ s, name, heading, eyebrow, streak, freezes, areas, children }: {
