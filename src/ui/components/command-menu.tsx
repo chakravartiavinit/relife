@@ -73,7 +73,7 @@ export function CommandMenu() {
       {open ? (
         <div className="fixed inset-0 z-50 flex items-start justify-center px-4 pt-[12vh]">
           {/* Opened by keyboard many times a day: no animation, it appears on the same frame. */}
-          <div className="absolute inset-0 bg-[oklch(0.178_0_0/0.32)] backdrop-blur-[3px]" onClick={close} />
+          <div className="absolute inset-0 bg-[var(--scrim)] backdrop-blur-[3px]" onClick={close} />
           <div className="relative w-full max-w-[600px]">
             <Command
               label="Command menu"
@@ -197,6 +197,7 @@ export function CommandButton() {
   return (
     <button
       type="button"
+      data-tour="command"
       onClick={() => window.dispatchEvent(new Event('relife:command'))}
       className="flex h-10 w-full items-center gap-2.5 rounded-md bg-ink/[0.035] px-3 text-sm text-ink-3 shadow-inset transition-[background-color,color] duration-150 hover:bg-ink/[0.06] hover:text-ink-2 dark:bg-white/[0.04] dark:hover:bg-white/[0.07]"
     >

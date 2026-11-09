@@ -30,3 +30,10 @@ check cross-fade (scale 0.25→1, blur 4px→0), dialog enter 200ms / exit 150ms
 transitions, button press scale(0.96) in 150ms, number tickers.
 | 017 | [Extension popup redesign](017-extension-popup.md) | MEDIUM | DONE |
 | 018 | Wealth pass: Portfolio share bars stagger 50ms per row (`reveal-fill`, reduced motion off), row hover colour 150ms | LOW | DONE |
+| 019 | [Guided product tour: welcome modal, spotlight, step cards](019-product-tour.md) | MEDIUM | DONE |
+| 020 | [Seven animated SVG tour illustrations](020-tour-illustrations.md) | MEDIUM | DONE |
+
+Tour (019–020), modelled on https://kestrel-app-eta.vercel.app/runs?tour: run 019 first (020 plugs into its
+`steps.ts`). Inside 020, build `IlloToday` first and check it in the browser before drawing the other six.
+| 021 | Toasts: ReLife-owned Sonner-style stack in `toast.tsx` (newest in front, older ones peek 10px and shrink 5%, fan out on hover/focus; enter 16px up, auto-exit 12px down in 180ms, swipe exits the way it was flung; timers pause on hover and hidden tab). Payment burst grouped into one toast. Replaced the vendored beui `animated-toast-stack.tsx` | MEDIUM | DONE |
+| 022 | Tour illustrations redrawn as cause → effect stories (5–5.6s loops): inputs feed XP into the character (Welcome), a System quest cleared by synced steps (Today), ⌘K keys → menu → new tracker (⌘K), XP × streak → level ring → chest (Progress), tile grows into its page (Areas), switch on → lock opens → data flows (Connectors), Telegram Done → counts in the app (Reminders). Soft SVG drop shadows; every loop seam checked frame-equal | MEDIUM | DONE |

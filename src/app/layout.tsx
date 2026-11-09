@@ -7,6 +7,7 @@ import { cn } from '@/ui/cn'
 import { NavPlaceholder, SystemNavPlaceholder, TabBar } from '@/ui/components/nav'
 import { NavForUser, SystemNavWithCounts } from '@/ui/components/system-nav-server'
 import { CommandButton, CommandMenu } from '@/ui/components/command-menu'
+import { Tour } from '@/ui/components/tour/tour'
 import { ThemeToggle, THEME_SCRIPT } from '@/ui/components/theme-toggle'
 import { ToastProvider } from '@/ui/components/toast'
 import { AppMotion } from '@/ui/components/motion-config'
@@ -93,6 +94,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
           </div>
           <Suspense fallback={null}><TabBar /></Suspense>
           <CommandMenu />
+          <Tour />
           <Celebration />
           <Celebrations />
           <PaymentToasts />

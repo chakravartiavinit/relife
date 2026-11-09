@@ -61,6 +61,7 @@
   --canvas-wash: radial-gradient(1100px 520px at 85% -14%, oklch(0.9 0.06 248 / 0.5), transparent 70%);
   --grain-opacity: 0.025;
   --glass: oklch(1 0 0 / 0.62);
+  --scrim: oklch(0.178 0 0 / 0.32);
 
   --img-outline: oklch(0 0 0 / 0.1);
 
@@ -117,6 +118,7 @@
   --canvas-wash: radial-gradient(1100px 560px at 85% -14%, oklch(0.34 0.08 252 / 0.6), transparent 70%);
   --grain-opacity: 0.05;
   --glass: oklch(0.26 0.02 252 / 0.62);
+  --scrim: oklch(0 0 0 / 0.55);
 
   --img-outline: oklch(1 0 0 / 0.1);
 }

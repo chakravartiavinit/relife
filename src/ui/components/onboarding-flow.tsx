@@ -762,7 +762,7 @@ function AllSet({ v, added, level }: { v: V; added: number; level: Level }) {
         </p>
         {/* Concentric: buttons 12px radius inside the 28px card with 16px of breathing room above. */}
         <div className="mt-7 flex flex-col gap-2">
-          <a ref={go} href="/" className={buttonClass({ variant: 'primary', size: 'lg', className: 'w-full' })}>
+          <a ref={go} href="/?tour" className={buttonClass({ variant: 'primary', size: 'lg', className: 'w-full' })}>
             Go to Today<ArrowRight className="size-4 rtl:-scale-x-100" strokeWidth={2} />
           </a>
           <Link href="/connectors" className={buttonClass({ variant: 'ghost', size: 'lg', className: 'w-full' })}><Cable className="size-4" strokeWidth={1.5} />Connect your data first</Link>
