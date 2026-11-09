@@ -204,8 +204,10 @@ function ConnectorDialog({ c, trigger }: { c: ConnectorItem; trigger: React.Reac
         ariaLabel={c.connected ? c.name : `Connect ${c.name}`}
         ariaDescribedBy={`${uid}-desc`}
         closeButtonLabel="Close"
-        // Radius stays 30px: the unfold clip-path uses the same value.
-        className="max-w-[500px] border-0 bg-surface shadow-[inset_0_0_0_1px_var(--hairline)]"
+        // Radius stays 30px: the unfold clip-path uses the same value. Capped to the window (the modal layer is inset
+        // 1rem and pads 2rem) and scrolling inside the panel: a taller panel is centred past the top of the screen,
+        // cutting off the header and the rounded corners.
+        className="max-h-[calc(100dvh-6rem)] max-w-[500px] overflow-y-auto overscroll-contain border-0 bg-surface shadow-[inset_0_0_0_1px_var(--hairline)]"
         backdropClassName="bg-[oklch(0.178_0_0/0.28)]"
       >
         <div className="flex flex-col gap-5 p-6">
