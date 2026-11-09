@@ -5,7 +5,7 @@ export const TOUR_STEPS: { anchor: string | null; title: string; body: string; I
   {
     anchor: null,
     title: 'Welcome to ReLife',
-    body: 'ReLife turns your days into a character you level up. Check things off, let your apps log the rest, and watch your stats grow. A one-minute tour shows the six things you\'ll use most.',
+    body: 'ReLife turns your days into a character you level up. A one-minute tour shows the six things you\'ll use most.',
     Illo: IlloWelcome,
   },
   {
