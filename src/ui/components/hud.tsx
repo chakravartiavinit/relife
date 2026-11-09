@@ -82,14 +82,15 @@ export function CharacterBanner({ s, name, heading, eyebrow, streak, freezes, ar
                 <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-[9px]" style={{ color: `color-mix(in oklch, ${c} 80%, var(--ink))`, background: `color-mix(in oklch, ${c} 16%, transparent)` }}>
                   <Icon className="size-4" strokeWidth={2} />
                 </span>
+                {/* Name on its own line and the level kept whole, so neither truncates in a sixth of the banner. */}
                 <span className="w-full min-w-0 flex-1">
-                  <span className="flex items-baseline justify-center gap-2 sm:justify-between">
-                    <span className="truncate text-[12px] text-ink-3 max-sm:hidden">{CATEGORY[a.area].label}</span>
-                    <span className="text-[13.5px] font-bold text-ink tabular-nums">Lv {a.level}</span>
+                  <span className="block truncate text-[12px] leading-4 text-ink-3 max-sm:hidden">{CATEGORY[a.area].label}</span>
+                  <span className="mt-0.5 flex items-center justify-center gap-1.5 sm:justify-start">
+                    <span className="text-[13.5px] leading-5 font-bold whitespace-nowrap text-ink tabular-nums">Lv {a.level}</span>
+                    {a.medal ? <span className="max-sm:hidden"><MedalDisc medal={a.medal.medal} size={18} label={`${a.medal.label} medal`} /></span> : null}
                   </span>
                   <Capsule value={a.progress} max={1} size="sm" color={c} label={`${CATEGORY[a.area].label} level ${a.level} progress`} className="mt-1.5" />
                 </span>
-                {a.medal ? <span className="max-sm:hidden"><MedalDisc medal={a.medal.medal} size={22} label={`${a.medal.label} medal`} /></span> : null}
               </Link>
             </li>
           )
