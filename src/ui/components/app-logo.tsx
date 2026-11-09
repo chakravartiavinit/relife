@@ -27,6 +27,7 @@ export const LOGO: Record<string, { src: string; fill?: boolean }> = {
   blinkit: { src: '/connectors/blinkit.png', fill: true },
   zepto: { src: '/connectors/zepto.png', fill: true },
   flipkart: { src: '/connectors/flipkart.png', fill: true },
+  makemytrip: { src: '/connectors/makemytrip.png' },
 }
 const FALLBACK_ICON: Record<string, typeof Cable> = { fx: ArrowLeftRight, laptop: MonitorSmartphone, sms: MessageSquareText, ocr: ScanText, ingest: Zap }
 

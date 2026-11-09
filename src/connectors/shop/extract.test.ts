@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { isCancelled, ordersFromAmazon, ordersFromJson, ordersFromZomato, parseLongDate, toAmount, toDate } from './extract'
+import { isCancelled, ordersFromAmazon, ordersFromJson, ordersFromMakeMyTrip, ordersFromZomato, parseLongDate, toAmount, toDate } from './extract'
 
 test('toAmount reads numbers, rupee strings, nested amounts and paise', () => {
   assert.equal(toAmount(345), 345)
@@ -115,4 +115,15 @@ test('ordersFromAmazon reads cards and skips cancelled orders and wallet top-ups
   assert.equal(a.at, '2024-10-12T12:00:00.000Z')
   assert.deepEqual(a.items, [{ name: 'Fake USB-C Cable 1m', qty: 1 }, { name: 'A Fake Book', qty: 1, kind: 'Book' }])
   assert.ok(!isCancelled(a) && isCancelled(b) && isCancelled(c))
+})
+
+test('ordersFromMakeMyTrip reads bookings by status, names the trip and skips unpaid ones', () => {
+  const b = (id: string, lob: string, paid: number) => ({ bookingID: id, lobName: lob, bookingCreatedTime: 1777100000000, bookingAmount: paid, paymentInfo: { amountPaid: paid, currencyCode: 'INR' }, regionCurrency: 'INR' })
+  const orders = ordersFromMakeMyTrip([{ newBookingDetails: [
+    { status: 'COMPLETED', hasNext: false, bookingDetails: [b('NF1', 'MOB-ON-Air Domestic', 5400), b('NH2', 'B2C-ON-Hotel Domestic', 3200)] },
+    { status: 'CANCELLED', hasNext: false, bookingDetails: [b('NR3', 'B2C-ON-Rail Domestic', 900)] },
+    { status: 'PENDING', hasNext: false, bookingDetails: [b('NF4', 'MOB-ON-Air Domestic', 7000)] },
+  ] }])
+  assert.deepEqual(orders.map((o) => [o.orderId, o.merchant, o.total, isCancelled(o)]), [['NF1', 'Flight', 5400, false], ['NH2', 'Hotel', 3200, false], ['NR3', 'Train', 900, true]])
+  assert.equal(orders[0].at, '2026-04-25T06:53:20.000Z')
 })

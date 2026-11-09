@@ -1,6 +1,6 @@
 import { wallToUtc } from '@/core/time'
 import { walk } from './browser'
-import { ordersFromAmazon, ordersFromJson, ordersFromZomato, type AmazonCard, type ShopOrder } from './extract'
+import { ordersFromAmazon, ordersFromJson, ordersFromMakeMyTrip, ordersFromZomato, type AmazonCard, type ShopOrder } from './extract'
 
 // Whole order histories for apps whose page shows only the latest few orders. The first sync walks
 // every page; later ones read just the newest pages (`full` is false once a whole walk has finished).
@@ -63,4 +63,33 @@ export const amazonHistory: History = async ({ full, tz }) => {
     count: Number(/(\d+) orders? placed/i.exec(document.body.innerText)?.[1] ?? 0),
   }))
   return orders
+}
+
+/**
+ * MakeMyTrip's My Trips. The page shows 20 bookings per status; the rest come from its own API, which wants the
+ * login cookie as an `mmt-auth` header, so the pages are fetched from inside the logged-in page. Every sync reads
+ * them all (a few requests). No named functions inside the page script: the dev bundler wraps those in a helper
+ * the page doesn't have.
+ */
+export const makemytripHistory: History = async () => {
+  let pages: unknown[] = []
+  await walk<unknown[]>('makemytrip', 'https://supportz.makemytrip.com/Mima/BookingSummary/', async (_json, scraped) => {
+    pages = scraped ?? []
+    return null
+  }, (async () => {
+    const auth = document.cookie.split('; ').find((c) => c.startsWith('mmt-auth='))?.slice(9)
+    if (!auth) return []
+    const out: unknown[] = []
+    const queue: [number, string][] = [[0, 'ALL']]
+    while (queue.length && out.length < 60) {
+      const [pageNo, status] = queue.shift()!
+      const res = await fetch(`/api/v4/bookingsummary?pageNo=${pageNo}&status=${status}`, { headers: { 'mmt-auth': auth, 'Content-Type': 'application/json' } })
+      const r = (await res.json().catch(() => null)) as { newBookingDetails?: { status: string; hasNext: boolean }[] } | null
+      out.push(r)
+      for (const g of r?.newBookingDetails ?? []) if (g.hasNext && (status === 'ALL' || g.status === status)) queue.push([pageNo + 1, g.status])
+    }
+    return out
+  }) as unknown as () => unknown[])
+  if (!pages.length) throw new Error('Logged out of MakeMyTrip. Open Connectors and log in again.')
+  return ordersFromMakeMyTrip(pages)
 }

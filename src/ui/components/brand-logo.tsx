@@ -12,6 +12,7 @@ const BRANDS: [RegExp, string, boolean?][] = [
   [/blinkit/i, '/connectors/blinkit.png', true],
   [/zepto/i, '/connectors/zepto.png', true],
   [/flipkart/i, '/connectors/flipkart.png', true],
+  [/makemytrip|make my trip/i, '/connectors/makemytrip.png'],
   [/amazon|prime video|audible/i, '/connectors/amazon.svg'],
   [/netflix/i, '/brands/netflix.svg'],
   [/hotstar|disney/i, '/brands/hotstar.png', true],

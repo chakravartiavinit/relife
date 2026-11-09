@@ -15,7 +15,7 @@ import { toLiquidation } from '@/domain/watch'
 // repeat buys, all time), investments (Binance), subscriptions and the latest money nudges.
 
 /** Where an order came from, as people call it. */
-const APP_NAME: Record<string, string> = { zomato: 'Zomato', swiggy: 'Swiggy', blinkit: 'Blinkit', zepto: 'Zepto', amazon: 'Amazon', flipkart: 'Flipkart' }
+const APP_NAME: Record<string, string> = { zomato: 'Zomato', swiggy: 'Swiggy', blinkit: 'Blinkit', zepto: 'Zepto', amazon: 'Amazon', flipkart: 'Flipkart', makemytrip: 'MakeMyTrip' }
 // One colour per spending category (core/categorize SPEND_CATEGORIES), from the theme tokens and mixes of them,
 // so stacked bars and legends never show two categories in the same colour.
 const mix = (a: string, b: string, pa = 55) => `color-mix(in oklch, var(${a}) ${pa}%, var(${b}))`

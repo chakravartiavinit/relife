@@ -126,7 +126,7 @@ and stores them encrypted in your local database; values already in `.env` fill 
 |---|---|---|
 | Reminders, nudges, quick logging, `/ask` | Telegram bot token and your chat ID | [CONNECTORS.md](docs/CONNECTORS.md) |
 | Binance: spot, futures, P2P, Convert, deposits, rewards | Read-only API key | [CONNECTORS.md](docs/CONNECTORS.md#binance) |
-| Zomato, Swiggy, Blinkit, Zepto, Flipkart, Amazon orders with items | Log in once in a Chrome window ReLife opens | [CONNECTORS.md](docs/CONNECTORS.md) |
+| Zomato, Swiggy, Blinkit, Zepto, Flipkart, Amazon orders with items; MakeMyTrip bookings | Log in once in a Chrome window ReLife opens | [CONNECTORS.md](docs/CONNECTORS.md) |
 | GitHub commits, PRs and reviews | Fine-grained token | [CONNECTORS.md](docs/CONNECTORS.md#github) |
 | Codeforces, AtCoder, CodeChef, Lichess, Chess.com | Your public handle | Connectors page |
 | Laptop time per site and app, shows and courses you watch | The browser extension and a shared token | [extension/README.md](extension/README.md) |

@@ -21,6 +21,7 @@ events carry stable ids.
 | Lichess, Chess.com | your username | 1 h | Games, ratings |
 | Swiggy, Zomato, Blinkit, Zepto | a Chrome login | 2 h | Orders with items |
 | Flipkart, Amazon India | a Chrome login | 6 h | Orders and returns |
+| MakeMyTrip | a Chrome login | 6 h | Flights, hotels, trains and buses you booked |
 
 An order app also syncs right away when a bank payment to it arrives, so a new order shows within a minute or two
 of paying. Open pages refresh on their own when any sync brings new data.
@@ -221,7 +222,7 @@ The first sync looks back 30 days.
 Order email templates change. If items or totals stop showing up, add a sample to
 `src/parsers/parsers.test.ts` and adjust `src/parsers/order-email.ts`.
 
-## Shopping apps (Swiggy, Zomato, Blinkit, Zepto, Flipkart, Amazon)
+## Shopping and travel apps (Swiggy, Zomato, Blinkit, Zepto, Flipkart, Amazon, MakeMyTrip)
 
 These apps have no public API, so ReLife reads your own order history the way you would: in Chrome,
 logged in as you. Personal use only, and not an official integration.
@@ -238,6 +239,8 @@ logged in as you. Personal use only, and not an official integration.
   to it. Orders with no payment after two days (wallet, card, cash on delivery, or older than your bank
   data) become their own transaction on the app's account, so nothing is counted twice or missed.
 - Cancelled and failed orders are skipped.
+- MakeMyTrip reads your bookings from My Trips (`supportz.makemytrip.com/Mima/BookingSummary/`). Each booking
+  counts on the day you paid for it, under Travel; cancelled trips are skipped.
 - If an app moves its order page, paste the new address into the Connect dialog's *Order history page*.
   The Zomato, Blinkit and Zepto addresses are best guesses until confirmed on a real account.
 - Logged out (sessions expire every few weeks): the connector shows "Logged out of …"; log in again.

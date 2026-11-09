@@ -2,7 +2,7 @@ import type { Connector } from '@/core/types'
 import { env } from '@/core/env'
 import { localDate, wallToUtc } from '@/core/time'
 import { readPage, readPages, replayDetails } from './browser'
-import { amazonHistory, swiggyHistory, zomatoHistory, type History } from './history'
+import { amazonHistory, makemytripHistory, swiggyHistory, zomatoHistory, type History } from './history'
 import { isCancelled, itemsFromBlinkit, itemsFromZepto, ordersFromJson, ordersFromSnippets, type ShopItem, type ShopOrder, ordersFromFlipkart } from './extract'
 
 // Shopping and food apps, read from your own logged-in account. No public APIs exist, so this opens
@@ -47,6 +47,9 @@ export const PLATFORMS: Platform[] = [
   { id: 'zepto', name: 'Zepto', login: 'https://www.zepto.com/', orders: 'https://www.zepto.com/account/orders', provides: ['Grocery orders', 'Items'], description: 'Zepto grocery orders, item by item.', paise: true,
     details: { kind: 'page', url: (o) => `https://www.zepto.com/order/${o.orderId}?isArchived=false` }, items: itemsFromZepto },
   { id: 'flipkart', name: 'Flipkart', login: 'https://www.flipkart.com/account/login', orders: 'https://www.flipkart.com/account/orders', provides: ['Orders', 'Returns'], description: 'Flipkart orders and returns, with sellers and amounts.' },
+  // Trips: bookings show under My Trips (upcoming, completed, cancelled); cancelled ones are skipped like orders. Log in
+  // on the flights page: the bot wall often blocks the home page ("You are offline") but lets this one through.
+  { id: 'makemytrip', name: 'MakeMyTrip', login: 'https://www.makemytrip.com/flights/', orders: 'https://supportz.makemytrip.com/Mima/BookingSummary/', provides: ['Flights', 'Hotels', 'Trains & buses'], description: 'Flights, hotels, trains and buses booked on MakeMyTrip, with what you paid.', history: makemytripHistory },
   { id: 'amazon', name: 'Amazon India', login: 'https://www.amazon.in/gp/css/order-history', orders: 'https://www.amazon.in/gp/css/order-history', provides: ['Orders', 'Returns'], description: 'Amazon.in orders and returns.', history: amazonHistory },
 ]
 

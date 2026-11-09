@@ -314,3 +314,35 @@ export function ordersFromAmazon(cards: AmazonCard[], toUtc: (wall: Date) => Dat
   }
   return out
 }
+
+/** What a MakeMyTrip booking is, from its line of business ("MOB-ON-Air Domestic", "B2C-ON-Hotel Domestic"). */
+const TRIP_KIND: [RegExp, string][] = [[/air|flight/i, 'Flight'], [/hotel|homestay|villa/i, 'Hotel'], [/rail|train/i, 'Train'], [/bus/i, 'Bus'], [/cab|car/i, 'Cab'], [/holiday|package/i, 'Holiday']]
+
+/**
+ * MakeMyTrip's My Trips (`/api/v4/bookingsummary`): bookings grouped by status (completed, upcoming, cancelled,
+ * failed, pending). Each has its id, when it was booked and what was paid. Pending ones aren't paid yet, so they're
+ * left out; cancelled and failed ones keep their status and are skipped like cancelled orders.
+ */
+export function ordersFromMakeMyTrip(payloads: unknown[]): ShopOrder[] {
+  const found = new Map<string, ShopOrder>()
+  for (const p of payloads) {
+    for (const g of Array.isArray(obj(p).newBookingDetails) ? (obj(p).newBookingDetails as unknown[]).map(obj) : []) {
+      const status = String(g.status ?? '').toLowerCase()
+      if (status === 'pending' || !Array.isArray(g.bookingDetails)) continue
+      for (const b of g.bookingDetails.map(obj)) {
+        const id = typeof b.bookingID === 'string' ? b.bookingID : null
+        const when = num(b.bookingCreatedTime)
+        const total = num(obj(b.paymentInfo).amountPaid) || num(b.bookingAmount)
+        if (!id || !when || !total || found.has(id)) continue
+        const lob = String(b.lobName ?? '')
+        const currency = String(b.regionCurrency ?? obj(b.paymentInfo).currencyCode ?? 'INR')
+        found.set(id, {
+          orderId: id, at: new Date(when).toISOString(), total, currency: /^[A-Z]{3}$/.test(currency) ? currency : 'INR',
+          merchant: TRIP_KIND.find(([re]) => re.test(lob))?.[1] ?? (lob.replace(/^[A-Z0-9]+-[A-Z]+-/, '') || undefined),
+          status, items: [],
+        })
+      }
+    }
+  }
+  return [...found.values()]
+}
