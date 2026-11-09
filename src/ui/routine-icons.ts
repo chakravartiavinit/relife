@@ -8,7 +8,8 @@ const RULES: [RegExp, LucideIcon, string][] = [
   [/mood/i, Smile, 'mood'],
   [/energy/i, Zap, 'energy'],
   [/weight/i, Scale, 'weight'],
-  [/commit|pull request|review/i, GitCommitHorizontal, 'code'],
+  // "Reviews" (the GitHub tracker) and code reviews, but not "Review budget".
+  [/commit|pull request|^reviews?$|code review/i, GitCommitHorizontal, 'code'],
   [/skin|face|serum|sunscreen|mask|moistur/i, Sparkles, 'skin'],
   [/yoga|stretch/i, Dumbbell, 'yoga'],
   [/run\b|running|jog/i, Footprints, 'run'],
