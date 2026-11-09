@@ -3,7 +3,6 @@
 
 /** Errors that sort themselves out: the daily retry saves these once the other half arrives. */
 const WAITING: Record<string, string> = {
-  'No matching payment yet': 'Waiting for the matching bank payment. Saved on its own after 2 days if none comes.',
   'Order not saved yet': 'Waiting for its order to be saved first, then the items attach to it.',
 }
 

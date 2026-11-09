@@ -45,6 +45,8 @@ Status: v0 design, personal local-first build. Public open-source release comes 
 - Devices: MacBook (always the server for now), iPhone, no wearable.
 - Bank: Axis (mostly). Country: India. Currency base: INR.
 - Account Aggregator is not available to individuals → bank data comes from SMS, email and statements.
+  *Update, Nov 2026: bank SMS and email parsing is switched off; spending comes only from the connected order apps
+  (Zomato, Swiggy, Blinkit, Zepto, Flipkart, Amazon, MakeMyTrip). Payments to people aren't tracked.*
 - Zepto/Zomato/Blinkit have no public APIs → order emails first; logged-in web session scraping is personal-only and never shipped publicly.
 - Single user now, but every table carries `user_id` so multi-user is a small change later.
 

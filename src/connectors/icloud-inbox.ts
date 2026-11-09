@@ -52,9 +52,9 @@ export function consumable(buf: Buffer) {
 }
 
 /**
- * One inbox line → raw event. Accepts plain text (treated as an SMS) or JSON:
- * {type:'sms'|'ocr', text, at?} · {type:'steps', value, date?} · {type:'health', metric, value, unit?, date?}
- * · {type:'sleep', event:'start'|'end', at?}. Also used by POST /api/ingest.
+ * One inbox line → raw event. JSON lines: {type:'steps', value, date?} · {type:'health', metric, value, unit?, date?}
+ * · {type:'sleep', event:'start'|'end', at?}. Also used by POST /api/ingest. Bank texts and screenshot text
+ * (plain lines, type 'sms' or 'ocr') are skipped: spending comes from the order apps on Connectors.
  */
 export function lineToRawEvent(raw: string, now: Date): RawEvent | null {
   const line = raw.trim()
@@ -64,7 +64,7 @@ export function lineToRawEvent(raw: string, now: Date): RawEvent | null {
   if (line.startsWith('{')) {
     try { j = JSON.parse(line) } catch { j = null }
   }
-  if (!j) return { source: 'sms', externalId, at: now, body: { text: line } }
+  if (!j) return null
 
   const parsed = new Date(String(j.at ?? ''))
   const at = Number.isNaN(parsed.getTime()) ? now : parsed
@@ -77,11 +77,8 @@ export function lineToRawEvent(raw: string, now: Date): RawEvent | null {
     case 'steps':
     case 'health':
       return { source: 'shortcuts', externalId, at, body: j }
-    case 'ocr':
-      return String(j.text ?? '').trim() ? { source: 'ocr', externalId, at, body: { text: String(j.text) } } : null
     default:
-      // A blank message is a test run of the shortcut (no SMS to read): skip it rather than fill the Inbox.
-      return String(j.text ?? '').trim() ? { source: 'sms', externalId, at, body: { text: String(j.text), sender: j.sender } } : null
+      return null
   }
 }
 
@@ -89,8 +86,8 @@ export const icloudInbox: Connector = {
   id: 'icloud-inbox',
   name: 'iPhone inbox (iCloud Drive)',
   category: 'health',
-  description: 'iPhone Shortcuts append bank SMS, steps and sleep to a file in iCloud Drive. No app to install.',
-  provides: ['Bank SMS', 'Steps', 'Sleep'],
+  description: 'iPhone Shortcuts append steps, sleep and Health data to a file in iCloud Drive. No app to install.',
+  provides: ['Steps', 'Sleep', 'Health'],
   fields: [
     { env: 'ICLOUD_INBOX_PATH', label: 'Inbox file', optional: true, placeholder: DEFAULT_PATH, hint: 'Leave blank: ReLife finds iCloud Drive/relife/inbox.txt or iCloud Drive/Shortcuts/inbox.txt. See docs/SHORTCUTS.md.' },
   ],

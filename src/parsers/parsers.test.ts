@@ -4,7 +4,6 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { ParserCtx } from '@/core/types'
 import { parsers } from '.'
-import { parseOrderEmail } from './order-email'
 import { sleepHours } from './sleep'
 import { splitPair } from './binance'
 import { consumable, lineToRawEvent } from '@/connectors/icloud-inbox'
@@ -29,22 +28,6 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith('.json'))) {
   })
 }
 
-test('order email: total, order id and items', () => {
-  const o = parseOrderEmail('Zomato <noreply@zomato.com>', 'Your Zomato order from Behrouz Biryani', [
-    'Order ID: 7654321098',
-    '1 x Chicken Dum Biryani ₹ 389',
-    'Raita x 2 ₹60',
-    'Item Total ₹449',
-    'Taxes ₹22.45',
-    'Grand Total ₹471.45',
-  ].join('\n'))
-  assert.deepEqual(o, {
-    platform: 'zomato', total: 471.45, orderId: '7654321098',
-    items: [{ qty: 1, name: 'Chicken Dum Biryani', price: 389 }, { qty: 2, name: 'Raita', price: 60 }],
-  })
-  assert.equal(parseOrderEmail('news@zomato.com', 'Weekend offers', 'Get 50% off'), null)
-})
-
 test('sleep pairs start and end within one night', () => {
   assert.equal(sleepHours(new Date('2026-11-04T18:10:00Z'), new Date('2026-11-05T01:40:00Z')), 7.5)
   assert.equal(sleepHours(new Date('2026-11-04T18:10:00Z'), new Date('2026-11-04T18:15:00Z')), null)
@@ -59,9 +42,9 @@ test('binance pair split', () => {
 
 test('inbox lines map to raw events', () => {
   const now = new Date('2026-11-05T10:00:00Z')
-  const sms = lineToRawEvent('INR 250.00 debited A/c no. XX1234', now)!
-  assert.equal(sms.source, 'sms')
-  assert.deepEqual(sms.body, { text: 'INR 250.00 debited A/c no. XX1234' })
+  // Bank texts aren't read: spending comes from the order apps.
+  assert.equal(lineToRawEvent('INR 250.00 debited A/c no. XX1234', now), null)
+  assert.equal(lineToRawEvent('{"type":"sms","text":"INR 250.00 debited","at":"2026-11-08T20:57:33+05:30"}', now), null)
   const sleep = lineToRawEvent('{"type":"sleep","event":"start","at":"2026-11-04T23:40:00+05:30"}', now)!
   assert.deepEqual([sleep.source, sleep.externalId], ['sleep', 'start:2026-11-04T18:10:00.000Z'])
   const steps = lineToRawEvent('{"type":"steps","value":"8,423","date":"2026-11-05"}', now)!
@@ -73,7 +56,6 @@ test('inbox lines map to raw events', () => {
   assert.equal(consumable(b('{"a":1}\n{"b":')), 8) // half-synced last line waits
   assert.equal(consumable(b('\n{"b":2}')), 8)
   assert.equal(consumable(b('{"b":')), 0)
-  assert.equal(lineToRawEvent('{"type":"sms","text":"","at":"2026-11-08T20:57:33+05:30"}', now), null) // a test run of the shortcut: no message
 })
 
 test('tradesFromStatement rebuilds trades from Binance statement lines', async () => {

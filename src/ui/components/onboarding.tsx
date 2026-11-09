@@ -13,7 +13,7 @@ export async function onboardingSteps(user: User): Promise<Step[]> {
   const [[routines], [inbox]] = await Promise.all([
     db.select({ n: sql<number>`count(*)::int` }).from(schema.schedules).where(eq(schema.schedules.userId, user.id)),
     db.select({ n: sql<number>`count(*)::int` }).from(schema.rawEvents)
-      .where(and(eq(schema.rawEvents.userId, user.id), inArray(schema.rawEvents.source, ['sms', 'shortcuts', 'sleep', 'ocr']))),
+      .where(and(eq(schema.rawEvents.userId, user.id), inArray(schema.rawEvents.source, ['shortcuts', 'sleep']))),
   ])
   const has = (k: string) => !!env(k)
   return [
@@ -30,12 +30,12 @@ export async function onboardingSteps(user: User): Promise<Step[]> {
       body: 'Check things off with one tap from your phone.', done: has('TELEGRAM_BOT_TOKEN') && has('TELEGRAM_ALLOWED_CHAT_ID'),
     },
     {
-      id: 'sources', title: 'Connect GitHub, Binance or Gmail', cta: 'Connect', href: '/connectors',
-      body: 'Commits, trades and bank alerts flow in by themselves.',
-      done: has('GITHUB_TOKEN') || has('BINANCE_API_KEY') || has('GMAIL_REFRESH_TOKEN'),
+      id: 'sources', title: 'Connect GitHub, Binance or an order app', cta: 'Connect', href: '/connectors',
+      body: 'Commits, trades and what you spend on Zomato, Amazon and others flow in by themselves.',
+      done: has('GITHUB_TOKEN') || has('BINANCE_API_KEY'),
     },
     {
-      id: 'iphone', title: 'Send bank SMS, steps and sleep from your iPhone', cta: 'Open guide', href: '/connectors',
+      id: 'iphone', title: 'Send steps and sleep from your iPhone', cta: 'Open guide', href: '/connectors',
       body: 'A few Shortcuts automations. See docs/SHORTCUTS.md.', done: inbox.n > 0,
     },
   ]

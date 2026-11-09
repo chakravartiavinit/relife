@@ -65,9 +65,9 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
   progress with `ctx.setCursor`. Give it a `description` and `provides` chips, and optionally a logo
   in `public/connectors/` mapped in `src/ui/components/connector-market.tsx`. Document it in
   `docs/CONNECTORS.md` and `.env.example`.
-- **New message format** (bank SMS, order email): one file in `src/parsers/` added to
-  `src/parsers/index.ts` before the LLM fallback, plus a fixture in `src/parsers/fixtures/`
-  (`{ event, expected }`). `npm test` runs every fixture.
+- **New parser** (turns a connector's raw events into records): one file in `src/parsers/` added to
+  `src/parsers/index.ts`, plus a fixture in `src/parsers/fixtures/` (`{ event, expected }`). `npm test` runs
+  every fixture. Bank SMS and bank emails are not read: spending comes only from the connected order apps.
 - **New alert:** one file in `src/rules/` added to `src/rules/index.ts` (add `on: ['data.changed']` to also run it when new data lands). Give the `Alert` an `emoji` that says the topic, a `meta`
   line ("Wealth · Today"), one `action` and the exact numbers in `data` (shown in the app and on "Why?", not in the message); `alertText` in `src/rules/run.ts` lays them out as a short, phone-notification-style message.
 - **New Telegram message:** send it with `notify(user, category, …)` from `src/core/outbox.ts`, never `sendMessage`

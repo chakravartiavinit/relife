@@ -145,7 +145,7 @@ export async function LifeKpis({ user, now }: { user: User; now: Date }) {
       sub: lastMtd > 0 ? `${formatMoney(lastMtd, user.baseCurrency, { compact: true })} by now last month` : 'This month so far',
       delta: pct ? { text: `${Math.abs(pct)}%`, up: pct > 0, good: pct < 0 } : undefined,
     }
-    : { cat: 'wealth', href: '/wealth', label: 'Spent this month', value: null, sub: 'Forward bank SMS or type “spent 120 chai”' }
+    : { cat: 'wealth', href: '/wealth', label: 'Spent this month', value: null, sub: 'Connect an order app or type “spent 120 chai”' }
 
   // Relationships: people contacted within their rhythm.
   const tracked = people.filter((p) => p.contactEveryDays != null)

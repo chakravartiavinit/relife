@@ -28,7 +28,7 @@ const SECTIONS: { id: string; label: string; icon: LucideIcon }[] = [
 ]
 
 const TASKS: { task: Task; label: string; hint: string }[] = [
-  { task: 'parse', label: 'Reading messages', hint: 'Bank SMS and emails no parser understood.' },
+  { task: 'parse', label: 'Reading messages', hint: 'Order pages the built-in rules can’t read.' },
   { task: 'plan', label: 'Plans and reviews', hint: 'Daily nudges, weekly reviews and plans.' },
   { task: 'chat', label: 'Ask', hint: 'Questions on Insights and /ask on Telegram.' },
 ]

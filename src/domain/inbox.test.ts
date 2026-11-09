@@ -3,13 +3,11 @@ import assert from 'node:assert/strict'
 import { groupOf, reasonFor, summarize } from './inbox'
 
 test('groupOf separates real failures from ones that sort themselves out', () => {
-  assert.equal(groupOf('failed', 'No matching payment yet'), 'waiting')
   assert.equal(groupOf('failed', 'Order not saved yet'), 'waiting')
   assert.equal(groupOf('failed', 'Unknown bank format'), 'needs')
   assert.equal(groupOf('ignored', null), 'skipped')
   assert.equal(groupOf('failed', 'Order not saved yet', true), 'skipped')
   assert.match(reasonFor('failed', 'Order not saved yet', true), /^Its order was dismissed/)
-  assert.match(reasonFor('failed', 'No matching payment yet'), /^Waiting for the matching bank payment/)
   assert.equal(reasonFor('ignored', null), 'No reader recognised this message.')
 })
 

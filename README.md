@@ -7,7 +7,7 @@
 <p align="center">Level up your real life, one day at a time.</p>
 
 ReLife is a life RPG. It tracks Health, Mind, Skills, Wealth, Hobbies and People in one place, pulls in what it
-can on its own (Binance, your order apps, GitHub, your laptop, what you watch, bank SMS, Gmail), gives you daily
+can on its own (Binance, your order apps, GitHub, your laptop, what you watch), gives you daily
 quests, and messages you on Telegram when something in your data deserves a look. An AI model of your choice turns
 the numbers into quests, nudges and plans.
 
@@ -130,8 +130,7 @@ and stores them encrypted in your local database; values already in `.env` fill 
 | GitHub commits, PRs and reviews | Fine-grained token | [CONNECTORS.md](docs/CONNECTORS.md#github) |
 | Codeforces, AtCoder, CodeChef, Lichess, Chess.com | Your public handle | Connectors page |
 | Laptop time per site and app, shows and courses you watch | The browser extension and a shared token | [extension/README.md](extension/README.md) |
-| Bank SMS, steps, sleep (iPhone) | iOS Shortcuts writing to an iCloud Drive file | [SHORTCUTS.md](docs/SHORTCUTS.md) |
-| Bank alerts and order emails | Gmail OAuth (`scripts/gmail-auth.ts`) | [CONNECTORS.md](docs/CONNECTORS.md#gmail) |
+| Steps, sleep, Health data (iPhone) | iOS Shortcuts writing to an iCloud Drive file | [SHORTCUTS.md](docs/SHORTCUTS.md) |
 | Exchange rates | Nothing: connect FX | Connectors page |
 | AI | A key for Anthropic, OpenAI, Google or OpenRouter, or a local model | Connectors page |
 
@@ -203,13 +202,13 @@ screenshots use fake data (`npm run dev:mock`).
 - The browser extension sends only to your own ReLife, never in incognito, and only the site, path and title of
   the tab in front.
 - Prompts mask account numbers and UPI handles unless you set `LLM_MASK=false`. Parsing can run on a local model
-  so bank SMS never leaves your Mac. Every AI call is logged with its cost in `llm_runs`.
+  so order pages never leave your Mac. Every AI call is logged with its cost in `llm_runs`.
 
 ## Phone access
 
 Install [Tailscale](https://tailscale.com) on the Mac and iPhone, then run `tailscale serve --bg 3030` on the
 Mac. Open the `https://<your-mac>.<tailnet>.ts.net` address it prints in Safari and add it to the Home Screen to
-use it as an app. Only your own devices can reach it; nothing is exposed to the internet. Bank SMS keep flowing
+use it as an app. Only your own devices can reach it; nothing is exposed to the internet. Steps and sleep keep flowing
 through the iCloud file even when the Mac is away (see [SHORTCUTS.md](docs/SHORTCUTS.md)).
 
 ## License

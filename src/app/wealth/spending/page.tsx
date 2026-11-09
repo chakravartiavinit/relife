@@ -91,7 +91,7 @@ async function Spending({ searchParams }: { searchParams: PageProps<'/wealth/spe
         <Card>
           <EmptyState
             title={`No transactions in ${monthLabel(m)}`} icon={ReceiptText} color={'var(--cat-wealth)'}
-            description={<>Axis SMS arrive through the iPhone Shortcuts inbox, bank and order emails through Gmail, and you can log cash with ⌘K, e.g. “spent 120 chai”.</>}
+            description={<>Spending comes from the order apps you connect (Zomato, Swiggy, Blinkit, Zepto, Flipkart, Amazon, MakeMyTrip). Log anything else with ⌘K, e.g. “spent 120 chai”.</>}
             action={<Link href="/connectors" className={buttonClass({ variant: 'primary' })}>Set up sources</Link>}
           />
         </Card>

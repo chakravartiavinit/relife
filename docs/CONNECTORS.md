@@ -11,11 +11,10 @@ events carry stable ids.
 
 | Connector | Keys (dialog fields or `.env`) | Runs every | What it records |
 |---|---|---|---|
-| iPhone inbox | `ICLOUD_INBOX_PATH` (optional) | 1 min | Bank SMS, steps, health metrics, sleep, screenshot text |
+| iPhone inbox | `ICLOUD_INBOX_PATH` (optional) | 1 min | Steps, health metrics, sleep |
 | Exchange rates | none | 12 h | Daily USD rates for currency conversion |
 | GitHub | `GITHUB_TOKEN`, `GITHUB_USER` (optional) | 30 min | Daily commits, PRs, reviews, issues |
 | Binance | `BINANCE_API_KEY`, `BINANCE_API_SECRET`, `BINANCE_QUOTES`, `BINANCE_SYMBOLS` (optional) | 15 min | Balances, spot and futures, P2P orders, Convert, transfers, rewards |
-| Gmail | `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`, `GMAIL_QUERY` (optional) | 15 min | Bank alert emails, food/grocery order emails |
 | Laptop activity | `ACTIVITY_TOKEN` | live | Time per site and Mac app, shows and courses you watch |
 | Codeforces, AtCoder, CodeChef | your handle | 1 h | Problems solved, contest ratings |
 | Lichess, Chess.com | your username | 1 h | Games, ratings |
@@ -23,8 +22,9 @@ events carry stable ids.
 | Flipkart, Amazon India | a Chrome login | 6 h | Orders and returns |
 | MakeMyTrip | a Chrome login | 6 h | Flights, hotels, trains and buses you booked |
 
-An order app also syncs right away when a bank payment to it arrives, so a new order shows within a minute or two
-of paying. Open pages refresh on their own when any sync brings new data.
+Spending comes only from the order apps you connect: bank SMS and bank emails are not read, so payments to people
+(UPI transfers) aren't tracked. Log anything else with ⌘K (`spent 120 chai`). Open pages refresh on their own when
+any sync brings new data.
 
 Every per-day number is counted on your own calendar day, in the time zone from Settings.
 
@@ -177,51 +177,6 @@ npx tsx --env-file=.env scripts/binance-import.ts ~/Downloads/statement.csv
 The script rebuilds trades from the statement's lines and keeps only those older than the first trade the API
 returned, so nothing is counted twice. Spot trade history exports work too.
 
-## Gmail
-
-ReLife reads mail with a read-only OAuth token that stays on your machine.
-
-1. Go to <https://console.cloud.google.com/>, create a project (any name, e.g. "ReLife").
-2. **APIs & Services → Library** → enable **Gmail API**.
-3. **APIs & Services → OAuth consent screen**: User type **External**, fill in the app name and
-   your email, add yourself under **Test users**. You don't need to publish it.
-4. **APIs & Services → Credentials → Create credentials → OAuth client ID** → Application type
-   **Desktop app**. Copy the client ID and secret into `.env` as `GMAIL_CLIENT_ID` and
-   `GMAIL_CLIENT_SECRET`.
-5. Run:
-
-   ```bash
-   npx tsx --env-file=.env scripts/gmail-auth.ts
-   ```
-
-   A browser opens; approve read-only access. Copy the printed `GMAIL_REFRESH_TOKEN` into `.env`.
-
-While the consent screen is in "Testing", Google expires refresh tokens after 7 days. Re-run the
-script when the dashboard shows a Gmail auth error, or set the consent screen to "In production"
-(Google then shows an "unverified app" warning that you can click through for your own account).
-
-**Which emails:** by default, mail from Axis Bank, Zomato, Swiggy, Zepto and Blinkit, plus
-pre-debit notices. Override with `GMAIL_QUERY` using normal Gmail search syntax, e.g.
-
-```
-GMAIL_QUERY=from:(axisbank.com OR hdfcbank.net OR zomato.com OR swiggy.in)
-```
-
-The first sync looks back 30 days.
-
-**What happens to each email:**
-
-- **Bank alerts** become transactions. The same payment from SMS and email shares the bank
-  reference number, so it's stored once.
-- **Order emails** (Zomato, Swiggy, Zepto, Blinkit) don't create a second transaction. They attach
-  the order id and item list to the matching bank payment (same amount within ₹1, within 45
-  minutes). If the payment hasn't arrived yet, the email is marked failed and retried later.
-- **Pre-debit notices** are recognised and skipped: they announce a future debit; the real debit
-  alert records it.
-
-Order email templates change. If items or totals stop showing up, add a sample to
-`src/parsers/parsers.test.ts` and adjust `src/parsers/order-email.ts`.
-
 ## Shopping and travel apps (Swiggy, Zomato, Blinkit, Zepto, Flipkart, Amazon, MakeMyTrip)
 
 These apps have no public API, so ReLife reads your own order history the way you would: in Chrome,
@@ -236,9 +191,8 @@ logged in as you. Personal use only, and not an official integration.
 
 - Sessions live in `data/browser/<app>` (git-ignored). Delete that folder to forget a login.
 - Uses your installed Google Chrome; set `CHROME_PATH` in `.env` if it's somewhere else.
-- Each order is matched to its bank payment (same amount within 3 hours) and adds its items and order id
-  to it. Orders with no payment after two days (wallet, card, cash on delivery, or older than your bank
-  data) become their own transaction on the app's account, so nothing is counted twice or missed.
+- Each order becomes one transaction on the app's own account, with its items and order id. The order id
+  keeps it from being counted twice when the order is read again.
 - Cancelled and failed orders are skipped.
 - MakeMyTrip reads your bookings from My Trips (`supportz.makemytrip.com/Mima/BookingSummary/`). Each booking
   counts on the day you paid for it, under Travel; cancelled trips are skipped.

@@ -13,7 +13,6 @@ export const LOGO: Record<string, { src: string; fill?: boolean }> = {
   codechef: { src: '/connectors/codechef.svg' },
   atcoder: { src: '/connectors/atcoder.png', fill: true },
   chesscom: { src: '/connectors/chessdotcom.svg' },
-  gmail: { src: '/connectors/gmail.svg' },
   'icloud-inbox': { src: '/connectors/icloud.svg' },
   telegram: { src: '/connectors/telegram.svg' },
   anthropic: { src: '/connectors/anthropic.svg' },
