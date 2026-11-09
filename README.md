@@ -62,7 +62,8 @@ diagrams (processes, data flow, data model, job engine, nudges, AI, security and
 - **Inbox**: messages that couldn't be read and payments without a category.
 - **Connectors**: connect data sources, Telegram and AI providers. Each shows when it last synced and when it
   syncs next.
-- **Welcome** (`/welcome`): first-run setup for your region, goals and starter routines.
+- **Welcome** (`/welcome`): first-run setup on one small card, a question at a time: your name, your day,
+  areas, what to train, targets, tone and goals, then routines from a starter list or built by your AI model.
 
 ## Nudges
 

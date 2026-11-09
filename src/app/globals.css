@@ -2,6 +2,8 @@
 
 /* Dark mode follows [data-theme] on <html>, set before first paint by the inline script in layout. */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+/* A wide but short window (a 13" laptop): onboarding tightens its spacing here so each step still fits. */
+@custom-variant short (@media (min-width: 64rem) and (max-height: 52.5rem));
 
 /*
  * ReLife design tokens: the ReLIFE capsule. Ink black, clean white and capsule blue, light-first,
@@ -325,6 +327,59 @@
 }
 [data-theme="dark"] .halftone { opacity: 0.22; }
 
+/* Setup's backdrop (/welcome): a halftone skyline of XP bars along the bottom edge that grows with
+   each step, and small logo capsules drifting up from it. Bars share one dot grid (36px apart, a
+   multiple of the 9px pitch), with the dots growing toward the ground like a printed screentone.
+   Bars rise once on load (keyframe) and glide to each new height after that (transition), from the
+   centre outward. Decorative: aria-hidden, pointer-events off, still under reduced motion. */
+.skyline {
+  -webkit-mask-image: linear-gradient(to top, #000 12%, transparent 96%);
+  mask-image: linear-gradient(to top, #000 12%, transparent 96%);
+}
+@keyframes skyline-rise {
+  from { clip-path: inset(100% 0 0 0 round 12px 12px 0 0); }
+}
+.skyline-bar {
+  --dot: var(--pill);
+  position: absolute;
+  inset-block: 0;
+  width: 27px;
+  background: radial-gradient(circle, var(--dot) 1px, transparent 1.6px) 0 0 / 9px 9px;
+  clip-path: inset(calc(100% - var(--h)) 0 0 0 round 12px 12px 0 0);
+  transition: clip-path 900ms var(--ease-out-strong) calc(var(--i) * 14ms);
+  animation: skyline-rise 1200ms var(--ease-out-strong) calc(150ms + var(--i) * 20ms) backwards;
+}
+.skyline-bar::before,
+.skyline-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+.skyline-bar::before {
+  background: radial-gradient(circle, var(--dot) 1.9px, transparent 2.5px) 0 0 / 9px 9px;
+  -webkit-mask-image: linear-gradient(to top, #000 15%, transparent 75%);
+  mask-image: linear-gradient(to top, #000 15%, transparent 75%);
+}
+.skyline-bar::after {
+  background: radial-gradient(circle, var(--dot) 3px, transparent 3.6px) 0 0 / 9px 9px;
+  -webkit-mask-image: linear-gradient(to top, #000, transparent 42%);
+  mask-image: linear-gradient(to top, #000, transparent 42%);
+}
+@keyframes mote-rise {
+  from { translate: 0 0; opacity: 0; }
+  12%, 72% { opacity: var(--o); }
+  to { translate: var(--dx) calc(var(--rise) * -1); opacity: 0; }
+}
+.mote {
+  position: absolute;
+  opacity: 0;
+  animation: mote-rise var(--t) linear var(--d) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skyline-bar { animation: none; transition: none; }
+  .mote { animation: none; }
+}
+
 /* <details> content fades in with its rotating chevron. Opacity only, so it needs no reduced-motion
    variant; browsers without ::details-content simply open instantly. */
 details::details-content {
@@ -345,8 +400,9 @@ details[open]::details-content { opacity: 1; }
   .nav-sub { transition: opacity 150ms var(--ease-out-quint); }
 }
 
-/* A scroll area that fades out at its edges, so rows cut off below read as "more to scroll". */
-.scroll-fade {
+/* A scroll area that fades out at its edges, so rows cut off below read as "more to scroll".
+   A utility, so it takes variants (`lg:scroll-fade`). */
+@utility scroll-fade {
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 10px, #000 calc(100% - 28px), transparent);
   mask-image: linear-gradient(to bottom, transparent 0, #000 10px, #000 calc(100% - 28px), transparent);
 }

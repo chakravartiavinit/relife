@@ -19,6 +19,8 @@ type Props = {
   /** Pinned to the top under "Suggested", e.g. this device's time zone. */
   suggested?: (string | null | undefined)[]
   className?: string
+  /** The trigger's look (height, radius, fill, shadows), replacing the default field look. */
+  triggerClassName?: string
 }
 
 export function TimezonePicker(props: Props) {
@@ -35,7 +37,10 @@ export function CurrencyPicker(props: Props) {
   return <Picker {...props} build={build} label="currency" placeholder="Search name, code or country" compact />
 }
 
-function Picker({ options, value, defaultValue, onChange, name, id, suggested = [], className, build, label, placeholder, compact }: Props & {
+// The trigger's default look: a white field with the app's hairline shadow and a capsule-blue focus ring.
+const TRIGGER = 'h-11 rounded-md bg-surface px-3 text-[14.5px] shadow-1 focus-visible:shadow-[0_0_0_2px_var(--pill)] aria-expanded:shadow-[0_0_0_2px_var(--pill)]'
+
+function Picker({ options, value, defaultValue, onChange, name, id, suggested = [], className, triggerClassName, build, label, placeholder, compact }: Props & {
   build: (list: string[]) => Option[]; label: string; placeholder: string; compact?: boolean
 }) {
   const [inner, setInner] = useState(value ?? defaultValue ?? '')
@@ -44,6 +49,7 @@ function Picker({ options, value, defaultValue, onChange, name, id, suggested = 
   const [q, setQ] = useState('')
   const wrap = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
+  const panel = useRef<HTMLDivElement>(null)
   const listId = useId()
 
   // Building ~400 labels needs Intl, so only once the list is first opened.
@@ -94,7 +100,7 @@ function Picker({ options, value, defaultValue, onChange, name, id, suggested = 
         aria-controls={open ? listId : undefined}
         onClick={() => (open ? close() : show())}
         onKeyDown={(e) => { if ((e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') && !open) { e.preventDefault(); e.stopPropagation(); show() } }}
-        className="flex h-11 w-full items-center gap-2.5 rounded-md bg-surface px-3 text-start text-[14.5px] text-ink shadow-1 transition-[box-shadow,background-color] duration-150 ease-out-quint focus-visible:shadow-[0_0_0_2px_var(--pill)] focus-visible:outline-none aria-expanded:shadow-[0_0_0_2px_var(--pill)]"
+        className={cn('flex w-full items-center gap-2.5 text-start text-ink transition-[box-shadow,background-color] duration-150 ease-out-quint focus-visible:outline-none', triggerClassName ?? TRIGGER)}
       >
         <Flag f={selected?.flag ?? null} />
         <span className="min-w-0 flex-1 truncate">
@@ -107,11 +113,14 @@ function Picker({ options, value, defaultValue, onChange, name, id, suggested = 
       <AnimatePresence>
         {open ? (
           <motion.div
+            ref={panel}
+            // A list that opens past the bottom of the screen scrolls itself into view, once it has its full size.
+            onAnimationComplete={() => panel.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })}
             initial={{ opacity: 0, y: -4, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1, transition: { duration: 0.15, ease: EASE_OUT } }}
             exit={{ opacity: 0, transition: { duration: 0.1 } }}
             style={{ transformOrigin: compact ? 'top right' : 'top' }}
-            className={cn('absolute top-[calc(100%+6px)] z-30 rounded-[16px] bg-surface p-1.5 shadow-3', compact ? 'end-0 w-[min(340px,calc(100vw-2.5rem))]' : 'inset-x-0 min-w-[300px]')}
+            className={cn('absolute top-[calc(100%+6px)] z-30 rounded-[16px] bg-surface p-1.5 shadow-3', compact ? 'end-0 w-[min(340px,calc(100vw-2.5rem))]' : 'inset-x-0 min-w-[min(336px,calc(100vw-2.5rem))]')}
             // Enter and Escape belong to the picker, not page shortcuts (onboarding's Enter = Continue).
             onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); close() } if (e.key === 'Enter' || e.key === 'Escape') e.stopPropagation() }}
           >
