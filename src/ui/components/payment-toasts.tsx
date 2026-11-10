@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowDownLeft, ArrowUpRight, Wallet } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight } from 'lucide-react'
 import { newPayments, paymentsSeen } from '@/app/actions'
 import { useToast } from './toast'
 import { DATA_CHANGED } from './live-refresh'
@@ -38,19 +38,12 @@ export function PaymentToasts() {
       const total = items.length + res.more
       if (total === 1) {
         const [p] = items
-        toast.show({
-          title: p.title, description: p.detail, tone: p.credit ? 'good' : 'neutral', duration: DURATION, action: open,
-          icon: p.credit
-            ? <ArrowDownLeft className="size-4 text-good" strokeWidth={2} aria-hidden />
-            : <ArrowUpRight className="size-4 text-ink-2" strokeWidth={2} aria-hidden />,
-        })
+        toast(p.title, p.credit ? 'good' : 'neutral', { description: p.detail, duration: DURATION, action: open, icon: p.credit ? ArrowDownLeft : ArrowUpRight })
       } else if (total > 1) {
         // One toast for the batch, not one per payment: the newest by name, the rest on Spending.
-        toast.show({
-          title: `${total} new payments`,
+        toast(`${total} new payments`, 'neutral', {
           description: `Latest: ${items[0].title.replace(/ (paid|received) /, ' ')}`,
-          duration: DURATION, action: open,
-          icon: <Wallet className="size-4 text-[var(--cat-wealth)]" strokeWidth={2} aria-hidden />,
+          duration: DURATION, action: open, icon: '/routines/money.png',
         })
       }
       // Marked seen only after they're on screen, so nothing is lost to a reload in between.

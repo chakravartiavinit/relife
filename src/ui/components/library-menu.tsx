@@ -24,8 +24,8 @@ export function LibraryMenu({ item }: { item: Item }) {
         label={item.title}
         items={[
           { label: 'Edit', icon: Pencil, onSelect: () => setEditing(true) },
-          ...(item.status !== 'done' ? [{ label: 'Mark finished', icon: Check, onSelect: () => start(async () => { await updateLibraryItem(item.id, { ...item, status: 'done' }); toast(`Finished “${item.title}”`, 'good') }) }] : []),
-          { label: 'Remove', icon: Trash2, danger: true, onSelect: () => start(async () => { await removeLibraryItem(item.id); toast('Removed') }) },
+          ...(item.status !== 'done' ? [{ label: 'Mark finished', icon: Check, onSelect: () => start(async () => { await updateLibraryItem(item.id, { ...item, status: 'done' }); toast(`“${item.title}” finished`, 'good') }) }] : []),
+          { label: 'Remove', icon: Trash2, danger: true, onSelect: () => start(async () => { await removeLibraryItem(item.id); toast(`“${item.title}” removed`, 'neutral', { icon: Trash2 }) }) },
         ]}
       />
       <Dialog open={editing} onClose={() => setEditing(false)} title="Edit" icon={Pencil} description="Its type decides what the time counts as: courses, books and video series are learning; shows are entertainment.">
@@ -45,9 +45,9 @@ function EditForm({ item, onDone }: { item: Item; onDone: () => void }) {
   const save = () => start(async () => {
     try {
       await updateLibraryItem(item.id, { title, kind, progressTotal: total ? Number(total) : null, status: item.status })
-      toast('Saved', 'good')
+      toast(`“${title}” saved`, 'good')
       onDone()
-    } catch { toast('Check the name and total, then try again.', 'bad') }
+    } catch { toast.error('Couldn’t save', 'Check the name and total, then try again') }
   })
   return (
     <form onSubmit={(e) => { e.preventDefault(); save() }} className="flex flex-col gap-4">

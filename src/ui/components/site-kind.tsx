@@ -20,7 +20,7 @@ export function SiteKind({ domain, kind }: { domain: string; kind: ActivityKind 
         setValue(k)
         start(async () => {
           const r = await setSiteKindAction(domain, k)
-          toast(`${domain} counts as ${KIND_INFO[k].label.toLowerCase()}${r.changed ? `; re-sorted ${r.changed} ${r.changed === 1 ? 'day' : 'days'}` : ''}`, 'good')
+          toast(`${domain} counts as ${KIND_INFO[k].label.toLowerCase()}`, 'good', { description: r.changed ? `${r.changed} past ${r.changed === 1 ? 'day' : 'days'} re-sorted` : undefined })
         })
       }}
     >

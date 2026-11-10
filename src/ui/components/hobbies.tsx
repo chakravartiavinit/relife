@@ -36,7 +36,7 @@ function HobbyForm({ onDone }: { onDone: () => void }) {
   const [weekly, setWeekly] = useState(150)
   const toast = useToast()
   const id = useId()
-  useEffect(() => { if (state?.ok) { toast(`Added ${name}`, 'good'); onDone() } }, [state, onDone, toast, name])
+  useEffect(() => { if (state?.ok) { toast(`${name} added`, 'good', { description: `Goal: ${weekly} min a week`, icon: hobbyArt(name) }); onDone() } }, [state, onDone, toast, name])
   return (
     <form action={action} className="flex flex-col gap-5">
       <div className="flex items-end gap-3">
@@ -96,9 +96,9 @@ export function PracticeButtons({ slug, name, color }: { slug: string; name: str
   const log = (m: number) => start(async () => {
     try {
       const news = await logPractice(slug, m)
-      toast(`${name}: +${m} min`, 'good')
+      toast(`${name} logged`, 'good', { description: `+${m} min this week`, icon: hobbyArt(name) })
       announceXp(toast, news)
-    } catch { toast('Could not save. Try again.', 'bad') }
+    } catch { toast.error() }
   })
   return (
     <div className="flex gap-2">

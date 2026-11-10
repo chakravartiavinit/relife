@@ -1,7 +1,7 @@
 'use client'
 
 import { useTransition } from 'react'
-import { RefreshCw, X } from 'lucide-react'
+import { RefreshCw, ScanText, X } from 'lucide-react'
 import { ignoreRawEvent, retryRawEvents } from '@/app/actions'
 import { Button } from './button'
 import { useToast } from './toast'
@@ -13,9 +13,10 @@ function useRetry() {
   const toast = useToast()
   const retry = (ids: string[]) => start(async () => {
     const r = await retryRawEvents(ids)
-    if (r.parsed) toast(ids.length > 1 ? `Saved ${r.parsed} of ${ids.length}` : 'Read it and saved it', 'good')
-    else if (r.failed) toast(ids.length > 1 ? `Still waiting on ${r.failed}` : 'Still can’t read it. Nothing changed.')
-    else toast('No reader recognised it')
+    const many = ids.length > 1
+    if (r.parsed) toast(many ? `${r.parsed} of ${ids.length} read and saved` : 'Read and saved', 'good', { icon: ScanText })
+    else if (r.failed) toast(many ? `Still can’t read ${r.failed}` : 'Still can’t read it', 'neutral', { icon: ScanText, description: 'Nothing changed' })
+    else toast('No reader recognised it', 'neutral', { icon: ScanText, description: 'Nothing changed' })
   })
   return { pending, retry }
 }

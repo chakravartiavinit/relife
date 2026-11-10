@@ -55,7 +55,7 @@ export async function setGoalTarget(scheduleId: string, target: number) {
 
 export async function quickLog(text: string): Promise<{ ok: boolean; message: string; news?: XpNews }> {
   const q = parseQuickLog(text)
-  if (!q) return { ok: false, message: 'Try “water 250”, “mood 4” or “spent 120 chai”.' }
+  if (!q) return { ok: false, message: 'Try “water 250”, “mood 4” or “spent 120 chai”' }
   const user = await getUser()
   const message = await applyQuickLog(user, q)
   const news = await xpAfterLog(user)
@@ -583,7 +583,7 @@ export async function openChestAction(id: string): Promise<
   | { ok: false; error: string }
 > {
   const parsed = z.string().uuid().safeParse(id)
-  if (!parsed.success) return { ok: false, error: 'Unknown chest' }
+  if (!parsed.success) return { ok: false, error: 'Chest not found' }
   const user = await getUser()
   const [{ openChest }, { titleFor }] = await Promise.all([import('@/core/quests'), import('@/domain/xp')])
   const r = await openChest(user, parsed.data)

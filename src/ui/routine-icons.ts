@@ -22,7 +22,7 @@ const RULES: [RegExp, LucideIcon, string][] = [
   [/lights out|sleep|bed/i, BedDouble, 'sleep'],
   [/phone|screen/i, Smartphone, 'phone'],
   [/call|parents|mom|dad|family|friend/i, Phone, 'call'],
-  [/budget|money|spend|save|invest/i, PiggyBank, 'money'],
+  [/budget|money|spen[dt]|save|invest/i, PiggyBank, 'money'],
   [/code|dsa|leetcode|practice coding|program/i, Code, 'code'],
   [/learn|study|course|language|duolingo/i, Languages, 'learn'],
   [/shower|bath/i, Bath, 'shower'],

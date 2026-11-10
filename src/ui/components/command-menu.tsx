@@ -4,6 +4,7 @@ import { Command } from 'cmdk'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useTransition } from 'react'
 import { Plus, Search, Sparkles, type LucideIcon } from 'lucide-react'
+import { routineArt } from '../routine-icons'
 import { quickLog } from '@/app/actions'
 import { NAV, SYSTEM_NAV } from './nav'
 import { CATEGORY } from '../tokens'
@@ -46,7 +47,10 @@ export function CommandMenu() {
                         onSelect={() => start(async () => {
                           const r = await quickLog(value)
                           announceXp(toast, r.news)
-                          toast(r.message, r.ok ? 'good' : 'bad')
+                          // "Water +250 ml · 750 ml today": what was logged, then the running total.
+                          const [title, ...rest] = r.message.split(' · ')
+                          if (r.ok) toast(title, 'good', { description: rest.join(' · ') || undefined, icon: routineArt(title, '', '') })
+                          else toast.error('Couldn’t read that', r.message)
                           if (r.ok) close()
                         })}
                         className={itemClass}

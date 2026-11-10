@@ -69,7 +69,8 @@ export function InsightActions({ id, hasActions }: { id: string; hasActions: boo
   const toast = useToast()
   const go = (d: 'accept' | 'dismiss') => start(async () => {
     await resolveInsight(id, d)
-    toast(d === 'accept' ? (hasActions ? 'Added to your routines' : 'Marked as accepted') : 'Dismissed', 'good')
+    if (d === 'accept') toast(hasActions ? 'Added to your routines' : 'Insight noted', 'good', { icon: Sparkles })
+    else toast('Insight dismissed', 'neutral', { icon: X })
   })
   return (
     <div className="flex items-center gap-2">

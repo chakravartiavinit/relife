@@ -11,16 +11,16 @@ import { Dialog, FormError } from './dialog'
 export function LearningActions({ id, title, hasModules }: { id: string; title: string; hasModules: boolean }) {
   const [pending, start] = useTransition()
   const toast = useToast()
-  const run = (delta: Parameters<typeof updateLearningProgress>[1], msg: string) =>
+  const run = (delta: Parameters<typeof updateLearningProgress>[1], logged: string) =>
     start(async () => {
-      try { const news = await updateLearningProgress(id, delta); toast(msg, 'good'); announceXp(toast, news) } catch { toast('Could not save. Try again.', 'bad') }
+      try { const news = await updateLearningProgress(id, delta); toast(logged, 'good', { description: title, icon: '/routines/learn.png' }); announceXp(toast, news) } catch { toast.error() }
     })
   return (
     <div className="flex gap-2">
       {hasModules ? (
-        <Button size="sm" disabled={pending} onClick={() => run({ done: 1 }, `+1 module · ${title}`)}>+1 module</Button>
+        <Button size="sm" disabled={pending} onClick={() => run({ done: 1 }, '1 module done')}>+1 module</Button>
       ) : null}
-      <Button size="sm" disabled={pending} onClick={() => run({ minutes: 15 }, `+15 min · ${title}`)}>+15 min</Button>
+      <Button size="sm" disabled={pending} onClick={() => run({ minutes: 15 }, '15 min logged')}>+15 min</Button>
     </div>
   )
 }
@@ -44,7 +44,7 @@ function LearningForm({ onDone }: { onDone: () => void }) {
   const [state, action, pending] = useActionState(createLearningItem, null)
   const toast = useToast()
   const id = useId()
-  useEffect(() => { if (state?.ok) { toast('Added', 'good'); onDone() } }, [state, onDone, toast])
+  useEffect(() => { if (state?.ok) { toast('Added to your learning', 'good', { icon: '/routines/learn.png' }); onDone() } }, [state, onDone, toast])
   return (
     <form action={action} className="flex flex-col gap-4">
       <Field label="Title" htmlFor={`${id}-t`}>
