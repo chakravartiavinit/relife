@@ -124,7 +124,8 @@ function QuestRow({ q }: { q: SystemQuestItem }) {
       className={cn('flex gap-3 rounded-[14px] p-3 transition-[background-color] duration-150', !done && !failed && 'bg-ink/[0.025] dark:bg-white/[0.035]')}
       style={done ? { background: 'color-mix(in oklch, var(--good) 7%, transparent)' } : failed ? { background: 'color-mix(in oklch, var(--bad) 5%, transparent)' } : undefined}
     >
-      <span className="relative shrink-0">
+      {/* self-start: a stretched wrapper would be as tall as the row and drop the rank badge to the row's bottom. */}
+      <span className="relative shrink-0 self-start">
         <span
           aria-hidden
           className={cn('grid size-9 place-items-center rounded-[10px]', (done || failed) && 'opacity-60')}
