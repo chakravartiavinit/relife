@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
-import type { User } from './user'
+import { clearUserCache, type User } from './user'
 import { formatTime } from './time'
 import { formatMoney } from '@/domain/money'
 
@@ -51,4 +51,6 @@ export async function markPaymentsSeen(user: User, upTo: string) {
   await db.update(schema.users)
     .set({ profile: sql`${schema.users.profile} || jsonb_build_object('paymentsSeenAt', to_char(greatest(coalesce((${schema.users.profile}->>'paymentsSeenAt')::timestamptz, '-infinity'::timestamptz), ${upTo}::timestamptz) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'))` })
     .where(eq(schema.users.id, user.id))
+  // The cached user still holds the old mark; the next profile save would write it back and repeat old payments.
+  clearUserCache()
 }

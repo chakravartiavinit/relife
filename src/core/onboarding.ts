@@ -109,6 +109,7 @@ export async function completeOnboarding(user: User, input: OnboardingInput, now
   const fresh = !user.profile.onboardedAt
   if (fresh) {
     profile.xpSince = today
+    profile.paymentsSeenAt = now.toISOString() // payments already on record aren't announced as new
     await db.delete(schema.xpEvents).where(eq(schema.xpEvents.userId, user.id))
     await db.delete(schema.achievements).where(eq(schema.achievements.userId, user.id))
     await db.delete(schema.chests).where(eq(schema.chests.userId, user.id))

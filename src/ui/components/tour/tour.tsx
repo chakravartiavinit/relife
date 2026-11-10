@@ -15,6 +15,10 @@ import { TOUR_STEPS } from './steps'
 // frame that holds still, the words slide the way you're going.
 
 const LAST = TOUR_STEPS.length - 1
+/** Fired when the tour closes, so anything that waited for it (the payments toast) can go ahead. */
+export const TOUR_END = 'relife:tour-end'
+/** True while the tour is on screen, or about to open from `?tour`. Ambient notices wait for it. */
+export const touring = () => 'touring' in document.documentElement.dataset || new URLSearchParams(location.search).has('tour')
 const ENTER = { duration: 0.25, ease: EASE_OUT_STRONG }
 const LEAVE = { duration: 0.15, ease: EASE_OUT }
 const INSTANT = { duration: 0 }
@@ -105,6 +109,15 @@ export function Tour() {
     window.addEventListener('relife:tour', open)
     return () => window.removeEventListener('relife:tour', open)
   }, [])
+
+  // Mark the page while the tour is up and say when it ends.
+  const open = step !== null
+  useEffect(() => {
+    if (!open) return
+    document.documentElement.dataset.touring = ''
+    // Announced a tick later: React's dev double-run of effects would otherwise say "ended" as the tour opens.
+    return () => { delete document.documentElement.dataset.touring; setTimeout(() => window.dispatchEvent(new Event(TOUR_END))) }
+  }, [open])
 
   // Fetch every illustration picture while the welcome is up, so no card's art pops in late.
   useEffect(() => {
