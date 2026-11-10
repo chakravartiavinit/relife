@@ -1,19 +1,16 @@
 'use client'
 
-// The tour's seven illustrations. Each one is a tiny ReLife screen that acts out one idea as cause → effect,
-// on a 5–5.6s loop: something happens, ReLife reacts, the result holds for a beat, then it quietly resets.
-import { Check, Flame, Lock, Moon, RefreshCw, Search, Smartphone } from 'lucide-react'
-import { appear, Art, CapsuleMark, Chest, Chip, Cursor, cursorPath, Icon, Illo, Logo, Mono, Panel, pressAt, timeline, Txt, type Stop } from './illo-kit'
+// The tour's seven illustrations. Each one acts out one idea as cause → effect on a 5.4–5.6s loop: something
+// happens, ReLife reacts, the result holds for a beat, then it quietly resets.
+// They are drawn for a 304px plate, where one unit is 0.42px: a few large shapes, text at 24 units or more
+// (10px on screen), and at most a handful of words. The words under the picture do the explaining.
+import { Bell, BellOff, Check, Flame, Lock, Moon, Search, Smartphone } from 'lucide-react'
+import { appear, Art, CapsuleMark, Chest, Chip, Cursor, Icon, Illo, Logo, Meter, Mono, Panel, pressAt, timeline, Txt, type Stop } from './illo-kit'
 
 // ── Small timeline recipes, all in seconds ───────────────────────────────────────────────────────────
 const SHOW = 'opacity:1;transform:translateY(0)'
 const ICON_END = 'opacity:1;transform:scale(1);filter:blur(0)'
 type Track = { end: string; origin?: string; stops: Stop[] }
-/** Rises `dy` px into place at `t`, fades out at `reset`. */
-const fadeUp = (t: number, reset: number, dy = 10): Stop[] => [
-  [t, `opacity:0;transform:translateY(${dy}px)`, 'out'], [t + 0.3, SHOW], [reset, SHOW, 'quint'], [reset + 0.3, 'opacity:0;transform:translateY(0)'],
-]
-const fadeIn = (t: number, reset: number): Stop[] => [[t, 'opacity:0', 'out'], [t + 0.25, 'opacity:1'], [reset, 'opacity:1', 'quint'], [reset + 0.3, 'opacity:0']]
 /** Slides in from the left. */
 const slideIn = (t: number, reset: number): Stop[] => [
   [t, 'opacity:0;transform:translateX(-14px)', 'out'], [t + 0.3, 'opacity:1;transform:translateX(0)'],
@@ -29,6 +26,15 @@ const bar = (start: number, points: [number, number][]): Stop[] => {
   const out: Stop[] = []
   let prev = start
   for (const [t, v] of points) { out.push([t, `transform:scaleX(${prev})`, 'out'], [t + 0.3, `transform:scaleX(${v})`]); prev = v }
+  return out
+}
+/** A Meter's fill at `v` (0 to 1). Tracks that use it need an `origin`, which makes the percentage the bar's own width. */
+const fillAt = (v: number) => `transform:translateX(${+((v - 1) * 100).toFixed(1)}%)`
+/** A Meter that steps through values at the given times. */
+const meter = (start: number, points: [number, number][]): Stop[] => {
+  const out: Stop[] = []
+  let prev = start
+  for (const [t, v] of points) { out.push([t, fillAt(prev), 'out'], [t + 0.3, fillAt(v)]); prev = v }
   return out
 }
 const barReset = (start: number, last: number, reset: number): Stop[] => [[reset, `transform:scaleX(${last})`, 'quint'], [reset + 0.4, `transform:scaleX(${start})`]]
@@ -83,8 +89,8 @@ const W = timeline('welcome', 5.2, {
   })) as Record<string, Track>,
   // Each arrival tops the bar up; the third fills it and the level ticks over.
   xp: {
-    end: 'transform:scaleX(.06)', origin: '0 50%',
-    stops: [...bar(0.42, [[1.05, 0.62], [1.85, 0.81], [2.65, 1]]), [3.05, 'transform:scaleX(1)', 'quint'], [3.2, 'transform:scaleX(.06)'], [4.7, 'transform:scaleX(.06)', 'quint'], [5.1, 'transform:scaleX(.42)']],
+    end: fillAt(0.06), origin: '0 50%',
+    stops: [...meter(0.42, [[1.05, 0.62], [1.85, 0.81], [2.65, 1]]), [3.05, fillAt(1), 'quint'], [3.2, fillAt(0.06)], [4.7, fillAt(0.06), 'quint'], [5.1, fillAt(0.42)]],
   },
   hb: { end: 'transform:scaleX(.78)', origin: '0 50%', stops: [...bar(0.45, [[1.05, 0.6], [2.65, 0.78]]), ...barReset(0.45, 0.78, 4.7)] },
   sb: { end: 'transform:scaleX(.74)', origin: '0 50%', stops: [...bar(0.5, [[1.85, 0.74]]), ...barReset(0.5, 0.74, 4.7)] },
@@ -113,8 +119,7 @@ export function IlloWelcome() {
         <Txt x={392} y={154} size={40} weight={700} className={W.c.lvOld}>3</Txt>
         <Txt x={392} y={154} size={40} weight={700} className={W.c.lvNew}>4</Txt>
         <Chip x={530} y={92} w={118} label="Level up" tone="pill" className={W.c.chip} />
-        <rect x={320} y={196} width={330} height={16} rx={8} fill="var(--i-bar)" />
-        <rect x={320} y={196} width={330} height={16} rx={8} fill="var(--pill)" className={W.c.xp} />
+        <Meter x={320} y={196} w={330} h={16} className={W.c.xp} />
         <Txt x={320} y={240} size={18} weight={600} fill="var(--ink-3)">XP TO NEXT LEVEL</Txt>
         {AREA_ROW.map((a, i) => {
           const x = 320 + i * 56
@@ -139,90 +144,156 @@ export function IlloWelcome() {
   )
 }
 
-// ── 1 · Today: The System issues a quest from your own numbers, and synced steps clear it on their own ──
-const todaySub = swap(2.6, 5.0)
-const T = timeline('today', 5.4, {
-  panel: { end: SHOW, stops: [[0.15, 'opacity:0;transform:translateY(-14px)', 'out'], [0.5, SHOW], [4.9, SHOW, 'quint'], [5.25, 'opacity:0;transform:translateY(0)']] },
-  row: { end: SHOW, stops: fadeUp(0.5, 4.9, 8) },
-  usual: { end: 'opacity:1', stops: fadeIn(0.8, 4.9) },
-  sync: { end: SHOW, stops: [[1.15, 'opacity:0;transform:translateY(16px)', 'out'], [1.5, SHOW], [4.9, SHOW, 'quint'], [5.25, 'opacity:0;transform:translateY(0)']] },
-  spin: { end: 'opacity:0;transform:rotate(720deg)', origin: '50% 50%', stops: [[1.3, 'opacity:1;transform:rotate(0)'], [2.55, 'opacity:1;transform:rotate(720deg)', 'quint'], [2.7, 'opacity:0;transform:rotate(720deg)'], [5.3, 'opacity:0;transform:rotate(720deg)'], [5.35, 'opacity:1;transform:rotate(0)']] },
-  ok: { end: ICON_END, origin: '50% 50%', stops: [...iconIn(2.6), [5.3, ICON_END], [5.35, 'opacity:0;transform:scale(.25);filter:blur(4px)']] },
-  subOld: todaySub.old,
-  subNew: todaySub.next,
-  fill: { end: 'transform:scaleX(1)', origin: '0 50%', stops: [[1.6, 'transform:scaleX(.35)', 'out'], [2.6, 'transform:scaleX(1)'], [4.9, 'transform:scaleX(1)', 'quint'], [5.25, 'transform:scaleX(.35)']] },
-  c0: { end: 'opacity:0', stops: [[1.9, 'opacity:1'], [1.95, 'opacity:0'], [5.2, 'opacity:0'], [5.25, 'opacity:1']] },
-  c1: { end: 'opacity:0', stops: [[1.9, 'opacity:0'], [1.95, 'opacity:1'], [2.3, 'opacity:1'], [2.35, 'opacity:0']] },
-  c2: { end: 'opacity:1', stops: [[2.3, 'opacity:0'], [2.35, 'opacity:1'], [4.9, 'opacity:1', 'quint'], [5.2, 'opacity:0']] },
-  stamp: { end: 'opacity:1;transform:scale(1)', origin: '50% 50%', stops: [[2.7, 'opacity:0;transform:scale(1.35)', 'out'], [2.95, 'opacity:1;transform:scale(1)'], [4.9, 'opacity:1;transform:scale(1)', 'quint'], [5.2, 'opacity:0;transform:scale(1)']] },
-  reward: { end: 'transform:scale(1)', origin: '50% 50%', stops: pulse(2.95, 1.12) },
+// ── Recipes the six stops share ──────────────────────────────────────────────────────────────────────
+/** Every stop holds its result until here, then resets. */
+const HOLD = 5.0
+const ICON_OUT = 'opacity:0;transform:scale(.25);filter:blur(4px)'
+const at = (x: number, y: number) => `transform:translate(${x}px,${y}px)`
+/** A tick (or any icon) that pops in at `t` and is gone again after the hold. */
+const tickIn = (t: number): Track => ({ end: ICON_END, origin: '50% 50%', stops: [...iconIn(t), [HOLD, ICON_END, 'quint'], [HOLD + 0.2, ICON_OUT]] })
+/** Dims at `t` (a row that is done, an app that is off) and comes back after the hold. `from`/`to` are opacities. */
+const fade = (t: number, from: number, to: number): Track => ({
+  end: `opacity:${to}`, stops: [[t, `opacity:${from}`, 'quint'], [t + 0.3, `opacity:${to}`], [HOLD, `opacity:${to}`, 'quint'], [HOLD + 0.3, `opacity:${from}`]],
+})
+/** A reward chip: pops in at `t`, stays a second, then drifts up and out. */
+const float = (t: number): Track => ({
+  end: 'opacity:0', origin: '50% 50%',
+  stops: [[t, 'opacity:0;transform:translateY(8px) scale(.92)', 'out'], [t + 0.25, 'opacity:1;transform:translateY(0) scale(1)'], [t + 1.0, 'opacity:1;transform:translateY(0) scale(1)', 'quint'], [t + 1.3, 'opacity:0;transform:translateY(-10px) scale(1)']],
+})
+/** Rises into place at `t` and fades after the hold. */
+const rise = (t: number, dy = 12): Track => ({ end: SHOW, stops: [[t, `opacity:0;transform:translateY(${dy}px)`, 'out'], [t + 0.35, SHOW], [HOLD, SHOW, 'quint'], [HOLD + 0.3, 'opacity:0;transform:translateY(0)']] })
+
+/** A round tick box: an empty ring, and the filled tick that pops in over it. */
+function Tick({ cx, cy, r = 24, color = 'var(--ink)', mark = 'var(--surface)', on }: { cx: number; cy: number; r?: number; color?: string; mark?: string; on: string }) {
+  const s = r * 1.1
+  return (
+    <g>
+      <circle cx={cx} cy={cy} r={r - 1.5} stroke="var(--i-line)" strokeWidth={3} />
+      <g className={on}>
+        <circle cx={cx} cy={cy} r={r} fill={color} />
+        <Check x={cx - s / 2} y={cy - s / 2} width={s} height={s} color={mark} strokeWidth={3} />
+      </g>
+    </g>
+  )
+}
+
+// ── 1 · Today: you tick what's due and it pays XP; the System's quest clears itself from synced steps ──
+const DUE = [
+  { y: 44, title: 'Drink water', sub: '250 ml · 10:00', art: '/routines/water.png', tint: 'var(--pill)', tick: 1.15 },
+  { y: 168, title: 'Skincare', sub: '22:30', art: '/routines/skin.png', tint: 'var(--cat-health)', tick: 2.05 },
+]
+const QUEST_Y = 292
+const T = timeline('today', 5.6, {
+  // The pointer ticks the first two rows, then leaves: the third one needs no hand.
+  move: { end: at(700, 470), stops: [[0.45, at(700, 470), 'move'], [1.0, at(606, 112)], [1.45, at(606, 112), 'move'], [1.9, at(606, 236)], [2.35, at(606, 236), 'move'], [2.95, at(700, 470)]] },
+  press: { end: 'transform:scale(1)', origin: '0 0', stops: [...pressAt(1.05), ...pressAt(1.95)] },
+  ...Object.fromEntries(DUE.flatMap((d, i) => [
+    [`tick${i}`, tickIn(d.tick)],
+    [`row${i}`, fade(d.tick, 1, 0.45)],
+    [`xp${i}`, float(d.tick + 0.1)],
+  ])) as Record<string, Track>,
+  // The phone reports in: its badge beats once, a ring goes out from it, and the bar fills by itself.
+  phone: {
+    end: ICON_OUT, origin: '50% 50%',
+    stops: [[2.45, ICON_END, 'out'], [2.6, 'opacity:1;transform:scale(1.14);filter:blur(0)', 'out'], [2.9, ICON_END], [3.4, ICON_END, 'out'], [3.6, ICON_OUT], [HOLD + 0.1, ICON_OUT, 'out'], [HOLD + 0.4, ICON_END]],
+  },
+  ping: sparkle(2.5),
+  fill: { end: fillAt(1), origin: '0 50%', stops: [[2.6, fillAt(0.35), 'out'], [3.4, fillAt(1)], [HOLD, fillAt(1), 'quint'], [HOLD + 0.4, fillAt(0.35)]] },
+  c0: { end: 'opacity:0', stops: [[2.9, 'opacity:1'], [2.95, 'opacity:0'], [HOLD + 0.2, 'opacity:0'], [HOLD + 0.25, 'opacity:1']] },
+  c1: { end: 'opacity:0', stops: [[2.9, 'opacity:0'], [2.95, 'opacity:1'], [3.2, 'opacity:1'], [3.25, 'opacity:0']] },
+  c2: { end: 'opacity:1', stops: [[3.2, 'opacity:0'], [3.25, 'opacity:1'], [HOLD, 'opacity:1', 'quint'], [HOLD + 0.2, 'opacity:0']] },
+  tick2: tickIn(3.45),
+  stamp: { end: 'opacity:1;transform:scale(1)', origin: '50% 50%', stops: [[3.55, 'opacity:0;transform:scale(1.35)', 'out'], [3.8, 'opacity:1;transform:scale(1)'], [HOLD, 'opacity:1;transform:scale(1)', 'quint'], [HOLD + 0.3, 'opacity:0;transform:scale(1)']] },
 })
 
 export function IlloToday() {
+  const y = QUEST_Y
   return (
-    <Illo label="The System issues a daily quest to walk 8,000 steps, a bit above your usual 6,200. Steps sync from your iPhone, the bar fills by itself and the quest is stamped cleared." css={T.css}>
-      <g className={T.c.panel}>
-        <Panel x={70} y={30} w={580} h={240} r={24} />
-        <Mono x={100} y={74} fill="var(--pill)">[SYSTEM] · DAILY QUEST</Mono>
-        <g className={T.c.reward}><Chip x={532} y={52} w={88} label="+60 XP" tone="xp" /></g>
-        <line x1={100} x2={620} y1={94} y2={94} stroke="var(--i-line)" strokeWidth={2} />
-        <g className={T.c.row}>
-          <Art src="/routines/walk.png" x={100} y={114} size={64} tint="var(--cat-health)" />
-          <Txt x={184} y={146} size={30} weight={600}>Walk 8,000 steps</Txt>
-          <g className={T.c.usual}><Txt x={184} y={176} size={20} fill="var(--ink-3)">Your usual is 6,200 · Rank C</Txt></g>
-          <rect x={100} y={210} width={420} height={16} rx={8} fill="var(--i-bar)" />
-          <rect x={100} y={210} width={420} height={16} rx={8} fill="var(--pill)" className={T.c.fill} />
-          {(['2,800', '5,600', '8,214'] as const).map((n, i) => (
-            <Txt key={n} x={620} y={225} size={24} weight={600} end className={T.c[`c${i}`]}>{n}</Txt>
-          ))}
-        </g>
-        <g transform="rotate(-8 562 162)">
-          <g className={T.c.stamp}>
-            <rect x={478} y={132} width={168} height={58} rx={14} fill="var(--i-good-fill)" stroke="var(--good)" strokeWidth={4} />
-            <text x={562} y={171} fontSize={26} fontWeight={700} letterSpacing={4} textAnchor="middle" fill="var(--good)" fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace">CLEARED</text>
+    <Illo label="Today's list. Two routines are ticked by hand and each earns XP. The System's quest to walk 8,000 steps fills from steps synced by your phone and is stamped cleared on its own." css={T.css}>
+      <Panel x={60} y={28} w={600} h={404} r={28} />
+      {DUE.map((d, i) => (
+        <g key={d.title}>
+          {i ? <line x1={84} x2={636} y1={d.y} y2={d.y} stroke="var(--i-line)" strokeWidth={2} /> : null}
+          <g className={T.c[`row${i}`]}>
+            <Art src={d.art} x={84} y={d.y + 26} size={72} tint={d.tint} />
+            <Txt x={176} y={d.y + 56} size={32} weight={600}>{d.title}</Txt>
+            <Txt x={176} y={d.y + 90} size={24} fill="var(--ink-3)">{d.sub}</Txt>
           </g>
+          <Chip x={462} y={d.y + 40} w={104} h={44} label="+9 XP" tone="xp" className={T.c[`xp${i}`]} />
+          <Tick cx={612} cy={d.y + 62} on={T.c[`tick${i}`]} />
+        </g>
+      ))}
+
+      {/* The System's quest: tinted, and with a phone where the tick box would be. */}
+      <rect x={68} y={y + 4} width={584} height={116} rx={22} fill="var(--i-pill-fill)" />
+      <Art src="/routines/walk.png" x={84} y={y + 26} size={72} tint="var(--pill)" />
+      <Txt x={176} y={y + 50} size={32} weight={600}>Walk 8,000</Txt>
+      <Mono x={396} y={y + 48} fill="var(--pill)">[SYSTEM]</Mono>
+      <Meter x={176} y={y + 70} w={290} h={14} className={T.c.fill} />
+      {(['2,800', '5,600', '8,214'] as const).map((n, i) => (
+        <Txt key={n} x={566} y={y + 87} size={26} weight={600} end className={T.c[`c${i}`]}>{n}</Txt>
+      ))}
+      <circle cx={612} cy={y + 62} r={30} stroke="var(--pill)" strokeWidth={3} className={T.c.ping} />
+      <Tick cx={612} cy={y + 62} color="var(--pill)" mark="white" on={T.c.tick2} />
+      <g className={T.c.phone}>
+        <rect x={588} y={y + 38} width={48} height={48} rx={14} fill="var(--surface)" />
+        <Smartphone x={599} y={y + 49} width={26} height={26} color="var(--pill)" strokeWidth={2} />
+      </g>
+      <g transform={`rotate(-6 476 ${y + 36})`}>
+        <g className={T.c.stamp}>
+          <rect x={388} y={y + 10} width={176} height={52} rx={12} fill="var(--i-good-fill)" stroke="var(--good)" strokeWidth={4} />
+          <text x={476} y={y + 45} fontSize={24} fontWeight={700} letterSpacing={4} textAnchor="middle" fill="var(--good)" fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace">CLEARED</text>
         </g>
       </g>
-      <g className={T.c.sync}>
-        <Panel x={150} y={300} w={420} h={84} r={22} />
-        <rect x={170} y={318} width={48} height={48} rx={13} fill="var(--i-pill-fill)" />
-        <Icon icon={Smartphone} x={182} y={330} size={24} color="var(--pill)" />
-        <Txt x={236} y={340} size={22} weight={600}>Steps synced from iPhone</Txt>
-        <Txt x={236} y={368} size={19} fill="var(--ink-3)" className={T.c.subOld}>Syncing…</Txt>
-        <Txt x={236} y={368} size={19} fill="var(--ink-3)" className={T.c.subNew}>8,214 steps · just now</Txt>
-        <Icon icon={RefreshCw} x={522} y={328} size={28} color="var(--ink-3)" className={T.c.spin} />
-        <Icon icon={Check} x={522} y={328} size={28} color="var(--good)" stroke={3} className={T.c.ok} />
-      </g>
+      <Cursor move={T.c.move} press={T.c.press} />
     </Illo>
   )
 }
 
-// ── 2 · ⌘K: two keys, two words, and something new gets its own tracker ─────────────────────────────
+// ── 2 · ⌘K: two keys, two words, Enter, and something new has its own tracker ───────────────────────
 const TYPED = 'coffee 2'
-const keyPress = (down: number): Stop[] => [[down, 'transform:translateY(0)', 'out'], [down + 0.08, 'transform:translateY(6px)'], [0.75, 'transform:translateY(6px)', 'out'], [0.95, 'transform:translateY(0)']]
-const K = timeline('log', 5.0, {
-  keys: { end: 'opacity:0;transform:scale(.96)', origin: '50% 50%', stops: [[0.95, 'opacity:1;transform:scale(1)', 'quint'], [1.15, 'opacity:0;transform:scale(.96)'], [4.65, 'opacity:0;transform:scale(.96)', 'out'], [4.95, 'opacity:1;transform:scale(1)']] },
-  k1: { end: 'transform:translateY(0)', stops: keyPress(0.3) },
-  k2: { end: 'transform:translateY(0)', stops: keyPress(0.5) },
-  menu: { end: 'opacity:0;transform:scale(.98)', origin: '50% 0%', stops: [[1.0, 'opacity:0;transform:scale(.96)', 'out'], [1.25, 'opacity:1;transform:scale(1)'], [2.75, 'opacity:1;transform:scale(1)', 'quint'], [2.92, 'opacity:0;transform:scale(.98)']] },
-  ph: { end: 'opacity:0', stops: [[1.3, 'opacity:1'], [1.32, 'opacity:0'], [4.9, 'opacity:0'], [4.95, 'opacity:1']] },
+const LOG_HOLD = 4.8
+const keyDown = (t: number): Stop[] => [[t, 'transform:translateY(0)', 'out'], [t + 0.08, 'transform:translateY(5px)'], [0.7, 'transform:translateY(5px)', 'out'], [0.9, 'transform:translateY(0)']]
+const TILE_IN = 'opacity:1;transform:translateY(0) scale(1)'
+const K = timeline('log', 5.4, {
+  k1: { end: 'transform:translateY(0)', stops: keyDown(0.25) },
+  k2: { end: 'transform:translateY(0)', stops: keyDown(0.42) },
+  ring: { end: 'opacity:1', stops: [[0.75, 'opacity:0', 'out'], [1.0, 'opacity:1'], [LOG_HOLD, 'opacity:1', 'quint'], [LOG_HOLD + 0.3, 'opacity:0']] },
+  ph: { end: 'opacity:0', stops: [[1.0, 'opacity:1'], [1.02, 'opacity:0'], [5.2, 'opacity:0'], [5.25, 'opacity:1']] },
   ...Object.fromEntries([...TYPED].map((_, i) => [`ch${i}`, {
-    end: 'fill-opacity:1', stops: [[1.35 + i * 0.09, 'fill-opacity:0'], [1.36 + i * 0.09, 'fill-opacity:1'], [4.9, 'fill-opacity:1'], [4.92, 'fill-opacity:0']],
+    end: 'fill-opacity:1', stops: [[1.05 + i * 0.09, 'fill-opacity:0'], [1.06 + i * 0.09, 'fill-opacity:1'], [5.1, 'fill-opacity:1'], [5.12, 'fill-opacity:0']],
   }])) as Record<string, Track>,
-  sugg: { end: SHOW, stops: [[2.1, 'opacity:0;transform:translateY(6px)', 'out'], [2.35, SHOW], [4.9, SHOW], [4.92, 'opacity:0;transform:translateY(6px)']] },
-  enter: { end: 'transform:scale(1)', origin: '50% 50%', stops: [[2.5, 'transform:scale(1)', 'out'], [2.58, 'transform:scale(.88)', 'out'], [2.75, 'transform:scale(1)']] },
-  card: { end: 'opacity:1;transform:translateY(0) scale(1)', origin: '50% 50%', stops: [[2.9, 'opacity:0;transform:translateY(12px) scale(.97)', 'out'], [3.25, 'opacity:1;transform:translateY(0) scale(1)'], [4.6, 'opacity:1;transform:translateY(0) scale(1)', 'quint'], [4.9, 'opacity:0;transform:translateY(0) scale(1)']] },
-  isNew: { end: 'opacity:1;transform:scale(1)', origin: '50% 50%', stops: appear(3.3, 4.6) },
-  big: { end: SHOW, stops: fadeUp(3.35, 4.6, 12) },
+  // ReLife reads the two words back before you commit.
+  sugg: { end: SHOW, stops: [[1.95, 'opacity:0;transform:translateY(10px)', 'out'], [2.25, SHOW], [LOG_HOLD, SHOW, 'quint'], [LOG_HOLD + 0.3, 'opacity:0;transform:translateY(0)']] },
+  enter: { end: 'transform:scale(1)', origin: '50% 50%', stops: [[2.55, 'transform:scale(1)', 'out'], [2.65, 'transform:scale(.88)', 'out'], [2.9, 'transform:scale(1)']] },
+  // The new tracker takes the empty place beside the ones you already have.
+  slot: { end: 'opacity:0', stops: [[2.8, 'opacity:1', 'quint'], [2.95, 'opacity:0'], [LOG_HOLD + 0.3, 'opacity:0', 'quint'], [LOG_HOLD + 0.55, 'opacity:1']] },
+  tile: { end: TILE_IN, origin: '50% 50%', stops: [[2.8, 'opacity:0;transform:translateY(16px) scale(.94)', 'out'], [3.15, TILE_IN], [LOG_HOLD, TILE_IN, 'quint'], [LOG_HOLD + 0.3, 'opacity:0;transform:translateY(0) scale(1)']] },
+  isNew: { end: 'opacity:1;transform:scale(1)', origin: '50% 50%', stops: appear(3.25, LOG_HOLD) },
 })
 
-function Keycap({ x, label, className }: { x: number; label: string; className: string }) {
+const TRACKERS = [
+  { x: 60, name: 'Water', value: '1.25 L', art: '/routines/water.png', tint: 'var(--pill)' },
+  { x: 266, name: 'Steps', value: '8,214', art: '/routines/walk.png', tint: 'var(--cat-health)' },
+]
+function Tracker({ x, name, value, art, tint }: { x: number; name: string; value: string; art: string; tint: string }) {
+  return (
+    <>
+      <Panel x={x} y={296} w={188} h={136} r={26} />
+      <Art src={art} x={x + 18} y={314} size={52} tint={tint} />
+      <Txt x={x + 84} y={348} size={24} fill="var(--ink-3)">{name}</Txt>
+      <Txt x={x + 18} y={408} size={34} weight={700}>{value}</Txt>
+    </>
+  )
+}
+
+function Key({ x, y, label, className }: { x: number; y: number; label: string; className?: string }) {
   return (
     <g>
-      <rect x={x} y={160} width={112} height={112} rx={26} fill="color-mix(in oklch, var(--ink) 14%, var(--surface-2))" />
+      <rect x={x} y={y + 5} width={48} height={48} rx={13} fill="color-mix(in oklch, var(--ink) 16%, var(--surface-2))" />
       <g className={className}>
-        <Panel x={x} y={150} w={112} h={106} r={26} />
-        <Txt x={x + 56} y={220} size={50} weight={500} middle>{label}</Txt>
+        <rect x={x} y={y} width={48} height={48} rx={13} fill="var(--surface)" stroke="var(--i-line)" strokeWidth={1.5} />
+        <Txt x={x + 24} y={y + 33} size={26} weight={500} fill="var(--ink-2)" middle>{label}</Txt>
       </g>
     </g>
   )
@@ -230,344 +301,317 @@ function Keycap({ x, label, className }: { x: number; label: string; className: 
 
 export function IlloLog() {
   return (
-    <Illo label="Press ⌘K, type coffee 2 and press Enter: a new Coffee tracker is created showing 2 cups." css={K.css}>
-      <g className={K.c.keys}>
-        <Keycap x={234} label="⌘" className={K.c.k1} />
-        <Keycap x={374} label="K" className={K.c.k2} />
-        <Txt x={360} y={330} size={22} fill="var(--ink-3)" middle>Log or search from anywhere</Txt>
-      </g>
-      <g className={K.c.menu}>
-        <Panel x={100} y={56} w={520} h={250} r={24} />
-        <Icon icon={Search} x={128} y={84} size={28} color="var(--ink-3)" />
-        <Txt x={172} y={107} size={30} fill="var(--ink-3)" className={K.c.ph}>Log or search</Txt>
-        <text x={172} y={107} fontSize={30} fill="var(--ink)">
-          {[...TYPED].map((ch, i) => <tspan key={i} className={K.c[`ch${i}`]}>{ch === ' ' ? ' ' : ch}</tspan>)}
-        </text>
-        <line x1={100} x2={620} y1={136} y2={136} stroke="var(--i-line)" strokeWidth={2} />
-        <g className={K.c.sugg}>
-          <rect x={118} y={154} width={484} height={72} rx={16} fill="var(--i-pill-fill)" />
-          <Art src="/hobbies/coffee.png" x={134} y={166} size={48} />
-          <Txt x={196} y={190} size={24} weight={600}>Log coffee · 2 cups</Txt>
-          <Txt x={196} y={214} size={18} fill="var(--pill)">New: a Coffee tracker is made for you</Txt>
-          <g className={K.c.enter}>
-            <rect x={552} y={172} width={36} height={36} rx={9} fill="var(--surface)" stroke="var(--i-line)" strokeWidth={1.5} />
-            <Txt x={570} y={197} size={20} fill="var(--ink-2)" middle>↵</Txt>
-          </g>
-        </g>
-        <g opacity={0.6}>
-          <Art src="/routines/water.png" x={134} y={246} size={34} />
-          <Txt x={184} y={270} size={22} fill="var(--ink-2)">Log water</Txt>
-          <Txt x={588} y={270} size={20} fill="var(--ink-3)" end>250 ml</Txt>
+    <Illo label="Press ⌘K and type coffee 2. ReLife reads it back as 2 cups of coffee, and Enter adds a new Coffee tracker beside Water and Steps, showing 2 cups." css={K.css}>
+      <Panel x={60} y={40} w={600} h={96} r={28} />
+      <rect x={60} y={40} width={600} height={96} rx={28} stroke="var(--pill)" strokeWidth={4} className={K.c.ring} />
+      <Icon icon={Search} x={88} y={72} size={32} color="var(--ink-3)" />
+      <Txt x={136} y={100} size={34} fill="var(--ink-3)" className={K.c.ph}>Log or search</Txt>
+      <text x={136} y={100} fontSize={34} fontWeight={500} fill="var(--ink)">
+        {[...TYPED].map((ch, i) => <tspan key={i} className={K.c[`ch${i}`]}>{ch === ' ' ? ' ' : ch}</tspan>)}
+      </text>
+      <Key x={540} y={62} label="⌘" className={K.c.k1} />
+      <Key x={594} y={62} label="K" className={K.c.k2} />
+
+      <g className={K.c.sugg}>
+        <rect x={60} y={160} width={600} height={104} rx={26} fill="var(--i-pill-fill)" />
+        <Art src="/hobbies/coffee.png" x={84} y={180} size={64} />
+        <Txt x={166} y={208} size={32} weight={600}>Coffee</Txt>
+        <Txt x={166} y={242} size={24} fill="var(--pill)">2 cups · new tracker</Txt>
+        <g className={K.c.enter}>
+          <rect x={586} y={188} width={48} height={48} rx={13} fill="var(--surface)" stroke="var(--i-line)" strokeWidth={1.5} />
+          <Txt x={610} y={221} size={26} fill="var(--ink-2)" middle>↵</Txt>
         </g>
       </g>
-      <g className={K.c.card}>
-        <Panel x={190} y={90} w={340} h={250} r={26} />
-        <Art src="/hobbies/coffee.png" x={214} y={114} size={56} tint="var(--cat-wealth)" />
-        <Txt x={286} y={148} size={30} weight={700}>Coffee</Txt>
-        <Chip x={418} y={122} w={88} label="New" tone="pill" className={K.c.isNew} />
-        <g className={K.c.big}>
-          <Txt x={214} y={240} size={64} weight={700}>2</Txt>
-          <Txt x={262} y={240} size={26} fill="var(--ink-3)">cups today</Txt>
-          <Txt x={214} y={300} size={19} fill="var(--ink-3)">New tracker, ready to log</Txt>
-        </g>
+
+      {TRACKERS.map((k) => <Tracker key={k.name} {...k} />)}
+      <rect x={472} y={296} width={188} height={136} rx={26} stroke="var(--i-line)" strokeWidth={3} strokeDasharray="10 10" className={K.c.slot} />
+      <g className={K.c.tile}>
+        <Tracker x={472} name="Coffee" value="2 cups" art="/hobbies/coffee.png" tint="var(--cat-wealth)" />
       </g>
+      <Chip x={566} y={278} w={82} h={40} label="New" tone="pill" className={K.c.isNew} />
     </Illo>
   )
 }
 
-// ── 3 · Progress: a check-off earns XP, the streak multiplies it, the ring levels up, a chest drops ────
-const progLv = swap(3.2, 5.1)
+// ── 3 · Progress: a check-off, your streak and a chest each feed the XP bar until you level up ────────
+const TOKENS = [
+  { cx: 145, title: 'Check-off', sub: '+9 XP', ink: 'var(--cat-wealth)', lit: 0.4, orb: 0.8, dx: 306, label: '+9', tone: 'xp' as const },
+  { cx: 360, title: 'Streak', sub: '×1.3', ink: 'var(--pill)', lit: 1.5, orb: 1.9, dx: 121, label: '×1.3', tone: 'pill' as const },
+  { cx: 575, title: 'Chest', sub: '+50 XP', ink: 'var(--cat-wealth)', lit: 2.6, orb: 3.15, dx: 65, label: '+50', tone: 'xp' as const },
+]
+const progLv = swap(3.95, HOLD)
+const LID_OPEN = 'transform:rotate(-24deg) translateY(-6px)'
 const P = timeline('progress', 5.6, {
-  check: { end: ICON_END, origin: '50% 50%', stops: [...iconIn(0.5), [5.1, ICON_END, 'quint'], [5.4, 'opacity:0;transform:scale(1);filter:blur(0)']] },
-  xp9: { end: 'opacity:0;transform:scale(.9)', origin: '50% 50%', stops: [[0.7, 'opacity:0;transform:scale(.92)', 'out'], [0.95, 'opacity:1;transform:scale(1)'], [1.75, 'opacity:1;transform:scale(1)', 'quint'], [1.9, 'opacity:0;transform:scale(.9)']] },
-  // The multiplier visibly comes from the streak: a copy of its chip flies up to the XP.
-  mulT: { end: 'transform:translate(314px,-190px)', stops: travel(1.0, 0.55, 314, -190) },
-  mulO: { end: 'opacity:0', stops: [[1.0, 'opacity:0'], [1.08, 'opacity:1'], [1.75, 'opacity:1', 'quint'], [1.9, 'opacity:0']] },
-  resS: { end: 'transform:scale(1)', origin: '50% 50%', stops: [[1.85, 'transform:scale(.8)', 'out'], [2.1, 'transform:scale(1)']] },
-  resT: { end: 'transform:translate(-254px,-8px)', stops: travel(2.25, 0.5, -254, -8) },
-  resO: { end: 'opacity:0', stops: [[1.85, 'opacity:0'], [2.0, 'opacity:1'], [2.65, 'opacity:1'], [2.78, 'opacity:0']] },
-  ringA: {
-    end: 'opacity:0;stroke-dashoffset:.3',
-    stops: [[2.7, 'opacity:1;stroke-dashoffset:.3', 'out'], [3.2, 'opacity:1;stroke-dashoffset:0'], [3.25, 'opacity:1;stroke-dashoffset:0', 'quint'], [3.45, 'opacity:0;stroke-dashoffset:0'], [3.6, 'opacity:0;stroke-dashoffset:0'], [3.61, 'opacity:0;stroke-dashoffset:.3'], [5.1, 'opacity:0;stroke-dashoffset:.3', 'quint'], [5.5, 'opacity:1;stroke-dashoffset:.3']],
+  ...Object.fromEntries(TOKENS.flatMap((k, i) => [
+    [`lit${i}`, fade(k.lit, 0.45, 1)],
+    [`pop${i}`, { end: 'transform:scale(1)', origin: '50% 50%', stops: pulse(k.lit, 1.05) }],
+    // What it is worth flies up into the bar.
+    [`orbT${i}`, { end: at(k.dx, -98), stops: travel(k.orb, 0.5, k.dx, -98) }],
+    [`orbO${i}`, { end: 'opacity:0', stops: blip(k.orb, 0.55) }],
+  ])) as Record<string, Track>,
+  did: tickIn(0.45),
+  lid: { end: LID_OPEN, origin: '10% 100%', stops: [[2.85, 'transform:rotate(0) translateY(0)', 'out'], [3.15, LID_OPEN], [HOLD, LID_OPEN, 'quint'], [HOLD + 0.3, 'transform:rotate(0) translateY(0)']] },
+  chestRays: sparkle(2.95),
+  // Each arrival tops the bar up; the chest fills it and the level ticks over.
+  xp: {
+    end: fillAt(0.06), origin: '0 50%',
+    stops: [...meter(0.42, [[1.25, 0.5], [2.35, 0.58], [3.6, 1]]), [3.95, fillAt(1), 'quint'], [4.1, fillAt(0.06)], [HOLD, fillAt(0.06), 'quint'], [HOLD + 0.4, fillAt(0.42)]],
   },
-  ringB: { end: 'opacity:1', stops: [[3.25, 'opacity:0', 'quint'], [3.45, 'opacity:1'], [5.1, 'opacity:1', 'quint'], [5.5, 'opacity:0']] },
-  ring: { end: 'transform:scale(1)', origin: '50% 50%', stops: pulse(3.2, 1.04) },
   lvOld: progLv.old,
   lvNew: progLv.next,
-  lvRays: sparkle(3.2),
-  chest: { end: 'opacity:1;transform:translateY(0)', stops: [[3.5, 'opacity:0;transform:translateY(-36px)', 'out'], [3.8, 'opacity:1;transform:translateY(0)'], [5.1, 'opacity:1;transform:translateY(0)', 'quint'], [5.4, 'opacity:0;transform:translateY(0)']] },
-  lid: { end: 'transform:rotate(-24deg) translateY(-6px)', origin: '10% 100%', stops: [[4.0, 'transform:rotate(0) translateY(0)', 'out'], [4.3, 'transform:rotate(-24deg) translateY(-6px)'], [5.1, 'transform:rotate(-24deg) translateY(-6px)', 'quint'], [5.4, 'transform:rotate(0) translateY(0)']] },
-  chestRays: sparkle(4.1),
-  chestT: { end: 'opacity:1;transform:translateX(0)', stops: slideIn(4.2, 5.1) },
+  rays: sparkle(3.95),
+  card: { end: 'transform:scale(1)', origin: '50% 50%', stops: pulse(3.95, 1.02) },
+  up: { end: 'opacity:1;transform:scale(1)', origin: '50% 50%', stops: appear(4.05, HOLD) },
 })
 
 export function IlloProgress() {
-  const arc = { cx: 190, cy: 182, r: 92, strokeWidth: 18, pathLength: 1, strokeDasharray: '1 1', strokeLinecap: 'round' as const, transform: 'rotate(-90 190 182)' }
   return (
-    <Illo label="Ticking off a routine earns 9 XP; the 12-day streak multiplies it by 1.3 to 12 XP, which fills the level ring to level 5, and a chest drops and opens for 50 bonus XP." css={P.css}>
-      <Panel x={50} y={30} w={620} h={400} r={28} />
-      <g className={P.c.ring}>
-        <circle cx={190} cy={182} r={92} stroke="var(--i-bar)" strokeWidth={18} />
-        <circle {...arc} stroke="var(--pill)" className={P.c.ringA} />
-        <circle {...arc} stroke="var(--pill)" strokeDashoffset={0.94} className={P.c.ringB} />
-        <Txt x={190} y={164} size={22} weight={600} fill="var(--ink-3)" middle>LV</Txt>
-        <Txt x={190} y={218} size={56} weight={700} middle className={P.c.lvOld}>4</Txt>
-        <Txt x={190} y={218} size={56} weight={700} middle className={P.c.lvNew}>5</Txt>
+    <Illo label="A check-off earns 9 XP, your streak multiplies it by 1.3, and an opened chest adds 50 more. Each one flies into the XP bar, which fills, and you go from level 4 to level 5." css={P.css}>
+      <g className={P.c.card}>
+        <Panel x={50} y={28} w={620} h={176} r={28} />
+        <CapsuleMark cx={112} cy={116} w={50} h={80} stroke={4} />
+        <Txt x={166} y={96} size={24} fill="var(--ink-3)">Level</Txt>
+        <Txt x={166} y={156} size={60} weight={700} className={P.c.lvOld}>4</Txt>
+        <Txt x={166} y={156} size={60} weight={700} className={P.c.lvNew}>5</Txt>
+        <Meter x={262} y={124} w={378} h={24} className={P.c.xp} />
+        <Chip x={508} y={60} w={132} h={44} label="Level up" tone="pill" className={P.c.up} />
       </g>
-      <Rays cx={190} cy={182} r={112} className={P.c.lvRays} color="var(--pill)" />
-      <rect x={88} y={300} width={204} height={48} rx={24} fill="var(--i-xp-fill)" />
-      <Icon icon={Flame} x={104} y={310} size={28} color="color-mix(in oklch, var(--medal-gold) 70%, var(--cat-health))" fill="color-mix(in oklch, var(--medal-gold) 55%, transparent)" />
-      <Txt x={140} y={332} size={21} weight={600}>12-day streak</Txt>
-      <Chip x={130} y={360} w={120} label="×1.3 XP" tone="pill" />
+      <Rays cx={112} cy={116} r={58} className={P.c.rays} color="var(--pill)" />
 
-      <rect x={330} y={60} width={310} height={76} rx={18} fill="var(--surface-2)" />
-      <Art src="/routines/skin.png" x={344} y={74} size={48} tint="var(--cat-health)" />
-      <Txt x={404} y={104} size={23} weight={600}>Night skincare</Txt>
-      <Txt x={404} y={127} size={18} fill="var(--ink-3)">22:30</Txt>
-      <circle cx={608} cy={98} r={16} stroke="var(--i-line)" strokeWidth={3} />
-      <g className={P.c.check}>
-        <circle cx={608} cy={98} r={16} fill="var(--ink)" />
-        <Check x={598} y={88} width={20} height={20} color="var(--surface)" strokeWidth={3} />
-      </g>
-      <Chip x={340} y={170} w={92} label="+9 XP" tone="xp" className={P.c.xp9} />
-      <g className={P.c.mulO}><g className={P.c.mulT}><Chip x={130} y={360} w={84} label="×1.3" tone="pill" /></g></g>
-      <g className={P.c.resO}><g className={P.c.resT}><g className={P.c.resS}><Chip x={392} y={170} w={104} label="+12 XP" tone="xp" /></g></g></g>
-
-      <g className={P.c.chest}><Chest x={372} y={252} size={80} lid={P.c.lid} /></g>
-      <Rays cx={412} cy={268} r={52} className={P.c.chestRays} />
-      <g className={P.c.chestT}>
-        <Txt x={476} y={286} size={24} weight={600}>Chest earned</Txt>
-        <Txt x={476} y={316} size={20} fill="var(--ink-3)">+50 bonus XP</Txt>
-      </g>
+      {TOKENS.map((k, i) => (
+        <g key={k.title} className={P.c[`lit${i}`]}>
+          <Panel x={k.cx - 95} y={232} w={190} h={196} r={28} />
+          <g className={P.c[`pop${i}`]}>
+            {i === 0 ? <Tick cx={k.cx} cy={296} r={34} on={P.c.did} /> : null}
+            {i === 1 ? <Flame x={k.cx - 34} y={262} width={68} height={68} strokeWidth={2} color="color-mix(in oklch, var(--medal-gold) 70%, var(--cat-health))" fill="color-mix(in oklch, var(--medal-gold) 55%, transparent)" /> : null}
+            {i === 2 ? <Chest x={k.cx - 44} y={250} size={88} lid={P.c.lid} /> : null}
+          </g>
+          <Txt x={k.cx} y={370} size={26} weight={600} middle>{k.title}</Txt>
+          <Txt x={k.cx} y={404} size={26} weight={600} fill={k.ink} middle>{k.sub}</Txt>
+        </g>
+      ))}
+      <Rays cx={575} cy={282} r={56} className={P.c.chestRays} />
+      {TOKENS.map((k, i) => (
+        <g key={k.title} className={P.c[`orbO${i}`]}>
+          <g className={P.c[`orbT${i}`]}><Chip x={k.cx - 42} y={212} w={84} h={40} label={k.label} tone={k.tone} /></g>
+        </g>
+      ))}
     </Illo>
   )
 }
 
-// ── 4 · Areas: six areas, and each one opens into its own page of numbers and trends ──────────────────
-const TILES = [
-  { name: 'Health', color: 'var(--cat-health)', art: '/routines/heart.png', value: 'Lv 20' },
-  { name: 'Mind', color: 'var(--cat-mind)', art: '/routines/brain.png', value: 'Lv 12' },
-  { name: 'Skills', color: 'var(--cat-skills)', art: '/routines/learn.png', value: 'Lv 16' },
-  { name: 'Wealth', color: 'var(--cat-wealth)', art: '/routines/money.png', value: 'Lv 7' },
-  { name: 'Hobbies', color: 'var(--cat-hobbies)', art: '/routines/art.png', value: 'Lv 8' },
-  { name: 'People', color: 'var(--cat-relationships)', art: '/routines/people.png', value: 'Lv 6' },
+// ── 4 · Areas: six areas; the highlight moves between them and the page below is that area's own ─────
+const SIX = ['health', 'mind', 'skills', 'wealth', 'hobbies', 'relationships'].map((a, i) => ({ color: `var(--cat-${a})`, cx: 95 + i * 106 }))
+const CHART_X = (i: number) => 372 + i * 44
+const BARS = [70, 110, 60, 140, 96, 150, 120]
+// Three pages, one after another. `at` = which capsule; `in`/`out` = when its page shows.
+const PAGES = [
+  { at: 0, in: 0, out: 1.5, name: 'Health', lv: 'Lv 20', value: '7.2h', sub: 'Sleep, 7-day average', color: 'var(--cat-health)', art: '/routines/heart.png', line: [356, 336, 346, 312, 318, 290, 272] },
+  { at: 2, in: 1.8, out: 3.3, name: 'Skills', lv: 'Lv 16', value: '9', sub: 'Commits this week', color: 'var(--cat-skills)', art: '/routines/learn.png' },
+  { at: 3, in: 3.6, out: 5.05, name: 'Wealth', lv: 'Lv 7', value: '₹2,073', sub: 'Spent today', color: 'var(--cat-wealth)', art: '/routines/money.png', line: [282, 300, 276, 312, 334, 322, 356] },
 ]
-const TILE = 'transform:scale(.3077,.4624)' // the Health tile's size as a fraction of the page
-const TREND = [330, 300, 318, 284, 292, 262, 246].map((y, i) => [72 + i * 96, y] as const)
-const KPIS = [{ label: 'Sleep', value: '7.2h' }, { label: 'Steps', value: '8,214' }, { label: 'Resting HR', value: '62 bpm' }]
-const A = timeline('areas', 5.6, {
-  move: { end: 'transform:translate(620px,410px)', stops: cursorPath([620, 410], [186, 128], [0.4, 1.0, 2.3, 2.9]) },
-  press: { end: 'transform:scale(1)', origin: '0 0', stops: pressAt(1.1) },
-  others: { end: 'opacity:0', stops: [[1.2, 'opacity:1', 'quint'], [1.4, 'opacity:0'], [4.7, 'opacity:0', 'quint'], [5.0, 'opacity:1']] },
-  healthC: { end: 'opacity:0', stops: [[1.15, 'opacity:1', 'quint'], [1.3, 'opacity:0'], [4.95, 'opacity:0', 'quint'], [5.1, 'opacity:1']] },
-  // Container transform: the Health tile itself grows into the page (an on-screen morph, so ease-in-out).
-  page: { end: 'opacity:1;transform:scale(1,1)', origin: '0 0', stops: [[1.2, `opacity:0;${TILE}`, 'quint'], [1.3, `opacity:1;${TILE}`, 'move'], [1.75, 'opacity:1;transform:scale(1,1)'], [4.5, 'opacity:1;transform:scale(1,1)', 'move'], [4.95, `opacity:1;${TILE}`, 'quint'], [5.05, `opacity:0;${TILE}`]] },
-  head: { end: SHOW, stops: fadeUp(1.75, 4.2, 8) },
-  ...Object.fromEntries(KPIS.map((_, i) => [`kpi${i}`, { end: SHOW, stops: fadeUp(1.85 + i * 0.07, 4.2, 8) }])) as Record<string, Track>,
-  area: { end: 'opacity:1', stops: fadeIn(2.6, 4.2) },
-  target: { end: 'opacity:1', stops: fadeIn(2.0, 4.2) },
-  line: {
-    end: 'stroke-dashoffset:0;opacity:1',
-    stops: [[2.1, 'stroke-dashoffset:1;opacity:1', 'out'], [2.9, 'stroke-dashoffset:0;opacity:1'], [4.2, 'stroke-dashoffset:0;opacity:1', 'quint'], [4.45, 'stroke-dashoffset:0;opacity:0'], [4.5, 'stroke-dashoffset:1;opacity:0'], [5.5, 'stroke-dashoffset:1;opacity:1']],
+const A = timeline('areas', 5.4, {
+  // The highlight glides from capsule to capsule (on-screen movement, so ease-in-out) and is home again by the loop.
+  sel: {
+    end: 'transform:translateX(0)',
+    stops: [[1.55, 'transform:translateX(0)', 'move'], [1.95, 'transform:translateX(212px)'], [3.35, 'transform:translateX(212px)', 'move'], [3.75, 'transform:translateX(318px)'], [5.0, 'transform:translateX(318px)', 'move'], [5.4, 'transform:translateX(0)']],
   },
+  cap0: { end: 'transform:scale(1.12)', origin: '50% 50%', stops: [[1.5, 'transform:scale(1.12)', 'quint'], [1.8, 'transform:scale(1)'], [5.1, 'transform:scale(1)', 'out'], [5.4, 'transform:scale(1.12)']] },
+  cap2: { end: 'transform:scale(1)', origin: '50% 50%', stops: [[1.75, 'transform:scale(1)', 'out'], [2.05, 'transform:scale(1.12)'], [3.3, 'transform:scale(1.12)', 'quint'], [3.6, 'transform:scale(1)']] },
+  cap3: { end: 'transform:scale(1)', origin: '50% 50%', stops: [[3.55, 'transform:scale(1)', 'out'], [3.85, 'transform:scale(1.12)'], [5.0, 'transform:scale(1.12)', 'quint'], [5.3, 'transform:scale(1)']] },
+  ...Object.fromEntries(PAGES.flatMap((p, i) => [
+    [`page${i}`, { end: i ? 'opacity:0' : SHOW, stops: [[p.in, 'opacity:0;transform:translateY(10px)', 'out'], [p.in + 0.3, SHOW], [p.out, SHOW, 'quint'], [p.out + 0.2, 'opacity:0;transform:translateY(0)']] }],
+    // Its trend draws itself in, in the area's colour.
+    [`line${i}`, { end: i ? 'opacity:0;stroke-dashoffset:1' : 'opacity:1;stroke-dashoffset:0', stops: [[p.in + 0.1, 'opacity:1;stroke-dashoffset:1', 'out'], [p.in + 0.8, 'opacity:1;stroke-dashoffset:0'], [p.out, 'opacity:1;stroke-dashoffset:0', 'quint'], [p.out + 0.2, 'opacity:0;stroke-dashoffset:0'], [p.out + 0.25, 'opacity:0;stroke-dashoffset:1']] }],
+    [`wash${i}`, { end: i ? 'opacity:0' : 'opacity:1', stops: [[p.in + 0.5, 'opacity:0', 'out'], [p.in + 0.9, 'opacity:1'], [p.out, 'opacity:1', 'quint'], [p.out + 0.2, 'opacity:0']] }],
+  ])) as Record<string, Track>,
+  ...Object.fromEntries(BARS.map((_, i) => {
+    const t = PAGES[1].in + 0.1 + i * 0.05
+    const out = PAGES[1].out
+    return [`bar${i}`, { end: 'opacity:0', origin: '50% 100%', stops: [[t, 'opacity:1;transform:scaleY(0)', 'out'], [t + 0.35, 'opacity:1;transform:scaleY(1)'], [out, 'opacity:1;transform:scaleY(1)', 'quint'], [out + 0.2, 'opacity:0;transform:scaleY(1)'], [out + 0.25, 'opacity:0;transform:scaleY(0)']] }]
+  })) as Record<string, Track>,
 })
 
 export function IlloAreas() {
-  const line = TREND.map(([x, y], i) => `${i ? 'L' : 'M'}${x} ${y}`).join('')
   return (
-    <Illo label="Six area tiles. Clicking Health grows the tile into its page: sleep, steps and resting heart rate, and a week's trend drawing in." css={A.css}>
-      {TILES.map((t, i) => {
-        const x = 48 + (i % 3) * 216
-        const y = 40 + Math.floor(i / 3) * 186
+    <Illo label="Six area capsules. The highlight moves from Health to Skills to Wealth, and the page below changes with it: average sleep with its trend, commits per day, then today's spending." css={A.css}>
+      <Panel x={49} y={40} w={92} h={128} r={28} className={A.c.sel} />
+      {SIX.map((a, i) => (
+        <g key={a.color} className={A.c[`cap${i}`]}><CapsuleMark cx={a.cx} cy={104} w={44} h={72} color={a.color} stroke={4} /></g>
+      ))}
+      <Panel x={50} y={196} w={620} h={236} r={28} />
+      {PAGES.map((p, i) => {
+        const d = p.line?.map((y, k) => `${k ? 'L' : 'M'}${CHART_X(k)} ${y}`).join('')
         return (
-          <g key={t.name} className={i ? A.c.others : undefined}>
-            <Panel x={x} y={y} w={192} h={160} />
-            <g className={i ? undefined : A.c.healthC}>
-              <Art src={t.art} x={x + 22} y={y + 20} size={52} tint={t.color} />
-              <Txt x={x + 24} y={y + 106} size={26} weight={600}>{t.name}</Txt>
-              <Txt x={x + 24} y={y + 138} size={21} fill="var(--ink-3)">{t.value}</Txt>
+          <g key={p.name}>
+            <g className={A.c[`page${i}`]}>
+              <Art src={p.art} x={84} y={222} size={44} tint={p.color} />
+              <Txt x={140} y={254} size={28} weight={600}>{p.name}</Txt>
+              <Chip x={254} y={224} w={92} h={40} label={p.lv} tone="pill" />
+              <Txt x={84} y={342} size={64} weight={700}>{p.value}</Txt>
+              <Txt x={84} y={382} size={24} fill="var(--ink-3)">{p.sub}</Txt>
             </g>
+            {d ? (
+              <>
+                <path d={`${d}L${CHART_X(6)} 404L${CHART_X(0)} 404Z`} fill={`color-mix(in oklch, ${p.color} 14%, transparent)`} className={A.c[`wash${i}`]} />
+                <path d={d} stroke={p.color} strokeWidth={5} strokeLinecap="round" strokeLinejoin="round" pathLength={1} strokeDasharray="1 1" className={A.c[`line${i}`]} />
+              </>
+            ) : BARS.map((h, k) => (
+              <rect key={k} x={CHART_X(k) - 13} y={404 - h} width={26} height={h} rx={8} fill={p.color} className={A.c[`bar${k}`]} />
+            ))}
           </g>
         )
       })}
-      <Panel x={48} y={40} w={624} h={346} r={22} className={A.c.page} />
-      <g className={A.c.head}>
-        <Art src="/routines/heart.png" x={72} y={60} size={52} tint="var(--cat-health)" />
-        <Txt x={138} y={96} size={30} weight={700}>Health</Txt>
-        <Chip x={250} y={68} w={84} label="Lv 20" tone="pill" />
-        <Txt x={648} y={92} size={19} fill="var(--ink-3)" end>This week</Txt>
-      </g>
-      {KPIS.map((k, i) => (
-        <g key={k.label} className={A.c[`kpi${i}`]}>
-          <rect x={72 + i * 194} y={128} width={182} height={78} rx={16} fill="var(--surface-2)" />
-          <Txt x={90 + i * 194} y={156} size={18} fill="var(--ink-3)">{k.label}</Txt>
-          <Txt x={90 + i * 194} y={192} size={28} weight={700}>{k.value}</Txt>
-        </g>
-      ))}
-      <g className={A.c.target}><line x1={72} x2={648} y1={268} y2={268} stroke="var(--i-line)" strokeWidth={2} strokeDasharray="6 8" /></g>
-      <path d={`${line}L648 366L72 366Z`} fill="color-mix(in oklch, var(--cat-health) 14%, transparent)" className={A.c.area} />
-      <path d={line} stroke="var(--cat-health)" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" pathLength={1} strokeDasharray="1 1" className={A.c.line} />
-      <Cursor move={A.c.move} press={A.c.press} />
     </Illo>
   )
 }
 
-// ── 5 · Connectors: nothing flows until you switch an app on; then its data arrives and earns full XP ─
+// ── 5 · Connectors: apps wait, locked, around ReLife; connect one and its data flows in and pays XP ───
 const APPS = [
-  { logo: '/connectors/github.svg', name: 'GitHub' },
-  { logo: '/connectors/swiggy.svg', name: 'Swiggy' },
-  { logo: '/connectors/telegram.svg', name: 'Telegram' },
-]
-const PACKETS = [0, 1, 2]
-const connStatus = swap(1.3, 5.1)
+  { name: 'GitHub', logo: '/connectors/github.svg', x: 64, y: 44, wire: 'M166 118L312 180', lock: [239, 149], packet: '/routines/code.png', from: [166, 118], to: [336, 192], on: 1.15 },
+  { name: 'Swiggy', logo: '/connectors/swiggy.svg', x: 564, y: 44, wire: 'M554 118L408 180', lock: [481, 149], packet: '/categories/eating-out.png', from: [554, 118], to: [384, 192], on: 2.2 },
+  { name: 'Binance', logo: '/connectors/binance.svg', x: 64, y: 300, wire: 'M166 318L312 236', lock: [239, 277] },
+  { name: 'Telegram', logo: '/connectors/telegram.svg', x: 564, y: 300, wire: 'M554 318L408 236', lock: [481, 277] },
+] as const
 const C = timeline('connect', 5.6, {
-  move: { end: 'transform:translate(560px,420px)', stops: cursorPath([560, 420], [366, 232], [0.4, 1.0, 2.3, 2.9]) },
-  press: { end: 'transform:scale(1)', origin: '0 0', stops: pressAt(1.1) },
-  knob: { end: 'transform:translateX(24px)', stops: [[1.15, 'transform:translateX(0)', 'out'], [1.4, 'transform:translateX(24px)'], [5.1, 'transform:translateX(24px)', 'quint'], [5.4, 'transform:translateX(0)']] },
-  on: { end: 'opacity:1', stops: [[1.15, 'opacity:0', 'quint'], [1.35, 'opacity:1'], [5.1, 'opacity:1', 'quint'], [5.4, 'opacity:0']] },
-  row: { end: 'opacity:1', stops: [[1.2, 'opacity:.45', 'quint'], [1.45, 'opacity:1'], [5.1, 'opacity:1', 'quint'], [5.4, 'opacity:.45']] },
-  stOld: connStatus.old,
-  stNew: connStatus.next,
-  lock: { end: 'opacity:0;transform:scale(.8)', origin: '50% 50%', stops: [[1.3, 'opacity:1;transform:scale(1)', 'quint'], [1.5, 'opacity:0;transform:scale(.8)'], [5.1, 'opacity:0;transform:scale(.8)', 'quint'], [5.4, 'opacity:1;transform:scale(1)']] },
-  wire: {
-    end: 'stroke-dashoffset:0;opacity:1',
-    stops: [[1.45, 'stroke-dashoffset:1;opacity:1', 'out'], [1.95, 'stroke-dashoffset:0;opacity:1'], [5.1, 'stroke-dashoffset:0;opacity:1', 'quint'], [5.4, 'stroke-dashoffset:0;opacity:0'], [5.45, 'stroke-dashoffset:1;opacity:0'], [5.5, 'stroke-dashoffset:1;opacity:1']],
-  },
-  ...Object.fromEntries(PACKETS.flatMap((i) => {
-    const t = 1.95 + i * 0.18
-    return [[`pkT${i}`, { end: 'transform:translate(118px,0)', stops: travel(t, 0.6, 118, 0) }], [`pkO${i}`, { end: 'opacity:0', stops: blip(t, 0.65) }]]
+  move: { end: at(700, 470), stops: [[0.45, at(700, 470), 'move'], [1.0, at(118, 100)], [1.5, at(118, 100), 'move'], [2.05, at(618, 100)], [2.5, at(618, 100), 'move'], [3.1, at(700, 470)]] },
+  press: { end: 'transform:scale(1)', origin: '0 0', stops: [...pressAt(1.05), ...pressAt(2.1)] },
+  ...Object.fromEntries(APPS.flatMap((a, i) => {
+    if (!('on' in a)) return []
+    const [dx, dy] = [a.to[0] - a.from[0], a.to[1] - a.from[1]]
+    return [
+      [`app${i}`, fade(a.on, 0.4, 1)],
+      [`pop${i}`, { end: 'transform:scale(1)', origin: '50% 50%', stops: pulse(a.on, 1.06) }],
+      [`dot${i}`, tickIn(a.on + 0.05)],
+      [`lock${i}`, { end: ICON_OUT, origin: '50% 50%', stops: [[a.on + 0.1, ICON_END, 'out'], [a.on + 0.3, ICON_OUT], [HOLD + 0.1, ICON_OUT, 'out'], [HOLD + 0.4, ICON_END]] }],
+      // The line goes solid, then what the app knows travels along it.
+      [`wire${i}`, { end: 'stroke-dashoffset:0;opacity:1', stops: [[a.on + 0.15, 'stroke-dashoffset:1;opacity:1', 'out'], [a.on + 0.55, 'stroke-dashoffset:0;opacity:1'], [HOLD, 'stroke-dashoffset:0;opacity:1', 'quint'], [HOLD + 0.3, 'stroke-dashoffset:0;opacity:0'], [HOLD + 0.35, 'stroke-dashoffset:1;opacity:0'], [HOLD + 0.4, 'stroke-dashoffset:1;opacity:1']] }],
+      [`pkT${i}`, { end: at(dx, dy), stops: travel(a.on + 0.55, 0.55, dx, dy) }],
+      [`pkO${i}`, { end: 'opacity:0', stops: blip(a.on + 0.55, 0.6) }],
+    ]
   })) as Record<string, Track>,
-  mark: { end: 'transform:scale(1)', origin: '50% 50%', stops: pulse(2.6, 1.07) },
-  xp: { end: 'opacity:1;transform:scale(1)', origin: '50% 50%', stops: appear(2.75, 5.1) },
-  note: { end: 'opacity:1', stops: fadeIn(2.9, 5.1) },
+  mark: { end: 'transform:scale(1)', origin: '50% 50%', stops: [...pulse(2.25, 1.08), ...pulse(3.3, 1.08)] },
+  xpA: { end: 'opacity:0', origin: '50% 50%', stops: [[2.3, 'opacity:0;transform:scale(.92)', 'out'], [2.55, 'opacity:1;transform:scale(1)'], [3.3, 'opacity:1;transform:scale(1)', 'quint'], [3.45, 'opacity:0;transform:scale(1)']] },
+  xpB: { end: 'opacity:1;transform:scale(1)', origin: '50% 50%', stops: appear(3.3, HOLD) },
+  note: rise(3.55, 8),
 })
-
-function Switch({ x, y, on, knob }: { x: number; y: number; on?: string; knob?: string }) {
-  return (
-    <g>
-      <rect x={x} y={y} width={56} height={32} rx={16} fill="var(--i-bar)" />
-      {on ? <rect x={x} y={y} width={56} height={32} rx={16} fill="var(--pill)" className={on} /> : null}
-      <g className={knob}><circle cx={x + 16} cy={y + 16} r={12} fill="white" stroke="var(--img-outline)" strokeWidth={1.5} /></g>
-    </g>
-  )
-}
 
 export function IlloConnect() {
   return (
-    <Illo label="Every app starts switched off and locked out. Switching Swiggy on unlocks the line to ReLife, orders flow in, and synced data earns full XP." css={C.css}>
-      <Panel x={40} y={60} w={380} h={340} r={24} />
+    <Illo label="Four apps sit around ReLife, switched off and locked. Connecting GitHub, then Swiggy, opens their lines: commits and orders flow in and each earns XP. The other two stay locked until you connect them." css={C.css}>
       {APPS.map((a, i) => {
-        const y = 120 + i * 110
-        const live = i === 1
+        const live = 'on' in a
         return (
           <g key={a.name}>
-            {i ? <line x1={64} x2={396} y1={y - 55} y2={y - 55} stroke="var(--i-line)" strokeWidth={2} /> : null}
-            <g opacity={live ? undefined : 0.45} className={live ? C.c.row : undefined}>
-              <Logo src={a.logo} x={64} y={y - 26} size={52} />
-              <Txt x={132} y={y - 2} size={25} weight={600}>{a.name}</Txt>
-              {live ? (
-                <>
-                  <Txt x={132} y={y + 25} size={19} fill="var(--ink-3)" className={C.c.stOld}>Off</Txt>
-                  <Txt x={132} y={y + 25} size={19} fill="var(--good)" className={C.c.stNew}>Syncing orders</Txt>
-                </>
-              ) : <Txt x={132} y={y + 25} size={19} fill="var(--ink-3)">Off</Txt>}
+            {/* The way in: dashed and locked until the app is connected. */}
+            <path d={a.wire} stroke="var(--i-line)" strokeWidth={4} strokeDasharray="8 10" strokeLinecap="round" />
+            {live ? <path d={a.wire} stroke="var(--pill)" strokeWidth={4} strokeLinecap="round" pathLength={1} strokeDasharray="1 1" className={C.c[`wire${i}`]} /> : null}
+            <g className={live ? C.c[`lock${i}`] : undefined}>
+              <circle cx={a.lock[0]} cy={a.lock[1]} r={20} fill="var(--surface)" stroke="var(--i-line)" strokeWidth={2} />
+              <Lock x={a.lock[0] - 10} y={a.lock[1] - 10} width={20} height={20} color="var(--ink-3)" strokeWidth={2} />
             </g>
-            <Switch x={340} y={y - 16} on={live ? C.c.on : undefined} knob={live ? C.c.knob : undefined} />
+            <g opacity={live ? undefined : 0.4} className={live ? C.c[`app${i}`] : undefined}>
+              <g className={live ? C.c[`pop${i}`] : undefined}><Logo src={a.logo} x={a.x} y={a.y} size={92} /></g>
+              <Txt x={a.x + 46} y={a.y + 122} size={24} weight={600} middle>{a.name}</Txt>
+            </g>
+            {live ? (
+              <g className={C.c[`dot${i}`]}>
+                <circle cx={a.x + 84} cy={a.y + 8} r={13} fill="var(--good)" stroke="var(--surface-2)" strokeWidth={4} />
+              </g>
+            ) : null}
           </g>
         )
       })}
-      {/* The way in: dashed and locked until the app is switched on. */}
-      <path d="M426 230H556" stroke="var(--i-line)" strokeWidth={4} strokeDasharray="8 10" strokeLinecap="round" />
-      <path d="M426 230H556" stroke="var(--pill)" strokeWidth={4} strokeLinecap="round" pathLength={1} strokeDasharray="1 1" className={C.c.wire} />
-      <g className={C.c.lock}>
-        <circle cx={491} cy={230} r={22} fill="var(--surface)" stroke="var(--i-line)" strokeWidth={2} />
-        <Icon icon={Lock} x={480} y={219} size={22} color="var(--ink-3)" />
-      </g>
-      {PACKETS.map((i) => (
-        <g key={i} className={C.c[`pkO${i}`]}>
-          <g className={C.c[`pkT${i}`]}><Art src="/categories/eating-out.png" x={424} y={214} size={32} /></g>
+      {APPS.map((a, i) => ('on' in a ? (
+        <g key={a.name} className={C.c[`pkO${i}`]}>
+          <g className={C.c[`pkT${i}`]}><Art src={a.packet} x={a.from[0] - 22} y={a.from[1] - 22} size={44} /></g>
         </g>
-      ))}
-      <g className={C.c.mark}><CapsuleMark cx={608} cy={226} w={60} h={96} stroke={4} /></g>
-      <Txt x={608} y={306} size={19} fill="var(--ink-3)" middle>ReLife</Txt>
-      <Chip x={556} y={326} w={104} label="+20 XP" tone="xp" className={C.c.xp} />
-      <g className={C.c.note}><Txt x={608} y={390} size={18} fill="var(--ink-3)" middle>Synced = full XP</Txt></g>
+      ) : null))}
+      <g className={C.c.mark}><CapsuleMark cx={360} cy={206} w={64} h={104} stroke={4} /></g>
+      <Chip x={300} y={280} w={120} h={44} label="+20 XP" tone="xp" className={C.c.xpA} />
+      <Chip x={300} y={280} w={120} h={44} label="+40 XP" tone="xp" className={C.c.xpB} />
+      <g className={C.c.note}><Txt x={360} y={362} size={24} fill="var(--ink-3)" middle>Synced earns full XP</Txt></g>
       <Cursor move={C.c.move} press={C.c.press} />
     </Illo>
   )
 }
 
-// ── 6 · Reminders: a Telegram nudge, Done tapped on the phone, and it counts in ReLife ────────────────
+// ── 6 · Reminders: a nudge arrives, Done is tapped there, it counts here; then the night stays quiet ──
 const SEGMENTS = 8
-const remindCount = swap(2.15, 5.1)
+const remindCount = swap(2.1, HOLD)
 const R = timeline('remind', 5.6, {
-  bubble: { end: SHOW, stops: [[0.3, 'opacity:0;transform:translateY(12px)', 'out'], [0.65, SHOW], [5.1, SHOW, 'quint'], [5.4, 'opacity:0;transform:translateY(0)']] },
-  btns: { end: 'opacity:0', stops: [[0.65, 'opacity:0', 'out'], [0.85, 'opacity:1'], [1.55, 'opacity:1', 'quint'], [1.7, 'opacity:0']] },
-  done: { end: 'transform:scale(1)', origin: '50% 50%', stops: [[1.3, 'transform:scale(1)', 'out'], [1.4, 'transform:scale(.95)', 'out'], [1.6, 'transform:scale(1)']] },
-  tap: { end: 'opacity:0', origin: '50% 50%', stops: [[1.25, 'opacity:0;transform:scale(.6)', 'out'], [1.35, 'opacity:1;transform:scale(1)', 'out'], [1.65, 'opacity:0;transform:scale(1.35)']] },
-  logged: { end: 'opacity:1;transform:scale(1)', origin: '50% 50%', stops: [[1.6, 'opacity:0;transform:scale(.96)', 'out'], [1.85, 'opacity:1;transform:scale(1)'], [5.1, 'opacity:1;transform:scale(1)', 'quint'], [5.4, 'opacity:0;transform:scale(1)']] },
-  dotT: { end: 'transform:translate(184px,-87px)', stops: travel(1.65, 0.5, 184, -87) },
-  dotO: { end: 'opacity:0', stops: blip(1.65, 0.55) },
-  seg: { end: 'transform:scaleX(1)', origin: '0 50%', stops: [[2.15, 'transform:scaleX(0)', 'out'], [2.45, 'transform:scaleX(1)'], [5.1, 'transform:scaleX(1)', 'quint'], [5.4, 'transform:scaleX(0)']] },
-  card: { end: 'transform:scale(1)', origin: '50% 50%', stops: pulse(2.15, 1.02) },
+  // The nudge drops in from the top, like a notification.
+  nudge: { end: SHOW, stops: [[0.3, 'opacity:0;transform:translateY(-18px)', 'out'], [0.65, SHOW], [HOLD, SHOW, 'quint'], [HOLD + 0.3, 'opacity:0;transform:translateY(0)']] },
+  tap: { end: 'opacity:0', origin: '50% 50%', stops: [[1.2, 'opacity:0;transform:scale(.6)', 'out'], [1.3, 'opacity:1;transform:scale(1)', 'out'], [1.6, 'opacity:0;transform:scale(1.35)']] },
+  done: { end: 'transform:scale(1)', origin: '50% 50%', stops: [[1.25, 'transform:scale(1)', 'out'], [1.35, 'transform:scale(.95)', 'out'], [1.55, 'transform:scale(1)']] },
+  btns: { end: 'opacity:0', stops: [[1.5, 'opacity:1', 'quint'], [1.65, 'opacity:0'], [HOLD + 0.35, 'opacity:0'], [HOLD + 0.4, 'opacity:1']] },
+  logged: { end: 'opacity:1;transform:scale(1)', origin: '50% 50%', stops: [[1.55, 'opacity:0;transform:scale(.96)', 'out'], [1.8, 'opacity:1;transform:scale(1)'], [HOLD + 0.35, 'opacity:1;transform:scale(1)'], [HOLD + 0.4, 'opacity:0;transform:scale(1)']] },
+  // The tap crosses over to ReLife.
+  dotT: { end: at(426, -91), stops: travel(1.6, 0.5, 426, -91) },
+  dotO: { end: 'opacity:0', stops: blip(1.6, 0.55) },
+  seg: { end: 'transform:scaleX(1)', origin: '0 50%', stops: [[2.1, 'transform:scaleX(0)', 'out'], [2.4, 'transform:scaleX(1)'], [HOLD, 'transform:scaleX(1)', 'quint'], [HOLD + 0.3, 'transform:scaleX(0)']] },
   cOld: remindCount.old,
   cNew: remindCount.next,
-  xp: { end: 'opacity:1;transform:scale(1)', origin: '50% 50%', stops: appear(2.35, 5.1) },
-  quiet: { end: SHOW, stops: fadeUp(3.0, 5.1) },
+  tile: { end: 'transform:scale(1)', origin: '50% 50%', stops: pulse(2.1, 1.03) },
+  // Night: the quiet hours fill in on the day and the bell is crossed out.
+  night: { end: 'transform:scaleX(1)', origin: '0 50%', stops: [[3.3, 'transform:scaleX(0)', 'out'], [3.8, 'transform:scaleX(1)'], [HOLD, 'transform:scaleX(1)'], [HOLD + 0.35, 'transform:scaleX(1)'], [HOLD + 0.4, 'transform:scaleX(0)']] },
+  bell: { end: ICON_OUT, origin: '50% 50%', stops: [[3.8, ICON_END, 'out'], [4.0, ICON_OUT], [HOLD + 0.35, ICON_OUT], [HOLD + 0.4, ICON_END]] },
+  bellOff: { end: ICON_END, origin: '50% 50%', stops: [...iconIn(3.8), [HOLD + 0.35, ICON_END], [HOLD + 0.4, ICON_OUT]] },
 })
 
 export function IlloRemind() {
   return (
-    <Illo label="ReLife's Telegram bot asks about water. Tapping Done on the phone sends it to ReLife: water goes from 2 to 3 of 8 glasses and earns 5 XP. Quiet hours keep nights silent." css={R.css}>
-      {/* A phone running Telegram. */}
-      <Panel x={56} y={28} w={270} h={470} r={44} />
-      <rect x={151} y={42} width={80} height={20} rx={10} fill="var(--i-bar)" />
-      <image href="/connectors/telegram.svg" x={78} y={74} width={30} height={30} />
-      <Txt x={118} y={96} size={22} weight={600}>ReLife bot</Txt>
-      <line x1={78} x2={304} y1={116} y2={116} stroke="var(--i-line)" strokeWidth={2} />
-      <g className={R.c.bubble}>
-        <rect x={78} y={132} width={226} height={116} rx={20} fill="var(--surface-2)" />
-        <Art src="/routines/water.png" x={94} y={146} size={36} />
-        <Txt x={140} y={172} size={22} weight={600}>Water time</Txt>
-        <Txt x={94} y={212} size={19} fill="var(--ink-2)">2 of 8 glasses today</Txt>
-        <Txt x={290} y={238} size={16} fill="var(--ink-3)" end>21:04</Txt>
-      </g>
-      <g className={R.c.btns}>
-        <g className={R.c.done}>
-          <rect x={78} y={256} width={108} height={42} rx={14} fill="var(--pill)" />
-          <Txt x={132} y={284} size={20} weight={600} fill="white" middle>Done</Txt>
+    <Illo label="A Telegram reminder says Water time. Tapping Done there counts it in ReLife: water goes from 2 to 3 of 8 glasses. Then quiet hours, 23:00 to 07:00, fill in and the bell is crossed out." css={R.css}>
+      <g className={R.c.nudge}>
+        <Panel x={40} y={36} w={410} h={236} r={30} />
+        <image href="/connectors/telegram.svg" x={64} y={58} width={40} height={40} />
+        <Txt x={116} y={86} size={24} weight={600} fill="var(--ink-2)">ReLife</Txt>
+        <Txt x={426} y={86} size={22} fill="var(--ink-3)" end>now</Txt>
+        <Art src="/routines/water.png" x={64} y={114} size={60} />
+        <Txt x={140} y={144} size={34} weight={700}>Water time</Txt>
+        <Txt x={140} y={176} size={24} fill="var(--ink-3)">Glass 3 of 8</Txt>
+        <g className={R.c.btns}>
+          <g className={R.c.done}>
+            <rect x={64} y={198} width={176} height={54} rx={18} fill="var(--pill)" />
+            <Txt x={152} y={234} size={26} weight={600} fill="white" middle>Done</Txt>
+          </g>
+          <rect x={252} y={198} width={174} height={54} rx={18} fill="var(--i-bar)" />
+          <Txt x={339} y={234} size={26} fill="var(--ink-2)" middle>Later</Txt>
         </g>
-        <rect x={196} y={256} width={108} height={42} rx={14} fill="var(--i-bar)" />
-        <Txt x={250} y={284} size={20} fill="var(--ink-2)" middle>Later</Txt>
+        <g className={R.c.logged}>
+          <rect x={64} y={198} width={362} height={54} rx={18} fill="var(--i-good-fill)" />
+          <Check x={178} y={211} width={28} height={28} color="var(--good)" strokeWidth={3} />
+          <Txt x={216} y={234} size={26} weight={600} fill="var(--good)">Logged</Txt>
+        </g>
+        <circle cx={152} cy={225} r={32} fill="color-mix(in oklch, var(--ink) 18%, transparent)" className={R.c.tap} />
       </g>
-      <g className={R.c.logged}>
-        <rect x={78} y={256} width={226} height={42} rx={14} fill="var(--i-good-fill)" />
-        <Check x={104} y={265} width={24} height={24} color="var(--good)" strokeWidth={3} />
-        <Txt x={136} y={284} size={20} weight={600} fill="var(--good)">Logged · +5 XP</Txt>
-      </g>
-      <circle cx={132} cy={277} r={26} fill="color-mix(in oklch, var(--ink) 18%, transparent)" className={R.c.tap} />
-      <g className={R.c.dotO}><g className={R.c.dotT}><circle cx={190} cy={277} r={8} fill="var(--pill)" /></g></g>
 
       {/* The same routine on Today in ReLife. */}
-      <g className={R.c.card}>
-        <Panel x={372} y={110} w={312} h={172} r={22} />
-        <Mono x={396} y={146}>TODAY</Mono>
-        <Art src="/routines/water.png" x={396} y={162} size={52} tint="var(--pill)" />
-        <Txt x={462} y={188} size={24} weight={600}>Water</Txt>
-        <Txt x={462} y={214} size={19} fill="var(--ink-3)" className={R.c.cOld}>2 of 8 glasses</Txt>
-        <Txt x={462} y={214} size={19} fill="var(--ink-3)" className={R.c.cNew}>3 of 8 glasses</Txt>
-        <Chip x={592} y={166} w={76} label="+5 XP" tone="xp" className={R.c.xp} />
+      <g className={R.c.tile}>
+        <Panel x={476} y={36} w={204} h={236} r={30} />
+        <Mono x={500} y={76}>TODAY</Mono>
+        <Art src="/routines/water.png" x={536} y={92} size={84} tint="var(--pill)" />
+        <Txt x={578} y={222} size={36} weight={700} middle className={R.c.cOld}>2 of 8</Txt>
+        <Txt x={578} y={222} size={36} weight={700} middle className={R.c.cNew}>3 of 8</Txt>
         {Array.from({ length: SEGMENTS }, (_, i) => (
           <g key={i}>
-            <rect x={396 + i * 34} y={242} width={28} height={10} rx={5} fill={i < 2 ? 'var(--pill)' : 'var(--i-bar)'} />
-            {i === 2 ? <rect x={396 + i * 34} y={242} width={28} height={10} rx={5} fill="var(--pill)" className={R.c.seg} /> : null}
+            <rect x={493 + i * 22} y={240} width={16} height={10} rx={5} fill={i < 2 ? 'var(--pill)' : 'var(--i-bar)'} />
+            {i === 2 ? <rect x={493 + i * 22} y={240} width={16} height={10} rx={5} fill="var(--pill)" className={R.c.seg} /> : null}
           </g>
         ))}
       </g>
-      <g className={R.c.quiet}>
-        <rect x={372} y={312} width={312} height={50} rx={25} fill="var(--surface)" stroke="var(--i-line)" strokeWidth={1.5} />
-        <Icon icon={Moon} x={394} y={325} size={24} color="var(--cat-mind)" />
-        <Txt x={428} y={344} size={19} fill="var(--ink-2)">Quiet hours 23:00–07:00</Txt>
+      <g className={R.c.dotO}><g className={R.c.dotT}><circle cx={152} cy={225} r={10} fill="var(--pill)" /></g></g>
+
+      <g>
+        <Panel x={40} y={300} w={640} h={124} r={30} />
+        <Icon icon={Moon} x={68} y={340} size={44} color="var(--cat-mind)" />
+        <Txt x={132} y={356} size={30} weight={600}>Quiet hours</Txt>
+        <Txt x={132} y={390} size={24} fill="var(--ink-3)">23:00 to 07:00</Txt>
+        {/* A day, noon to noon, with the night filled in. */}
+        <rect x={372} y={348} width={216} height={28} rx={14} fill="var(--i-bar)" />
+        <rect x={471} y={348} width={72} height={28} rx={10} fill="var(--cat-mind)" className={R.c.night} />
+        <Icon icon={Bell} x={612} y={344} size={36} color="var(--ink-2)" className={R.c.bell} />
+        <Icon icon={BellOff} x={612} y={344} size={36} color="var(--cat-mind)" className={R.c.bellOff} />
       </g>
     </Illo>
   )
@@ -585,9 +629,9 @@ export const TOUR_ILLOS = [
 
 /** Every picture the illustrations load, so the tour can fetch them while the welcome is on screen. */
 export const ILLO_ASSETS = [
-  ...['heart', 'brain', 'learn', 'money', 'art', 'people', 'walk', 'skin', 'water', 'gym'].map((n) => `/routines/${n}.png`),
+  ...['heart', 'brain', 'learn', 'money', 'art', 'people', 'walk', 'skin', 'water', 'gym', 'code'].map((n) => `/routines/${n}.png`),
   '/hobbies/coffee.png', '/categories/eating-out.png',
-  '/connectors/github.svg', '/connectors/swiggy.svg', '/connectors/telegram.svg',
+  ...['github', 'swiggy', 'binance', 'telegram'].map((n) => `/connectors/${n}.svg`),
 ]
 
 /** All seven on tour-card plates, for /dev/ui. A client component, since this module is one. */

@@ -105,7 +105,12 @@ export function Icon({ icon: I, x, y, size = 28, color = 'var(--ink-2)', stroke 
   return <g className={className}><I x={x} y={y} width={size} height={size} color={color} strokeWidth={stroke} fill={fill} /></g>
 }
 
-/** The tilted ReLife capsule (see capsule-icon.tsx): coloured top, light bottom, ink outline. */
+/**
+ * The tilted ReLife capsule (see capsule-icon.tsx): coloured top, white bottom, black outline.
+ * Like the logo and CapsuleIcon, it keeps those colours in dark mode.
+ */
+const CAPSULE_WHITE = 'oklch(0.97 0 0)'
+const CAPSULE_INK = 'oklch(0.178 0 0)'
 export function CapsuleMark({ cx, cy, w, h, color = 'var(--pill)', stroke = 3 }: { cx: number; cy: number; w: number; h: number; color?: string; stroke?: number }) {
   const x = cx - w / 2
   const y = cy - h / 2
@@ -113,22 +118,44 @@ export function CapsuleMark({ cx, cy, w, h, color = 'var(--pill)', stroke = 3 }:
   const split = y + h * 0.53
   return (
     <g transform={`rotate(-14 ${cx} ${cy})`}>
-      <rect x={x} y={y} width={w} height={h} rx={r} fill="var(--surface)" />
+      <rect x={x} y={y} width={w} height={h} rx={r} fill={CAPSULE_WHITE} />
       <path d={`M${x} ${y + r}A${r} ${r} 0 0 1 ${x + w} ${y + r}V${split}H${x}Z`} fill={color} />
-      <rect x={x} y={y} width={w} height={h} rx={r} stroke="var(--ink)" strokeWidth={stroke} />
+      <rect x={x} y={y} width={w} height={h} rx={r} stroke={CAPSULE_INK} strokeWidth={stroke} />
     </g>
   )
 }
 
-export function Chip({ x, y, w, label, tone = 'good', className }: {
-  x: number; y: number; w: number; label: string; tone?: 'good' | 'pill' | 'xp'; className?: string
+/** A capsule label. `h` 36 is the small one; 44 and up reads at tour-card size (the text grows with it). */
+export function Chip({ x, y, w, h = 36, label, tone = 'good', className }: {
+  x: number; y: number; w: number; h?: number; label: string; tone?: 'good' | 'pill' | 'xp'; className?: string
 }) {
   const fill = { good: 'var(--i-good-fill)', pill: 'var(--i-pill-fill)', xp: 'var(--i-xp-fill)' }[tone]
   const ink = { good: 'var(--good)', pill: 'var(--pill)', xp: 'var(--cat-wealth)' }[tone]
+  const size = h <= 36 ? 20 : Math.round(h * 0.56)
   return (
     <g className={className}>
-      <rect x={x} y={y} width={w} height={36} rx={18} fill={fill} />
-      <Txt x={x + w / 2} y={y + 25} size={20} weight={600} fill={ink} middle>{label}</Txt>
+      <rect x={x} y={y} width={w} height={h} rx={h / 2} fill={fill} />
+      <Txt x={x + w / 2} y={y + h / 2 + size * 0.35} size={size} weight={600} fill={ink} middle>{label}</Txt>
+    </g>
+  )
+}
+
+/**
+ * A progress bar. The fill slides inside the track's shape instead of scaling, so its round end stays round
+ * at any value. Animate it with `transform:translateX(…%)` (see `fillAt` in illos.tsx), or pass a fixed `value`.
+ */
+export function Meter({ x, y, w, h, color = 'var(--pill)', value = 1, className }: {
+  x: number; y: number; w: number; h: number; color?: string; value?: number; className?: string
+}) {
+  const id = `ti-m-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`
+  return (
+    <g>
+      <clipPath id={id}><rect x={x} y={y} width={w} height={h} rx={h / 2} /></clipPath>
+      <rect x={x} y={y} width={w} height={h} rx={h / 2} fill="var(--i-bar)" />
+      <g clipPath={`url(#${id})`}>
+        <rect x={x} y={y} width={w} height={h} rx={h / 2} fill={color} className={className}
+          style={className ? undefined : { transform: `translateX(${(value - 1) * 100}%)`, transformBox: 'fill-box' }} />
+      </g>
     </g>
   )
 }
