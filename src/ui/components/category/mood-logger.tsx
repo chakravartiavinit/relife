@@ -30,7 +30,7 @@ export function ScaleLogger({ slug, name, value }: { slug: string; name: string;
             aria-checked={on}
             onClick={() => start(async () => {
               set(f.v)
-              try { announceXp(toast, await logEntry(slug, f.v)) } catch { toast('Could not save. Try again.', 'bad') }
+              try { announceXp(toast, await logEntry(slug, f.v)) } catch { toast.error() }
             })}
             className={cn(
               'flex h-14 flex-col items-center justify-center gap-0.5 rounded-[12px] transition-[background-color,color,box-shadow,scale] duration-150 ease-out-quint active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill',

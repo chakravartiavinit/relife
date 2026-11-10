@@ -8,7 +8,8 @@ const RULES: [RegExp, LucideIcon, string][] = [
   [/mood/i, Smile, 'mood'],
   [/energy/i, Zap, 'energy'],
   [/weight/i, Scale, 'weight'],
-  [/commit|pull request|review/i, GitCommitHorizontal, 'code'],
+  // "Reviews" (the GitHub tracker) and code reviews, but not "Review budget".
+  [/commit|pull request|^reviews?$|code review/i, GitCommitHorizontal, 'code'],
   [/skin|face|serum|sunscreen|mask|moistur/i, Sparkles, 'skin'],
   [/yoga|stretch/i, Dumbbell, 'yoga'],
   [/run\b|running|jog/i, Footprints, 'run'],
@@ -21,7 +22,7 @@ const RULES: [RegExp, LucideIcon, string][] = [
   [/lights out|sleep|bed/i, BedDouble, 'sleep'],
   [/phone|screen/i, Smartphone, 'phone'],
   [/call|parents|mom|dad|family|friend/i, Phone, 'call'],
-  [/budget|money|spend|save|invest/i, PiggyBank, 'money'],
+  [/budget|money|spen[dt]|save|invest/i, PiggyBank, 'money'],
   [/code|dsa|leetcode|practice coding|program/i, Code, 'code'],
   [/learn|study|course|language|duolingo/i, Languages, 'learn'],
   [/shower|bath/i, Bath, 'shower'],

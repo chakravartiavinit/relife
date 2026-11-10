@@ -19,9 +19,9 @@ export function CategorySelect({ id, value, options, merchant }: { id: string; v
           setCurrent(next)
           try {
             await recategorize(id, next, true)
-            toast(`${merchant} → ${next}`, 'good')
+            toast(`${merchant} moved to ${next}`, 'good', { description: 'Remembered for their next payments' })
           } catch {
-            toast('Could not save. Try again.', 'bad')
+            toast.error()
           }
         })
       }}

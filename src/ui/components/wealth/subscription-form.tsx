@@ -71,7 +71,7 @@ function SubscriptionForm({ today, baseCurrency, initial, onDone }: { today: str
   useEffect(() => {
     if (!state?.ok || handled.current === state) return
     handled.current = state // once per save, however often this re-renders before the dialog closes
-    toast(initial?.id ? `${name} saved` : `${name} added`, 'good')
+    toast(initial?.id ? `${name} saved` : `${name} added`, 'good', { icon: '/routines/card.png' })
     onDone()
   }, [state, toast, onDone, name, initial?.id])
 

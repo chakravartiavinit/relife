@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Brain, Code, Flame, HeartPulse, Palette, Snowflake, Users, Wallet, type LucideIcon } from 'lucide-react'
+import { Flame, Snowflake } from 'lucide-react'
 import type { Category } from '@/db/schema'
 import type { xpSummary } from '@/core/xp'
 import { formatNumber } from '@/domain/money'
@@ -7,14 +7,13 @@ import { CATEGORY } from '../tokens'
 import { Capsule } from './capsule'
 import { MedalDisc } from './xp'
 import { cn } from '../cn'
-import { CapsuleIcon } from './capsule-icon'
+import { AREA_ICON, CapsuleIcon } from './capsule-icon'
 import { Ticker } from './ticker'
 
 // The character sheet at the top of Today and Progress: who you are in the game (level, title, XP),
 // your streak, and your areas as stats. One component so the two pages always agree.
 
 type Summary = Awaited<ReturnType<typeof xpSummary>>
-const AREA_ICON: Record<Category, LucideIcon> = { health: HeartPulse, mind: Brain, skills: Code, wealth: Wallet, hobbies: Palette, relationships: Users }
 const AREA_HREF: Record<Category, string> = { health: '/health', mind: '/mind', skills: '/skills', wealth: '/wealth', hobbies: '/hobbies', relationships: '/relationships' }
 
 export function CharacterBanner({ s, name, heading, eyebrow, streak, freezes, areas, children }: {
@@ -82,14 +81,15 @@ export function CharacterBanner({ s, name, heading, eyebrow, streak, freezes, ar
                 <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-[9px]" style={{ color: `color-mix(in oklch, ${c} 80%, var(--ink))`, background: `color-mix(in oklch, ${c} 16%, transparent)` }}>
                   <Icon className="size-4" strokeWidth={2} />
                 </span>
+                {/* Name on its own line and the level kept whole, so neither truncates in a sixth of the banner. */}
                 <span className="w-full min-w-0 flex-1">
-                  <span className="flex items-baseline justify-center gap-2 sm:justify-between">
-                    <span className="truncate text-[12px] text-ink-3 max-sm:hidden">{CATEGORY[a.area].label}</span>
-                    <span className="text-[13.5px] font-bold text-ink tabular-nums">Lv {a.level}</span>
+                  <span className="block truncate text-[12px] leading-4 text-ink-3 max-sm:hidden">{CATEGORY[a.area].label}</span>
+                  <span className="mt-0.5 flex items-center justify-center gap-1.5 sm:justify-start">
+                    <span className="text-[13.5px] leading-5 font-bold whitespace-nowrap text-ink tabular-nums">Lv {a.level}</span>
+                    {a.medal ? <span className="max-sm:hidden"><MedalDisc medal={a.medal.medal} size={18} label={`${a.medal.label} medal`} /></span> : null}
                   </span>
                   <Capsule value={a.progress} max={1} size="sm" color={c} label={`${CATEGORY[a.area].label} level ${a.level} progress`} className="mt-1.5" />
                 </span>
-                {a.medal ? <span className="max-sm:hidden"><MedalDisc medal={a.medal.medal} size={22} label={`${a.medal.label} medal`} /></span> : null}
               </Link>
             </li>
           )

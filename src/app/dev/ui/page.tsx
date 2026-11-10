@@ -13,6 +13,8 @@ import { CapsuleMark, Wordmark } from '@/ui/components/logo'
 import { DailyBars, RankedBars, Sparkline, TrendArea } from '@/ui/components/charts'
 import { BeuiGallery } from '@/ui/components/gallery-beui'
 import { PositionCard } from '@/ui/components/wealth/position-card'
+import { IlloGallery } from '@/ui/components/tour/illos'
+import { ToastGallery } from '@/ui/components/toast'
 
 export const metadata: Metadata = { title: 'UI gallery' }
 
@@ -118,6 +120,14 @@ export default function UiGallery() {
 
       <Section title="From beui.dev">
         <BeuiGallery />
+      </Section>
+
+      <Section title="Toasts">
+        <ToastGallery />
+      </Section>
+
+      <Section title="Tour illustrations">
+        <IlloGallery />
       </Section>
 
       <Section title="Empty & loading">

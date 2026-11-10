@@ -72,7 +72,7 @@ function NavView({ badges = {}, areas, path }: { badges?: Record<string, number>
   return (
     <nav aria-label="Main" className="flex flex-col gap-5">
       {NAV.map((group, gi) => (
-        <div key={gi} className="flex flex-col gap-0.5">
+        <div key={gi} data-tour={group.label === 'Areas' ? 'areas' : undefined} className="flex flex-col gap-0.5">
           {group.label ? <div className="px-2.5 pb-2"><SystemLabel color="var(--ink-3)">{group.label}</SystemLabel></div> : null}
           {group.items.filter((item) => !hidden.has(item.href) || isActive(path, item.href)).map((item) => <NavRow key={item.href} item={item} path={path} badge={badges[item.href]} />)}
         </div>
@@ -88,6 +88,7 @@ function NavRow({ item, path, badge }: { item: Item; path: string; badge?: numbe
     <div>
       <Link
         href={item.href}
+        data-tour={item.href}
         aria-current={active && path === item.href ? 'page' : undefined}
         className={cn(
           'group relative flex h-10 items-center gap-2.5 rounded-md px-1.5 text-[14px] transition-[background-color,color,box-shadow] duration-150',
@@ -158,6 +159,7 @@ function SystemNavView({ badges = {}, path }: { badges?: Record<string, number>;
           <Link
             key={href}
             href={href}
+            data-tour={href}
             aria-current={active ? 'page' : undefined}
             aria-label={n ? `${label}, ${n} to review` : undefined}
             className={cn(

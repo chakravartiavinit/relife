@@ -55,7 +55,7 @@ export async function setGoalTarget(scheduleId: string, target: number) {
 
 export async function quickLog(text: string): Promise<{ ok: boolean; message: string; news?: XpNews }> {
   const q = parseQuickLog(text)
-  if (!q) return { ok: false, message: 'Try “water 250”, “mood 4” or “spent 120 chai”.' }
+  if (!q) return { ok: false, message: 'Try “water 250”, “mood 4” or “spent 120 chai”' }
   const user = await getUser()
   const message = await applyQuickLog(user, q)
   const news = await xpAfterLog(user)
@@ -498,7 +498,8 @@ const onboardingInput = z.object({
   baseCurrency: z.string().trim().toUpperCase().refine((c) => Intl.supportedValuesOf('currency').includes(c), 'Use a currency code like INR or USD'),
   areas: z.array(z.enum(CATEGORIES)).min(1, 'Pick at least one area'),
   focus: z.enum(CATEGORIES).optional(),
-  templates: z.array(z.string().max(40)).max(40),
+  // Setup asks for the fields above and `improve`. The rest is optional: left out, it keeps its saved value.
+  templates: z.array(z.string().max(40)).max(40).optional(),
   generated: z.array(z.object({
     id: z.string().max(40), area: z.enum(CATEGORIES), name: z.string().trim().min(1).max(60), kind: z.enum(['routine', 'medicine']),
     rule: z.object({
@@ -508,12 +509,15 @@ const onboardingInput = z.object({
     }),
     note: z.string().max(60).optional(), dose: z.string().max(40).optional(),
   })).max(10).optional(),
-  sleepHours: z.number().min(5).max(10),
-  steps: z.number().int().min(1000).max(30000),
-  waterMl: z.number().int().min(500).max(6000),
-  goals: z.string().max(2000),
-  constraints: z.string().max(2000),
-  tone: z.enum(['gentle', 'balanced', 'blunt']),
+  sleepHours: z.number().min(5).max(10).optional(),
+  steps: z.number().int().min(1000).max(30000).optional(),
+  waterMl: z.number().int().min(500).max(6000).optional(),
+  goals: z.string().max(2000).optional(),
+  constraints: z.string().max(2000).optional(),
+  wake: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Pick a wake-up time').optional(),
+  sleep: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Pick a bedtime').optional(),
+  improve: z.array(z.string().max(80)).max(3).default([]),
+  tone: z.enum(['gentle', 'balanced', 'blunt']).optional(),
 })
 
 /** Finish the one-time setup on /welcome. */
@@ -579,7 +583,7 @@ export async function openChestAction(id: string): Promise<
   | { ok: false; error: string }
 > {
   const parsed = z.string().uuid().safeParse(id)
-  if (!parsed.success) return { ok: false, error: 'Unknown chest' }
+  if (!parsed.success) return { ok: false, error: 'Chest not found' }
   const user = await getUser()
   const [{ openChest }, { titleFor }] = await Promise.all([import('@/core/quests'), import('@/domain/xp')])
   const r = await openChest(user, parsed.data)

@@ -7,7 +7,10 @@ import { ensureTracker } from './ingest'
 import { localDate } from './time'
 import type { User } from './user'
 
-// One-time setup (/welcome): profile, areas, starter routines and daily targets in one write.
+// One-time setup (/welcome): profile, usual hours, areas, what The System trains first, daily targets,
+// tone, goals and starter routines, in one write. Only the name, region and areas are required: anything
+// left out keeps its saved value (or its usual default on first setup), so running setup again never
+// overwrites a setting the user didn't touch.
 // Templates are suggestions only; everything they create is an ordinary routine the user can edit.
 
 export type Template = {
@@ -55,18 +58,23 @@ export type OnboardingInput = {
   baseCurrency: string
   areas: Category[]
   focus?: Category
-  templates: string[]
-  /** Routines the AI proposed on the routines step (only the ticked ones are created). */
+  templates?: string[]
+  /** Routines an AI proposed (only the ticked ones are created). */
   generated?: Template[]
-  sleepHours: number
-  steps: number
-  waterMl: number
-  goals: string
-  constraints: string
-  tone: 'gentle' | 'balanced' | 'blunt'
+  sleepHours?: number
+  steps?: number
+  waterMl?: number
+  goals?: string
+  constraints?: string
+  tone?: 'gentle' | 'balanced' | 'blunt'
+  /** Usual wake and bed times, "HH:MM". Given together, they also set quiet hours. */
+  wake?: string
+  sleep?: string
+  /** Stats The System should train first, in priority order (signal ids from core/patterns). */
+  improve: string[]
 }
 
-const TONE_NOTE: Record<OnboardingInput['tone'], string> = {
+const TONE_NOTE: Record<NonNullable<OnboardingInput['tone']>, string> = {
   gentle: 'Be gentle and encouraging. Celebrate small wins.',
   balanced: 'Be honest and kind. One clear suggestion at a time.',
   blunt: 'Be blunt. Skip the praise and tell me what to change.',
@@ -76,21 +84,32 @@ const TONE_NOTE: Record<OnboardingInput['tone'], string> = {
 export async function completeOnboarding(user: User, input: OnboardingInput, now = new Date()) {
   const areas = CATEGORIES.filter((c) => input.areas.includes(c))
   const today = localDate(now, input.timezone)
+  const tone = input.tone ?? user.profile.tone ?? 'balanced'
+  // The coach's notes start as the tone's own line. A new tone replaces that line, never words the user wrote.
+  const notes = user.profile.notes?.trim()
+  const day = input.wake && input.sleep ? { wake: input.wake, sleep: input.sleep } : undefined
+  // Quiet hours follow the usual hours, unless the user switched quiet hours off.
+  const quietOff = !!user.profile.notifications && 'quiet' in user.profile.notifications && user.profile.notifications.quiet === null
   const profile: UserProfile = {
     ...user.profile,
-    goals: input.goals.trim() || user.profile.goals,
-    constraints: input.constraints.trim() || user.profile.constraints,
-    notes: user.profile.notes?.trim() ? user.profile.notes : TONE_NOTE[input.tone],
-    tone: input.tone,
+    goals: input.goals?.trim() || user.profile.goals,
+    constraints: input.constraints?.trim() || user.profile.constraints,
+    notes: !notes || Object.values(TONE_NOTE).includes(notes) ? TONE_NOTE[tone] : user.profile.notes,
+    tone,
     areas,
     focus: input.focus && areas.includes(input.focus) ? input.focus : areas[0],
     onboardedAt: now.toISOString(),
+    improve: input.improve.length ? input.improve : user.profile.improve,
+    // Usual hours, when given: Telegram stays quiet while they sleep; per-category settings are kept.
+    ...(day ? { day } : {}),
+    ...(day && !quietOff ? { notifications: { categories: {}, ...user.profile.notifications, quiet: { from: day.sleep, to: day.wake } } } : {}),
   }
   // First time through is a fresh start: earlier XP, achievements, chests and freezes go, and XP counts from today.
   // Running setup again from Settings never resets.
   const fresh = !user.profile.onboardedAt
   if (fresh) {
     profile.xpSince = today
+    profile.paymentsSeenAt = now.toISOString() // payments already on record aren't announced as new
     await db.delete(schema.xpEvents).where(eq(schema.xpEvents.userId, user.id))
     await db.delete(schema.achievements).where(eq(schema.achievements.userId, user.id))
     await db.delete(schema.chests).where(eq(schema.chests.userId, user.id))
@@ -104,26 +123,28 @@ export async function completeOnboarding(user: User, input: OnboardingInput, now
     .where(eq(schema.schedules.userId, user.id))).map((r) => r.name.toLowerCase()))
   let added = 0
   for (const t of [...TEMPLATES, ...(input.generated ?? [])]) {
-    if (!input.templates.includes(t.id) || !areas.includes(t.area) || existing.has(t.name.toLowerCase())) continue
+    if (!input.templates?.includes(t.id) || !areas.includes(t.area) || existing.has(t.name.toLowerCase())) continue
     const trackerSlug = t.quantity ? slugify(t.name) : undefined
     await db.insert(schema.schedules).values({
       userId: user.id, name: t.name, kind: t.kind, category: t.area,
       rrule: buildRRule({ ...t.rule, start: today }),
-      target: t.quantity ? input.waterMl : null, unit: t.quantity?.unit ?? null,
+      target: t.quantity ? input.waterMl ?? null : null, unit: t.quantity?.unit ?? null,
       meta: Object.fromEntries(Object.entries({ notes: t.note, dose: t.dose, doseCount: t.dose ? 1 : undefined, trackerSlug, step: t.quantity?.step })
         .filter(([, v]) => v !== undefined)),
     })
     added++
   }
 
-  // Daily targets: create the trackers if needed, then set the target.
-  const targets: [string, number, Parameters<typeof ensureTracker>[2]][] = [
-    ['sleep.hours', input.sleepHours, { name: 'Sleep', category: 'health', unit: 'h', aggregate: 'last' }],
-    ['steps', input.steps, { name: 'Steps', category: 'health' }],
+  // Daily targets. First setup creates the trackers with their usual targets; a target that already
+  // exists changes only when one is given, so running setup again never overwrites it.
+  const targets: [string, number | undefined, number, Parameters<typeof ensureTracker>[2]][] = [
+    ['sleep.hours', input.sleepHours, 7.5, { name: 'Sleep', category: 'health', unit: 'h', aggregate: 'last' }],
+    ['steps', input.steps, 8000, { name: 'Steps', category: 'health' }],
   ]
-  for (const [slug, target, d] of targets) {
-    const t = await ensureTracker(user.id, slug, { ...d, target })
-    await db.update(schema.trackers).set({ target }).where(and(eq(schema.trackers.id, t.id), eq(schema.trackers.userId, user.id)))
+  for (const [slug, given, usual, d] of targets) {
+    if (given === undefined && !fresh) continue
+    const t = await ensureTracker(user.id, slug, { ...d, target: given ?? usual })
+    if (given !== undefined) await db.update(schema.trackers).set({ target: given }).where(and(eq(schema.trackers.id, t.id), eq(schema.trackers.userId, user.id)))
   }
   return { added, fresh }
 }

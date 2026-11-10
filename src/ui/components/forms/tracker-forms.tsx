@@ -27,7 +27,7 @@ export function QuickLog({ slug, name, unit, step }: { slug: string; name: strin
         setSaved(true)
         setTimeout(() => setSaved(false), 1200)
       } catch {
-        toast('Could not save. Try again.', 'bad')
+        toast.error()
       }
     })
   }

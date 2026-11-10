@@ -55,6 +55,13 @@
       "skillPath": "skills/design/design-system/SKILL.md",
       "computedHash": "aa5f291851c3bc7216d55801b1bf2b593551179b5fa026c5e23576e97549340c"
     },
+    "emil-design-eng": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/emil-design-eng/SKILL.md",
+      "computedHash": "2483020b5bbaab030d6b3463bfba49c8d9c2cd8dea4d9fba836dbd471f1fb706",
+      "installMode": "copy"
+    },
     "improve-animations": {
       "source": "emilkowalski/skills",
       "sourceType": "github",

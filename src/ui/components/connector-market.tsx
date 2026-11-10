@@ -177,9 +177,10 @@ function SyncButton({ id, name }: { id: string; name: string }) {
     <Button
       disabled={pending}
       onClick={() => start(async () => {
-        const t = toast.loading(`Syncing ${name}…`)
+        const t = toast.loading(`Syncing ${name}…`, { icon: <Logo id={id} size="xs" /> })
         const r = await syncNow(id)
-        toast.update(t, r.ok ? `${name} synced · ${r.events} new` : (r.error ?? 'Sync failed'), r.ok ? 'good' : 'bad')
+        if (r.ok) toast.update(t, `${name} synced`, 'good', { description: r.events ? `${r.events} new` : 'Nothing new since the last sync' })
+        else toast.update(t, `Couldn’t sync ${name}`, 'bad', { description: r.error ?? 'Try again in a moment' })
       })}
     >
       <RefreshCw className={pending ? 'size-4 animate-spin' : 'size-4'} strokeWidth={1.5} />
@@ -284,8 +285,12 @@ function ConnectForm({ c, onDone }: { c: ConnectorItem; onDone: () => void }) {
   const toast = useToast()
   const uid = useId()
   useEffect(() => {
-    if (state?.ok) { toast(c.connected ? `${c.name} saved` : `${c.name} connected`, 'good'); onDone() }
-  }, [state, c.connected, c.name, onDone, toast])
+    if (!state?.ok) return
+    const icon = <Logo id={c.id} category={c.category} size="xs" />
+    if (c.connected) toast(`${c.name} settings saved`, 'good', { icon })
+    else toast(`${c.name} connected`, 'good', { icon, description: c.sync ? 'Its first sync starts within a minute' : undefined })
+    onDone()
+  }, [state, c.connected, c.name, c.id, c.category, c.sync, onDone, toast])
 
   return (
     <form action={action} className="flex flex-col gap-4">
@@ -334,7 +339,7 @@ function ConnectForm({ c, onDone }: { c: ConnectorItem; onDone: () => void }) {
             variant="danger"
             disabled={leaving || pending}
             onClick={() => startLeave(async () => {
-              try { await disconnectIntegration(c.id); toast(`${c.name} disconnected`, 'neutral'); onDone() } catch { toast('Could not disconnect. Try again.', 'bad') }
+              try { await disconnectIntegration(c.id); toast(`${c.name} disconnected`, 'neutral', { icon: <Logo id={c.id} category={c.category} size="xs" /> }); onDone() } catch { toast.error(`Couldn’t disconnect ${c.name}`) }
             })}
           >
             {leaving ? 'Disconnecting…' : 'Disconnect'}

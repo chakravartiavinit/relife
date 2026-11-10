@@ -3,6 +3,7 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useOptimistic, useState, useTransition } from 'react'
 import { Check, RotateCcw, SkipForward } from 'lucide-react'
+import { routineArt } from '../routine-icons'
 import { RoutineArt } from './routine-art'
 import { addToGoal, setGoalTarget, toggleCheck } from '@/app/actions'
 import { cn } from '../cn'
@@ -52,7 +53,7 @@ export function Agenda({ rows }: { rows: AgendaRow[] }) {
       try {
         announceXp(toast, await toggleCheck(r.scheduleId, r.occurrence, status))
       } catch {
-        toast('Could not save. Try again.', 'bad')
+        toast.error()
       }
     })
 
@@ -288,11 +289,11 @@ export function Goals({ rows }: { rows: GoalRow[] }) {
   const toast = useToast()
   const add = (g: GoalRow, amount: number) => start(async () => {
     change({ id: g.scheduleId, add: amount })
-    try { announceXp(toast, await addToGoal(g.scheduleId, amount)) } catch { toast('Could not save. Try again.', 'bad') }
+    try { announceXp(toast, await addToGoal(g.scheduleId, amount)) } catch { toast.error() }
   })
   const retarget = (g: GoalRow, target: number) => start(async () => {
     change({ id: g.scheduleId, target })
-    try { await setGoalTarget(g.scheduleId, target); toast(`${g.name}: ${fmtAmount(target, g.unit)} a day`, 'good') } catch { toast('Could not save. Try again.', 'bad') }
+    try { await setGoalTarget(g.scheduleId, target); toast(`${g.name} target saved`, 'good', { description: `${fmtAmount(target, g.unit)} a day`, icon: routineArt(g.name, 'routine', g.area ?? 'health') }) } catch { toast.error() }
   })
 
   return (

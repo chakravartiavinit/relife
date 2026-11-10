@@ -50,6 +50,8 @@ export type UserProfile = {
   paymentsSeenAt?: string
   /** Stats the System should train first (signal ids from src/core/patterns.ts). Empty = it decides. */
   improve?: string[]
+  /** Usual wake and bed times ("HH:MM", local), from setup. Quiet hours start from them; the AI reads them too. */
+  day?: { wake: string; sleep: string }
 }
 
 export const users = pgTable('users', {

@@ -216,7 +216,7 @@ function ChestModal({ chests, onClose }: { chests: ChestItem[]; onClose: () => v
   const open = () => start(async () => {
     const r = await openChestAction(chest.id)
     // Already opened (another tab, a double tap): close; the refreshed page shows what's left.
-    if (!r.ok) { toast(r.error, 'bad'); onClose(); return }
+    if (!r.ok) { toast(r.error); onClose(); return }
     setGot(r)
     if (r.rarity !== 'common' || r.levelUp) window.dispatchEvent(new Event('relife:celebrate'))
     if (r.levelUp) announceXp(toast, { levelUp: r.levelUp, unlocked: [] })

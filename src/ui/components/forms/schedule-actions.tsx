@@ -17,8 +17,8 @@ export function ScheduleActions({ initial, active, name }: { initial: ScheduleIn
     <>
       <RowMenu label={name} items={[
         { label: 'Edit', icon: Pencil, onSelect: () => setEditing(true) },
-        { label: on ? 'Pause' : 'Resume', icon: on ? Pause : Play, onSelect: () => start(async () => { setOn(!on); await setScheduleActive(initial.id!, !on); toast(on ? `Paused ${name}` : `Resumed ${name}`) }) },
-        { label: 'Delete', icon: Trash2, danger: true, onSelect: () => start(async () => { await deleteSchedule(initial.id!); toast(`Deleted ${name}`) }) },
+        { label: on ? 'Pause' : 'Resume', icon: on ? Pause : Play, onSelect: () => start(async () => { setOn(!on); await setScheduleActive(initial.id!, !on); toast(on ? `${name} paused` : `${name} resumed`, on ? 'neutral' : 'good', { icon: on ? Pause : Play }) }) },
+        { label: 'Delete', icon: Trash2, danger: true, onSelect: () => start(async () => { await deleteSchedule(initial.id!); toast(`${name} deleted`, 'neutral', { icon: Trash2 }) }) },
       ]} />
       <ScheduleDialog open={editing} initial={initial} onClose={() => setEditing(false)} />
     </>

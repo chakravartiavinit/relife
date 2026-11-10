@@ -16,7 +16,7 @@ export function ContactedButton({ id, name }: { id: string; name: string }) {
       size="sm"
       disabled={pending}
       onClick={() => start(async () => {
-        try { const news = await markContacted(id); toast(`Logged a catch-up with ${name}`, 'good'); announceXp(toast, news) } catch { toast('Could not save. Try again.', 'bad') }
+        try { const news = await markContacted(id); toast(`Catch-up with ${name} logged`, 'good', { icon: '/routines/call.png' }); announceXp(toast, news) } catch { toast.error() }
       })}
     >
       <Check className="size-4" strokeWidth={2} />
@@ -44,7 +44,7 @@ function PersonForm({ onDone }: { onDone: () => void }) {
   const [state, action, pending] = useActionState(createPerson, null)
   const toast = useToast()
   const id = useId()
-  useEffect(() => { if (state?.ok) { toast('Added', 'good'); onDone() } }, [state, onDone, toast])
+  useEffect(() => { if (state?.ok) { toast('Added to your people', 'good', { icon: '/routines/people.png' }); onDone() } }, [state, onDone, toast])
   return (
     <form action={action} className="flex flex-col gap-4">
       <Field label="Name" htmlFor={`${id}-n`}>

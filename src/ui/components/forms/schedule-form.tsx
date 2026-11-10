@@ -72,10 +72,10 @@ function ScheduleForm({ initial, onDone }: { initial: ScheduleInitial; onDone: (
 
   useEffect(() => {
     if (state?.ok) {
-      toast(initial.id ? 'Saved' : 'Routine added', 'good')
+      toast(`${kind === 'medicine' ? 'Medicine' : 'Routine'} ${initial.id ? 'saved' : 'added'}`, 'good')
       onDone()
     }
-  }, [state, initial.id, onDone, toast])
+  }, [state, initial.id, kind, onDone, toast])
 
   const addTime = () => {
     if (!/^\d{2}:\d{2}$/.test(draft) || times.includes(draft)) return
