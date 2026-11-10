@@ -4,7 +4,7 @@
 // happens, ReLife reacts, the result holds for a beat, then it quietly resets.
 // They are drawn for a 304px plate, where one unit is 0.42px: a few large shapes, text at 24 units or more
 // (10px on screen), and at most a handful of words. The words under the picture do the explaining.
-import { Bell, BellOff, Check, Flame, Lock, Moon, Search, Smartphone } from 'lucide-react'
+import { Bell, BellOff, Check, Flame, Moon, Search, Smartphone } from 'lucide-react'
 import { appear, Art, CapsuleMark, Chest, Chip, Cursor, Icon, Illo, Logo, Meter, Mono, Panel, pressAt, timeline, Txt, type Stop } from './illo-kit'
 
 // ── Small timeline recipes, all in seconds ───────────────────────────────────────────────────────────
@@ -466,72 +466,74 @@ export function IlloAreas() {
   )
 }
 
-// ── 5 · Connectors: apps wait, locked, around ReLife; connect one and its data flows in and pays XP ───
-const APPS = [
-  { name: 'GitHub', logo: '/connectors/github.svg', x: 64, y: 44, wire: 'M166 118L312 180', lock: [239, 149], packet: '/routines/code.png', from: [166, 118], to: [336, 192], on: 1.15 },
-  { name: 'Swiggy', logo: '/connectors/swiggy.svg', x: 564, y: 44, wire: 'M554 118L408 180', lock: [481, 149], packet: '/categories/eating-out.png', from: [554, 118], to: [384, 192], on: 2.2 },
-  { name: 'Binance', logo: '/connectors/binance.svg', x: 64, y: 300, wire: 'M166 318L312 236', lock: [239, 277] },
-  { name: 'Telegram', logo: '/connectors/telegram.svg', x: 564, y: 300, wire: 'M554 318L408 236', lock: [481, 277] },
-] as const
+// ── 5 · Connectors: a day goes by with no hands on it; each connected app writes its own line as it happens ──
+const DAY = { x: 50, w: 620, y: 236, from: 0.5, to: 3.6 }
+const SOURCES = [
+  { name: 'GitHub', logo: '/connectors/github.svg', x: 148, time: '09:40', value: '3 commits', area: 'Skills', color: 'var(--cat-skills)' },
+  { name: 'Swiggy', logo: '/connectors/swiggy.svg', x: 360, time: '13:10', value: 'Lunch ₹320', area: 'Wealth', color: 'var(--cat-wealth)' },
+  { name: 'Phone', x: 572, time: '21:15', value: '8,214 steps', area: 'Health', color: 'var(--cat-health)' },
+  // Each one reports the moment the day reaches it.
+].map((s) => ({ ...s, logo: 'logo' in s ? s.logo : undefined, t: +(DAY.from + ((s.x - DAY.x) / DAY.w) * (DAY.to - DAY.from)).toFixed(2) }))
+const LIT = 'stroke-dashoffset:0;opacity:1'
 const C = timeline('connect', 5.6, {
-  move: { end: at(700, 470), stops: [[0.45, at(700, 470), 'move'], [1.0, at(118, 100)], [1.5, at(118, 100), 'move'], [2.05, at(618, 100)], [2.5, at(618, 100), 'move'], [3.1, at(700, 470)]] },
-  press: { end: 'transform:scale(1)', origin: '0 0', stops: [...pressAt(1.05), ...pressAt(2.1)] },
-  ...Object.fromEntries(APPS.flatMap((a, i) => {
-    if (!('on' in a)) return []
-    const [dx, dy] = [a.to[0] - a.from[0], a.to[1] - a.from[1]]
-    return [
-      [`app${i}`, fade(a.on, 0.4, 1)],
-      [`pop${i}`, { end: 'transform:scale(1)', origin: '50% 50%', stops: pulse(a.on, 1.06) }],
-      [`dot${i}`, tickIn(a.on + 0.05)],
-      [`lock${i}`, { end: ICON_OUT, origin: '50% 50%', stops: [[a.on + 0.1, ICON_END, 'out'], [a.on + 0.3, ICON_OUT], [HOLD + 0.1, ICON_OUT, 'out'], [HOLD + 0.4, ICON_END]] }],
-      // The line goes solid, then what the app knows travels along it.
-      [`wire${i}`, { end: 'stroke-dashoffset:0;opacity:1', stops: [[a.on + 0.15, 'stroke-dashoffset:1;opacity:1', 'out'], [a.on + 0.55, 'stroke-dashoffset:0;opacity:1'], [HOLD, 'stroke-dashoffset:0;opacity:1', 'quint'], [HOLD + 0.3, 'stroke-dashoffset:0;opacity:0'], [HOLD + 0.35, 'stroke-dashoffset:1;opacity:0'], [HOLD + 0.4, 'stroke-dashoffset:1;opacity:1']] }],
-      [`pkT${i}`, { end: at(dx, dy), stops: travel(a.on + 0.55, 0.55, dx, dy) }],
-      [`pkO${i}`, { end: 'opacity:0', stops: blip(a.on + 0.55, 0.6) }],
-    ]
-  })) as Record<string, Track>,
-  mark: { end: 'transform:scale(1)', origin: '50% 50%', stops: [...pulse(2.25, 1.08), ...pulse(3.3, 1.08)] },
-  xpA: { end: 'opacity:0', origin: '50% 50%', stops: [[2.3, 'opacity:0;transform:scale(.92)', 'out'], [2.55, 'opacity:1;transform:scale(1)'], [3.3, 'opacity:1;transform:scale(1)', 'quint'], [3.45, 'opacity:0;transform:scale(1)']] },
-  xpB: { end: 'opacity:1;transform:scale(1)', origin: '50% 50%', stops: appear(3.3, HOLD) },
-  note: rise(3.55, 8),
+  // The day itself: constant motion, so no easing. Nothing else here is moved by a pointer.
+  fill: { end: fillAt(1), origin: '0 50%', stops: [[DAY.from, fillAt(0)], [DAY.to, fillAt(1)], [HOLD, fillAt(1), 'quint'], [HOLD + 0.4, fillAt(0)]] },
+  nowT: { end: at(DAY.w, 0), stops: [[DAY.from, at(0, 0)], [DAY.to, at(DAY.w, 0)], [HOLD + 0.2, at(DAY.w, 0)], [HOLD + 0.25, at(0, 0)]] },
+  nowO: { end: 'opacity:1', stops: [[HOLD, 'opacity:1', 'quint'], [HOLD + 0.2, 'opacity:0'], [5.3, 'opacity:0', 'out'], [5.5, 'opacity:1']] },
+  ...Object.fromEntries(SOURCES.flatMap((s, i) => [
+    // The app beats once, its line to the day lights from the app down, the moment is marked, the entry lands.
+    [`pop${i}`, { end: 'transform:scale(1)', origin: '50% 50%', stops: pulse(s.t, 1.08) }],
+    [`ring${i}`, sparkle(s.t)],
+    [`stem${i}`, { end: LIT, stops: [[s.t, 'stroke-dashoffset:1;opacity:1', 'out'], [s.t + 0.25, LIT], [HOLD, LIT, 'quint'], [HOLD + 0.3, 'stroke-dashoffset:0;opacity:0'], [HOLD + 0.35, 'stroke-dashoffset:1;opacity:0'], [HOLD + 0.4, 'stroke-dashoffset:1;opacity:1']] }],
+    [`dot${i}`, tickIn(s.t)],
+    [`slot${i}`, fade(s.t + 0.15, 1, 0)],
+    [`card${i}`, rise(s.t + 0.15, 14)],
+  ])) as Record<string, Track>,
+  // Commits and steps are standard XP; a lunch order is only tracked.
+  xpA: { end: 'opacity:0', origin: '50% 50%', stops: [[SOURCES[0].t + 0.3, 'opacity:0;transform:scale(.92)', 'out'], [SOURCES[0].t + 0.55, 'opacity:1;transform:scale(1)'], [SOURCES[2].t + 0.3, 'opacity:1;transform:scale(1)', 'quint'], [SOURCES[2].t + 0.45, 'opacity:0;transform:scale(1)']] },
+  xpB: { end: 'opacity:1;transform:scale(1)', origin: '50% 50%', stops: appear(SOURCES[2].t + 0.3, HOLD) },
 })
 
 export function IlloConnect() {
+  const { x, w, y } = DAY
   return (
-    <Illo label="Four apps sit around ReLife, switched off and locked. Connecting GitHub, then Swiggy, opens their lines: commits and orders flow in and each earns XP. The other two stay locked until you connect them." css={C.css}>
-      {APPS.map((a, i) => {
-        const live = 'on' in a
-        return (
-          <g key={a.name}>
-            {/* The way in: dashed and locked until the app is connected. */}
-            <path d={a.wire} stroke="var(--i-line)" strokeWidth={4} strokeDasharray="8 10" strokeLinecap="round" />
-            {live ? <path d={a.wire} stroke="var(--pill)" strokeWidth={4} strokeLinecap="round" pathLength={1} strokeDasharray="1 1" className={C.c[`wire${i}`]} /> : null}
-            <g className={live ? C.c[`lock${i}`] : undefined}>
-              <circle cx={a.lock[0]} cy={a.lock[1]} r={20} fill="var(--surface)" stroke="var(--i-line)" strokeWidth={2} />
-              <Lock x={a.lock[0] - 10} y={a.lock[1] - 10} width={20} height={20} color="var(--ink-3)" strokeWidth={2} />
-            </g>
-            <g opacity={live ? undefined : 0.4} className={live ? C.c[`app${i}`] : undefined}>
-              <g className={live ? C.c[`pop${i}`] : undefined}><Logo src={a.logo} x={a.x} y={a.y} size={92} /></g>
-              <Txt x={a.x + 46} y={a.y + 122} size={24} weight={600} middle>{a.name}</Txt>
-            </g>
-            {live ? (
-              <g className={C.c[`dot${i}`]}>
-                <circle cx={a.x + 84} cy={a.y + 8} r={13} fill="var(--good)" stroke="var(--surface-2)" strokeWidth={4} />
-              </g>
-            ) : null}
+    <Illo label="Today as a line from morning to night, with three connected apps above it. As the day passes with nobody typing, GitHub logs 3 commits to Skills at 09:40, Swiggy logs a ₹320 lunch to Wealth at 13:10 and the phone logs 8,214 steps to Health at 21:15. XP goes from 10 to 25." css={C.css}>
+      <Txt x={x} y={70} size={32} weight={600}>Today</Txt>
+      <Chip x={x + w - 124} y={34} w={124} h={48} label="+10 XP" tone="xp" className={C.c.xpA} />
+      <Chip x={x + w - 124} y={34} w={124} h={48} label="+25 XP" tone="xp" className={C.c.xpB} />
+
+      <Meter x={x} y={y - 4} w={w} h={8} className={C.c.fill} />
+      {SOURCES.map((s, i) => (
+        <g key={s.name}>
+          {/* The app, switched on (green dot), and its line down to the day. */}
+          <rect x={s.x - 50} y={90} width={100} height={100} rx={30} stroke="var(--pill)" strokeWidth={3} className={C.c[`ring${i}`]} />
+          <g className={C.c[`pop${i}`]}>
+            {s.logo ? <Logo src={s.logo} x={s.x - 42} y={98} size={84} /> : (
+              <>
+                <rect x={s.x - 42} y={98} width={84} height={84} rx={84 * 0.27} fill="white" stroke="var(--img-outline)" strokeWidth={2} />
+                <Smartphone x={s.x - 23} y={117} width={46} height={46} color="var(--pill)" strokeWidth={2} />
+              </>
+            )}
+            <circle cx={s.x + 36} cy={104} r={12} fill="var(--good)" stroke="var(--surface-2)" strokeWidth={4} />
           </g>
-        )
-      })}
-      {APPS.map((a, i) => ('on' in a ? (
-        <g key={a.name} className={C.c[`pkO${i}`]}>
-          <g className={C.c[`pkT${i}`]}><Art src={a.packet} x={a.from[0] - 22} y={a.from[1] - 22} size={44} /></g>
+          <line x1={s.x} x2={s.x} y1={190} y2={y - 16} stroke="var(--i-line)" strokeWidth={4} strokeLinecap="round" />
+          <line x1={s.x} x2={s.x} y1={190} y2={y - 16} stroke="var(--pill)" strokeWidth={4} strokeLinecap="round" pathLength={1} strokeDasharray="1 1" className={C.c[`stem${i}`]} />
+          <circle cx={s.x} cy={y} r={10} fill="var(--surface-2)" stroke="var(--i-line)" strokeWidth={3} />
+          <g className={C.c[`dot${i}`]}><circle cx={s.x} cy={y} r={12} fill="var(--pill)" stroke="var(--surface-2)" strokeWidth={4} /></g>
+          <Txt x={s.x} y={y + 44} size={24} fill="var(--ink-3)" middle>{s.time}</Txt>
+
+          {/* What it wrote into ReLife: an empty slot until the day gets there. */}
+          <rect x={s.x - 97} y={299} width={194} height={110} rx={24} stroke="var(--i-line)" strokeWidth={2} strokeDasharray="8 10" className={C.c[`slot${i}`]} />
+          <g className={C.c[`card${i}`]}>
+            <Panel x={s.x - 98} y={298} w={196} h={112} r={24} />
+            <Txt x={s.x - 78} y={345} size={26} weight={600}>{s.value}</Txt>
+            <circle cx={s.x - 70} cy={378} r={8} fill={s.color} />
+            <Txt x={s.x - 52} y={387} size={24} fill="var(--ink-3)">{s.area}</Txt>
+          </g>
         </g>
-      ) : null))}
-      <g className={C.c.mark}><CapsuleMark cx={360} cy={206} w={64} h={104} stroke={4} /></g>
-      <Chip x={300} y={280} w={120} h={44} label="+20 XP" tone="xp" className={C.c.xpA} />
-      <Chip x={300} y={280} w={120} h={44} label="+40 XP" tone="xp" className={C.c.xpB} />
-      <g className={C.c.note}><Txt x={360} y={362} size={24} fill="var(--ink-3)" middle>Synced earns full XP</Txt></g>
-      <Cursor move={C.c.move} press={C.c.press} />
+      ))}
+      {/* Now: the point the day has reached. */}
+      <g className={C.c.nowO}><g className={C.c.nowT}><circle cx={x} cy={y} r={7} fill="white" stroke="var(--pill)" strokeWidth={5} /></g></g>
     </Illo>
   )
 }
@@ -629,9 +631,9 @@ export const TOUR_ILLOS = [
 
 /** Every picture the illustrations load, so the tour can fetch them while the welcome is on screen. */
 export const ILLO_ASSETS = [
-  ...['heart', 'brain', 'learn', 'money', 'art', 'people', 'walk', 'skin', 'water', 'gym', 'code'].map((n) => `/routines/${n}.png`),
-  '/hobbies/coffee.png', '/categories/eating-out.png',
-  ...['github', 'swiggy', 'binance', 'telegram'].map((n) => `/connectors/${n}.svg`),
+  ...['heart', 'brain', 'learn', 'money', 'art', 'people', 'walk', 'skin', 'water', 'gym'].map((n) => `/routines/${n}.png`),
+  '/hobbies/coffee.png',
+  ...['github', 'swiggy', 'telegram'].map((n) => `/connectors/${n}.svg`),
 ]
 
 /** All seven on tour-card plates, for /dev/ui. A client component, since this module is one. */

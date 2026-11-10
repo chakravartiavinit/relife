@@ -34,8 +34,8 @@ export const TOUR_STEPS: { anchor: string | null; title: string; body: string; I
   },
   {
     anchor: '/connectors',
-    title: 'Let your apps do the logging',
-    body: 'Connect GitHub, Binance, order apps and more. Synced data earns full XP, and nothing syncs until you connect it.',
+    title: 'Your day, logged for you',
+    body: 'Connect GitHub, your order apps or your phone, and what you do there lands here by itself, at full XP. You pick what syncs.',
     Illo: IlloConnect,
   },
   {
