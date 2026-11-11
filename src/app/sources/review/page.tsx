@@ -10,21 +10,24 @@ import { formatDay, formatTime, localDate } from '@/core/time'
 import { formatMoney } from '@/domain/money'
 import { groupOf, reasonFor, summarize } from '@/domain/inbox'
 import { Card, CardHeader, IconChip, PageHeader, Skeleton } from '@/ui/components/card'
+import { PageTabs } from '@/ui/components/kit/page-tabs'
+import { TABS } from '@/ui/nav-model'
 import { AppLogo } from '@/ui/components/app-logo'
 import { BrandLogo } from '@/ui/components/brand-logo'
 import { CategorySelect } from '@/ui/components/wealth/category-select'
 import { RawEventActions, RetryAll } from '@/ui/components/raw-event-actions'
 import { cn } from '@/ui/cn'
 
-export const metadata: Metadata = { title: 'Inbox' }
+export const metadata: Metadata = { title: 'Needs a look' }
 
 export default function InboxPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Inbox"
+        eyebrow="Sources"
         title="Needs a look"
         description="What ReLife couldn’t sort out by itself. Most of it fixes itself; the rest takes one tap, and ReLife learns from it."
+        tabs={<PageTabs label="Sources" current="/sources/review" items={TABS['/sources']} />}
       />
       <Suspense fallback={<div className="flex flex-col gap-6"><Skeleton className="h-[104px] rounded-lg" /><Skeleton className="h-[320px] rounded-lg" /></div>}>
         <Inbox />

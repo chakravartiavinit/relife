@@ -30,7 +30,7 @@ import { Quests, type QuestItem } from '@/ui/components/quests'
 import { xpSummary } from '@/core/xp'
 
 // Today is a morning briefing, then the day's work: what needs you first, today's numbers next to a usual day,
-// the quest log, and a short look at money and yesterday. Looking back further lives on Progress (/profile).
+// the quest log, and a short look at money and yesterday. Looking back further lives on Progress (/character).
 
 export default function TodayPage() {
   return (
@@ -165,7 +165,7 @@ async function Today() {
             <CardHeader
               title="Today’s quest log" icon={<ScrollText strokeWidth={2} />} color="var(--pill)"
               description={total ? (left ? `${done} of ${total} done · ${left} to go` : `All ${total} done. Nice.`) : undefined}
-              action={<Link href="/habits?new=1" className={buttonClass({ variant: 'ghost', size: 'sm' })}><Plus className="size-4" strokeWidth={2} />Add</Link>}
+              action={<Link href="/routines?new=1" className={buttonClass({ variant: 'ghost', size: 'sm' })}><Plus className="size-4" strokeWidth={2} />Add</Link>}
             />
             {total ? <Capsule value={done} max={total} size="sm" color="var(--pill)" label="Done today" className="-mt-2 mb-5" /> : null}
             {goals.length ? (
@@ -177,7 +177,7 @@ async function Today() {
               <EmptyState
                 title="Nothing scheduled today" icon={Sunrise} color={'var(--pill)'}
                 description="Add routines like skincare or medicines and they’ll show up here, with reminders on Telegram."
-                action={<Link href="/habits?new=1" className={buttonClass({ variant: 'primary' })}>Add a routine</Link>}
+                action={<Link href="/routines?new=1" className={buttonClass({ variant: 'primary' })}>Add a routine</Link>}
               />
             ) : null}
           </Card>

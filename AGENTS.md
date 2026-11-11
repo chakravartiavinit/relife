@@ -17,10 +17,15 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
 
 ## Layout
 
-- Pages: Today (`/`, the quest log: things to do now), Activity (`/activity`, laptop time from `extension/` and
-  the Mac watcher), Progress (`/profile`, the character sheet: level, streak,
-  week, consistency, achievements, XP; `/overview` redirects here), Habits, Insights, and six areas (Health, Mind, Skills, Wealth,
-  Hobbies, People) that share one template (`AreaHeader` → `KpiStrip` → cards). Inbox, Connectors and Settings sit in the sidebar footer.
+- Pages: Today (`/`, the quest log: things to do now), Character (`/character`, the character sheet: level, streak,
+  week, consistency, achievements, XP), Routines (`/routines`, tab `/routines/trackers`, tracker pages at
+  `/routines/trackers/[slug]`), Coach (`/coach` nudges, tab `/coach/screen-time`: laptop time from `extension/` and
+  the Mac watcher), and six areas (Health, Mind, Skills, Wealth, Hobbies, People at `/people`) that share one
+  template (`AreaHeader` → `KpiStrip` → cards). Sources (`/sources` connected, `/sources/review` needs a look,
+  `/sources/browse` catalogue) and Settings sit in the sidebar footer. Each tab is its own route; the old URLs
+  (`/profile`, `/habits`, `/insights`, `/activity`, `/connectors`, `/inbox`, `/relationships`, `/trackers/*`,
+  `/overview`, `/schedules`) redirect (307) from `redirects()` in `next.config.ts`. Link to the new routes so no
+  click goes through a redirect.
   Navigation lives in `src/ui/components/nav.tsx`. The game look comes from three banners: `CharacterBanner`
   (`hud.tsx`, Today and Progress), `AreaHeader` (area pages) and `PageHeader` (everything else). Routine
   pictures come from `src/ui/routine-icons.ts`.
@@ -91,7 +96,7 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
 - Per-day values are keyed by the user's local date (`core/time.localDate`), never UTC dates.
 - Money is stored in its original currency; convert at read time with `core/fx.convert`.
 - Re-running any sync or parse must be safe: dedupe on `(source, externalId)` / `externalRef`.
-- Nothing syncs until the user connects it on /connectors. Keys typed there are stored encrypted in
+- Nothing syncs until the user connects it on /sources/browse. Keys typed there are stored encrypted in
   `connections.secrets_encrypted` and loaded into a key map (`core/secrets.ts`); `.env` only fills blanks.
 - Keys can also come from a dotsafe vault: `npm run dev:vault` runs the app under `dotsafe run`, which injects
   them as environment variables (see docs/CONNECTORS.md). Never print or log their values.

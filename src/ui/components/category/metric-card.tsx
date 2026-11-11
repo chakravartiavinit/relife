@@ -61,7 +61,7 @@ export function MetricCard({ data, from, to, color, title, empty, target, chart,
           avg == null ? null : `avg ${formatNumber(avg, decimals)}${unit ? ` ${unit}` : ''}`,
           onTarget != null ? `${onTarget} of ${logged.length} on target` : null,
         ].filter(Boolean).join(' · ')}
-        action={<Link href={`/trackers/${encodeURIComponent(t.slug)}`} aria-label={`Open ${title}`} className={buttonClass({ variant: 'ghost', size: 'icon-sm' })}><ArrowUpRight className="size-4" strokeWidth={1.5} /></Link>}
+        action={<Link href={`/routines/trackers/${encodeURIComponent(t.slug)}`} aria-label={`Open ${title}`} className={buttonClass({ variant: 'ghost', size: 'icon-sm' })}><ArrowUpRight className="size-4" strokeWidth={1.5} /></Link>}
       />
       {kind === 'area'
         ? <TrendArea data={series} color={color} unit={unit} target={goal} label={label} domain={domain} curve={t.kind === 'scale' ? 'linear' : 'monotone'} height={200} />

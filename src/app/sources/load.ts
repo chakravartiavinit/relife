@@ -1,40 +1,17 @@
-import type { Metadata } from 'next'
 import { connection } from 'next/server'
-import { Suspense } from 'react'
 import { desc, eq } from 'drizzle-orm'
 import { db, isMock, schema } from '@/db'
 import { getUser } from '@/core/user'
 import { formatDay, formatTime, localDate } from '@/core/time'
 import { connectorStatus } from '@/worker/sync'
 import { KEY_ENV, modelId, type Task } from '@/ai/models'
-import { PageHeader, Skeleton } from '@/ui/components/card'
-import { ConnectorMarket, type ConnectorItem, type FieldView } from '@/ui/components/connector-market'
+import type { ConnectorItem, FieldView } from '@/ui/components/connector-market'
 import { envDefault, savedFields } from '@/core/secrets'
 import { integration } from '@/core/integrations'
 import type { SetupField } from '@/core/types'
 import { env } from '@/core/env'
 
-export const metadata: Metadata = { title: 'Connectors' }
-
-export default function ConnectorsPage() {
-  return (
-    <>
-      <PageHeader
-        eyebrow="System"
-        title="Connectors"
-        description="Data sources, Telegram and AI models. You bring the keys: they’re encrypted in your local database, and nothing syncs until you connect it."
-      />
-      <Suspense fallback={
-        <div className="flex flex-col gap-10">
-          <Skeleton className="h-8 w-72 rounded-full" />
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 9 }, (_, i) => <Skeleton key={i} className="h-[76px] rounded-[18px]" />)}</div>
-        </div>
-      }>
-        <Connectors />
-      </Suspense>
-    </>
-  )
-}
+// Shared by /sources (connected) and /sources/browse (catalogue): every service as a ConnectorItem.
 
 function ago(d: Date | null | undefined) {
   if (!d) return 'never'
@@ -65,7 +42,7 @@ const AI: { id: string; name: string; description: string; provides: string[] }[
   { id: 'local', name: 'Ollama or LM Studio', description: 'Runs on your machine, so nothing leaves your laptop. Any OpenAI-compatible server works.', provides: ['Private', 'Free', 'Offline'] },
 ]
 
-async function Connectors() {
+export async function loadConnectors() {
   await connection()
   const user = await getUser() // also applies connected keys to process.env
   const [sources, [heartbeat], runs, saved, rows, jobs] = await Promise.all([
@@ -133,6 +110,6 @@ async function Connectors() {
       at: `${formatDay(localDate(r.startedAt, user.timezone))}, ${formatTime(r.startedAt, user.timezone)}`, ok: r.ok, events: r.eventsCount,
     }))
   }
-  return <ConnectorMarket items={items} worker={{ alive: !!workerAlive, ago: ago(heartbeat?.at) }} />
+  return { items, worker: { alive: !!workerAlive, ago: ago(heartbeat?.at) } }
 }
 

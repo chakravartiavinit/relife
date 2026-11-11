@@ -16,7 +16,7 @@ import { ContactedButton, NewPersonButton } from '@/ui/components/forms/people-f
 
 export const metadata: Metadata = { title: 'People' }
 
-export default function RelationshipsPage() {
+export default function PeoplePage() {
   return (
     <div>
       <AreaHeader area="relationships" title="Your people" description="The people who matter, and how long it’s been." actions={<NewPersonButton />} />

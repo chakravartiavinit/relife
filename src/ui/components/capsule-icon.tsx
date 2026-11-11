@@ -1,12 +1,11 @@
-import { Brain, Code, HeartPulse, Palette, Users, Wallet, type LucideIcon } from 'lucide-react'
-import type { Category } from '@/db/schema'
+import type { LucideIcon } from 'lucide-react'
 import { cn } from '../cn'
 
 // The ReLIFE capsule from the logo, used as the app's icon shape: a tilted pill with an ink outline,
 // the top in colour and the bottom white. Area pages, the character banner and setup use it.
 
-/** Each area's line icon, the same on its page, the character banner and setup. */
-export const AREA_ICON: Record<Category, LucideIcon> = { health: HeartPulse, mind: Brain, skills: Code, wealth: Wallet, hobbies: Palette, relationships: Users }
+// Moved to src/ui/area-art.ts; re-exported until PR D deletes this file.
+export { AREA_ICON } from '../area-art'
 
 const SIZE = {
   sm: { box: 'h-12 w-[30px]', icon: 'size-3.5', text: 'text-[13px]' },

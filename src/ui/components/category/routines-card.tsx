@@ -23,7 +23,7 @@ export async function RoutinesCard({ user, category, title = 'Routines', kinds =
       <CardHeader
         title={title} icon={<Repeat strokeWidth={2} />} color={CATEGORY[category].color}
         description="Last 14 days"
-        action={<Link href="/habits" className={buttonClass({ variant: 'ghost', size: 'sm' })}>Manage</Link>}
+        action={<Link href="/routines" className={buttonClass({ variant: 'ghost', size: 'sm' })}>Manage</Link>}
       />
       {rows.length ? (
         <ul className="-my-2 divide-y divide-divider">
@@ -33,7 +33,7 @@ export async function RoutinesCard({ user, category, title = 'Routines', kinds =
         <EmptyState
           title={`No ${CATEGORY[category].label.toLowerCase()} routines yet`} icon={Repeat} color={CATEGORY[category].color}
           description="Routines you add here get reminders on Telegram and a streak."
-          action={<Link href="/habits?new=1" className={buttonClass({ variant: 'primary', size: 'sm' })}>Add a routine</Link>}
+          action={<Link href="/routines?new=1" className={buttonClass({ variant: 'primary', size: 'sm' })}>Add a routine</Link>}
         />
       )}
     </Card>

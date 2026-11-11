@@ -3,11 +3,13 @@
 import { Command } from 'cmdk'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useTransition } from 'react'
-import { Plus, Search, Sparkles, type LucideIcon } from 'lucide-react'
+import { Plus, Search, Sparkles } from 'lucide-react'
+import { CATEGORY } from '../tokens'
 import { routineArt } from '../routine-icons'
 import { quickLog } from '@/app/actions'
-import { NAV, SYSTEM_NAV } from './nav'
-import { CATEGORY } from '../tokens'
+import { FOOTER, PLAY, STATS, type NavItem } from '../nav-model'
+import { Button } from './button'
+import { Kbd } from './kit/kbd'
 import { announceXp, useToast } from './toast'
 
 /**
@@ -55,17 +57,17 @@ export function CommandMenu() {
                         })}
                         className={itemClass}
                       >
-                        <Chip color="var(--pill)"><Plus /></Chip>
+                        <Chip color="var(--accent)"><Plus /></Chip>
                         <Label title={<>Log <span className="font-mono">{value}</span></>} sub={pending ? 'Saving…' : 'Adds to today and earns XP'} />
                         <kbd className={enterClass}>↵</kbd>
                       </Command.Item>
                     ) : null}
                     <Command.Item
                       value={`ask ${value}`}
-                      onSelect={() => { router.push(`/insights?ask=${encodeURIComponent(value)}`); close() }}
+                      onSelect={() => { router.push(`/coach?ask=${encodeURIComponent(value)}`); close() }}
                       className={itemClass}
                     >
-                      <Chip color="var(--cat-mind)"><Sparkles /></Chip>
+                      <Chip color="var(--mind)"><Sparkles /></Chip>
                       <Label title={<>Ask: <span className="text-ink">{value}</span></>} sub="Your coach answers from your data" />
                       <kbd className={enterClass}>↵</kbd>
                     </Command.Item>
@@ -77,12 +79,12 @@ export function CommandMenu() {
       {open ? (
         <div className="fixed inset-0 z-50 flex items-start justify-center px-4 pt-[12vh]">
           {/* Opened by keyboard many times a day: no animation, it appears on the same frame. */}
-          <div className="absolute inset-0 bg-[var(--scrim)] backdrop-blur-[3px]" onClick={close} />
+          <div className="absolute inset-0 bg-[var(--scrim)]" onClick={close} />
           <div className="relative w-full max-w-[600px]">
             <Command
               label="Command menu"
               loop
-              className="overflow-hidden rounded-[20px] bg-surface shadow-3"
+              className="overflow-hidden rounded-lg bg-raised shadow-3"
               onKeyDown={(e) => { if (e.key === 'Escape') close() }}
             >
               <div className="flex items-center gap-3 px-5">
@@ -121,12 +123,12 @@ export function CommandMenu() {
                   <Command.Group key={g.heading} heading={g.heading} className={groupClass}>
                     {g.items.map((p) => (
                       <Command.Item
-                        key={p.href} value={`go ${p.label}`} keywords={[p.sub, p.parent ?? ''].filter(Boolean)}
+                        key={p.href} value={`go ${p.label}`} keywords={[p.sub, ...(p.keywords ?? [])]}
                         onSelect={() => { router.push(p.href); close() }}
                         className={itemClass}
                       >
-                        <Chip color={p.color}><p.icon /></Chip>
-                        <Label title={p.parent ? <><span className="text-ink-3">{p.parent} ›</span> {p.label}</> : p.label} sub={p.sub} />
+                        <Chip color={p.area ? CATEGORY_COLOR[p.area] : undefined}><p.icon /></Chip>
+                        <Label title={p.label} sub={p.sub} />
                         <kbd className={enterClass}>↵</kbd>
                       </Command.Item>
                     ))}
@@ -148,25 +150,14 @@ export function CommandMenu() {
   )
 }
 
+const CATEGORY_COLOR = Object.fromEntries(Object.entries(CATEGORY).map(([k, v]) => [k, v.color]))
 const EXAMPLES = ['water 250', 'mood 4', 'spent 120 chai', 'guitar 30', 'sleep 7.5']
 
-type Entry = { href: string; label: string; icon: LucideIcon; color?: string; sub: string; parent?: string }
-const SUB: Record<string, string> = {
-  '/': 'Quests and routines for today', '/profile': 'Level, streak and achievements', '/habits': 'Routines and trackers',
-  '/insights': 'Patterns, nudges and questions', '/inbox': 'Messages that need a look', '/connectors': 'Apps and data sources',
-  '/settings': 'Profile, the System and notifications', '/wealth/spending': 'Where your money goes', '/wealth/portfolio': 'Holdings and P&L',
-  '/wealth/subscriptions': 'Bills and renewals',
-}
-const AREA_SUB = Object.fromEntries(Object.values(CATEGORY).map((c) => [c.label, c.blurb]))
-const entry = (n: (typeof NAV)[number]['items'][number]): Entry[] => [
-  { href: n.href, label: n.label, icon: n.icon, color: n.color, sub: SUB[n.href] ?? AREA_SUB[n.label] ?? '' },
-  ...(n.children ?? []).map((c) => ({ href: c.href, label: c.label, icon: n.icon, color: n.color, sub: SUB[c.href] ?? '', parent: n.label })),
-]
 const GROUPS = [
-  { heading: 'Play', items: NAV[0].items.flatMap(entry) },
-  { heading: 'Areas', items: NAV[1].items.flatMap(entry) },
-  { heading: 'Setup', items: SYSTEM_NAV.flatMap(entry) },
-]
+  { heading: 'Go to', items: PLAY },
+  { heading: 'Stats', items: STATS },
+  { heading: 'Setup', items: FOOTER },
+] satisfies { heading: string; items: NavItem[] }[]
 
 /** Icon in a small tinted tile: the area colour, or neutral for app pages. */
 function Chip({ color, children }: { color?: string; children: React.ReactNode }) {
@@ -174,7 +165,7 @@ function Chip({ color, children }: { color?: string; children: React.ReactNode }
     <span
       aria-hidden
       className="grid size-8 shrink-0 place-items-center rounded-[9px] [&_svg]:size-4 [&_svg]:stroke-[1.75]"
-      style={color ? { color: `color-mix(in oklch, ${color} 80%, var(--ink))`, background: `color-mix(in oklch, ${color} 15%, transparent)` } : { color: 'var(--ink-2)', background: 'var(--surface-2)' }}
+      style={color ? { color, background: `color-mix(in srgb, ${color} 15%, transparent)` } : { color: 'var(--text-2)', background: 'var(--raised-2)' }}
     >
       {children}
     </span>
@@ -197,17 +188,29 @@ const kbdClass = 'inline-grid h-5 min-w-5 place-items-center rounded-[5px] bg-su
 // Only the selected row shows its Enter key, so the hint follows the keyboard.
 const enterClass = `${kbdClass} opacity-0 transition-[opacity] duration-150 group-data-[selected=true]/item:opacity-100`
 
+const openCommand = () => window.dispatchEvent(new Event('relife:command'))
+
+/** The rail's search field: 32px, opens ⌘K. */
 export function CommandButton() {
   return (
     <button
       type="button"
       data-tour="command"
-      onClick={() => window.dispatchEvent(new Event('relife:command'))}
-      className="flex h-10 w-full items-center gap-2.5 rounded-md bg-ink/[0.035] px-3 text-sm text-ink-3 shadow-inset transition-[background-color,color] duration-150 hover:bg-ink/[0.06] hover:text-ink-2 dark:bg-white/[0.04] dark:hover:bg-white/[0.07]"
+      onClick={openCommand}
+      className="flex h-8 w-full items-center gap-2 rounded-sm bg-raised pr-1.5 pl-2.5 text-[13px] text-ink-3 shadow-inset transition-[box-shadow,color] duration-150 hover:text-ink-2 hover:shadow-[inset_0_0_0_1px_var(--line-3)]"
     >
-      <Search className="size-4" strokeWidth={1.5} />
-      <span className="flex-1 text-left">Log or search</span>
-      <kbd className="rounded-xs bg-surface px-1.5 text-[11px] leading-5 font-medium text-ink-2 shadow-1">⌘K</kbd>
+      <Search className="size-4" strokeWidth={1.5} aria-hidden />
+      <span className="flex-1 text-left whitespace-nowrap">Log or search…</span>
+      <Kbd>⌘K</Kbd>
     </button>
+  )
+}
+
+/** "Log something": an icon button that opens ⌘K empty, in the rail's top row and the phone header. */
+export function LogButton() {
+  return (
+    <Button variant="ghost" size="icon" aria-label="Log something" onClick={openCommand}>
+      <Plus className="size-4" strokeWidth={1.5} />
+    </Button>
   )
 }

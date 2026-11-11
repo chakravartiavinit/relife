@@ -2,6 +2,7 @@ import { and, between, eq, inArray } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { describe, nextOccurrence, occurrencesBetween } from '@/domain/recurrence'
 import { persist } from './ingest'
+import { trackerDays } from './metrics'
 import { localDate, localDayRange } from './time'
 import type { User } from './user'
 
@@ -50,6 +51,34 @@ export async function dayAgenda(user: User, day: string, now = new Date()): Prom
     }
   }
   return items.sort((a, b) => a.occurrence.getTime() - b.occurrence.getTime())
+}
+
+/**
+ * How many of today's routines are still open: the number beside Today in the rail. Same rules as the Today page:
+ * subscriptions, bills and renewals are payments, not routines; a quantity routine (water) counts once, until its
+ * goal is met; everything else counts while it is not done or skipped.
+ */
+export async function todayLeft(user: User, now = new Date()): Promise<number> {
+  const today = localDate(now, user.timezone)
+  const agenda = await dayAgenda(user, today, now)
+  const routines = agenda.filter((i) => !['subscription', 'bill', 'renewal'].includes(i.schedule.kind))
+  const goals = new Map<string, Schedule>()
+  let left = 0
+  for (const i of routines) {
+    const s = i.schedule
+    const slug = (s.meta as ScheduleMeta).trackerSlug
+    if (slug && s.target) goals.set(s.id, s)
+    else if (i.status !== 'done' && i.status !== 'skipped') left++
+  }
+  if (goals.size) {
+    const slugs = [...new Set([...goals.values()].map((s) => (s.meta as ScheduleMeta).trackerSlug!))]
+    const tracked = await trackerDays(user, today, today, { slugs })
+    for (const s of goals.values()) {
+      const v = tracked.find((t) => t.tracker.slug === (s.meta as ScheduleMeta).trackerSlug)?.days.get(today) ?? 0
+      if (v < s.target!) left++
+    }
+  }
+  return left
 }
 
 /**

@@ -40,7 +40,7 @@ export function RowMenu({ label, items }: { label: string; items: RowMenuItem[] 
     return () => { document.removeEventListener('pointerdown', out); document.removeEventListener('keydown', key) }
   }, [open])
 
-  const item = 'flex h-10 w-full items-center gap-2.5 rounded-[10px] px-2.5 text-start text-[13.5px] transition-[background-color,color] duration-150 hover:bg-ink/[0.05] focus-visible:bg-ink/[0.05] focus-visible:outline-none dark:hover:bg-white/[0.06] dark:focus-visible:bg-white/[0.06]'
+  const item = 'flex h-9 w-full items-center gap-2.5 rounded-sm px-2.5 text-start text-[13px] transition-[background-color,color] duration-150 hover:bg-hover focus-visible:bg-hover focus-visible:outline-none'
   const safe = items.filter((i) => !i.danger)
   const danger = items.filter((i) => i.danger)
 
@@ -53,7 +53,7 @@ export function RowMenu({ label, items }: { label: string; items: RowMenuItem[] 
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => (open ? close() : setOpen(true))}
-        className="grid size-10 place-items-center rounded-full text-ink-3 transition-[background-color,color,scale] duration-150 ease-out-quint hover:bg-ink/[0.05] hover:text-ink active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill aria-expanded:bg-ink/[0.06] aria-expanded:text-ink dark:hover:bg-white/[0.06]"
+        className="grid size-10 place-items-center rounded-sm text-ink-3 transition-[background-color,color,scale] duration-150 ease-out-quint hover:bg-hover hover:text-ink active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent aria-expanded:bg-hover aria-expanded:text-ink"
       >
         <MoreHorizontal className="size-[18px]" strokeWidth={1.75} />
       </button>
@@ -66,18 +66,18 @@ export function RowMenu({ label, items }: { label: string; items: RowMenuItem[] 
             animate={{ opacity: 1, scale: 1, y: 0, transition: { duration: 0.15, ease: EASE_OUT } }}
             exit={{ opacity: 0, transition: { duration: 0.1 } }}
             style={{ transformOrigin: 'top right' }}
-            className="absolute end-0 top-[calc(100%+4px)] z-30 w-52 rounded-[16px] bg-surface p-1.5 shadow-3"
+            className="absolute end-0 top-[calc(100%+4px)] z-30 w-52 rounded-lg bg-raised p-1 shadow-3"
           >
             {safe.map((i) => (
               <button key={i.label} type="button" role="menuitem" className={cn(item, 'text-ink')} onClick={() => { close(); i.onSelect() }}>
                 <i.icon className="size-4 text-ink-3" strokeWidth={1.5} aria-hidden />{i.label}
               </button>
             ))}
-            {danger.length && safe.length ? <div aria-hidden className="mx-2 my-1 h-px bg-divider" /> : null}
+            {danger.length && safe.length ? <div aria-hidden className="mx-2 my-1 h-px bg-line" /> : null}
             {danger.map((i) => (
               <button
                 key={i.label} type="button" role="menuitem"
-                className={cn(item, 'text-bad', confirming === i.label && 'bg-bad/10 font-medium')}
+                className={cn(item, 'text-bad', confirming === i.label && 'bg-bad-bg font-medium')}
                 onClick={() => (confirming === i.label ? (close(), i.onSelect()) : setConfirming(i.label))}
               >
                 <i.icon className="size-4" strokeWidth={1.5} aria-hidden />{confirming === i.label ? `Tap again to ${i.label.toLowerCase()}` : i.label}

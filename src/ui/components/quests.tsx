@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import type { QuestMeasure, Rarity } from '@/domain/quests'
 import { openChestAction } from '@/app/actions'
-import { CATEGORY } from '../tokens'
+import { CATEGORY, RANK } from '../tokens'
 import { Button } from './button'
 import { Capsule } from './capsule'
 import { announceXp, useToast } from './toast'
@@ -24,11 +24,11 @@ const MEASURE_ICON: Record<QuestMeasure, LucideIcon> = {
   commit: GitCommitHorizontal, learn: GraduationCap, frugal: PiggyBank, catchup: HeartHandshake,
 }
 export const RARITY: Record<Rarity, { label: string; color: string }> = {
-  common: { label: 'Common', color: 'var(--pill)' },
-  rare: { label: 'Rare', color: 'var(--medal-gold)' },
-  epic: { label: 'Epic', color: 'var(--medal-sakura)' },
+  common: { label: 'Common', color: RANK.C },
+  rare: { label: 'Rare', color: 'var(--amber)' },
+  epic: { label: 'Epic', color: RANK.B },
 }
-const areaColor = (a: string) => (a in CATEGORY ? CATEGORY[a as keyof typeof CATEGORY].color : 'var(--pill)')
+const areaColor = (a: string) => (a in CATEGORY ? CATEGORY[a as keyof typeof CATEGORY].color : 'var(--accent)')
 
 /** Today's quests, this week's quest, chests waiting to be opened and streak freezes held. */
 export function Quests({ system, weekly, chests, freezes, frozeOn, weekLeft }: {
@@ -37,15 +37,15 @@ export function Quests({ system, weekly, chests, freezes, frozeOn, weekLeft }: {
 }) {
   const [opening, setOpening] = useState(false)
   return (
-    <section aria-labelledby="quests-h" className="relative rounded-lg bg-surface p-5 shadow-1">
+    <section aria-labelledby="quests-h" className="relative rounded-lg bg-raised p-5 shadow-1">
       <header className="mb-3 flex items-center justify-between gap-3">
         <h2 id="quests-h" className="flex items-center gap-2.5 text-[15px] font-semibold text-ink">
-          <span aria-hidden className="grid size-7 place-items-center rounded-[8px] text-pill-ink" style={{ background: 'var(--pill-wash)' }}><Swords className="size-4" strokeWidth={2} /></span>
+          <span aria-hidden className="grid size-7 place-items-center rounded-[8px] text-accent-text" style={{ background: 'var(--accent-bg)' }}><Swords className="size-4" strokeWidth={2} /></span>
           Quests
         </h2>
         <span
           title="Streak freezes: one is used automatically when you miss a day, so your streak survives."
-          className="inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[12px] font-medium text-ink-2 shadow-[inset_0_0_0_1px_var(--hairline)] tabular-nums"
+          className="inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[12px] font-medium text-ink-2 shadow-[inset_0_0_0_1px_var(--line-2)] tabular-nums"
         >
           <Snowflake className="size-3.5 text-sky" strokeWidth={2} aria-hidden />
           {freezes} <span className="sr-only">streak freezes</span><span aria-hidden className="text-ink-3">/ 2</span>
@@ -157,7 +157,7 @@ export function ChestArt({ rarity, size = 48, open = false }: { rarity: Rarity; 
         <path d="M6 28 V20 a14 12 0 0 1 14-12 h24 a14 12 0 0 1 14 12 V28 Z" fill={`url(#chest-${rarity})`} />
         <rect x="28" y="8" width="8" height="20" fill={band} opacity="0.55" />
       </motion.g>
-      <rect x="27" y="24" width="10" height="11" rx="2.5" fill={`color-mix(in oklch, var(--medal-gold) 80%, white)`} stroke={band} strokeWidth="1.2" />
+      <rect x="27" y="24" width="10" height="11" rx="2.5" fill={`color-mix(in oklch, var(--amber) 80%, white)`} stroke={band} strokeWidth="1.2" />
     </svg>
   )
 }
@@ -182,7 +182,7 @@ function Loot({ rarity }: { rarity: Rarity }) {
           key={i}
           className="absolute"
           style={b.coin
-            ? { width: 10, height: 10, borderRadius: 99, background: 'radial-gradient(circle at 35% 30%, color-mix(in oklch, var(--medal-gold) 40%, white), var(--medal-gold))', boxShadow: '0 0 0 1px color-mix(in oklch, var(--medal-gold) 60%, black)' }
+            ? { width: 10, height: 10, borderRadius: 99, background: 'radial-gradient(circle at 35% 30%, color-mix(in oklch, var(--amber) 40%, white), var(--amber))', boxShadow: '0 0 0 1px color-mix(in oklch, var(--amber) 60%, black)' }
             : { width: 6, height: 6, rotate: 45, background: RARITY[rarity].color }}
           initial={{ x: 0, y: 0, opacity: 1, scale: 0.4 }}
           animate={{ x: b.x, y: [0, -b.up, -b.up + b.fall], opacity: [1, 1, 0], scale: 1, rotate: b.rot }}
@@ -234,7 +234,7 @@ function ChestModal({ chests, onClose }: { chests: ChestItem[]; onClose: () => v
         role="dialog" aria-modal="true" aria-labelledby="chest-h"
         initial={{ opacity: 0, scale: 0.94, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, y: 8, transition: { duration: 0.15 } }}
         transition={{ duration: 0.35, ease: EASE_OUT_STRONG }}
-        className="relative w-full max-w-[380px] overflow-hidden rounded-[28px] bg-surface p-7 text-center shadow-3"
+        className="relative w-full max-w-[380px] overflow-hidden rounded-[28px] bg-raised p-7 text-center shadow-3"
       >
         {got && chest.rarity === 'epic' ? (
           <motion.span aria-hidden className="pointer-events-none absolute inset-0 z-10 rounded-[28px] bg-white" initial={{ opacity: 0.85 }} animate={{ opacity: 0 }} transition={{ duration: 0.5, ease: 'easeOut' }} />
@@ -285,7 +285,7 @@ function ChestModal({ chests, onClose }: { chests: ChestItem[]; onClose: () => v
               >
                 <span className="rounded-full bg-ink px-3.5 py-1.5 font-display text-[18px] font-bold text-bg tabular-nums shadow-2">+{got.xp} XP</span>
                 {got.freeze ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-surface px-3 py-1 text-[12.5px] font-semibold text-ink shadow-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-raised px-3 py-1 text-[12.5px] font-semibold text-ink shadow-2">
                     <Snowflake className="size-3.5 text-sky" strokeWidth={2} aria-hidden />Streak freeze
                   </span>
                 ) : null}

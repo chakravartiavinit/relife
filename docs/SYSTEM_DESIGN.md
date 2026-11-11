@@ -272,10 +272,13 @@ Mind             mood, screen time, journal
 Skills           GitHub, learning items, practice time
 Wealth           net worth · Spending (category, merchant, trends) · Portfolio (Binance P&L)
                  · Subscriptions (next due, monthly/yearly total)
-Relationships    people, last contacted, quality time
-Insights         weekly reviews, pending suggestions, plans
-Inbox            failed parses / needs review, merchant categorization
-Settings         profile, connectors, LLM models, reminders, theme
+People           (/people) people, last contacted, quality time
+Character        (/character) level, streak, achievements
+Routines         (/routines, /routines/trackers) routines, medicines, trackers
+Coach            (/coach, /coach/screen-time) weekly reviews, pending suggestions, plans, laptop time
+Sources          (/sources, /sources/review, /sources/browse) connected apps, failed parses /
+                 needs review, merchant categorization, catalogue
+Settings         profile, LLM models, reminders, theme
 ⌘K               log anything, jump anywhere, ask your data
 ```
 
@@ -388,7 +391,7 @@ The project was briefly called Savepoint, with its own crystal logo, in November
 |---|---|
 | Laptop asleep/off | iCloud inbox and Gmail queue data; connectors resume from `connections.cursor`; reminders send a single catch-up digest. |
 | Connector error | Recorded in `sync_runs`; retry with backoff on next tick; Telegram alert after 3 consecutive failures. |
-| Parser miss | Regex parsers → LLM fallback → `raw_events.status = failed` → Inbox "Needs review". |
+| Parser miss | Regex parsers → LLM fallback → `raw_events.status = failed` → Sources "Needs a look" (`/sources/review`). |
 | LLM down / no key | AI jobs skip silently; rules still alert. |
 | Worker dead | Heartbeat banner on dashboard; `launchd` agent restarts it on login. |
 

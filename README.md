@@ -38,7 +38,7 @@ diagrams (processes, data flow, data model, job engine, nudges, AI, security and
   what you want to improve; tested rules keep it fair (targets near your usual, ranks E–S, penalty and emergency
   quests). It also spots spending habits from order items, like a soft drink bought on most days, and sets at
   most one habit quest a day.
-- **Progress** (`/profile`): your character sheet. Level, title, streak, the week per area, consistency,
+- **Character** (`/character`): your character sheet. Level, title, streak, the week per area, consistency,
   achievements, weekly quests, chests and streak freezes.
 - **Areas**: Health, Mind, Skills, Wealth, Hobbies and People, each opening with its key numbers, then charts
   and routines.
@@ -51,16 +51,16 @@ diagrams (processes, data flow, data model, job engine, nudges, AI, security and
     where the profit and loss came from (spot and futures only, FIFO), and every trade, P2P order, transfer and
     reward.
   - **Subscriptions**: what renews and when, with logos and an add or edit dialog.
-- **Activity** (`/activity`): everything you do on the Mac, from the Chrome extension and a Mac app watcher:
+- **Screen time** (`/coach/screen-time`): everything you do on the Mac, from the Chrome extension and a Mac app watcher:
   time by kind (learning, deep work, fun, social…) and where it went, top sites and apps, and the pages and
   videos it was spent on. New sites and apps are sorted once by your AI model; tap a kind to change it.
 - **Library**: courses, shows, anime and video series. While an episode plays (Crunchyroll, Netflix, YouTube
   playlists, course sites), the extension adds the series by itself and logs each episode with its length and
   how far you got.
-- **Habits**: every routine, medicine and tracker, with streaks and history.
-- **Insights**: alerts, nudges, weekly reviews and plans, and questions about your data.
-- **Inbox**: messages that couldn't be read and payments without a category.
-- **Connectors**: connect data sources, Telegram and AI providers. Each shows when it last synced and when it
+- **Routines** (`/routines`, trackers at `/routines/trackers`): every routine, medicine and tracker, with streaks and history.
+- **Coach** (`/coach`): alerts, nudges, weekly reviews and plans, and questions about your data.
+- **Needs a look** (`/sources/review`): messages that couldn't be read and payments without a category.
+- **Sources** (`/sources`): connect data sources, Telegram and AI providers. Each shows when it last synced and when it
   syncs next.
 - **Welcome** (`/welcome`): first-run setup on one small card, a question at a time: your name, your day,
   areas, what to train, targets, tone and goals, then routines from a starter list or built by your AI model.
@@ -93,7 +93,7 @@ Two processes start together:
 
 - **web**: the Next.js dashboard and server actions.
 - **worker**: the job engine (connector syncs, parsing, reminders, nudges, XP, quests, AI), the Telegram bot and
-  the Mac app watcher. The Connectors page shows a notice when it isn't running.
+  the Mac app watcher. The Sources page shows a notice when it isn't running.
 
 Jobs live in Postgres, so a restart never loses or repeats one: missed daily jobs catch up once, failed syncs
 back off, and a connector syncs as soon as you connect it.
@@ -120,7 +120,7 @@ bar menu (Safari: **File → Add to Dock**). It gets a Dock icon and its own win
 
 ## Connect your data
 
-Open **Connectors** in the sidebar. Nothing syncs until you connect it. **Connect** asks for that service's keys
+Open **Sources** in the sidebar. Nothing syncs until you connect it. **Connect** asks for that service's keys
 and stores them encrypted in your local database; values already in `.env` fill any field you leave blank.
 
 | What | You need | Guide |
@@ -129,11 +129,11 @@ and stores them encrypted in your local database; values already in `.env` fill 
 | Binance: spot, futures, P2P, Convert, deposits, rewards | Read-only API key | [CONNECTORS.md](docs/CONNECTORS.md#binance) |
 | Zomato, Swiggy, Blinkit, Zepto, Flipkart, Amazon orders with items; MakeMyTrip bookings | Log in once in a Chrome window ReLife opens | [CONNECTORS.md](docs/CONNECTORS.md) |
 | GitHub commits, PRs and reviews | Fine-grained token | [CONNECTORS.md](docs/CONNECTORS.md#github) |
-| Codeforces, AtCoder, CodeChef, Lichess, Chess.com | Your public handle | Connectors page |
+| Codeforces, AtCoder, CodeChef, Lichess, Chess.com | Your public handle | Sources page |
 | Laptop time per site and app, shows and courses you watch | The browser extension and a shared token | [extension/README.md](extension/README.md) |
 | Steps, sleep, Health data (iPhone) | iOS Shortcuts writing to an iCloud Drive file | [SHORTCUTS.md](docs/SHORTCUTS.md) |
-| Exchange rates | Nothing: connect FX | Connectors page |
-| AI | A key for Anthropic, OpenAI, Google or OpenRouter, or a local model | Connectors page |
+| Exchange rates | Nothing: connect FX | Sources page |
+| AI | A key for Anthropic, OpenAI, Google or OpenRouter, or a local model | Sources page |
 
 Prefer a vault? Keep keys in [dotsafe](docs/CONNECTORS.md) and start with `npm run dev:vault`.
 
@@ -150,7 +150,7 @@ server's or the browser's clock.
   `/spent`, `/mood`, `/sleep`, `/wake` and `/ask`.
 - **Subscriptions**: press **Add subscription**, pick a service or type any name, and you get a reminder before
   each charge.
-- **Inbox** lists messages that couldn't be read and payments without a category. Fix a category once and
+- **Needs a look** lists messages that couldn't be read and payments without a category. Fix a category once and
   ReLife remembers it for that merchant.
 
 ## Mock mode

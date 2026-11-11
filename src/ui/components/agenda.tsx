@@ -118,35 +118,35 @@ export function Agenda({ rows }: { rows: AgendaRow[] }) {
   )
 }
 
-/** The circle you tap. Outline in the area colour; fills with a soft tint and a check when done. */
+/** The circle you tap (`.check`): a 22px circle with a `--check-ring` ring, a 40px hit area. Hover goes mint, done fills mint
+ * with a check (scale 0.25 to 1, blur 4px to 0), overdue is a red ring, skipped a muted skip icon. */
 function CheckButton({ r, onToggle, size = 'md', forceDone }: { r: AgendaRow; onToggle: () => void; size?: 'lg' | 'md' | 'sm'; forceDone?: boolean }) {
   const done = r.status === 'done' || !!forceDone
   const skipped = r.status === 'skipped'
-  const box = size === 'lg' ? 'size-7' : size === 'md' ? 'size-[22px]' : 'size-[18px]'
+  const box = size === 'sm' ? 'size-[18px]' : 'size-[22px]'
   return (
     <button
       type="button"
       onClick={onToggle}
       aria-pressed={done}
       aria-label={done || skipped ? `Undo ${r.name}` : `Mark ${r.name} done`}
-      className={cn('group/check relative grid shrink-0 place-items-center rounded-full transition-[scale] duration-150 ease-out-quint active:scale-[0.96] after:absolute after:inset-[-9px] after:content-[""] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill', box)}
-      style={{ '--c': r.status === 'missed' ? 'var(--bad)' : r.color } as React.CSSProperties}
+      className={cn('group/check relative grid shrink-0 place-items-center rounded-full transition-[scale] duration-150 ease-out-quint active:scale-[0.96] after:absolute after:-inset-[9px] after:content-[""] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent', box)}
     >
       {/* Both states stay mounted; cross-fade with scale + blur. */}
       <span
         className={cn(
-          'absolute inset-0 rounded-full shadow-[inset_0_0_0_1.5px_color-mix(in_oklch,var(--c)_70%,transparent)] transition-[opacity,scale,filter,background-color] duration-200 ease-out-quint group-hover/check:bg-[color-mix(in_oklch,var(--c)_14%,transparent)]',
+          'absolute inset-0 rounded-full transition-[opacity,scale,filter,box-shadow] duration-150 ease-out-quint',
+          r.status === 'missed' ? 'shadow-[inset_0_0_0_1.5px_color-mix(in_srgb,var(--red)_75%,transparent)]' : 'shadow-[inset_0_0_0_1.5px_var(--check-ring)] group-hover/check:shadow-[inset_0_0_0_1.5px_var(--mint)]',
           done || skipped ? 'scale-25 opacity-0 blur-[4px]' : 'scale-100 opacity-100 blur-0',
         )}
       />
       <span
-        className={cn('absolute inset-0 grid place-items-center rounded-full transition-[opacity,scale,filter] duration-200 ease-out-quint', done ? 'scale-100 opacity-100 blur-0' : 'scale-25 opacity-0 blur-[4px]')}
-        style={{ background: 'color-mix(in oklch, var(--c) 22%, transparent)', color: 'var(--c)' }}
+        className={cn('absolute inset-0 grid place-items-center rounded-full bg-mint text-on-accent transition-[opacity,scale,filter] duration-150 ease-out-quint', done ? 'scale-100 opacity-100 blur-0' : 'scale-25 opacity-0 blur-[4px]')}
       >
-        <Check className={size === 'md' ? 'size-3.5' : 'size-3'} strokeWidth={3} />
+        <Check className={size === 'sm' ? 'size-2.5' : 'size-3'} strokeWidth={3} />
       </span>
-      <span className={cn('absolute inset-0 grid place-items-center rounded-full bg-surface-2 text-ink-3 transition-[opacity,scale,filter] duration-200 ease-out-quint', skipped ? 'scale-100 opacity-100 blur-0' : 'scale-25 opacity-0 blur-[4px]')}>
-        <SkipForward className={size === 'md' ? 'size-3' : 'size-2.5'} strokeWidth={2} />
+      <span className={cn('absolute inset-0 grid place-items-center rounded-full bg-raised-2 text-ink-3 transition-[opacity,scale,filter] duration-150 ease-out-quint', skipped ? 'scale-100 opacity-100 blur-0' : 'scale-25 opacity-0 blur-[4px]')}>
+        <SkipForward className={size === 'sm' ? 'size-2.5' : 'size-3'} strokeWidth={2} />
       </span>
     </button>
   )
@@ -167,9 +167,9 @@ function Row({ r, onToggle, onSkip }: { r: AgendaRow; onToggle: () => void; onSk
   }
   return (
     <motion.div
-      animate={won ? { backgroundColor: [`color-mix(in oklch, ${r.color} 18%, transparent)`, 'color-mix(in oklch, var(--ink) 2.5%, transparent)'] } : undefined}
+      animate={won ? { backgroundColor: [`color-mix(in oklch, ${r.color} 18%, transparent)`, 'color-mix(in oklch, var(--text) 2.5%, transparent)'] } : undefined}
       transition={{ duration: 0.3, ease: EASE_OUT_STRONG }}
-      className="group/row relative flex min-h-[64px] items-center gap-3.5 rounded-[14px] bg-ink/[0.025] px-3 py-2 transition-[background-color] duration-150 hover:bg-ink/[0.045] dark:bg-white/[0.035] dark:hover:bg-white/[0.06]"
+      className="group/row relative flex min-h-[64px] items-center gap-3.5 rounded-lg bg-fill-soft px-3 py-2 transition-[background-color] duration-150 hover:bg-hover"
     >
       <span className={cn('w-11 shrink-0 text-[13px] font-semibold tabular-nums', missed ? 'text-bad' : 'text-ink-2')}>{r.time}</span>
       <motion.span
@@ -177,7 +177,7 @@ function Row({ r, onToggle, onSkip }: { r: AgendaRow; onToggle: () => void; onSk
         animate={won ? { scale: [1, 1.12, 1], rotate: [0, -8, 0] } : undefined}
         transition={{ duration: 0.4, ease: EASE_OUT_STRONG }}
         className="grid size-10 shrink-0 place-items-center rounded-[11px]"
-        style={{ color: `color-mix(in oklch, ${r.color} 80%, var(--ink))`, background: `color-mix(in oklch, ${r.color} 16%, transparent)` }}
+        style={{ color: r.color, background: `color-mix(in oklch, ${r.color} 16%, transparent)` }}
       >
         <RoutineArt name={r.name} kind={r.kind} area={r.area} />
       </motion.span>
@@ -185,9 +185,9 @@ function Row({ r, onToggle, onSkip }: { r: AgendaRow; onToggle: () => void; onSk
         <div className={cn('truncate text-[15px] font-medium transition-[color] duration-200', won ? 'text-ink-3' : 'text-ink')}>{r.name}</div>
         {r.chips?.length || r.detail || missed ? (
           <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 text-[12.5px] text-ink-3 tabular-nums">
-            {missed ? <span className="inline-flex h-5 items-center rounded-full bg-bad/10 px-2 text-[11.5px] font-semibold text-bad">Overdue</span> : null}
+            {missed ? <span className="inline-flex h-5 items-center rounded-full bg-bad-bg px-2 text-[11.5px] font-semibold text-bad">Overdue</span> : null}
             {r.chips?.map((c) => (
-              <span key={c.text} className={cn('inline-flex h-5 items-center rounded-full px-2 text-[11.5px] font-medium', c.warn ? 'bg-warn/12 text-warn' : 'bg-ink/[0.05] text-ink-2 dark:bg-white/[0.07]')}>{c.text}</span>
+              <span key={c.text} className={cn('inline-flex h-5 items-center rounded-full px-2 text-[11.5px] font-medium', c.warn ? 'bg-warn-bg text-warn' : 'bg-fill text-ink-2')}>{c.text}</span>
             ))}
             {r.detail ? <span className="min-w-0 truncate">{r.detail}</span> : null}
           </div>
@@ -195,7 +195,7 @@ function Row({ r, onToggle, onSkip }: { r: AgendaRow; onToggle: () => void; onSk
       </div>
       <Button variant="ghost" size="sm" onClick={onSkip} className="text-ink-3 opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 max-lg:hidden">Skip</Button>
       {r.xp ? (
-        <span className="relative inline-flex h-6 shrink-0 items-center rounded-full px-2 text-[11.5px] font-semibold tabular-nums max-sm:hidden" style={{ color: 'color-mix(in oklch, var(--medal-gold) 80%, var(--ink))', background: 'color-mix(in oklch, var(--medal-gold) 12%, transparent)' }}>
+        <span className="relative inline-flex h-6 shrink-0 items-center rounded-full px-2 text-[11.5px] font-semibold tabular-nums max-sm:hidden" style={{ color: 'var(--mint)', background: 'var(--mint-bg)' }}>
           +{r.xp} XP
           <AnimatePresence>
             {won ? (
@@ -234,7 +234,7 @@ function CheckBurst({ color }: { color: string }) {
           <motion.span
             key={i}
             className="absolute size-1.5 rounded-full"
-            style={{ background: i % 2 ? color : 'var(--medal-gold)' }}
+            style={{ background: i % 2 ? color : 'var(--mint)' }}
             initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
             animate={{ x: Math.cos(a) * 26, y: Math.sin(a) * 26, opacity: 0, scale: 0.4 }}
             transition={{ duration: 0.45, ease: EASE_OUT_STRONG }}
@@ -248,7 +248,7 @@ function CheckBurst({ color }: { color: string }) {
 function DoneRow({ r, onUndo }: { r: AgendaRow; onUndo: () => void }) {
   const skipped = r.status === 'skipped'
   return (
-    <div className="group/row flex h-11 items-center gap-3.5 rounded-[12px] px-3 transition-[background-color] duration-150 hover:bg-ink/[0.03] dark:hover:bg-white/[0.04]">
+    <div className="group/row flex h-11 items-center gap-3.5 rounded-lg px-3 transition-[background-color] duration-150 hover:bg-hover">
       {/* Done: the same picture, faded and greyed, beside struck-through text. */}
       <RoutineArt name={r.name} kind={r.kind} area={r.area} className="size-5 shrink-0 opacity-70 grayscale-[0.5]" />
       <span className="min-w-0 flex-1 truncate text-[14px] text-ink-3 line-through decoration-ink-3/40">{r.name}</span>
@@ -328,7 +328,7 @@ export function Goals({ rows }: { rows: GoalRow[] }) {
                 {Array.from({ length: glasses }, (_, i) => {
                   const fill = Math.min(1, Math.max(0, (g.value - i * g.step) / g.step))
                   return (
-                    <span key={i} className="relative h-2.5 flex-1 overflow-hidden rounded-full bg-ink/[0.07] dark:bg-white/[0.08]">
+                    <span key={i} className="relative h-2.5 flex-1 overflow-hidden rounded-full bg-track">
                       <span className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-300 ease-out-quint" style={{ width: `${fill * 100}%`, background: done ? 'var(--good)' : g.color }} />
                     </span>
                   )
@@ -348,11 +348,11 @@ export function Goals({ rows }: { rows: GoalRow[] }) {
                 ) : null}
               </div>
               {ml ? (
-                <div role="radiogroup" aria-label={`${g.name} daily target`} className="inline-flex rounded-full bg-ink/[0.05] p-0.5 dark:bg-white/[0.06]">
+                <div role="radiogroup" aria-label={`${g.name} daily target`} className="inline-flex rounded-full bg-fill p-0.5">
                   {WATER_TARGETS.map((t) => (
                     <button
                       key={t} type="button" role="radio" aria-checked={g.target === t} onClick={() => g.target !== t && retarget(g, t)}
-                      className="h-7 rounded-full px-2.5 text-[12px] font-medium text-ink-3 tabular-nums transition-[background-color,color] duration-150 hover:text-ink aria-checked:bg-surface aria-checked:text-ink aria-checked:shadow-1 focus-visible:outline-2 focus-visible:outline-pill"
+                      className="h-7 rounded-full px-2.5 text-[12px] font-medium text-ink-3 tabular-nums transition-[background-color,color] duration-150 hover:text-ink aria-checked:bg-surface aria-checked:text-ink aria-checked:shadow-1 focus-visible:outline-2 focus-visible:outline-accent"
                     >
                       {t / 1000}L
                     </button>

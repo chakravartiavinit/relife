@@ -10,6 +10,24 @@ const nextConfig: NextConfig = {
   outputFileTracingExcludes: { '*': ['data/**'] },
   // Allow opening the dev server from your phone over Tailscale (MagicDNS names).
   allowedDevOrigins: ['*.ts.net'],
+  // Old URLs from before the v2 redesign. 307 (not 308): a cached permanent redirect would make a later rename hard to undo.
+  // /connectors is an exact source so public/connectors/* logos keep loading.
+  async redirects() {
+    return [
+      { source: '/profile', destination: '/character', permanent: false },
+      { source: '/overview', destination: '/character', permanent: false },
+      { source: '/habits', has: [{ type: 'query', key: 'tab', value: 'trackers' }], destination: '/routines/trackers', permanent: false },
+      { source: '/habits', destination: '/routines', permanent: false },
+      { source: '/schedules', destination: '/routines', permanent: false },
+      { source: '/trackers', destination: '/routines/trackers', permanent: false },
+      { source: '/trackers/:slug', destination: '/routines/trackers/:slug', permanent: false },
+      { source: '/insights', destination: '/coach', permanent: false },
+      { source: '/activity', destination: '/coach/screen-time', permanent: false },
+      { source: '/connectors', destination: '/sources', permanent: false },
+      { source: '/inbox', destination: '/sources/review', permanent: false },
+      { source: '/relationships', destination: '/people', permanent: false },
+    ]
+  },
   turbopack: {
     rules: {
       '*.css': {

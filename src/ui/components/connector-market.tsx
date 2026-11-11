@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useActionState, useEffect, useId, useState, useTransition } from 'react'
 import { Bot, ChevronRight, CircleAlert, CircleCheck, Cpu, ExternalLink, HeartPulse, KeyRound, Lock, Cable, RefreshCw, ShoppingBag, Wallet } from 'lucide-react'
 import type { Category } from '@/db/schema'
@@ -67,14 +68,16 @@ const GROUPS: { key: string; title: string; hint: string; icon: typeof Cable; ma
  * Every service as an app tile, grouped by what it feeds. Tiles open one dialog for connecting and
  * managing, so the page itself stays a calm launcher: logo, name, one status line.
  */
-export function ConnectorMarket({ items, worker }: { items: ConnectorItem[]; worker: { alive: boolean; ago: string } }) {
+export function ConnectorMarket({ items, worker, mode = 'browse' }: { items: ConnectorItem[]; worker: { alive: boolean; ago: string }; mode?: 'connected' | 'browse' }) {
   const connected = items.filter((i) => i.connected)
+  // /sources lists only what is connected; /sources/browse lists everything.
+  const shown = mode === 'connected' ? connected : items
   const attention = connected.filter((i) => ['error', 'setup', 'waiting'].includes(i.status))
   let n = 0 // running index for the staggered entrance
   return (
     <div className="flex flex-col gap-9">
       <div className="rise flex flex-wrap items-center gap-2" style={{ '--i': n++ } as React.CSSProperties}>
-        <Pill>{connected.length} of {items.length} connected</Pill>
+        <Pill>{mode === 'connected' ? `${connected.length} connected` : `${connected.length} of ${items.length} connected`}</Pill>
         <Pill color={worker.alive ? 'var(--good)' : 'var(--warn)'} title={worker.alive ? `Heartbeat ${worker.ago}` : 'Start it with npm run dev'}>
           {worker.alive ? 'Syncing in the background' : 'Worker stopped · run npm run dev'}
         </Pill>
@@ -96,8 +99,12 @@ export function ConnectorMarket({ items, worker }: { items: ConnectorItem[]; wor
         </section>
       ) : null}
 
+      {mode === 'connected' && !shown.length ? (
+        <p className="text-[14px] text-ink-3">Nothing connected yet. <Link href="/sources/browse" className="font-medium text-pill-ink hover:underline">Browse sources</Link> to connect your first.</p>
+      ) : null}
+
       {GROUPS.map((g) => {
-        const list = items.filter(g.match).sort((a, b) => Number(b.connected) - Number(a.connected) || RANK[a.status] - RANK[b.status] || a.name.localeCompare(b.name))
+        const list = shown.filter(g.match).sort((a, b) => Number(b.connected) - Number(a.connected) || RANK[a.status] - RANK[b.status] || a.name.localeCompare(b.name))
         if (!list.length) return null
         const on = list.filter((i) => i.connected).length
         const groupIndex = n++
@@ -111,7 +118,7 @@ export function ConnectorMarket({ items, worker }: { items: ConnectorItem[]; wor
                   <p className="text-[12px] text-ink-3">{g.hint}</p>
                 </div>
               </div>
-              <span className="text-[12px] text-ink-3 tabular-nums">{on ? `${on} of ${list.length} on` : `${list.length} available`}</span>
+              <span className="text-[12px] text-ink-3 tabular-nums">{mode === 'connected' ? `${list.length} connected` : on ? `${on} of ${list.length} on` : `${list.length} available`}</span>
             </div>
             <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {list.map((c, k) => (

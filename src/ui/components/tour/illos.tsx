@@ -466,7 +466,7 @@ export function IlloAreas() {
   )
 }
 
-// ── 5 · Connectors: a day goes by with no hands on it; each connected app writes its own line as it happens ──
+// ── 5 · Sources: a day goes by with no hands on it; each connected app writes its own line as it happens ──
 const DAY = { x: 50, w: 620, y: 236, from: 0.5, to: 3.6 }
 const SOURCES = [
   { name: 'GitHub', logo: '/connectors/github.svg', x: 148, time: '09:40', value: '3 commits', area: 'Skills', color: 'var(--cat-skills)' },
@@ -625,7 +625,7 @@ export const TOUR_ILLOS = [
   { name: '⌘K', Illo: IlloLog },
   { name: 'Progress', Illo: IlloProgress },
   { name: 'Areas', Illo: IlloAreas },
-  { name: 'Connectors', Illo: IlloConnect },
+  { name: 'Sources', Illo: IlloConnect },
   { name: 'Reminders', Illo: IlloRemind },
 ]
 

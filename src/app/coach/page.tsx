@@ -11,6 +11,8 @@ import { aiEnabled, modelId } from '@/ai'
 import { describe } from '@/domain/recurrence'
 import { formatDay, localDate } from '@/core/time'
 import { Badge, Card, CardHeader, PageHeader, Skeleton } from '@/ui/components/card'
+import { PageTabs } from '@/ui/components/kit/page-tabs'
+import { TABS } from '@/ui/nav-model'
 import { EmptyState } from '@/ui/components/empty'
 import { AskBox, InsightActions } from '@/ui/components/insight-ui'
 import { InsightBody } from '@/ui/components/insight-body'
@@ -18,7 +20,7 @@ import { PatternsCard } from '@/ui/components/patterns-card'
 import { loadPatterns } from '@/core/patterns'
 import { CATEGORY } from '@/ui/tokens'
 
-export const metadata: Metadata = { title: 'Insights' }
+export const metadata: Metadata = { title: 'Coach' }
 
 const KIND = {
   review: { label: 'Weekly review', icon: CalendarRange },
@@ -27,10 +29,10 @@ const KIND = {
   alert: { label: 'Alert', icon: BellRing },
 } as const
 
-export default function InsightsPage({ searchParams }: PageProps<'/insights'>) {
+export default function CoachPage({ searchParams }: PageProps<'/coach'>) {
   return (
     <>
-      <PageHeader eyebrow="Coach" title="Your coach" description="Morning nudges, Sunday reviews and plans, written by the AI model you choose. Nothing changes until you approve it." />
+      <PageHeader eyebrow="Coach" title="Your coach" description="Morning nudges, Sunday reviews and plans, written by the AI model you choose. Nothing changes until you approve it." tabs={<PageTabs label="Coach" current="/coach" items={TABS['/coach']} />} />
       <Suspense fallback={<Skeleton className="h-[420px] rounded-lg" />}>
         <Insights searchParams={searchParams} />
       </Suspense>
@@ -38,7 +40,7 @@ export default function InsightsPage({ searchParams }: PageProps<'/insights'>) {
   )
 }
 
-async function Insights({ searchParams }: { searchParams: PageProps<'/insights'>['searchParams'] }) {
+async function Insights({ searchParams }: { searchParams: PageProps<'/coach'>['searchParams'] }) {
   await connection()
   const sp = await searchParams
   const initial = typeof sp.ask === 'string' ? sp.ask : undefined
@@ -167,7 +169,7 @@ function ConnectCoach() {
         <h2 className="text-[15px] font-semibold text-ink">Connect an AI model to wake your coach</h2>
         <p className="mt-0.5 text-[13px] text-ink-3">Then ask anything about your data, and get a nudge each morning and a review every Sunday. Rule-based alerts already work.</p>
       </div>
-      <Link href="/connectors" className={buttonClass({ variant: 'primary' })}>Choose a model</Link>
+      <Link href="/sources/browse" className={buttonClass({ variant: 'primary' })}>Choose a model</Link>
     </div>
   )
 }

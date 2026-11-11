@@ -13,6 +13,8 @@ import { activitySummary } from '@/core/activity'
 import { addDays, formatDay, localDate } from '@/core/time'
 import { KIND_INFO, type ActivityKind } from '@/domain/activity'
 import { Card, CardHeader, KpiStrip, PageHeader, Skeleton } from '@/ui/components/card'
+import { PageTabs } from '@/ui/components/kit/page-tabs'
+import { TABS } from '@/ui/nav-model'
 import { BrandLogo } from '@/ui/components/brand-logo'
 import { StackedBars } from '@/ui/components/charts'
 import { EmptyState } from '@/ui/components/empty'
@@ -32,13 +34,14 @@ const hm = (seconds: number) => {
   return m >= 60 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` : `${m}m`
 }
 
-export default function ActivityPage() {
+export default function ScreenTimePage() {
   return (
     <>
       <PageHeader
         eyebrow="Activity"
         title="Where your time goes"
         description="Everything you do on this Mac, every site and app, sorted into learning, work, play and the rest. Recorded by the ReLife extension and app watcher; nothing leaves it."
+        tabs={<PageTabs label="Coach" current="/coach/screen-time" items={TABS['/coach']} />}
       />
       <Suspense fallback={<div className="flex flex-col gap-6"><Skeleton className="h-[104px] rounded-lg" /><Skeleton className="h-[320px] rounded-lg" /></div>}>
         <Activity />
@@ -181,12 +184,12 @@ function Setup({ connected }: { connected: boolean }) {
         title={connected ? 'Waiting for the first minutes' : 'Track your laptop time'}
         description={
           <>
-            1. On <Link href="/connectors" className="font-medium text-pill-ink hover:underline">Connectors → Laptop activity</Link>, set a token.{' '}
+            1. On <Link href="/sources" className="font-medium text-pill-ink hover:underline">Sources → Laptop activity</Link>, set a token.{' '}
             2. In Chrome open <code className="rounded-xs bg-surface-2 px-1">chrome://extensions</code>, turn on Developer mode, choose Load unpacked and pick the <code className="rounded-xs bg-surface-2 px-1">extension</code> folder in ReLife.{' '}
             3. Open the extension and paste the same token. Mac apps are recorded by ReLife’s worker on its own.
           </>
         }
-        action={<Link href="/connectors" className={buttonClass({ variant: 'primary', size: 'sm' })}>{connected ? 'Check the connection' : 'Set it up'}</Link>}
+        action={<Link href="/sources" className={buttonClass({ variant: 'primary', size: 'sm' })}>{connected ? 'Check the connection' : 'Set it up'}</Link>}
       />
     </Card>
   )

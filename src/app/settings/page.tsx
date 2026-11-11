@@ -39,7 +39,7 @@ export default function SettingsPage() {
       <PageHeader
         eyebrow="Settings"
         title="Settings"
-        description="Your profile, how ReLife looks, which AI it uses and where your data lives. Data sources and API keys are on Connectors."
+        description="Your profile, how ReLife looks, which AI it uses and where your data lives. Data sources and API keys are on Sources."
         actions={<>
           {/* A full load: the tour opens from the address on arrival. */}
           <a href="/?tour" className={buttonClass({ variant: 'ghost', size: 'sm' })}>Take the tour</a>
@@ -112,12 +112,12 @@ async function Settings() {
       <SettingsSection
         id="ai"
         title="AI"
-        description="The model you connect on Connectors handles everything. Use LLM_PARSE, LLM_PLAN or LLM_CHAT in .env to give one job a different model."
-        action={<Link href="/connectors" className={buttonClass({ variant: 'secondary', size: 'sm' })}>AI providers <ArrowUpRight className="size-4" strokeWidth={1.5} /></Link>}
+        description="The model you connect on Sources handles everything. Use LLM_PARSE, LLM_PLAN or LLM_CHAT in .env to give one job a different model."
+        action={<Link href="/sources" className={buttonClass({ variant: 'secondary', size: 'sm' })}>AI providers <ArrowUpRight className="size-4" strokeWidth={1.5} /></Link>}
       >
         {!TASKS.some(({ task }) => modelId(task)) ? (
           <SettingsRow label="No model yet" hint="Reading odd messages, plans, reviews and Ask all need one.">
-            <Link href="/connectors" className={buttonClass({ variant: 'primary', size: 'sm' })}>Connect an AI model</Link>
+            <Link href="/sources" className={buttonClass({ variant: 'primary', size: 'sm' })}>Connect an AI model</Link>
           </SettingsRow>
         ) : TASKS.map(({ task, label, hint }) => {
           const id = modelId(task)
@@ -144,7 +144,7 @@ async function Settings() {
         <SettingsRow label="Your data" hint="Every routine, entry, payment and XP point.">
           <Fact icon={Database}>Postgres on this Mac, database <code className="rounded-xs bg-surface-2 px-1 text-[12.5px]">{dbName}</code>{isMock ? <Badge color="var(--warn)" className="ml-2">Mock</Badge> : null}</Fact>
         </SettingsRow>
-        <SettingsRow label="Saved keys" hint="Keys you enter on Connectors.">
+        <SettingsRow label="Saved keys" hint="Keys you enter on Sources.">
           <Fact icon={KeyRound}>
             {keys.n ? `${keys.n} connection${keys.n === 1 ? '' : 's'} with saved keys, ` : 'No saved keys yet. When you add some, they’re '}
             encrypted with AES-256-GCM using {process.env.RELIFE_SECRET_KEY ? <code className="rounded-xs bg-surface-2 px-1 text-[12.5px]">RELIFE_SECRET_KEY</code> : <code className="rounded-xs bg-surface-2 px-1 text-[12.5px]">data/secret.key</code>}. Back it up with your database.

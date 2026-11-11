@@ -120,7 +120,7 @@ function hue(name: string) {
   return h % 360
 }
 
-const SIZE = { sm: 'size-8 rounded-[9px] text-[13px]', md: 'size-10 rounded-[11px] text-[15px]', lg: 'size-16 rounded-[18px] text-[22px]' }
+const SIZE = { sm: 'size-8 rounded-md text-[13px]', md: 'size-10 rounded-md text-[15px]', lg: 'size-16 rounded-lg text-[22px]' }
 const GLYPH = { sm: 'size-[18px]', md: 'size-[22px]', lg: 'size-9' }
 
 /** Merchant or brand logo on a white tile, or a lettered tile when the brand is unknown. */
@@ -128,7 +128,7 @@ export function BrandLogo({ name, size = 'sm', className }: { name: string; size
   const b = brandFor(name)
   if (b) {
     return (
-      <span aria-hidden className={cn('grid shrink-0 place-items-center overflow-hidden bg-white shadow-[0_0_0_1px_oklch(0_0_0/0.1)] dark:shadow-[0_0_0_1px_oklch(1_0_0/0.1)]', SIZE[size], className)}>
+      <span aria-hidden className={cn('grid shrink-0 place-items-center overflow-hidden bg-white shadow-inset', SIZE[size], className)}>
         {/* eslint-disable-next-line @next/next/no-img-element -- small local SVG/PNG files */}
         <img src={b.src} alt="" className={cn('outline-none', b.fill ? 'size-full object-cover' : cn(GLYPH[size], 'object-contain'))} />
       </span>
@@ -139,7 +139,7 @@ export function BrandLogo({ name, size = 'sm', className }: { name: string; size
   return (
     <span
       aria-hidden
-      className={cn('grid shrink-0 place-items-center font-display font-bold text-[oklch(0.42_0.11_var(--h))] bg-[oklch(0.93_0.045_var(--h))] dark:text-[oklch(0.85_0.08_var(--h))] dark:bg-[oklch(0.33_0.06_var(--h))]', SIZE[size], className)}
+      className={cn('grid shrink-0 place-items-center font-semibold text-[oklch(0.42_0.11_var(--h))] bg-[oklch(0.93_0.045_var(--h))] dark:text-[oklch(0.85_0.08_var(--h))] dark:bg-[oklch(0.33_0.06_var(--h))]', SIZE[size], className)}
       style={{ '--h': h } as React.CSSProperties}
     >
       {letter}

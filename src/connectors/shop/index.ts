@@ -77,7 +77,7 @@ function shopConnector(p: Platform): Connector {
       const read = async (url: string) => {
         const page = await readPage(p.id, url)
         if (LOGIN_PAGE.test(new URL(page.finalUrl).pathname)) throw new Error(`Logged out of ${p.name}. Open Connectors and log in again.`)
-        if (/^\s*access denied/i.test(page.text)) throw new Error(`${p.name} blocked the sync (“access denied”). Try again later, or log in again on Connectors.`)
+        if (/^\s*access denied/i.test(page.text)) throw new Error(`${p.name} blocked the sync (“access denied”). Try again later, or log in again on Sources.`)
         const byId = new Map<string, ShopOrder>()
         for (const o of [...(p.id === 'flipkart' ? ordersFromFlipkart(page.json) : []), ...ordersFromJson(page.json, { paise: p.paise }), ...ordersFromSnippets(page.json, new Date(), (w) => wallToUtc(w, tz))]) if (!byId.has(o.orderId)) byId.set(o.orderId, o)
         return { page, orders: [...byId.values()] }

@@ -3,217 +3,194 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { Brain, Code, HeartPulse, Inbox, Menu, MonitorSmartphone, Palette, Cable, Repeat, Settings, Sparkles, Sunrise, Trophy, Users, Wallet, type LucideIcon } from 'lucide-react'
+import { ChartNoAxesColumn, Ellipsis, type LucideIcon } from 'lucide-react'
+import { AREA_ART } from '../area-art'
+import { FOOTER, PLAY, STATS, isActive, type NavCounts, type NavItem } from '../nav-model'
 import { Dialog } from './forms/dialog'
-import { SystemLabel } from './card'
+import { ThemeToggle } from './theme-toggle'
 import { cn } from '../cn'
 
-type Item = { href: string; label: string; icon: LucideIcon; color?: string; children?: { href: string; label: string }[] }
+// The rail (desktop) and the tab bar (phone), both reading the model in ../nav-model.ts.
 
-// Play (Today, Progress, Habits, Insights) · Areas. Setup pages sit in a small footer group.
-export const NAV: { label?: string; items: Item[] }[] = [
-  {
-    items: [
-      { href: '/', label: 'Today', icon: Sunrise },
-      { href: '/profile', label: 'Progress', icon: Trophy },
-      { href: '/habits', label: 'Habits', icon: Repeat },
-      { href: '/insights', label: 'Coach', icon: Sparkles },
-      { href: '/activity', label: 'Activity', icon: MonitorSmartphone },
-    ],
-  },
-  {
-    label: 'Areas',
-    items: [
-      { href: '/health', label: 'Health', icon: HeartPulse, color: 'var(--cat-health)' },
-      { href: '/mind', label: 'Mind', icon: Brain, color: 'var(--cat-mind)' },
-      { href: '/skills', label: 'Skills', icon: Code, color: 'var(--cat-skills)' },
-      {
-        href: '/wealth', label: 'Wealth', icon: Wallet, color: 'var(--cat-wealth)',
-        children: [
-          { href: '/wealth/spending', label: 'Spending' },
-          { href: '/wealth/portfolio', label: 'Portfolio' },
-          { href: '/wealth/subscriptions', label: 'Subscriptions' },
-        ],
-      },
-      { href: '/hobbies', label: 'Hobbies', icon: Palette, color: 'var(--cat-hobbies)' },
-      { href: '/relationships', label: 'People', icon: Users, color: 'var(--cat-relationships)' },
-    ],
-  },
-]
-
-export const SYSTEM_NAV: Item[] = [
-  { href: '/inbox', label: 'Inbox', icon: Inbox },
-  { href: '/connectors', label: 'Connectors', icon: Cable },
-  { href: '/settings', label: 'Settings', icon: Settings },
-]
-
-function isActive(path: string, href: string) {
-  if (href === '/') return path === '/'
-  // Trackers' detail pages belong to Habits.
-  if (href === '/habits' && path.startsWith('/trackers')) return true
-  if (href === '/profile' && path === '/overview') return true
-  return path === href || path.startsWith(href + '/')
+/** `areas` (from onboarding) hides the area rows the user didn't pick, unless one is open; empty shows all. */
+function visibleStats(path: string, areas?: string[]) {
+  return STATS.filter((i) => !areas?.length || areas.includes(i.area!) || isActive(path, i))
 }
 
-const AREA_HREF: Record<string, string> = { health: '/health', mind: '/mind', skills: '/skills', wealth: '/wealth', hobbies: '/hobbies', relationships: '/relationships' }
-
-/** `areas` (from onboarding) hides the area pages the user didn't pick; empty shows all. */
-export function Nav(props: { badges?: Record<string, number>; areas?: string[] }) {
+export function Nav(props: { counts?: NavCounts; areas?: string[] }) {
   return <NavView {...props} path={usePathname()} />
 }
 
-/** Same rows with nothing marked active, for Suspense fallbacks (reading the URL there blocks prerendering). */
+/** Same rows with no counts and nothing marked active, for Suspense fallbacks (reading the URL there blocks prerendering). */
 export function NavPlaceholder() {
   return <NavView path="" />
 }
 
-function NavView({ badges = {}, areas, path }: { badges?: Record<string, number>; areas?: string[]; path: string }) {
-  const hidden = new Set(areas?.length ? Object.entries(AREA_HREF).filter(([c]) => !areas.includes(c)).map(([, h]) => h) : [])
+function NavView({ counts = {}, areas, path }: { counts?: NavCounts; areas?: string[]; path: string }) {
   return (
-    <nav aria-label="Main" className="flex flex-col gap-5">
-      {NAV.map((group, gi) => (
-        <div key={gi} data-tour={group.label === 'Areas' ? 'areas' : undefined} className="flex flex-col gap-0.5">
-          {group.label ? <div className="px-2.5 pb-2"><SystemLabel color="var(--ink-3)">{group.label}</SystemLabel></div> : null}
-          {group.items.filter((item) => !hidden.has(item.href) || isActive(path, item.href)).map((item) => <NavRow key={item.href} item={item} path={path} badge={badges[item.href]} />)}
+    <nav aria-label="Main" className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-1">
+      <div className="flex flex-col gap-px">
+        {PLAY.map((item) => (
+          <NavRow key={item.href} item={item} path={path}>
+            {item.href === '/' && counts.today ? <Mono active={isActive(path, item)}>{counts.today}</Mono> : null}
+            {item.href === '/coach' && counts.nudges ? <span aria-hidden className="ml-auto size-1.5 rounded-full bg-accent" /> : null}
+            {item.href === '/coach' && counts.nudges ? <span className="sr-only">{counts.nudges} nudges waiting</span> : null}
+          </NavRow>
+        ))}
+      </div>
+
+      <div data-tour="areas">
+        <div className="flex h-7 items-center px-2.5 text-[12px] font-medium text-ink-3">Stats</div>
+        <div className="flex flex-col gap-px">
+          {visibleStats(path, areas).map((item) => (
+            <NavRow key={item.href} item={item} path={path} stat>
+              <span className="ml-auto font-mono text-[11px] font-normal text-ink-3">{counts.levels?.[item.area!] ? `LV ${counts.levels[item.area!]}` : null}</span>
+            </NavRow>
+          ))}
         </div>
-      ))}
+      </div>
+
+      <div className="mt-auto flex flex-col gap-px">
+        {FOOTER.map((item) => (
+          <NavRow key={item.href} item={item} path={path}>
+            {item.href === '/sources' && counts.sources ? <CountBadge n={counts.sources} /> : null}
+          </NavRow>
+        ))}
+      </div>
     </nav>
   )
 }
 
-function NavRow({ item, path, badge }: { item: Item; path: string; badge?: number }) {
-  const active = isActive(path, item.href)
-  const { icon: Icon, color } = item
+function NavRow({ item, path, stat, children }: { item: NavItem; path: string; stat?: boolean; children?: React.ReactNode }) {
+  const active = isActive(path, item)
+  const Icon = item.icon
   return (
-    <div>
-      <Link
-        href={item.href}
-        data-tour={item.href}
-        aria-current={active && path === item.href ? 'page' : undefined}
-        className={cn(
-          'group relative flex h-10 items-center gap-2.5 rounded-md px-1.5 text-[14px] transition-[background-color,color,box-shadow] duration-150',
-          active ? 'bg-surface font-medium text-ink shadow-1' : 'text-ink-2 hover:bg-ink/[0.04] hover:text-ink dark:hover:bg-white/[0.05]',
-        )}
-      >
-        {/* 28px chip in a 40px row: 6px inset, so radius 12 - 6 = 6. */}
-        <span
-          aria-hidden
-          className={cn(
-            'grid size-7 shrink-0 place-items-center rounded-[6px] transition-[background-color,color] duration-150',
-            !color && (active ? 'bg-ink text-bg' : 'bg-surface-2 text-ink-2 group-hover:text-ink'),
-          )}
-          style={color ? { color, background: `color-mix(in oklch, ${color} ${active ? 18 : 12}%, transparent)` } : undefined}
-        >
-          <Icon className="size-[16px]" strokeWidth={active ? 2 : 1.5} />
-        </span>
-        <span className="flex-1 truncate">{item.label}</span>
-        {badge ? <Count n={badge} /> : null}
-      </Link>
-      {item.children ? (
-        // Rows below slide down instead of jumping when the sub-pages open (grid 0fr to 1fr).
-        <div className="nav-sub grid" data-open={active || undefined} inert={!active}>
-          <div className="min-h-0 overflow-hidden">
-            <div className="mt-1 mb-1.5 ml-[20px] flex flex-col gap-0.5 border-l border-divider pl-3.5">
-              {item.children.map((c) => (
-                <Link
-                  key={c.href}
-                  href={c.href}
-                  aria-current={path === c.href ? 'page' : undefined}
-                  className={cn(
-                    'relative flex h-8 items-center rounded-sm px-2 text-[13px] transition-[background-color,color] duration-150',
-                    path === c.href ? 'font-medium text-ink' : 'text-ink-3 hover:bg-ink/[0.04] hover:text-ink dark:hover:bg-white/[0.05]',
-                  )}
-                >
-                  {path === c.href ? <span aria-hidden className="absolute top-1.5 bottom-1.5 -left-[16px] w-[3px] rounded-full" style={{ background: color }} /> : null}
-                  {c.label}
-                </Link>
-              ))}
-            </div>
-          </div>
-        </div>
-      ) : null}
-    </div>
+    <Link
+      href={item.href}
+      data-tour={item.href}
+      // The page itself is "page"; a nested page (a tracker, Screen time) keeps the row lit with "true".
+      aria-current={active ? (path === item.href ? 'page' : 'true') : undefined}
+      className={cn(
+        // 32px row; the ::after adds 4px above and below for a 40px hit area.
+        "relative flex h-8 items-center gap-2.5 rounded-sm px-2.5 text-[13px] font-medium transition-[background-color,color] duration-150 after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']",
+        active ? 'bg-raised-2 text-ink shadow-1' : 'text-ink-2 hover:bg-hover hover:text-ink',
+        stat && 'font-normal',
+      )}
+    >
+      {stat && item.area ? (
+        // eslint-disable-next-line @next/next/no-img-element -- small local PNG
+        <img src={AREA_ART[item.area]} alt="" width={18} height={18} className="-mx-px size-[18px] shrink-0 outline-none" />
+      ) : (
+        <Icon aria-hidden className="size-4 shrink-0" strokeWidth={1.5} />
+      )}
+      <span className="min-w-0 truncate">{item.label}</span>
+      {children}
+    </Link>
   )
 }
 
-function Count({ n }: { n: number }) {
-  return <span className="mr-1 min-w-5 rounded-full bg-pill-wash px-1.5 text-center text-[11px] leading-5 font-medium text-pill-ink tabular-nums">{n}</span>
+function Mono({ active, children }: { active?: boolean; children: React.ReactNode }) {
+  return <span className={cn('ml-auto font-mono text-[11px] font-normal tabular-nums', active ? 'text-ink-2' : 'text-ink-3')}>{children}</span>
 }
 
-/** Setup pages: quieter rows above the profile. */
-export function SystemNav(props: { badges?: Record<string, number> }) {
-  return <SystemNavView {...props} path={usePathname()} />
-}
-
-export function SystemNavPlaceholder() {
-  return <SystemNavView path="" />
-}
-
-function SystemNavView({ badges = {}, path }: { badges?: Record<string, number>; path: string }) {
+function CountBadge({ n }: { n: number }) {
   return (
-    <nav aria-label="Setup" className="grid grid-cols-3 gap-0.5">
-      {SYSTEM_NAV.map(({ href, label, icon: Icon }) => {
-        const active = isActive(path, href)
-        const n = badges[href]
-        return (
-          <Link
-            key={href}
-            href={href}
-            data-tour={href}
-            aria-current={active ? 'page' : undefined}
-            aria-label={n ? `${label}, ${n} to review` : undefined}
-            className={cn(
-              'relative flex h-[52px] flex-col items-center justify-center gap-1 rounded-md text-[11px] tracking-[-0.01em] transition-[background-color,color,scale] duration-150 ease-[var(--ease-out-quint)] active:scale-[0.96]',
-              active ? 'bg-surface font-medium text-ink shadow-1' : 'text-ink-3 hover:bg-ink/[0.04] hover:text-ink dark:hover:bg-white/[0.05]',
-            )}
-          >
-            <Icon className="size-4" strokeWidth={active ? 2 : 1.5} aria-hidden />
-            <span className="max-w-full truncate">{label}</span>
-            {n ? <span aria-hidden className="absolute top-1.5 left-[calc(50%+4px)] min-w-4 rounded-full bg-ink px-1 text-center text-[10px] leading-4 font-semibold text-bg tabular-nums shadow-[0_0_0_2px_var(--glass)]">{n > 99 ? '99+' : n}</span> : null}
-          </Link>
-        )
-      })}
-    </nav>
+    <span aria-label={`${n} need a look`} className="ml-auto inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full border border-line-2 bg-raised-2 px-[5px] font-mono text-[11px] leading-4 font-normal text-ink-2 tabular-nums">
+      {n > 99 ? '99+' : n}
+    </span>
   )
 }
 
-const TABS = ['/', '/profile', '/habits', '/insights']
+const TAB = 'relative flex h-14 flex-col items-center justify-center gap-0.5 text-[12px] leading-4 font-medium transition-[color] duration-150'
 
-/** Bottom tab bar for phones: the four daily pages plus a menu with everything else. */
-export function TabBar() {
+/** Bottom tab bar for phones: Today, Character, Routines, then Stats and More, which open sheets. */
+export function TabBar({ counts = {}, areas }: { counts?: NavCounts; areas?: string[] }) {
   const path = usePathname()
-  const [menu, setMenu] = useState(false)
-  const all = NAV.flatMap((g) => g.items)
-  const tabs = TABS.map((h) => all.find((i) => i.href === h)!)
-  const inMenu = !tabs.some((t) => isActive(path, t.href))
+  const [sheet, setSheet] = useState<'stats' | 'more' | null>(null)
+  const tabs = [PLAY[0], PLAY[1], PLAY[2]]
+  const inStats = STATS.some((i) => isActive(path, i))
+  const inMore = [PLAY[3], ...FOOTER].some((i) => isActive(path, i))
+  const close = () => setSheet(null)
+  const moreLabel = counts.sources ? `More, ${counts.sources} source${counts.sources === 1 ? '' : 's'} ${counts.sources === 1 ? 'needs' : 'need'} a look` : 'More'
   return (
     <>
-      <nav aria-label="Tabs" className="fixed inset-x-3 bottom-3 z-40 rounded-xl bg-glass pb-[env(safe-area-inset-bottom)] shadow-2 backdrop-blur-xl lg:hidden">
-        <div className="mx-auto flex max-w-md justify-around">
-          {tabs.map((t) => {
-            const active = isActive(path, t.href)
-            const Icon = t.icon
-            return (
-              <Link key={t.href} href={t.href} aria-current={active ? 'page' : undefined}
-                className={cn('flex h-14 w-16 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors duration-150', active ? 'text-ink' : 'text-ink-3')}>
-                <Icon className="size-5" strokeWidth={active ? 2 : 1.5} />
-                {t.label}
-              </Link>
-            )
-          })}
-          <button type="button" onClick={() => setMenu(true)} aria-haspopup="dialog"
-            className={cn('flex h-14 w-16 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors duration-150', inMenu ? 'text-ink' : 'text-ink-3')}>
-            <Menu className="size-5" strokeWidth={inMenu ? 2 : 1.5} />
-            Menu
-          </button>
+      <nav aria-label="Tabs" className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-sidebar pb-[env(safe-area-inset-bottom)] lg:hidden">
+        <div className="mx-auto grid max-w-md grid-cols-5">
+          {tabs.map((t) => (
+            <TabLink key={t.href} item={t} active={isActive(path, t)} />
+          ))}
+          <TabButton icon={ChartNoAxesColumn} label="Stats" active={inStats} onClick={() => setSheet('stats')} />
+          <TabButton icon={Ellipsis} label="More" aria-label={moreLabel} active={inMore} dot={!!counts.sources} onClick={() => setSheet('more')} />
         </div>
       </nav>
-      <Dialog open={menu} onClose={() => setMenu(false)} title="Menu" width="max-w-[420px]">
-        <div onClick={(e) => { if ((e.target as HTMLElement).closest('a')) setMenu(false) }} className="flex flex-col gap-5">
-          <Nav />
-          <div className="border-t border-divider pt-3"><SystemNav /></div>
+
+      <Dialog open={sheet === 'stats'} onClose={close} title="Stats" description="Your areas and their levels" width="max-w-[420px]">
+        <ul onClick={(e) => { if ((e.target as HTMLElement).closest('a')) close() }} className="flex flex-col gap-px">
+          {visibleStats(path, areas).map((item) => (
+            <li key={item.href}>
+              <SheetLink item={item} active={isActive(path, item)}>
+                <span className="ml-auto font-mono text-[12px] text-ink-3">{counts.levels?.[item.area!] ? `LV ${counts.levels[item.area!]}` : null}</span>
+              </SheetLink>
+            </li>
+          ))}
+        </ul>
+      </Dialog>
+
+      <Dialog open={sheet === 'more'} onClose={close} title="More" width="max-w-[420px]">
+        <div onClick={(e) => { if ((e.target as HTMLElement).closest('a')) close() }} className="flex flex-col gap-px">
+          {[PLAY[3], ...FOOTER].map((item) => (
+            <SheetLink key={item.href} item={item} active={isActive(path, item)}>
+              {item.href === '/coach' && counts.nudges ? <><span aria-hidden className="ml-auto size-1.5 rounded-full bg-accent" /><span className="sr-only">{counts.nudges} nudges waiting</span></> : null}
+              {item.href === '/sources' && counts.sources ? <CountBadge n={counts.sources} /> : null}
+            </SheetLink>
+          ))}
+          <div className="mt-2 flex h-10 items-center justify-between border-t border-line px-2.5 pt-2 text-[13px] font-medium text-ink-2">
+            Theme
+            <ThemeToggle />
+          </div>
         </div>
       </Dialog>
     </>
+  )
+}
+
+function TabLink({ item, active }: { item: NavItem; active: boolean }) {
+  const Icon = item.icon
+  return (
+    <Link href={item.href} aria-current={active ? 'page' : undefined} className={cn(TAB, active ? 'text-ink' : 'text-ink-3')}>
+      {active ? <span aria-hidden className="absolute inset-x-4 top-0 h-0.5 rounded-full bg-accent" /> : null}
+      <Icon className={cn('size-5', active && 'text-accent')} strokeWidth={1.5} aria-hidden />
+      {item.label}
+    </Link>
+  )
+}
+
+function TabButton({ icon: Icon, label, active, dot, onClick, ...rest }: { icon: LucideIcon; label: string; active: boolean; dot?: boolean; onClick: () => void; 'aria-label'?: string }) {
+  return (
+    <button type="button" onClick={onClick} aria-haspopup="dialog" aria-label={rest['aria-label']} className={cn(TAB, active ? 'text-ink' : 'text-ink-3')}>
+      {active ? <span aria-hidden className="absolute inset-x-4 top-0 h-0.5 rounded-full bg-accent" /> : null}
+      <Icon className={cn('size-5', active && 'text-accent')} strokeWidth={1.5} aria-hidden />
+      {dot ? <span aria-hidden className="absolute top-2 left-[calc(50%+6px)] size-2 rounded-full bg-red shadow-[0_0_0_2px_var(--sidebar)]" /> : null}
+      {label}
+    </button>
+  )
+}
+
+function SheetLink({ item, active, children }: { item: NavItem; active: boolean; children?: React.ReactNode }) {
+  return (
+    <Link
+      href={item.href}
+      aria-current={active ? 'page' : undefined}
+      className={cn('flex h-10 items-center gap-3 rounded-sm px-2.5 text-[14px] font-medium transition-[background-color] duration-150', active ? 'bg-raised-2 text-ink shadow-1' : 'text-ink-2 hover:bg-hover')}
+    >
+      {item.area ? (
+        // eslint-disable-next-line @next/next/no-img-element -- small local PNG
+        <img src={AREA_ART[item.area]} alt="" width={20} height={20} className="size-5 outline-none" />
+      ) : (
+        <item.icon aria-hidden className="size-4" strokeWidth={1.5} />
+      )}
+      {item.label}
+      {children}
+    </Link>
   )
 }
