@@ -16,6 +16,13 @@ import type { XpNews } from '@/core/xp'
 
 // Local single-user app: the server binds to 127.0.0.1 / Tailscale, and every action scopes
 // writes to getUser(). When multi-user lands, getUser() becomes the session check.
+// Server actions are plain POST endpoints, so arguments are checked here, not only in the forms.
+
+/** A logged amount: finite and within a sane range, so NaN or 1e308 never reaches a tracker. */
+const logValue = z.number().finite().min(-1_000_000).max(1_000_000)
+const ymd = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((d) => !Number.isNaN(Date.parse(`${d}T00:00:00Z`)), 'Invalid date')
+const isoTime = z.string().max(40).refine((d) => !Number.isNaN(Date.parse(d)), 'Invalid time')
+const slugArg = z.string().trim().min(1).max(80)
 
 /** Rescore today's XP after a log. Never lets a scoring problem block the log itself. */
 async function xpAfterLog(user: Awaited<ReturnType<typeof getUser>>): Promise<XpNews> {
@@ -29,6 +36,9 @@ async function xpAfterLog(user: Awaited<ReturnType<typeof getUser>>): Promise<Xp
 }
 
 export async function toggleCheck(scheduleId: string, occurrenceIso: string, status: 'done' | 'skipped' | null, value?: number): Promise<XpNews> {
+  isoTime.parse(occurrenceIso)
+  z.enum(['done', 'skipped']).nullable().parse(status)
+  logValue.optional().parse(value)
   const user = await getUser()
   await setCheck(user, scheduleId, new Date(occurrenceIso), status, value)
   const news = await xpAfterLog(user)
@@ -37,8 +47,9 @@ export async function toggleCheck(scheduleId: string, occurrenceIso: string, sta
 }
 
 export async function addToGoal(scheduleId: string, amount: number): Promise<XpNews> {
+  const n = logValue.parse(amount)
   const user = await getUser()
-  await addGoalProgress(user, scheduleId, amount)
+  await addGoalProgress(user, scheduleId, n)
   const news = await xpAfterLog(user)
   refresh()
   return news
@@ -199,6 +210,9 @@ export async function logPractice(slug: string, minutes: number) {
 }
 
 export async function logEntry(slug: string, value: number, date?: string) {
+  slugArg.parse(slug)
+  logValue.parse(value)
+  ymd.optional().parse(date)
   const user = await getUser()
   const scale = slug === 'mood' || slug === 'energy'
   await persist(user, {
@@ -220,6 +234,7 @@ export async function archiveTracker(id: string) {
 
 /** Re-categorize a transaction and remember the rule for that merchant / UPI id. */
 export async function recategorize(transactionId: string, category: string, remember: boolean) {
+  category = z.string().trim().min(1).max(60).parse(category)
   const user = await getUser()
   const [t] = await db.update(schema.transactions).set({ category })
     .where(and(eq(schema.transactions.id, transactionId), eq(schema.transactions.userId, user.id)))
@@ -284,7 +299,12 @@ export async function createLearningItem(_prev: FormState, form: FormData): Prom
   return { ok: true }
 }
 
-export async function updateLearningProgress(id: string, delta: { done?: number; minutes?: number; status?: 'active' | 'paused' | 'done' }) {
+export async function updateLearningProgress(id: string, input: { done?: number; minutes?: number; status?: 'active' | 'paused' | 'done' }) {
+  const delta = z.object({
+    done: z.number().int().min(-1000).max(1000).optional(),
+    minutes: z.number().int().min(1).max(720).optional(),
+    status: z.enum(['active', 'paused', 'done']).optional(),
+  }).parse(input)
   const user = await getUser()
   const [item] = await db.select().from(schema.learningItems)
     .where(and(eq(schema.learningItems.id, id), eq(schema.learningItems.userId, user.id)))
