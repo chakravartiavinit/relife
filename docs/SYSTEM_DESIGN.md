@@ -178,7 +178,16 @@ sync_runs        connector_id, started_at, finished_at, ok, error, events_count
 
 insights         kind (nudge|review|plan|alert), title, body, payload jsonb,
                  status (pending|accepted|dismissed|done), source_run_id
-plans            goal, horizon, status, insight_id
+plans            goal, horizon, status, insight_id        (free-text plans from accepted plan insights)
+goals            title, reason, area, status (active|paused|finished), measure_kind (tracker|check_in),
+                 tracker_id, measure_name, unit, direction (increase|decrease|range), target / range_low / range_high,
+                 baseline_value, baseline_date, baseline_how, target_date, cadence, next_review_on,
+                 actions jsonb [{kind: schedule|tracker, id}], source (user|ai_draft), insight_id, version
+                 · at most 3 active; measure and baseline locked after start
+goal_check_ins   goal_id, local_date, value, note       · unique(goal_id, local_date)
+goal_reviews     goal_id, ref, kind (review|edit), review_date, snapshot jsonb, proposal jsonb, ai_note,
+                 decision (keep|change|pause|finish|resume), decided_at, before / after jsonb
+                 · unique(user_id, ref): one review per goal per day, one row per edit
 llm_runs         task, model, tokens, ms, success/error category, safe finish/status metadata (new rows omit prompt/response text)
 ```
 
@@ -273,6 +282,7 @@ Skills           GitHub, learning items, practice time
 Wealth           net worth · Spending (category, merchant, trends) · Portfolio (Binance P&L)
                  · Subscriptions (next due, monthly/yearly total)
 Relationships    people, last contacted, quality time
+Goals            up to 3 outcome goals: baseline → now → target, linked actions, weekly review decisions
 Insights         weekly reviews, pending suggestions, plans
 Inbox            failed parses / needs review, merchant categorization
 Settings         profile, connectors, LLM models, reminders, theme

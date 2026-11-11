@@ -1,5 +1,6 @@
 import { addDays } from '@/core/time'
 import type { Signal } from './patterns'
+import { isSensitiveMeasure } from './goals'
 import { balanceHabits, fairTarget, hitRate, judge, stretch, windowValue, type Agg, type QuestSpec, type QuestStatus, type Stat } from './system'
 
 /** Complete-day observations only. These counts describe records, not connector coverage. */
@@ -38,15 +39,18 @@ export function coachStats(signals: Signal[], today: string): CoachStat[] {
 /** Sensitive measurements are context, never automatic "more/less" challenges. */
 export function canCoach(s: Stat): boolean {
   const text = `${s.id} ${s.name}`.toLowerCase()
-  if (s.direction === 'none' || /medicin|medicat|dosage|supplement|calori|weight|bmi|glucose|blood|pressure|symptom|pain|mood|anxiety|depress|heart|hrv|sleep|fasting|temperature|oxygen/.test(text)) return false
+  if (s.direction === 'none' || isSensitiveMeasure(text)) return false
   // Money goals need discretionary context; aggregate spending can include essentials or planned purchases.
   if (s.area === 'wealth' && !s.id.startsWith('habit:')) return false
   // A generic multiplier is not a safe health prescription. Step counts remain modest activity goals.
   return s.area !== 'health' || (s.direction === 'up' && /\bsteps?\b/.test(text))
 }
 
-/** Code owns every candidate target. The model may select candidates, not invent new measurements. */
-export function questCandidates(stats: CoachStat[], focus: string[], d: number, history: QuestHistory[], today: string, startsOn = today): QuestCandidate[] {
+/**
+ * Code owns every candidate target. The model may select candidates, not invent new measurements.
+ * `prefer` (goal-linked stat IDs) only reorders candidates that already passed every check.
+ */
+export function questCandidates(stats: CoachStat[], focus: string[], d: number, history: QuestHistory[], today: string, startsOn = today, prefer: ReadonlySet<string> = new Set()): QuestCandidate[] {
   const active = new Set(history.filter((q) => q.status === 'active' && q.fromDate <= startsOn && q.toDate >= startsOn).map((q) => q.statId))
   const rested = new Set(history.filter((q) => q.status === 'cleared' && q.toDate === addDays(startsOn, -1)).map((q) => q.statId))
   const candidates = stats.flatMap((s): QuestCandidate[] => {
@@ -66,15 +70,17 @@ export function questCandidates(stats: CoachStat[], focus: string[], d: number, 
     return [candidate]
   })
   const slip = (s: CoachStat) => ((s.recent! - s.usual!) / s.usual!) * (s.direction === 'up' ? -1 : 1)
-  candidates.sort((a, b) => Number(focus.includes(b.statId)) - Number(focus.includes(a.statId)) || slip(b.stat) - slip(a.stat))
+  candidates.sort((a, b) => Number(prefer.has(b.statId)) - Number(prefer.has(a.statId)) || Number(focus.includes(b.statId)) - Number(focus.includes(a.statId)) || slip(b.stat) - slip(a.stat))
   return candidates.slice(0, 24)
 }
 
 /** One policy for AI and fallback: dedupe, cap load, avoid active conflicts and repeated habit pressure. */
-export function selectQuests(candidates: QuestCandidate[], ids: string[], history: QuestHistory[], today: string, limit = 3): QuestCandidate[] {
+export function selectQuests(candidates: QuestCandidate[], ids: string[], history: QuestHistory[], today: string, limit = 3, prefer: ReadonlySet<string> = new Set()): QuestCandidate[] {
   const byId = new Map(candidates.map((c) => [c.statId, c]))
   const seen = new Set<string>()
-  const chosen = ids.flatMap((id) => {
+  // Stable: goal-linked picks first, so the cap trims other picks first.
+  const ordered = [...ids.filter((id) => prefer.has(id)), ...ids.filter((id) => !prefer.has(id))]
+  const chosen = ordered.flatMap((id) => {
     const c = byId.get(id)
     if (!c || seen.has(id)) return []
     seen.add(id)

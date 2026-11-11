@@ -17,7 +17,7 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
 
 ## Layout
 
-- Pages: Today (`/`, the quest log: things to do now), Activity (`/activity`, laptop time from `extension/` and
+- Pages: Today (`/`, the quest log: things to do now), Goals (`/goals`, up to 3 outcome goals with a baseline, linked actions and weekly review decisions; `/goals/[id]` and `/goals/review`), Activity (`/activity`, laptop time from `extension/` and
   the Mac watcher), Progress (`/profile`, the character sheet: level, streak,
   week, consistency, achievements, XP; `/overview` redirects here), Habits, Insights, and six areas (Health, Mind, Skills, Wealth,
   Hobbies, People) that share one template (`AreaHeader` → `KpiStrip` → cards). Inbox, Connectors and Settings sit in the sidebar footer.
@@ -85,6 +85,8 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
   New connectors get a `sync:<id>` job automatically and sync as soon as they're connected.
 - **New AI job:** `src/ai/jobs/<id>.ts`, added to `JOBS` in `src/jobs/index.ts`. Use `model(task)`
   from `src/ai` and log through `src/ai/run.ts`.
+- **Outcome goals:** rules in `src/domain/goals.ts` (tested), wiring in `src/core/goals.ts`, UI in `src/ui/components/goals/`.
+  Separate from `plans`. Every write locks the user row and checks `version`; the AI only drafts and proposes (see docs/AI_COACH.md).
 - **Odd fields:** put them in the `meta` JSON column; promote to a real column only when queried.
 
 ## Data rules

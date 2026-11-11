@@ -1,7 +1,9 @@
+import Link from 'next/link'
 import { Check, Eye, Target } from 'lucide-react'
 import type { ReviewContent, ReviewPoint } from '@/db/schema'
 import { CATEGORY } from '@/ui/tokens'
 import { cn } from '@/ui/cn'
+import { buttonClass } from './button'
 
 // How an insight's text is shown in the app. Weekly reviews come in parts (wins, watch, next week) and get a real
 // layout; anything older or plain is lightly formatted: "**Wins**" headings, "- " bullets and **bold** spans.
@@ -23,8 +25,31 @@ function Review({ r }: { r: ReviewContent }) {
         {r.wins.length ? <Points kind="wins" points={r.wins} /> : null}
         {r.watch.length ? <Points kind="watch" points={r.watch} /> : null}
       </div>
-      <NextWeek focus={r.focus} plan={r.plan} />
+      {r.focus || r.plan ? <NextWeek focus={r.focus} plan={r.plan} /> : null}
+      {r.goals?.length ? <GoalPoints goals={r.goals} /> : null}
     </div>
+  )
+}
+
+/** Outcome goals in a review: the rule-based lines, the question, and a link to decide on /goals. */
+function GoalPoints({ goals }: { goals: NonNullable<ReviewContent['goals']> }) {
+  return (
+    <section aria-label="Goals">
+      <SectionLabel icon={Target} color="var(--pill-ink)">Goals</SectionLabel>
+      <ul className="flex flex-col gap-3">
+        {goals.map((g) => (
+          <li key={g.reviewId} className="min-w-0">
+            <p className="text-[14px] leading-snug font-medium text-ink">{g.title}</p>
+            <ul className="mt-1 flex flex-col gap-0.5 text-[13px] leading-relaxed text-ink-3 tabular-nums">
+              {g.lines.map((l, i) => <li key={i} className="text-pretty">{l}</li>)}
+            </ul>
+            {g.note ? <p className="mt-1 text-[13px] leading-relaxed text-ink-2 text-pretty"><span className="font-medium text-ink">Coach note: </span>{g.note}</p> : null}
+            <p className="mt-1 text-[13.5px] font-medium text-ink-2 text-pretty">{g.prompt}</p>
+          </li>
+        ))}
+      </ul>
+      <Link href="/goals/review" className={cn(buttonClass({ variant: 'secondary', size: 'md' }), 'mt-3')}>Decide on Goals</Link>
+    </section>
   )
 }
 

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { Brain, Code, HeartPulse, Inbox, Menu, MonitorSmartphone, Palette, Cable, Repeat, Settings, Sparkles, Sunrise, Trophy, Users, Wallet, type LucideIcon } from 'lucide-react'
+import { Brain, Code, HeartPulse, Inbox, Menu, MonitorSmartphone, Palette, Cable, Repeat, Settings, Sparkles, Sunrise, Target, Trophy, Users, Wallet, type LucideIcon } from 'lucide-react'
 import { Dialog } from './forms/dialog'
 import { SystemLabel } from './card'
 import { cn } from '../cn'
@@ -15,6 +15,7 @@ export const NAV: { label?: string; items: Item[] }[] = [
   {
     items: [
       { href: '/', label: 'Today', icon: Sunrise },
+      { href: '/goals', label: 'Goals', icon: Target },
       { href: '/profile', label: 'Progress', icon: Trophy },
       { href: '/habits', label: 'Habits', icon: Repeat },
       { href: '/insights', label: 'Coach', icon: Sparkles },

@@ -27,6 +27,8 @@ export async function acceptInsight(user: User, id: string) {
   if (!ins || ins.status !== 'pending') return ins
   // Recovery decisions need an explicit versioned choice in core/recovery.ts.
   if (ins.payload.recovery) return null
+  // Goal drafts become goals only through the Goals form (core/goals.ts saveGoal), never by approval.
+  if (ins.payload.goalDraft) return null
   for (const a of ins.payload.actions ?? []) await applyAction(user, a)
   if (ins.kind === 'plan') {
     await db.insert(schema.plans).values({ userId: user.id, goal: ins.title, insightId: ins.id })

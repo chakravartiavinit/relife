@@ -13,7 +13,7 @@ import { loadSignals } from './patterns'
 import type { User } from './user'
 
 const Q = schema.systemQuests
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
+export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
 export type CoachQuestRow = Omit<typeof Q.$inferInsert, 'userId'>
 export type RecoveryResult =
   | { status: 'accepted' | 'already_chosen'; view: RecoveryView }
@@ -33,7 +33,7 @@ function payloadOf(payload: typeof schema.insights.$inferSelect.payload): Recove
   return r && r.localDate && Number.isInteger(r.version) ? r : null
 }
 
-async function lockUser(tx: Tx, userId: string) {
+export async function lockUser(tx: Tx, userId: string) {
   await tx.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.id, userId)).for('update')
 }
 
