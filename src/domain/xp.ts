@@ -94,6 +94,18 @@ export type DayInput = {
   codingMin?: number
   languageXp?: number
   typingMin?: number
+  /** Google Calendar Focus time blocks. */
+  focusMin?: number
+  /** Toggl Track time. */
+  trackedMin?: number
+  /** RescueTime productive and very productive time. */
+  productiveMin?: number
+  /** Readwise highlights made. */
+  highlights?: number
+  /** Anki cards reviewed. */
+  ankiCards?: number
+  /** Books marked read (Open Library). */
+  booksRead?: number
   /** Spent less than your usual (median) day. undefined when there's no spending history. */
   frugal?: boolean
   catchUps?: number
@@ -134,6 +146,12 @@ export function scoreDay(d: DayInput): XpAward[] {
   if ((d.codingMin ?? 0) >= 60) std('codetime', 'skills', 10, true, 'Coded for an hour')
   if ((d.languageXp ?? 0) >= 1) std('language', 'skills', 10, true, 'Practised a language')
   if ((d.typingMin ?? 0) >= 5) std('typing', 'skills', 5, true, 'Practised typing')
+  if ((d.focusMin ?? 0) >= 60) std('focus', 'mind', 10, true, 'Blocked an hour of focus time')
+  if ((d.trackedMin ?? 0) >= 60) std('tracked', 'skills', 10, true, 'Tracked an hour of work')
+  if ((d.productiveMin ?? 0) >= 240) std('productive', 'mind', 10, true, 'Four productive hours')
+  if ((d.highlights ?? 0) >= 3) std('highlights', 'mind', 5, true, 'Highlighted what you read')
+  if ((d.ankiCards ?? 0) >= 20) std('flashcards', 'skills', 10, true, 'Reviewed 20 flashcards')
+  if ((d.booksRead ?? 0) >= 1) std('book', 'mind', 25, true, 'Finished a book')
   if (d.frugal) std('frugal', 'wealth', 10, true, 'Spent less than a usual day')
   if ((d.catchUps ?? 0) >= 1) std('catchup', 'relationships', 15, false, 'Caught up with someone')
   if ((d.hobbyMin ?? 0) >= 20) std('hobby', 'hobbies', 20, false, 'Practised a hobby for 20 minutes')
