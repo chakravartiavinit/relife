@@ -29,7 +29,7 @@ export function Hero({ meta, title, lede, pills, actions, art, center, side, tab
                 {meta ? <div className="flex items-center gap-2 font-mono text-[12px] leading-4 text-ink-3">{meta}</div> : null}
                 <h1 className="t-hero mt-2">{title}</h1>
                 {lede ? <p className={cn('t-lede mt-2', wide ? 'max-w-[352px]' : 'max-w-[60ch]')}>{lede}</p> : null}
-                {pills ? <div aria-label="Check first" className="mt-4 flex flex-wrap gap-2">{pills}</div> : null}
+                {pills ? <div role="group" aria-label="Check first" className="mt-4 flex flex-wrap gap-2">{pills}</div> : null}
               </div>
             </div>
             {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
@@ -43,6 +43,12 @@ export function Hero({ meta, title, lede, pills, actions, art, center, side, tab
   )
 }
 
-export function HeroSkeleton() {
-  return <div className="-mx-5 mb-8 h-[var(--hero-h)] animate-pulse border-b border-line bg-fill-soft sm:-mx-8 lg:-mx-9 lg:-mt-9" />
+/** Same box as the Hero, so nothing shifts when it streams in. `tabs` adds the 48px tab row under the band. */
+export function HeroSkeleton({ tabs }: { tabs?: boolean }) {
+  return (
+    <div className="-mx-5 mb-8 sm:-mx-8 lg:-mx-9 lg:-mt-9">
+      <div className={cn('h-[var(--hero-h)] animate-pulse bg-fill-soft', !tabs && 'border-b border-line')} />
+      {tabs ? <div className="h-12 border-b border-line" /> : null}
+    </div>
+  )
 }

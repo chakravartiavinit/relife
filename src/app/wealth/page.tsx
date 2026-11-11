@@ -8,6 +8,8 @@ import { loadWealthOverview, spendColor } from '@/core/wealth-overview'
 import { formatMoney } from '@/domain/money'
 import { dueLabel, monthLabel, timeAgo } from '@/domain/wealth'
 import { AreaHeader } from '@/ui/components/area-header'
+import { PageTabs } from '@/ui/components/kit/page-tabs'
+import { TABS } from '@/ui/nav-model'
 import { Card, CardHeader, KpiStrip, Skeleton } from '@/ui/components/card'
 import { StackedBars } from '@/ui/components/charts'
 import { EmptyState } from '@/ui/components/empty'
@@ -34,7 +36,7 @@ const more = (href: string, label: string) => (
 export default function WealthPage() {
   return (
     <>
-      <AreaHeader area="wealth" title="Money" description="Spending from your order apps, investments on Binance and every subscription, in one place." />
+      <AreaHeader area="wealth" title="Money" description="Spending from your order apps, investments on Binance and every subscription, in one place." tabs={<PageTabs label="Wealth" current="/wealth" items={TABS['/wealth']} />} />
       <Suspense fallback={<WealthSkeleton />}>
         <Wealth />
       </Suspense>
@@ -54,7 +56,7 @@ async function Wealth() {
         <EmptyState
           title="No money data yet" icon={Coins} color={ACCENT}
           description="Connect Binance, your order apps (Zomato, Swiggy, Blinkit, Zepto, Amazon, Flipkart) or add a subscription, and this page fills in."
-          action={<Link href="/sources" className={buttonClass({ variant: 'primary' })}>Open sources</Link>}
+          action={<Link href="/sources/browse" className={buttonClass({ variant: 'primary' })}>Open sources</Link>}
         />
       </Card>
     )

@@ -76,7 +76,7 @@ function shopConnector(p: Platform): Connector {
       // Plain order lists first, then server-driven order cards (Blinkit, Zomato); merged by order id.
       const read = async (url: string) => {
         const page = await readPage(p.id, url)
-        if (LOGIN_PAGE.test(new URL(page.finalUrl).pathname)) throw new Error(`Logged out of ${p.name}. Open Connectors and log in again.`)
+        if (LOGIN_PAGE.test(new URL(page.finalUrl).pathname)) throw new Error(`Logged out of ${p.name}. Open Sources and log in again.`)
         if (/^\s*access denied/i.test(page.text)) throw new Error(`${p.name} blocked the sync (“access denied”). Try again later, or log in again on Sources.`)
         const byId = new Map<string, ShopOrder>()
         for (const o of [...(p.id === 'flipkart' ? ordersFromFlipkart(page.json) : []), ...ordersFromJson(page.json, { paise: p.paise }), ...ordersFromSnippets(page.json, new Date(), (w) => wallToUtc(w, tz))]) if (!byId.has(o.orderId)) byId.set(o.orderId, o)
@@ -109,7 +109,7 @@ function shopConnector(p: Platform): Connector {
         orders = await ordersFromText(p.name, page.text, localDate(new Date(), ctx.user.timezone))
       }
       if (!orders.length && /log ?in|sign ?in/i.test(page.text) && !/order/i.test(page.text)) {
-        throw new Error(`Logged out of ${p.name}. Open Connectors and log in again.`)
+        throw new Error(`Logged out of ${p.name}. Open Sources and log in again.`)
       }
       await emitOrders(orders)
       // Items: open each order's page once (newest first, ITEM_BATCH per sync) and send its item list.

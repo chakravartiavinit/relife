@@ -145,7 +145,7 @@ function renderItem(local, item) {
 }
 
 function renderToday(today) {
-  $('openActivity').href = `${s.server}/activity`
+  $('openActivity').href = `${s.server}/coach/screen-time`
   if (!today) { $('todayTotal').textContent = '–'; $('todayBar').innerHTML = ''; $('todayLegend').innerHTML = ''; return }
   $('todayTotal').textContent = hm(today.seconds)
   const parts = today.byKind.filter((k) => k.seconds >= 30)

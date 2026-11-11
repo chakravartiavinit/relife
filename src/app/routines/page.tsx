@@ -6,6 +6,7 @@ import { localDate } from '@/core/time'
 import { PageHeader, Skeleton } from '@/ui/components/card'
 import { NewScheduleButton } from '@/ui/components/forms/schedule-form'
 import { RoutinesList } from '@/ui/components/habits/routines-list'
+import { HeroSkeleton } from '@/ui/components/kit/hero'
 import { PageTabs } from '@/ui/components/kit/page-tabs'
 import { TABS } from '@/ui/nav-model'
 
@@ -40,11 +41,7 @@ async function Routines({ searchParams }: { searchParams: PageProps<'/routines'>
 function RoutinesSkeleton() {
   return (
     <div aria-busy>
-      <div className="mb-8 flex items-end justify-between">
-        <div><Skeleton className="h-7 w-20 rounded-full" /><Skeleton className="mt-3 h-10 w-48" /><Skeleton className="mt-3 h-5 w-96 max-w-full" /></div>
-        <Skeleton className="h-9 w-36" />
-      </div>
-      <Skeleton className="mb-6 h-11 w-72 rounded-full" />
+      <HeroSkeleton tabs />
       <Skeleton className="h-[420px] rounded-lg" />
     </div>
   )

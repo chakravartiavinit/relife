@@ -127,7 +127,7 @@ export function CommandMenu() {
                         onSelect={() => { router.push(p.href); close() }}
                         className={itemClass}
                       >
-                        <Chip color={p.area ? CATEGORY_COLOR[p.area] : undefined}><p.icon /></Chip>
+                        <Chip color={p.area ? CATEGORY[p.area].color : undefined}><p.icon /></Chip>
                         <Label title={p.label} sub={p.sub} />
                         <kbd className={enterClass}>↵</kbd>
                       </Command.Item>
@@ -150,7 +150,6 @@ export function CommandMenu() {
   )
 }
 
-const CATEGORY_COLOR = Object.fromEntries(Object.entries(CATEGORY).map(([k, v]) => [k, v.color]))
 const EXAMPLES = ['water 250', 'mood 4', 'spent 120 chai', 'guitar 30', 'sleep 7.5']
 
 const GROUPS = [

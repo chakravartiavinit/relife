@@ -28,10 +28,10 @@ export function KeyCards({ items, className }: { items: KeyCardItem[]; className
   )
 }
 
-export function KeyCardsSkeleton({ n = 4 }: { n?: number }) {
+export function KeyCardsSkeleton() {
   return (
     <div className="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-      {Array.from({ length: n }, (_, i) => <Skeleton key={i} className="min-h-[112px] rounded-lg" />)}
+      {Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="min-h-[112px] rounded-lg" />)}
     </div>
   )
 }

@@ -761,7 +761,7 @@ function StepRoutines({ v, set, mode, starters, existing, today, ai, onAi }: {
                 onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); build() } }}
                 placeholder="Office 10 to 7, gym three times a week…" className="min-h-0 resize-none text-[16px] leading-normal sm:text-[14px]" />
             </Field>
-            <Button variant="accent" size="lg" onClick={build} className="mt-3 h-10 w-full text-[14px]">
+            <Button variant="primary" size="lg" onClick={build} className="mt-3 h-10 w-full text-[14px]">
               <Sparkles className="size-4" strokeWidth={2} />{v.generated.length ? 'Build again' : 'Build my routines'}
             </Button>
             {v.generated.length ? <p className="mt-3 flex justify-center"><button type="button" onClick={() => setEditing(false)} className={LINK}>Back to routines</button></p> : null}

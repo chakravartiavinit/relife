@@ -5,7 +5,7 @@ import {
   Bike, BookOpen, Check, CircleDot, Cookie, CupSoda, Droplet, Footprints, GitCommitHorizontal, GitPullRequest, GraduationCap, Laptop, Loader2,
   MessageSquareCode, Moon, MoonStar, Puzzle, ShoppingBag, Siren, Skull, Smartphone, Smile, Sparkles, Target, Tv, Wallet, X, Zap, type LucideIcon,
 } from 'lucide-react'
-import { CATEGORY, RANK } from '../tokens'
+import { CATEGORY } from '../tokens'
 import { RankLetter } from './kit/rank'
 import { summonSystem } from '@/app/actions'
 import { formatValue } from '@/domain/patterns'
@@ -21,8 +21,6 @@ export type SystemQuestItem = {
   /** What it measures (github.commits, spend:apps, habit:item:diet coke…) and its life area, for the icon and colour. */
   statId?: string; area?: string
 }
-
-export const RANK_COLOR: Record<Rank, string> = RANK
 
 const GROUP: Record<SystemKind, { label: string; color: string; icon?: typeof Skull }> = {
   daily: { label: 'Daily quest', color: 'var(--accent-text)' },

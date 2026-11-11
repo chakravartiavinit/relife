@@ -29,16 +29,16 @@ export async function onboardingSteps(user: User): Promise<Step[]> {
       body: 'Your coach reads this before every suggestion.', done: !!user.profile.goals?.trim(),
     },
     {
-      id: 'telegram', title: 'Get reminders on Telegram', cta: 'Connect Telegram', href: '/sources',
+      id: 'telegram', title: 'Get reminders on Telegram', cta: 'Connect Telegram', href: '/sources/browse',
       body: 'Check things off with one tap from your phone.', done: has('TELEGRAM_BOT_TOKEN') && has('TELEGRAM_ALLOWED_CHAT_ID'),
     },
     {
-      id: 'sources', title: 'Connect GitHub, Binance or an order app', cta: 'Connect an app', href: '/sources',
+      id: 'sources', title: 'Connect GitHub, Binance or an order app', cta: 'Connect an app', href: '/sources/browse',
       body: 'Commits, trades and what you spend on Zomato, Amazon and others flow in by themselves, at full XP.',
       done: has('GITHUB_TOKEN') || has('BINANCE_API_KEY'),
     },
     {
-      id: 'iphone', title: 'Send steps and sleep from your iPhone', cta: 'Open guide', href: '/sources',
+      id: 'iphone', title: 'Send steps and sleep from your iPhone', cta: 'Open guide', href: '/sources/browse',
       body: 'A few Shortcuts automations, and your step and sleep quests clear themselves.', done: inbox.n > 0,
     },
   ]

@@ -11,6 +11,8 @@ import { contractCoin, loadPortfolio, type ActivityRow, type Position } from '@/
 import { timeAgo } from '@/domain/wealth'
 import { CoinLogo } from '@/ui/components/coin-logo'
 import { Badge, Card, CardHeader, KpiStrip, PageHeader, Skeleton } from '@/ui/components/card'
+import { PageTabs } from '@/ui/components/kit/page-tabs'
+import { TABS as NAV_TABS } from '@/ui/nav-model'
 import { EmptyState } from '@/ui/components/empty'
 import { buttonClass } from '@/ui/components/button'
 import { cn } from '@/ui/cn'
@@ -31,7 +33,7 @@ export const metadata: Metadata = { title: 'Portfolio' }
 export default function PortfolioPage({ searchParams }: PageProps<'/wealth/portfolio'>) {
   return (
     <>
-      <PageHeader eyebrow="Wealth" title="Portfolio" description="Everything on Binance: what it's worth, what you made since day one, and every trade, P2P order and transfer." />
+      <PageHeader eyebrow="Wealth" title="Portfolio" description="Everything on Binance: what it's worth, what you made since day one, and every trade, P2P order and transfer." tabs={<PageTabs label="Wealth" current="/wealth/portfolio" items={NAV_TABS['/wealth']} />} />
       <Suspense fallback={<PortfolioSkeleton />}>
         <Portfolio searchParams={searchParams} />
       </Suspense>
@@ -50,7 +52,7 @@ async function Portfolio({ searchParams }: { searchParams: PageProps<'/wealth/po
         <EmptyState
           title="No crypto connected" icon={Coins} color={'var(--cat-wealth)'}
           description="Add a read-only Binance API key in Sources. Holdings, futures, trades, P2P orders and transfers sync automatically."
-          action={<Link href="/sources" className={buttonClass({ variant: 'primary' })}>Connect Binance</Link>}
+          action={<Link href="/sources/browse" className={buttonClass({ variant: 'primary' })}>Connect Binance</Link>}
         />
       </Card>
     )

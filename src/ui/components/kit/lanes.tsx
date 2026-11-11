@@ -6,11 +6,11 @@ export function Lanes({ children, className }: { children: React.ReactNode; clas
 }
 
 /** A lane: a 24px head (title, mono count, right slot) over its blocks. A `section`, never an `aside`: the tour finds the rail by `aside`. */
-export function Lane({ title, count, right, id, label, children, className }: {
-  title?: React.ReactNode; count?: React.ReactNode; right?: React.ReactNode; id?: string; label?: string; children: React.ReactNode; className?: string
+export function Lane({ title, count, right, id, children, className }: {
+  title?: React.ReactNode; count?: React.ReactNode; right?: React.ReactNode; id?: string; children: React.ReactNode; className?: string
 }) {
   return (
-    <section id={id} aria-label={label ?? (typeof title === 'string' ? title : undefined)} className={cn('min-w-0', className)}>
+    <section id={id} aria-label={typeof title === 'string' ? title : undefined} className={cn('min-w-0', className)}>
       {title || right ? (
         <div className="flex h-6 items-center justify-between gap-3">
           <h2 className="t-section flex items-center gap-2">

@@ -4,6 +4,7 @@ import type { Category } from '@/db/schema'
 import type { xpSummary } from '@/core/xp'
 import { formatNumber } from '@/domain/money'
 import { AREA_ICON } from '../area-art'
+import { AREA_HREF } from '../nav-model'
 import { CATEGORY } from '../tokens'
 import { Bar } from './kit/bar'
 import { Ring } from './kit/ring'
@@ -15,11 +16,9 @@ import { Ticker } from './ticker'
 // your streak, and your areas as stats. One component so the two pages always agree. PR B replaces it with Hero.
 
 type Summary = Awaited<ReturnType<typeof xpSummary>>
-const AREA_HREF: Record<Category, string> = { health: '/health', mind: '/mind', skills: '/skills', wealth: '/wealth', hobbies: '/hobbies', relationships: '/people' }
 
 export function CharacterBanner({ s, heading, eyebrow, streak, freezes, areas, children }: {
   s: Summary
-  name?: string
   /** Big line: a greeting on Today, the title on Character. */
   heading: string
   eyebrow?: React.ReactNode

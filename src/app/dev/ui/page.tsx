@@ -16,7 +16,7 @@ import { PositionCard } from '@/ui/components/wealth/position-card'
 import { IlloGallery } from '@/ui/components/tour/illos'
 import { ToastGallery } from '@/ui/components/toast'
 import { AREA_ART } from '@/ui/area-art'
-import { RANK_KEYS, type RankKey } from '@/ui/tokens'
+import { RANKS, type Rank } from '@/domain/system'
 import { Bar, SplitBar } from '@/ui/components/kit/bar'
 import { AreaChip } from '@/ui/components/kit/area-chip'
 import { Group, ItemRow } from '@/ui/components/kit/group'
@@ -69,7 +69,6 @@ export default function UiGallery() {
       <Section title="Buttons">
         <div className="flex flex-wrap items-center gap-3">
           <Button variant="primary">Primary</Button>
-          <Button variant="accent">Accent</Button>
           <Button>Secondary</Button>
           <Button variant="ghost">Ghost</Button>
           <Button variant="danger">Delete</Button>
@@ -220,8 +219,8 @@ function NewParts() {
       </Section>
 
       <Section title="Ranks, chips, pills, keys">
-        <div className="flex flex-wrap items-center gap-2">{RANK_KEYS.map((r) => <RankLetter key={r} rank={r} />)}</div>
-        <div className="mt-3 flex flex-wrap items-center gap-2">{RANK_KEYS.map((r) => <RankLetter key={r} rank={r} size={28} />)}</div>
+        <div className="flex flex-wrap items-center gap-2">{RANKS.map((r) => <RankLetter key={r} rank={r} />)}</div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">{RANKS.map((r) => <RankLetter key={r} rank={r} size={28} />)}</div>
         <div className="mt-4 flex flex-wrap gap-2">{CATEGORIES.map((c) => <AreaChip key={c} area={c} />)}</div>
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <Pill count={2} tone="bad" href="#">Overdue</Pill>
@@ -269,7 +268,7 @@ function NewParts() {
               <ItemRow tile={<IconTile src="/routines/gym.png" tint="var(--health)" size="md" />} title="Workout with a long routine name that has to truncate somewhere" sub="45 min" area={<AreaChip area="health" />} time="07:30" xp="+11" action={done} />
             </Group>
           </Lane>
-          <Lane title="At a glance" label="At a glance">
+          <Lane title="At a glance">
             <Card><CardHeader art="/routines/water.png" color="var(--skills)" title="Water" description="0.9 of 2.5 L" action="36%" /><Bar value={0.9} max={2.5} size={8} color="var(--water-text)" marker={{ at: 1.5, label: 'Usual by now' }} label="Water" /></Card>
           </Lane>
         </Lanes>
@@ -277,7 +276,7 @@ function NewParts() {
 
       <Section title="Quest cards">
         <div className="grid gap-4 sm:grid-cols-3">
-          {RANK_KEYS.map((r: RankKey) => <QuestCard key={r} rank={r} art="/routines/run.png" title={`Rank ${r} quest`} xp={r.charCodeAt(0) * 3} progress={r === 'S' ? 18 : 6.4} target={r === 'S' ? 30 : 10} foot="6.4 / 10 km · 3 days left" />)}
+          {RANKS.map((r: Rank) => <QuestCard key={r} rank={r} art="/routines/run.png" title={`Rank ${r} quest`} xp={r.charCodeAt(0) * 3} progress={r === 'S' ? 18 : 6.4} target={r === 'S' ? 30 : 10} foot="6.4 / 10 km · 3 days left" />)}
           <QuestCard rank="C" art="/routines/mood.png" title="Log your mood" xp={20} progress={0} target={1} action={<Button size="sm">Log mood</Button>} />
           <QuestCard rank="D" kind="penalty" art="/routines/phone.png" title="Under 2 h of social" xp={60} progress={1.2} target={2} foot="1.2 / 2 h" />
           <QuestCard rank="B" kind="emergency" art="/routines/money.png" title="Spending spike: skip delivery today" xp={90} progress={0} target={1} foot="0 / 1" />

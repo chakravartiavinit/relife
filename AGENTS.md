@@ -26,12 +26,25 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
   (`/profile`, `/habits`, `/insights`, `/activity`, `/connectors`, `/inbox`, `/relationships`, `/trackers/*`,
   `/overview`, `/schedules`) redirect (307) from `redirects()` in `next.config.ts`. Link to the new routes so no
   click goes through a redirect.
-  Navigation lives in `src/ui/components/nav.tsx`. The game look comes from three banners: `CharacterBanner`
-  (`hud.tsx`, Today and Progress), `AreaHeader` (area pages) and `PageHeader` (everything else). Routine
-  pictures come from `src/ui/routine-icons.ts`.
-- Look ("ReLife capsule"): ink black, white and the logo's capsule blue, light-first. The signature shapes are
-  `CapsuleIcon` (`capsule-icon.tsx`, the tilted pill from the logo, for areas and avatars), `SystemLabel` (mono
-  area label in `card.tsx`) and the `.halftone` dot texture in header corners. No other decorative textures.
+  One nav model (`src/ui/nav-model.ts`: `PLAY`, `STATS`, `FOOTER`, `TABS`, `isActive`) drives the rail and phone tab bar
+  (`nav.tsx`), ⌘K (`command-menu.tsx`) and the page tabs; add a page there. Counts beside the rows (Today left,
+  Sources needs a look, nudges, area levels) come from `system-nav-server.tsx`. Every page is a `Hero`
+  (`PageHeader` or `AreaHeader` wrap it) → `PageTabs` (when it has tabs) → body; bodies move to `KeyCards` and `Lanes`
+  as each page is rebuilt. Routine pictures come from `src/ui/routine-icons.ts`; area pictures from `src/ui/area-art.ts`.
+- Look ("Hero + lanes"): a quiet, Linear-like look, dark and light (`[data-theme]`, default follows the system), Inter
+  and IBM Plex Mono (`next/font` in `layout.tsx`). Tokens are CSS variables in `globals.css`, with names copied from the
+  mockups: surfaces (`--bg`, `--sidebar`, `--raised`, `--raised-hover`), lines (`--line`), text (`--text`, `--text-2/-3/-4`), `--accent`,
+  signals (`--mint`, `--amber`, `--red`), area hues (`--health` … `--people`, marks only, never text), ranks
+  (`--rank-e` … `--rank-s`) and the level ring and hero gradients. Tailwind keeps the role names `text-ink*` and
+  `text-good/warn/bad`, and adds `bg-raised`, `border-line`, `bg-accent` and the rest. Type roles are the `t-hero`,
+  `t-lede`, `t-section`, `t-row`, `t-meta`, `t-mono`, `t-label`, `t-num` utilities. The parts are in
+  `src/ui/components/kit/` (`Hero`, `PageTabs`, `Ring`, `Bar`, `SplitBar`, `WeekStrip`, `StatCard`, `KeyCards`, `Lanes`,
+  `Group`, `ItemRow`, `QuestCard`, `RankLetter`, `Pill`, `Kbd`, `AreaChip`) plus `IconTile` in `routine-art.tsx`; see
+  them in `/dev/ui`. The old token names (`--surface`, `--pill`, `--cat-*`, `--medal-*`…) are aliases that PR D
+  removes, so write new code with the new names. Cards are flat with a hairline ring (`--line`); `--shadow-pop` is
+  for overlays only. No glass, blur, grain or glossy buttons. `CapsuleIcon`, `Capsule` and the `.halftone`,
+  `.skyline` and `.mote` styles are left over from the capsule look: only the onboarding preview, the hobby library, the tour
+  and the Today and Hobbies pages (`Capsule`) still use them, and they are removed in PR D. `SystemLabel` (mono label in `card.tsx`) stays.
 - Motion: CSS easing tokens in `globals.css` (`--ease-out-quint`, `--ease-out-strong`, `--ease-in-out-strong`);
   JS twins in `src/ui/beui/lib/ease.ts` (`EASE_OUT`, `EASE_OUT_STRONG`). Never retype the curves. Audits and
   plans live in `plans/`.

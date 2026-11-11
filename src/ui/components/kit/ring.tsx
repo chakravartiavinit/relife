@@ -5,12 +5,11 @@ import { cn } from '../../cn'
  * Ring: a level, a week's adherence, a month's spend against the usual, sync health. Track `--track`, arc
  * `--ring-a` to `--ring-b`, centre `--ring-well`. The arc draws once on mount (reduced motion: filled).
  */
-export function Ring({ value, max, size = 168, stroke = 8, label, center, gradient = true, color, className }: {
+export function Ring({ value, max, size = 168, stroke = 8, label, center, color, className }: {
   value: number; max: number; size?: number; stroke?: number
   /** Full sentence for assistive tech: "Level 3, 248 of 400 XP". */
   label: string
   center?: React.ReactNode
-  gradient?: boolean
   /** Solid arc colour (an area hue). Overrides the gradient. */
   color?: string
   className?: string
@@ -35,7 +34,7 @@ export function Ring({ value, max, size = 168, stroke = 8, label, center, gradie
             cx={mid} cy={mid} r={r} fill="none" strokeWidth={stroke} strokeLinecap="round" strokeDasharray={c}
             transform={`rotate(-90 ${mid} ${mid})`}
             className="ring-arc"
-            style={{ stroke: color ?? (gradient ? `url(#${id})` : 'var(--ring-a)'), '--len': c, '--off': c * (1 - pct) } as React.CSSProperties}
+            style={{ stroke: color ?? `url(#${id})`, '--len': c, '--off': c * (1 - pct) } as React.CSSProperties}
           />
         ) : null}
       </svg>

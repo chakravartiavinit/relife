@@ -12,17 +12,8 @@ export const metadata: Metadata = { title: 'Trackers' }
 
 export default function TrackersPage() {
   return (
-    <Suspense fallback={<TrackersSkeleton />}>
-      <Trackers />
-    </Suspense>
-  )
-}
-
-async function Trackers() {
-  await connection()
-  const user = await getUser()
-  return (
     <div>
+      {/* Nothing here reads the database, so the hero paints at once and only the grid streams. */}
       <PageHeader
         eyebrow="Plan"
         title="Trackers"
@@ -30,20 +21,14 @@ async function Trackers() {
         actions={<NewTrackerButton />}
         tabs={<PageTabs label="Routines" current="/routines/trackers" items={TABS['/routines']} />}
       />
-      <TrackersGrid user={user} />
+      <Suspense fallback={<Skeleton className="h-[420px] rounded-lg" />}>
+        <Trackers />
+      </Suspense>
     </div>
   )
 }
 
-function TrackersSkeleton() {
-  return (
-    <div aria-busy>
-      <div className="mb-8 flex items-end justify-between">
-        <div><Skeleton className="h-7 w-20 rounded-full" /><Skeleton className="mt-3 h-10 w-48" /><Skeleton className="mt-3 h-5 w-96 max-w-full" /></div>
-        <Skeleton className="h-9 w-36" />
-      </div>
-      <Skeleton className="mb-6 h-11 w-72 rounded-full" />
-      <Skeleton className="h-[420px] rounded-lg" />
-    </div>
-  )
+async function Trackers() {
+  await connection()
+  return <TrackersGrid user={await getUser()} />
 }

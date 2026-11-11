@@ -94,7 +94,7 @@ export function ProfileForm({ name, timezone, baseCurrency, goals, constraints, 
           <button type="reset" className="h-9 rounded-md px-3 text-[13.5px] font-medium text-bg/70 transition-[color,scale] duration-150 hover:text-bg active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">
             Discard
           </button>
-          <Button type="submit" variant="accent" size="sm" disabled={pending}>{pending ? 'Saving…' : 'Save changes'}</Button>
+          <Button type="submit" variant="primary" size="sm" disabled={pending}>{pending ? 'Saving…' : 'Save changes'}</Button>
         </span>
       </div>
     </form>

@@ -1,23 +1,14 @@
 import Link from 'next/link'
-import { cache } from 'react'
-import { connection } from 'next/server'
-import { getUser } from '@/core/user'
 import { localDate } from '@/core/time'
-import { xpSummary } from '@/core/xp'
+import { railXp } from './rail-data'
 import { formatNumber } from '@/domain/money'
 import { Bar } from './kit/bar'
 import { showUpStreak } from './life-kpis'
 
-const load = cache(async () => {
-  await connection()
-  const user = await getUser()
-  const [xp, streak] = await Promise.all([xpSummary(user), showUpStreak(user, localDate(new Date(), user.timezone))])
-  return { user, xp, streak: streak.current }
-})
-
 /** The rail's player block: avatar, name, level and title, streak, and a thin XP bar. The whole block opens Character. */
 export async function PlayerBlock() {
-  const { user, xp, streak } = await load()
+  const { user, xp } = await railXp()
+  const streak = (await showUpStreak(user, localDate(new Date(), user.timezone))).current
   const initial = (user.name.trim()[0] ?? 'R').toUpperCase()
   const into = xp.total - xp.floor
   const span = xp.next - xp.floor
@@ -44,5 +35,5 @@ export async function PlayerBlock() {
 
 /** Same height as the block, so nothing shifts when it streams in. */
 export function PlayerBlockSkeleton() {
-  return <div className="mt-2 h-[84px] animate-pulse rounded-sm border-t border-line bg-fill-soft" />
+  return <div className="mt-2 h-[53px] animate-pulse rounded-sm border-t border-line bg-fill-soft" />
 }

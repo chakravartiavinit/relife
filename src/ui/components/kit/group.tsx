@@ -1,15 +1,14 @@
-import Link from 'next/link'
 import { cn } from '../../cn'
 import { Skeleton } from './skeleton'
 
 /** A card of rows with a 44px head: a 24px icon square, name, mono count and a right slot. */
-export function Group({ icon, name, count, right, now, children, className, id }: {
+export function Group({ icon, name, count, right, now, children }: {
   icon?: React.ReactNode; name: React.ReactNode; count?: React.ReactNode; right?: React.ReactNode
   /** The "Now" group: its icon square turns red. */
-  now?: boolean; children: React.ReactNode; className?: string; id?: string
+  now?: boolean; children: React.ReactNode
 }) {
   return (
-    <section id={id} className={cn('overflow-hidden rounded-lg bg-raised shadow-1', className)}>
+    <section className="overflow-hidden rounded-lg bg-raised shadow-1">
       <GroupHead icon={icon} name={name} count={count} right={right} now={now} />
       {children}
     </section>
@@ -34,9 +33,9 @@ export function GroupHead({ icon, name, count, right, now }: { icon?: React.Reac
  * Overdue turns the time and sub-line red (and says "Overdue"); `next` adds an accent chip. A `menu` replaces
  * area, time and XP on hover or focus (opacity only).
  */
-export function ItemRow({ tile, title, sub, area, time, xp, action, tone, menu, href, className }: {
+export function ItemRow({ tile, title, sub, area, time, xp, action, tone, menu }: {
   tile?: React.ReactNode; title: React.ReactNode; sub?: React.ReactNode; area?: React.ReactNode; time?: React.ReactNode; xp?: React.ReactNode
-  action?: React.ReactNode; tone?: 'overdue' | 'next'; menu?: React.ReactNode; href?: string; className?: string
+  action?: React.ReactNode; tone?: 'overdue' | 'next'; menu?: React.ReactNode
 }) {
   const fade = menu ? 'transition-[opacity] duration-150 group-hover/row:opacity-0 group-focus-within/row:opacity-0' : ''
   return (
@@ -44,13 +43,12 @@ export function ItemRow({ tile, title, sub, area, time, xp, action, tone, menu, 
       className={cn(
         'group/row relative grid h-[var(--row)] grid-cols-[48px_minmax(0,1fr)_auto_40px] items-center gap-x-4 pr-3 pl-4 transition-[background-color] duration-150 hover:bg-hover [&+&]:shadow-[inset_0_1px_0_var(--line)]',
         'md:grid-cols-[48px_minmax(0,1fr)_112px_48px_56px_40px]',
-        className,
       )}
     >
       <div>{tile}</div>
       <div className="flex min-w-0 flex-col justify-center">
         <div className="flex min-w-0 items-center gap-2">
-          {href ? <Link href={href} className="t-row truncate after:absolute after:inset-0 after:content-['']">{title}</Link> : <span className="t-row truncate">{title}</span>}
+          <span className="t-row truncate">{title}</span>
           {tone === 'next' ? <span className="inline-flex h-[18px] shrink-0 items-center rounded-full bg-accent-bg px-1.5 text-[11.5px] font-medium text-accent-text shadow-[inset_0_0_0_1px_var(--accent-line)]">Next</span> : null}
         </div>
         {sub || tone === 'overdue' ? (

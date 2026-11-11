@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { Suspense } from 'react'
 import { Wordmark } from '@/ui/components/logo'
 import { cn } from '@/ui/cn'
-import { NavPlaceholder } from '@/ui/components/nav'
+import { NavPlaceholder, TabBarPlaceholder } from '@/ui/components/nav'
 import { NavForUser, TabBarForUser } from '@/ui/components/system-nav-server'
 import { PlayerBlock, PlayerBlockSkeleton } from '@/ui/components/player-block'
 import { CommandButton, CommandMenu, LogButton } from '@/ui/components/command-menu'
@@ -93,7 +93,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
               </div>
             </main>
           </div>
-          <Suspense fallback={null}><TabBarForUser /></Suspense>
+          <Suspense fallback={<TabBarPlaceholder />}><TabBarForUser /></Suspense>
           <CommandMenu />
           <Tour />
           <Celebration />

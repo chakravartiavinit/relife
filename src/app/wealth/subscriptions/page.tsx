@@ -12,6 +12,8 @@ import { nextOccurrence, parseSimple } from '@/domain/recurrence'
 import { formatMoney } from '@/domain/money'
 import { dueLabel } from '@/domain/wealth'
 import { Badge, Card, CardHeader, KpiStrip, PageHeader, Skeleton } from '@/ui/components/card'
+import { PageTabs } from '@/ui/components/kit/page-tabs'
+import { TABS } from '@/ui/nav-model'
 import { EmptyState } from '@/ui/components/empty'
 import { Button } from '@/ui/components/button'
 import { AddSubscription, type SubscriptionValues } from '@/ui/components/wealth/subscription-form'
@@ -34,7 +36,7 @@ export default function SubscriptionsPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Wealth" title="Subscriptions & bills" description="Everything that renews, with a reminder before it charges."
+        eyebrow="Wealth" title="Subscriptions & bills" description="Everything that renews, with a reminder before it charges." tabs={<PageTabs label="Wealth" current="/wealth/subscriptions" items={TABS['/wealth']} />}
         actions={<Suspense fallback={<Button variant="primary" disabled><Plus className="size-4" strokeWidth={2} /> Add subscription</Button>}><AddButton /></Suspense>}
       />
       <Suspense fallback={<SubscriptionsSkeleton />}>

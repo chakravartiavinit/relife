@@ -13,6 +13,8 @@ import { formatMoney } from '@/domain/money'
 import { fillDays } from '@/domain/series'
 import { QUICK_COMMERCE, monthLabel, monthRange, shiftMonth } from '@/domain/wealth'
 import { Badge, Card, CardHeader, PageHeader, Skeleton, Stat } from '@/ui/components/card'
+import { PageTabs } from '@/ui/components/kit/page-tabs'
+import { TABS } from '@/ui/nav-model'
 import { DailyBars, RankedBars } from '@/ui/components/charts'
 import { EmptyState } from '@/ui/components/empty'
 import { buttonClass } from '@/ui/components/button'
@@ -86,13 +88,13 @@ async function Spending({ searchParams }: { searchParams: PageProps<'/wealth/spe
 
   return (
     <>
-      <PageHeader eyebrow="Wealth" title="Spending" description="Where your money went: by category, by item and by habit, with what’s above your usual month." actions={nav} />
+      <PageHeader eyebrow="Wealth" title="Spending" description="Where your money went: by category, by item and by habit, with what’s above your usual month." actions={nav} tabs={<PageTabs label="Wealth" current="/wealth/spending" items={TABS['/wealth']} />} />
       {txns.length === 0 ? (
         <Card>
           <EmptyState
             title={`No transactions in ${monthLabel(m)}`} icon={ReceiptText} color={'var(--cat-wealth)'}
             description={<>Spending comes from the order apps you connect (Zomato, Swiggy, Blinkit, Zepto, Flipkart, Amazon, MakeMyTrip). Log anything else with ⌘K, e.g. “spent 120 chai”.</>}
-            action={<Link href="/sources" className={buttonClass({ variant: 'primary' })}>Set up sources</Link>}
+            action={<Link href="/sources/browse" className={buttonClass({ variant: 'primary' })}>Set up sources</Link>}
           />
         </Card>
       ) : (

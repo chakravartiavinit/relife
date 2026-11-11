@@ -120,7 +120,7 @@ export function Agenda({ rows }: { rows: AgendaRow[] }) {
 
 /** The circle you tap (`.check`): a 22px circle with a `--check-ring` ring, a 40px hit area. Hover goes mint, done fills mint
  * with a check (scale 0.25 to 1, blur 4px to 0), overdue is a red ring, skipped a muted skip icon. */
-function CheckButton({ r, onToggle, size = 'md', forceDone }: { r: AgendaRow; onToggle: () => void; size?: 'lg' | 'md' | 'sm'; forceDone?: boolean }) {
+function CheckButton({ r, onToggle, size = 'md', forceDone }: { r: AgendaRow; onToggle: () => void; size?: 'md' | 'sm'; forceDone?: boolean }) {
   const done = r.status === 'done' || !!forceDone
   const skipped = r.status === 'skipped'
   const box = size === 'sm' ? 'size-[18px]' : 'size-[22px]'
@@ -213,7 +213,7 @@ function Row({ r, onToggle, onSkip }: { r: AgendaRow; onToggle: () => void; onSk
       ) : null}
       <span className="relative grid place-items-center">
         {won ? <CheckBurst color={r.color} /> : null}
-        <CheckButton r={r} onToggle={complete} size="lg" forceDone={won} />
+        <CheckButton r={r} onToggle={complete} forceDone={won} />
       </span>
     </motion.div>
   )

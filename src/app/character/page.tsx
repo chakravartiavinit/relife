@@ -22,7 +22,7 @@ import { freezesHeld } from '@/core/quests'
 import { ACHIEVEMENT_ICON, TIER_COLOR } from '@/ui/achievement-icons'
 import { showUpStreak } from '@/ui/components/life-kpis'
 
-export const metadata: Metadata = { title: 'Progress' }
+export const metadata: Metadata = { title: 'Character' }
 
 const KIND = [
   { kind: 'consistency', label: 'Your plan', color: 'var(--pill)' },
@@ -31,7 +31,7 @@ const KIND = [
   { kind: 'achievement', label: 'Achievements', color: 'var(--medal-sakura)' },
 ] as const
 
-export default function ProfilePage() {
+export default function CharacterPage() {
   return (
     <Suspense fallback={<ProfileSkeleton />}>
       <Profile />
@@ -57,7 +57,7 @@ async function Profile() {
   return (
     <div className="flex flex-col gap-6">
       <CharacterBanner
-        s={s} name={user.name} heading={s.title} eyebrow={user.name}
+        s={s} heading={s.title} eyebrow={user.name}
         streak={streak} freezes={freezes} areas={user.profile.areas}
       >
         <div className="border-t border-divider/60 bg-surface/60 px-5 py-4 backdrop-blur-sm sm:px-6">

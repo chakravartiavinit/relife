@@ -136,6 +136,8 @@
   --color-link: var(--link);
   --color-on-accent: var(--on-accent);
   --color-mint: var(--mint);
+  --color-mint-bg: var(--mint-bg);
+  --color-amber-fill: var(--amber-fill);
   --color-amber: var(--amber);
   --color-red: var(--red);
   --color-health: var(--health);

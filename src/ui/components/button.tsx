@@ -1,12 +1,11 @@
 import { cn } from '../cn'
 
-type Variant = 'primary' | 'accent' | 'secondary' | 'ghost' | 'danger'
+type Variant = 'primary' | 'secondary' | 'ghost' | 'danger'
 type Size = 'sm' | 'md' | 'lg' | 'icon' | 'icon-sm'
 
 const VARIANT: Record<Variant, string> = {
-  // Primary (and its older name, accent) is the accent fill. Secondary is the mockups' .btn.
+  // Primary is the accent fill. Secondary is the mockups' .btn.
   primary: 'bg-accent text-on-accent hover:bg-accent-hover',
-  accent: 'bg-accent text-on-accent hover:bg-accent-hover',
   secondary: 'bg-raised-2 text-ink shadow-inset hover:bg-hover',
   ghost: 'text-ink-2 hover:bg-hover hover:text-ink',
   danger: 'bg-raised-2 text-bad shadow-inset hover:bg-bad-bg',

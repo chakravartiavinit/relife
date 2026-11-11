@@ -126,7 +126,7 @@ async function Skills() {
                     <span className="truncate text-[12px] text-ink-3">{src.sub}</span>
                   </span>
                 ) : (
-                  <Link href="/sources" className="text-[13px] font-medium text-pill-ink hover:underline">Connect</Link>
+                  <Link href="/sources/browse" className="text-[13px] font-medium text-pill-ink hover:underline">Connect</Link>
                 )}
               </span>
             </li>

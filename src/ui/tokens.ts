@@ -1,4 +1,5 @@
 import type { Category } from '@/db/schema'
+import type { Rank } from '@/domain/system'
 
 // Single source for values that code (charts, native clients later) needs outside CSS.
 // Colors resolve to the CSS variables in app/globals.css so they follow the theme.
@@ -23,11 +24,7 @@ export const CHART = {
   series: ['var(--skills)', 'var(--health)', 'var(--wealth)', 'var(--mind)', 'var(--people)', 'var(--accent)'],
 }
 
-/** System quest ranks, E (easy) to S (very hard). */
-export type RankKey = 'E' | 'D' | 'C' | 'B' | 'A' | 'S'
-export const RANK_KEYS: RankKey[] = ['E', 'D', 'C', 'B', 'A', 'S']
-export const RANK: Record<RankKey, string> = {
+/** System quest rank colours, E (easy) to S (very hard). */
+export const RANK: Record<Rank, string> = {
   E: 'var(--rank-e)', D: 'var(--rank-d)', C: 'var(--rank-c)', B: 'var(--rank-b)', A: 'var(--rank-a)', S: 'var(--rank-s)',
 }
-
-export { AREA_ART } from './area-art'

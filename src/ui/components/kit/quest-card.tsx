@@ -1,4 +1,5 @@
-import { RANK, type RankKey } from '../../tokens'
+import type { Rank } from '@/domain/system'
+import { RANK } from '../../tokens'
 import { cn } from '../../cn'
 import { IconTile } from '../routine-art'
 import { RankLetter } from './rank'
@@ -11,7 +12,7 @@ import { Skeleton } from './skeleton'
  * Penalty and emergency quests use red and say so in text.
  */
 export function QuestCard({ rank, art, title, xp, progress, target, foot, action, kind = 'daily', className }: {
-  rank: RankKey; art: string; title: string; xp: number; progress: number; target: number
+  rank: Rank; art: string; title: string; xp: number; progress: number; target: number
   foot?: React.ReactNode; action?: React.ReactNode; kind?: 'daily' | 'penalty' | 'emergency'; className?: string
 }) {
   const color = kind === 'daily' ? RANK[rank] : kind === 'penalty' ? 'var(--red)' : 'var(--amber)'

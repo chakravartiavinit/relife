@@ -117,7 +117,7 @@ async function Settings() {
       >
         {!TASKS.some(({ task }) => modelId(task)) ? (
           <SettingsRow label="No model yet" hint="Reading odd messages, plans, reviews and Ask all need one.">
-            <Link href="/sources" className={buttonClass({ variant: 'primary', size: 'sm' })}>Connect an AI model</Link>
+            <Link href="/sources/browse" className={buttonClass({ variant: 'primary', size: 'sm' })}>Connect an AI model</Link>
           </SettingsRow>
         ) : TASKS.map(({ task, label, hint }) => {
           const id = modelId(task)

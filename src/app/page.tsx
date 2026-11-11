@@ -105,11 +105,12 @@ async function Today() {
   }
 
   const byCat = Object.fromEntries(CATEGORIES.map((c) => [c, { done: 0, total: 0 }]))
-  for (const r of rows) { const c = catOf.get(r.scheduleId)!; byCat[c].total++; if (r.status === 'done') byCat[c].done++ }
+  for (const r of rows) { const c = catOf.get(r.scheduleId)!; byCat[c].total++; if (r.status === 'done' || r.status === 'skipped') byCat[c].done++ }
   for (const g of goals) { const c = catOf.get(g.scheduleId)!; byCat[c].total++; if (g.value >= g.target) byCat[c].done++ }
   const total = rows.length + goals.length
   // Each routine's share of today's 100 plan XP, shown as its quest reward.
   for (const r of rows) r.xp = Math.round(100 / total)
+  // Skipped counts as handled, the same rule as `todayLeft` (core/schedules.ts), so this and the rail's Today number match.
   const done = Object.values(byCat).reduce((s, c) => s + c.done, 0)
   const left = total - done
   const dueSoon = payments.filter((p) => p.daysLeft <= 7)
@@ -128,7 +129,7 @@ async function Today() {
   return (
     <div className="flex flex-col gap-6">
       <CharacterBanner
-        s={xp} name={user.name} heading={`${greet}, ${firstName}.`}
+        s={xp} heading={`${greet}, ${firstName}.`}
         eyebrow={<span className="inline-flex items-center gap-1.5"><Icon className="size-3.5 text-pill-ink" strokeWidth={2} aria-hidden />{formatDay(today, { weekday: 'long', day: 'numeric', month: 'long' })}</span>}
         streak={streak} freezes={quests.freezes} areas={user.profile.areas}
       />

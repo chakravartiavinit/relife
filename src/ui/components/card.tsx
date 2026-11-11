@@ -37,7 +37,7 @@ export function CardHeader({ title, description, action, icon, art, color, class
           {description ? <p className="t-meta mt-0.5">{description}</p> : null}
         </div>
       </div>
-      {action ? <div className="shrink-0 font-mono text-[12px] text-ink-3">{action}</div> : null}
+      {action ? <div className={cn('shrink-0', typeof action === 'string' && 'font-mono text-[12px] text-ink-3')}>{action}</div> : null}
     </header>
   )
 }

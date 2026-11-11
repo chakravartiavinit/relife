@@ -32,8 +32,3 @@ export function IconTile({ src, tint = 'var(--accent)', size = 'base', children,
     </span>
   )
 }
-
-/** A routine's tile: its picture (from its name, kind and area) tinted by the area colour. */
-export function RoutineTile({ name, kind, area, tint, size }: { name: string; kind: string; area: string; tint?: string; size?: keyof typeof TILE }) {
-  return <IconTile src={routineArt(name, kind, area)} tint={tint} size={size} />
-}

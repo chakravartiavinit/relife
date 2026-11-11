@@ -12,8 +12,6 @@ export type NavItem = {
   sub: string
   /** Set on the six life areas. */
   area?: Category
-  /** More paths that keep this row active (the row's own path and everything under it already do). */
-  also?: string[]
   /** Old page names, so ⌘K still finds "Habits" or "Inbox". */
   keywords?: string[]
 }
@@ -21,8 +19,8 @@ export type NavItem = {
 export const PLAY: NavItem[] = [
   { href: '/', label: 'Today', icon: CalendarDays, sub: 'Quests and routines for today' },
   { href: '/character', label: 'Character', icon: Shield, sub: 'Level, streak and achievements', keywords: ['Progress', 'Profile', 'Overview'] },
-  { href: '/routines', label: 'Routines', icon: Repeat, sub: 'Routines, medicines and trackers', also: ['/routines/trackers'], keywords: ['Habits', 'Schedules', 'Trackers'] },
-  { href: '/coach', label: 'Coach', icon: Sparkles, sub: 'Nudges, patterns and screen time', also: ['/coach/screen-time'], keywords: ['Insights', 'Activity', 'Screen time'] },
+  { href: '/routines', label: 'Routines', icon: Repeat, sub: 'Routines, medicines and trackers', keywords: ['Habits', 'Schedules', 'Trackers'] },
+  { href: '/coach', label: 'Coach', icon: Sparkles, sub: 'Nudges, patterns and screen time', keywords: ['Insights', 'Activity', 'Screen time'] },
 ]
 
 /** One per life area, in the order of `CATEGORY`. People lives at /people; its category key stays `relationships`. */
@@ -34,7 +32,7 @@ export const STATS: NavItem[] = (Object.keys(CATEGORY) as Category[]).map((area)
 }))
 
 export const FOOTER: NavItem[] = [
-  { href: '/sources', label: 'Sources', icon: Plug, sub: 'Connected apps and data', also: ['/sources/review', '/sources/browse'], keywords: ['Connectors', 'Inbox', 'Needs a look'] },
+  { href: '/sources', label: 'Sources', icon: Plug, sub: 'Connected apps and data', keywords: ['Connectors', 'Inbox', 'Needs a look'] },
   { href: '/settings', label: 'Settings', icon: Settings, sub: 'Profile, the System and notifications' },
 ]
 
@@ -51,8 +49,8 @@ export const TABS = {
 /** Numbers beside rows. All optional: the rail renders without them while they load. */
 export type NavCounts = { today?: number; sources?: number; nudges?: number; levels?: Partial<Record<Category, number>> }
 
-/** Exact for Today; otherwise the row's path, anything under it (/routines/trackers/water, /coach/screen-time, /sources/review) or an `also` prefix. */
-export function isActive(path: string, item: Pick<NavItem, 'href' | 'also'>) {
+/** Exact for Today; otherwise the row's path or anything under it (/routines/trackers/water, /coach/screen-time, /sources/review). */
+export function isActive(path: string, item: Pick<NavItem, 'href'>) {
   if (item.href === '/') return path === '/'
-  return [item.href, ...(item.also ?? [])].some((h) => path === h || path.startsWith(h + '/'))
+  return path === item.href || path.startsWith(item.href + '/')
 }

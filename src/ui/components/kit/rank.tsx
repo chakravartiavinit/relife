@@ -1,8 +1,9 @@
-import { RANK, type RankKey } from '../../tokens'
+import type { Rank } from '@/domain/system'
+import { RANK } from '../../tokens'
 import { cn } from '../../cn'
 
 /** A System rank, E (easy) to S (very hard). The letter says it; colour only tints it. */
-export function RankLetter({ rank, size = 20, className }: { rank: RankKey; size?: 20 | 28; className?: string }) {
+export function RankLetter({ rank, size = 20, className }: { rank: Rank; size?: 20 | 28; className?: string }) {
   return (
     <span
       role="img"

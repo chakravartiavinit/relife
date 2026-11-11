@@ -33,8 +33,7 @@ function NavView({ counts = {}, areas, path }: { counts?: NavCounts; areas?: str
         {PLAY.map((item) => (
           <NavRow key={item.href} item={item} path={path}>
             {item.href === '/' && counts.today ? <Mono active={isActive(path, item)}>{counts.today}</Mono> : null}
-            {item.href === '/coach' && counts.nudges ? <span aria-hidden className="ml-auto size-1.5 rounded-full bg-accent" /> : null}
-            {item.href === '/coach' && counts.nudges ? <span className="sr-only">{counts.nudges} nudges waiting</span> : null}
+            {item.href === '/coach' && counts.nudges ? <NudgeDot n={counts.nudges} /> : null}
           </NavRow>
         ))}
       </div>
@@ -43,7 +42,7 @@ function NavView({ counts = {}, areas, path }: { counts?: NavCounts; areas?: str
         <div className="flex h-7 items-center px-2.5 text-[12px] font-medium text-ink-3">Stats</div>
         <div className="flex flex-col gap-px">
           {visibleStats(path, areas).map((item) => (
-            <NavRow key={item.href} item={item} path={path} stat>
+            <NavRow key={item.href} item={item} path={path}>
               <span className="ml-auto font-mono text-[11px] font-normal text-ink-3">{counts.levels?.[item.area!] ? `LV ${counts.levels[item.area!]}` : null}</span>
             </NavRow>
           ))}
@@ -61,7 +60,8 @@ function NavView({ counts = {}, areas, path }: { counts?: NavCounts; areas?: str
   )
 }
 
-function NavRow({ item, path, stat, children }: { item: NavItem; path: string; stat?: boolean; children?: React.ReactNode }) {
+// Rows are 32px with a 1px gap, so they get no extra hit area: padding them to 40px would overlap their neighbours.
+function NavRow({ item, path, children }: { item: NavItem; path: string; children?: React.ReactNode }) {
   const active = isActive(path, item)
   const Icon = item.icon
   return (
@@ -71,13 +71,12 @@ function NavRow({ item, path, stat, children }: { item: NavItem; path: string; s
       // The page itself is "page"; a nested page (a tracker, Screen time) keeps the row lit with "true".
       aria-current={active ? (path === item.href ? 'page' : 'true') : undefined}
       className={cn(
-        // 32px row; the ::after adds 4px above and below for a 40px hit area.
-        "relative flex h-8 items-center gap-2.5 rounded-sm px-2.5 text-[13px] font-medium transition-[background-color,color] duration-150 after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']",
-        active ? 'bg-raised-2 text-ink shadow-1' : 'text-ink-2 hover:bg-hover hover:text-ink',
-        stat && 'font-normal',
+        'relative flex h-8 items-center gap-2.5 rounded-sm px-2.5 text-[13px] transition-[background-color,color] duration-150',
+        active ? 'bg-raised-2 font-medium text-ink shadow-1' : 'text-ink-2 hover:bg-hover hover:text-ink',
+        item.area ? 'font-normal' : 'font-medium',
       )}
     >
-      {stat && item.area ? (
+      {item.area ? (
         // eslint-disable-next-line @next/next/no-img-element -- small local PNG
         <img src={AREA_ART[item.area]} alt="" width={18} height={18} className="-mx-px size-[18px] shrink-0 outline-none" />
       ) : (
@@ -101,34 +100,49 @@ function CountBadge({ n }: { n: number }) {
   )
 }
 
-const TAB = 'relative flex h-14 flex-col items-center justify-center gap-0.5 text-[12px] leading-4 font-medium transition-[color] duration-150'
+/** The accent dot on Coach when nudges are waiting; the count is for screen readers. */
+function NudgeDot({ n }: { n: number }) {
+  return (
+    <>
+      <span aria-hidden className="ml-auto size-1.5 rounded-full bg-accent" />
+      <span className="sr-only">{n} nudges waiting</span>
+    </>
+  )
+}
+
+const MORE = [PLAY[3], ...FOOTER]
 
 /** Bottom tab bar for phones: Today, Character, Routines, then Stats and More, which open sheets. */
-export function TabBar({ counts = {}, areas }: { counts?: NavCounts; areas?: string[] }) {
-  const path = usePathname()
+export function TabBar(props: { counts?: NavCounts; areas?: string[] }) {
+  return <TabBarView {...props} path={usePathname()} />
+}
+
+/** The same bar with no counts and nothing active, as the Suspense fallback: phones always have their tabs. */
+export function TabBarPlaceholder() {
+  return <TabBarView path="" />
+}
+
+function TabBarView({ counts = {}, areas, path }: { counts?: NavCounts; areas?: string[]; path: string }) {
   const [sheet, setSheet] = useState<'stats' | 'more' | null>(null)
-  const tabs = [PLAY[0], PLAY[1], PLAY[2]]
-  const inStats = STATS.some((i) => isActive(path, i))
-  const inMore = [PLAY[3], ...FOOTER].some((i) => isActive(path, i))
   const close = () => setSheet(null)
-  const moreLabel = counts.sources ? `More, ${counts.sources} source${counts.sources === 1 ? '' : 's'} ${counts.sources === 1 ? 'needs' : 'need'} a look` : 'More'
+  const moreLabel = counts.sources ? `More, ${counts.sources} source${counts.sources === 1 ? ' needs' : 's need'} a look` : 'More'
   return (
     <>
       <nav aria-label="Tabs" className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-sidebar pb-[env(safe-area-inset-bottom)] lg:hidden">
         <div className="mx-auto grid max-w-md grid-cols-5">
-          {tabs.map((t) => (
-            <TabLink key={t.href} item={t} active={isActive(path, t)} />
+          {PLAY.slice(0, 3).map((item) => (
+            <Tab key={item.href} icon={item.icon} label={item.label} href={item.href} active={isActive(path, item)} />
           ))}
-          <TabButton icon={ChartNoAxesColumn} label="Stats" active={inStats} onClick={() => setSheet('stats')} />
-          <TabButton icon={Ellipsis} label="More" aria-label={moreLabel} active={inMore} dot={!!counts.sources} onClick={() => setSheet('more')} />
+          <Tab icon={ChartNoAxesColumn} label="Stats" active={STATS.some((i) => isActive(path, i))} expanded={sheet === 'stats'} onClick={() => setSheet('stats')} />
+          <Tab icon={Ellipsis} label="More" ariaLabel={moreLabel} active={MORE.some((i) => isActive(path, i))} expanded={sheet === 'more'} dot={!!counts.sources} onClick={() => setSheet('more')} />
         </div>
       </nav>
 
       <Dialog open={sheet === 'stats'} onClose={close} title="Stats" description="Your areas and their levels" width="max-w-[420px]">
-        <ul onClick={(e) => { if ((e.target as HTMLElement).closest('a')) close() }} className="flex flex-col gap-px">
+        <ul className="flex flex-col gap-px">
           {visibleStats(path, areas).map((item) => (
             <li key={item.href}>
-              <SheetLink item={item} active={isActive(path, item)}>
+              <SheetLink item={item} active={isActive(path, item)} onNavigate={close}>
                 <span className="ml-auto font-mono text-[12px] text-ink-3">{counts.levels?.[item.area!] ? `LV ${counts.levels[item.area!]}` : null}</span>
               </SheetLink>
             </li>
@@ -137,10 +151,10 @@ export function TabBar({ counts = {}, areas }: { counts?: NavCounts; areas?: str
       </Dialog>
 
       <Dialog open={sheet === 'more'} onClose={close} title="More" width="max-w-[420px]">
-        <div onClick={(e) => { if ((e.target as HTMLElement).closest('a')) close() }} className="flex flex-col gap-px">
-          {[PLAY[3], ...FOOTER].map((item) => (
-            <SheetLink key={item.href} item={item} active={isActive(path, item)}>
-              {item.href === '/coach' && counts.nudges ? <><span aria-hidden className="ml-auto size-1.5 rounded-full bg-accent" /><span className="sr-only">{counts.nudges} nudges waiting</span></> : null}
+        <div className="flex flex-col gap-px">
+          {MORE.map((item) => (
+            <SheetLink key={item.href} item={item} active={isActive(path, item)} onNavigate={close}>
+              {item.href === '/coach' && counts.nudges ? <NudgeDot n={counts.nudges} /> : null}
               {item.href === '/sources' && counts.sources ? <CountBadge n={counts.sources} /> : null}
             </SheetLink>
           ))}
@@ -154,32 +168,31 @@ export function TabBar({ counts = {}, areas }: { counts?: NavCounts; areas?: str
   )
 }
 
-function TabLink({ item, active }: { item: NavItem; active: boolean }) {
-  const Icon = item.icon
-  return (
-    <Link href={item.href} aria-current={active ? 'page' : undefined} className={cn(TAB, active ? 'text-ink' : 'text-ink-3')}>
-      {active ? <span aria-hidden className="absolute inset-x-4 top-0 h-0.5 rounded-full bg-accent" /> : null}
-      <Icon className={cn('size-5', active && 'text-accent')} strokeWidth={1.5} aria-hidden />
-      {item.label}
-    </Link>
-  )
-}
-
-function TabButton({ icon: Icon, label, active, dot, onClick, ...rest }: { icon: LucideIcon; label: string; active: boolean; dot?: boolean; onClick: () => void; 'aria-label'?: string }) {
-  return (
-    <button type="button" onClick={onClick} aria-haspopup="dialog" aria-label={rest['aria-label']} className={cn(TAB, active ? 'text-ink' : 'text-ink-3')}>
+/** A tab: a link (`href`) or a button that opens a sheet (`onClick`). Active shows as text colour, an accent bar and icon. */
+function Tab({ icon: Icon, label, ariaLabel, href, active, expanded, dot, onClick }: {
+  icon: LucideIcon; label: string; ariaLabel?: string; href?: string; active: boolean; expanded?: boolean; dot?: boolean; onClick?: () => void
+}) {
+  const cls = cn('relative flex h-14 flex-col items-center justify-center gap-0.5 text-[12px] leading-4 font-medium transition-[color] duration-150', active ? 'text-ink' : 'text-ink-3')
+  const body = (
+    <>
       {active ? <span aria-hidden className="absolute inset-x-4 top-0 h-0.5 rounded-full bg-accent" /> : null}
       <Icon className={cn('size-5', active && 'text-accent')} strokeWidth={1.5} aria-hidden />
       {dot ? <span aria-hidden className="absolute top-2 left-[calc(50%+6px)] size-2 rounded-full bg-red shadow-[0_0_0_2px_var(--sidebar)]" /> : null}
       {label}
-    </button>
+    </>
+  )
+  return href ? (
+    <Link href={href} aria-current={active ? 'page' : undefined} className={cls}>{body}</Link>
+  ) : (
+    <button type="button" onClick={onClick} aria-haspopup="dialog" aria-expanded={expanded} aria-label={ariaLabel} aria-current={active ? 'true' : undefined} className={cls}>{body}</button>
   )
 }
 
-function SheetLink({ item, active, children }: { item: NavItem; active: boolean; children?: React.ReactNode }) {
+function SheetLink({ item, active, onNavigate, children }: { item: NavItem; active: boolean; onNavigate: () => void; children?: React.ReactNode }) {
   return (
     <Link
       href={item.href}
+      onClick={onNavigate}
       aria-current={active ? 'page' : undefined}
       className={cn('flex h-10 items-center gap-3 rounded-sm px-2.5 text-[14px] font-medium transition-[background-color] duration-150', active ? 'bg-raised-2 text-ink shadow-1' : 'text-ink-2 hover:bg-hover')}
     >

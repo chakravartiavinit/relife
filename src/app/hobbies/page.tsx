@@ -172,7 +172,7 @@ async function Hobbies() {
                 </ul>
               ) : /chess/i.test(c.t.name) ? (
                 <p className="text-[12.5px] text-ink-3">
-                  Play online? <Link href="/sources" className="font-medium text-pill-ink hover:underline">Connect Lichess or Chess.com</Link> and your games, time and rating sync on their own.
+                  Play online? <Link href="/sources/browse" className="font-medium text-pill-ink hover:underline">Connect Lichess or Chess.com</Link> and your games, time and rating sync on their own.
                 </p>
               ) : null}
               {c.spark.some((p) => (p.value ?? 0) > 0) ? <Sparkline data={c.spark} color={color} height={40} label={`${c.t.name}, minutes per day for 4 weeks`} /> : null}

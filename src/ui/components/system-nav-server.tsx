@@ -5,7 +5,7 @@ import { db, schema } from '@/db'
 import { getUser } from '@/core/user'
 import { inboxCount } from '@/core/inbox'
 import { todayLeft } from '@/core/schedules'
-import { xpSummary } from '@/core/xp'
+import { railXp } from './rail-data'
 import type { Category } from '@/db/schema'
 import { Nav, TabBar } from './nav'
 import type { NavCounts } from '../nav-model'
@@ -15,14 +15,14 @@ const navData = cache(async () => {
   await connection()
   const user = await getUser()
   // A count that fails to load leaves its row plain: the nav must never take the page down with it.
-  const safe = <T,>(p: Promise<T>) => p.catch(() => undefined)
-  const [sources, nudges, today, xp] = await Promise.all([
-    safe(inboxCount(user)),
-    safe(db.select({ n: sql<number>`count(*)::int` }).from(schema.insights).where(and(eq(schema.insights.userId, user.id), eq(schema.insights.status, 'pending'))).then(([r]) => r.n)),
-    safe(todayLeft(user)),
-    safe(xpSummary(user)),
+  const safe = <T,>(p: Promise<T>, what: string) => p.catch((e) => { console.error(`nav: ${what} failed`, e); return undefined })
+  const [sources, nudges, today, rail] = await Promise.all([
+    safe(inboxCount(user), 'sources count'),
+    safe(db.select({ n: sql<number>`count(*)::int` }).from(schema.insights).where(and(eq(schema.insights.userId, user.id), eq(schema.insights.status, 'pending'))).then(([r]) => r.n), 'nudges count'),
+    safe(todayLeft(user), 'today count'),
+    safe(railXp(), 'levels'),
   ])
-  const levels = xp ? (Object.fromEntries(xp.areas.map((a) => [a.area, a.level])) as Partial<Record<Category, number>>) : undefined
+  const levels = rail ? (Object.fromEntries(rail.xp.areas.map((a) => [a.area, a.level])) as Partial<Record<Category, number>>) : undefined
   const counts: NavCounts = { sources, nudges, today, levels }
   return { counts, areas: user.profile.areas }
 })

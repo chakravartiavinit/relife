@@ -184,12 +184,12 @@ function Setup({ connected }: { connected: boolean }) {
         title={connected ? 'Waiting for the first minutes' : 'Track your laptop time'}
         description={
           <>
-            1. On <Link href="/sources" className="font-medium text-pill-ink hover:underline">Sources → Laptop activity</Link>, set a token.{' '}
+            1. On <Link href="/sources/browse" className="font-medium text-pill-ink hover:underline">Sources → Laptop activity</Link>, set a token.{' '}
             2. In Chrome open <code className="rounded-xs bg-surface-2 px-1">chrome://extensions</code>, turn on Developer mode, choose Load unpacked and pick the <code className="rounded-xs bg-surface-2 px-1">extension</code> folder in ReLife.{' '}
             3. Open the extension and paste the same token. Mac apps are recorded by ReLife’s worker on its own.
           </>
         }
-        action={<Link href="/sources" className={buttonClass({ variant: 'primary', size: 'sm' })}>{connected ? 'Check the connection' : 'Set it up'}</Link>}
+        action={<Link href={connected ? '/sources' : '/sources/browse'} className={buttonClass({ variant: 'primary', size: 'sm' })}>{connected ? 'Check the connection' : 'Set it up'}</Link>}
       />
     </Card>
   )
