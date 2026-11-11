@@ -10,6 +10,14 @@ import type { OuraDay } from '@/connectors/oura'
 import type { WhoopDay } from '@/connectors/whoop'
 import type { WithingsDay } from '@/connectors/withings'
 import type { CalendarDay } from '@/connectors/google-calendar'
+import type { TogglDay } from '@/connectors/toggl'
+import type { RescueDay } from '@/connectors/rescuetime'
+import type { HevyDay } from '@/connectors/hevy'
+import type { ReadwiseDay } from '@/connectors/readwise'
+import type { CodewarsDay } from '@/connectors/codewars'
+import type { LetterboxdDay } from '@/connectors/letterboxd'
+import type { BooksDay } from '@/connectors/openlibrary'
+import type { AnkiDay } from '@/connectors/anki'
 import { asObj } from './util'
 
 // One-summary-per-day sources (src/connectors/daily.ts). Each day becomes tracker entries; the latest sync
@@ -105,6 +113,56 @@ const DAYS: Record<string, (b: Record<string, unknown>) => Entry[]> = {
       { tracker: 'typing.minutes', value: d.minutes, meta: { tests: d.tests }, defaults: { name: 'Typing practice', category: 'skills', kind: 'duration', unit: 'min' } },
       // The next ten is the first goal, so speed counts as "higher is better" for quests and patterns.
       { tracker: 'typing.wpm', value: d.wpm, meta: { best: d.best, accuracy: d.accuracy }, defaults: { name: 'Typing speed', category: 'skills', kind: 'number', unit: 'wpm', aggregate: 'last', direction: 'up', target: Math.floor((d.wpm ?? 0) / 10) * 10 + 10 } },
+    ]
+  },
+  toggl: (b) => {
+    const d = b as TogglDay
+    return [{ tracker: 'tracked.minutes', value: d.minutes, meta: { project: d.topProject, entries: d.entries }, defaults: { name: 'Tracked time', category: 'skills', kind: 'duration', unit: 'min', direction: 'up', target: 120 } }]
+  },
+  rescuetime: (b) => {
+    const d = b as RescueDay
+    return [
+      { tracker: 'productivity.pulse', value: d.pulse, meta: { loggedMin: d.loggedMin }, defaults: { name: 'Productivity pulse', category: 'mind', kind: 'number', aggregate: 'last', direction: 'up', target: 70 } },
+      { tracker: 'productive.minutes', value: d.productiveMin, defaults: { name: 'Productive time', category: 'mind', kind: 'duration', unit: 'min', direction: 'up', target: 240 } },
+      { tracker: 'distracting.minutes', value: d.distractingMin, defaults: { name: 'Distracting time', category: 'mind', kind: 'duration', unit: 'min', direction: 'down', target: 60 } },
+    ]
+  },
+  hevy: (b) => {
+    const d = b as HevyDay
+    return [
+      // The same tracker Strava fills; the source keeps them apart and they add up.
+      { tracker: 'exercise.minutes', value: d.minutes, meta: { workouts: d.workouts }, defaults: { name: 'Active minutes', category: 'health', kind: 'duration', unit: 'min', direction: 'up', target: 30 } },
+      { tracker: 'hevy.workouts', value: d.workouts, meta: { exercises: d.exercises }, defaults: { name: 'Gym workouts', category: 'health', kind: 'number', direction: 'up', target: 1 } },
+      { tracker: 'hevy.volume', value: d.volumeKg, defaults: { name: 'Weight lifted', category: 'health', kind: 'number', unit: 'kg', direction: 'up', target: 5000 } },
+    ]
+  },
+  readwise: (b) => {
+    const d = b as ReadwiseDay
+    return [{ tracker: 'highlights.made', value: d.highlights, meta: { sources: d.sources }, defaults: { name: 'Highlights', category: 'mind', kind: 'number', direction: 'up', target: 3 } }]
+  },
+  codewars: (b) => {
+    const d = b as CodewarsDay
+    return [
+      // Counts as a solved problem, next to Codeforces, LeetCode and the rest (parsers/competitive.ts).
+      { tracker: 'cp.solved', value: d.solved, defaults: { name: 'Problems solved', category: 'skills', kind: 'number', direction: 'up', target: 1 } },
+      // The next hundred is the first goal, so honor counts as "higher is better".
+      { tracker: 'codewars.honor', value: d.honor, defaults: { name: 'Codewars honor', category: 'skills', kind: 'number', aggregate: 'last', direction: 'up', target: Math.floor((d.honor ?? 0) / 100) * 100 + 100 } },
+    ]
+  },
+  // Films are time spent, not practice: no target, no unit, so no hobby XP (core/xp.ts counts only minutes).
+  letterboxd: (b) => {
+    const d = b as LetterboxdDay
+    return [{ tracker: 'films.watched', value: d.films, meta: { titles: d.titles, rating: d.rating }, defaults: { name: 'Films watched', category: 'hobbies', kind: 'number' } }]
+  },
+  openlibrary: (b) => {
+    const d = b as BooksDay
+    return [{ tracker: 'books.read', value: d.books, meta: { titles: d.titles }, defaults: { name: 'Books read', category: 'mind', kind: 'number', direction: 'up' } }]
+  },
+  anki: (b) => {
+    const d = b as AnkiDay
+    return [
+      { tracker: 'anki.cards', value: d.cards, defaults: { name: 'Anki cards', category: 'skills', kind: 'number', unit: 'cards', direction: 'up', target: 20 } },
+      { tracker: 'anki.minutes', value: d.minutes, defaults: { name: 'Anki study time', category: 'skills', kind: 'duration', unit: 'min', direction: 'up' } },
     ]
   },
 }

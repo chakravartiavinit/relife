@@ -6,7 +6,7 @@ import { dayMap, emitDays, fetchJson, fillDays, syncWindow } from './daily'
 // Hevy: strength workouts, per day: how many, how long and the weight lifted (kg × reps, warm-ups left out).
 // Needs Hevy Pro for the API key. Workouts come newest first, 10 a page; paging stops once a page is older than
 // the window. First sync backfills 90 days, later ones the last 3.
-// src/parsers/byok.ts turns each day into hevy.workouts and hevy.volume, plus exercise.minutes (source "hevy").
+// src/parsers/daily.ts turns each day into hevy.workouts and hevy.volume, plus exercise.minutes (source "hevy").
 
 export type HevyDay = { date: string; workouts: number; minutes: number; volumeKg: number; exercises: number }
 
@@ -18,9 +18,11 @@ export type HevyWorkout = {
 
 type Page = { page: number; page_count: number; workouts: HevyWorkout[] }
 
+const blank = (date: string): HevyDay => ({ date, workouts: 0, minutes: 0, volumeKg: 0, exercises: 0 })
+
 /** Pure: workouts into days in the user's time zone. Exported for tests. */
 export function hevyDays(workouts: HevyWorkout[], tz: string) {
-  const { days, day } = dayMap<HevyDay>((date) => ({ date, workouts: 0, minutes: 0, volumeKg: 0, exercises: 0 }))
+  const { days, day } = dayMap(blank)
   for (const w of workouts) {
     const start = Date.parse(w.start_time)
     if (!Number.isFinite(start)) continue
@@ -57,7 +59,7 @@ export const hevy: Connector = {
       const oldest = r.workouts?.at(-1)
       if (!oldest || page >= (r.page_count ?? 1) || localDate(new Date(oldest.start_time), tz) < from) break
     }
-    const days = fillDays(hevyDays(workouts, tz), from, today, (date) => ({ date, workouts: 0, minutes: 0, volumeKg: 0, exercises: 0 }), backfilled)
+    const days = fillDays(hevyDays(workouts, tz), from, today, blank, backfilled)
     await emitDays(ctx, 'hevy', days)
     ctx.setCursor({ backfilled: true })
     ctx.log(`${workouts.length} workouts on ${days.length} days`)

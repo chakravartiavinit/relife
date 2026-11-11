@@ -8,14 +8,14 @@ import { appFields, token } from './oauth'
 
 export type WithingsDay = { date: string; weight?: number; fat?: number; sleepHours?: number; sleepScore?: number; steps?: number }
 
-type Measures = { measuregrps: { date: number; category: number; measures: { value: number; type: number; unit: number }[] }[]; more?: number; offset?: number }
-type SleepSummary = { series: { date: string; data: { total_sleep_time?: number; sleep_score?: number } }[]; more?: boolean; offset?: number }
-type Activity = { activities: { date: string; steps?: number }[]; more?: boolean; offset?: number }
+type Measure = { date: number; category: number; measures: { value: number; type: number; unit: number }[] }
+type Sleep = { date: string; data: { total_sleep_time?: number; sleep_score?: number } }
+type Activity = { date: string; steps?: number }
 
 const WEIGHT = 1, FAT = 6
 
 /** Pure: Withings replies into days. Measures are real readings only (category 1), latest wins. Exported for tests. */
-export function withingsDays(input: { measures: Measures['measuregrps']; sleep: SleepSummary['series']; activity: Activity['activities'] }, tz: string) {
+export function withingsDays(input: { measures: Measure[]; sleep: Sleep[]; activity: Activity[] }, tz: string) {
   const { days, day } = dayMap<WithingsDay>((date) => ({ date }))
   for (const g of [...input.measures].filter((x) => x.category === 1).sort((a, b) => a.date - b.date)) {
     const d = day(localDate(new Date(g.date * 1000), tz))
@@ -67,25 +67,20 @@ export const withings: Connector = {
     }
     const range = { startdate: String(Math.floor(Date.parse(`${addDays(from, -1)}T00:00:00Z`) / 1000)), enddate: String(Math.floor(Date.now() / 1000)) }
     const ymd = { startdateymd: from, enddateymd: today }
-    const measures: Measures['measuregrps'] = [], sleep: SleepSummary['series'] = [], activity: Activity['activities'] = []
-    for (let offset = 0, i = 0; i < 20; i++) {
-      const b = await call<Measures>('/measure', { action: 'getmeas', meastypes: `${WEIGHT},${FAT}`, category: '1', ...range, ...(offset ? { offset: String(offset) } : {}) })
-      measures.push(...b.measuregrps)
-      if (!b.more || !b.offset) break
-      offset = b.offset
+    // Lists come in pages: `more` says there's another, starting at `offset`.
+    const list = async <T,>(key: string, path: string, params: Record<string, string>) => {
+      const out: T[] = []
+      for (let offset = 0, i = 0; i < 20; i++) {
+        const b = await call<{ more?: unknown; offset?: number; [k: string]: unknown }>(path, { ...params, ...(offset ? { offset: String(offset) } : {}) })
+        out.push(...(b[key] as T[]))
+        if (!b.more || !b.offset) break
+        offset = b.offset
+      }
+      return out
     }
-    for (let offset = 0, i = 0; i < 20; i++) {
-      const b = await call<SleepSummary>('/v2/sleep', { action: 'getsummary', ...ymd, data_fields: 'total_sleep_time,sleep_score', ...(offset ? { offset: String(offset) } : {}) })
-      sleep.push(...b.series)
-      if (!b.more || !b.offset) break
-      offset = b.offset
-    }
-    for (let offset = 0, i = 0; i < 20; i++) {
-      const b = await call<Activity>('/v2/measure', { action: 'getactivity', ...ymd, data_fields: 'steps', ...(offset ? { offset: String(offset) } : {}) })
-      activity.push(...b.activities)
-      if (!b.more || !b.offset) break
-      offset = b.offset
-    }
+    const measures = await list<Measure>('measuregrps', '/measure', { action: 'getmeas', meastypes: `${WEIGHT},${FAT}`, category: '1', ...range })
+    const sleep = await list<Sleep>('series', '/v2/sleep', { action: 'getsummary', ...ymd, data_fields: 'total_sleep_time,sleep_score' })
+    const activity = await list<Activity>('activities', '/v2/measure', { action: 'getactivity', ...ymd, data_fields: 'steps' })
     const days = withingsDays({ measures, sleep, activity }, tz).filter((d) => d.date >= from && d.date <= today)
     await emitDays(ctx, 'withings', days)
     ctx.setCursor({ backfilled: true })

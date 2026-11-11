@@ -18,11 +18,18 @@ import { fx } from './fx'
 import { github } from './github'
 import { icloudInbox } from './icloud-inbox'
 import { shopConnectors } from './shop'
-import { byokConnectors } from './byok'
-import { feedConnectors } from './feeds'
+import { toggl } from './toggl'
+import { rescuetime } from './rescuetime'
+import { hevy } from './hevy'
+import { readwise } from './readwise'
+import { codewars } from './codewars'
+import { letterboxd } from './letterboxd'
+import { openlibrary } from './openlibrary'
+import { anki } from './anki'
 
 // One file per source. A connector whose env vars are missing is skipped (see docs/CONNECTORS.md).
 export const connectors: Connector[] = [
   icloudInbox, laptop, fx, github, codeforces, codechef, atcoder, leetcode, lichess, chesscom, binance,
-  strava, oura, whoop, withings, googleCalendar, wakatime, monkeytype, duolingo, todoist, lastfm, steam, ...byokConnectors, ...feedConnectors, ...shopConnectors,
+  strava, oura, whoop, withings, googleCalendar, wakatime, monkeytype, duolingo, todoist, lastfm, steam,
+  toggl, rescuetime, hevy, readwise, codewars, letterboxd, openlibrary, anki, ...shopConnectors,
 ]

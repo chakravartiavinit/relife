@@ -4,7 +4,7 @@ import { emitDays, fetchJson, syncWindow } from './daily'
 
 // RescueTime: how productive your computer time was. The daily summary feed gives one row per day for the
 // last two weeks (never today), so the first sync backfills 14 days and later ones refresh the same window.
-// src/parsers/byok.ts turns each day into productivity.pulse, productive.minutes and distracting.minutes.
+// src/parsers/daily.ts turns each day into productivity.pulse, productive.minutes and distracting.minutes.
 
 export type RescueDay = { date: string; pulse?: number; productiveMin: number; distractingMin: number; loggedMin: number }
 

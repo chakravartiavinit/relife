@@ -5,7 +5,7 @@ import { dayMap, emitDays, fetchJson, fillDays, syncWindow } from './daily'
 
 // Readwise: highlights you make while reading (Kindle, articles, books, podcasts…), counted per day. Only counts
 // and the number of different books or articles are kept, never the text. First sync backfills 90 days, later
-// ones the last 3. src/parsers/byok.ts turns each day into highlights.made.
+// ones the last 3. src/parsers/daily.ts turns each day into highlights.made.
 
 export type ReadwiseDay = { date: string; highlights: number; sources: number }
 

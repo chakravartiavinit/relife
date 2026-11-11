@@ -5,7 +5,7 @@ import { dayMap, emitDays, fetchJson, fillDays, syncWindow } from './daily'
 
 // Toggl Track: time you track against projects, per day. Only totals and the top project name are kept,
 // never entry descriptions. First sync backfills 90 days, later ones the last 3.
-// src/parsers/byok.ts turns each day into tracked.minutes.
+// src/parsers/daily.ts turns each day into tracked.minutes.
 
 export type TogglDay = { date: string; minutes: number; entries: number; topProject?: string }
 

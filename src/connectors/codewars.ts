@@ -5,7 +5,7 @@ import { dayMap, emitDays, fetchJson, fillDays, syncWindow } from './daily'
 
 // Codewars: kata you complete, per day, from your public profile (no key). A kata counts once, on the day you
 // first completed it. Honor is today's total only (Codewars keeps no history), so it is set on today.
-// First sync backfills 90 days, later ones the last 3. src/parsers/byok.ts turns each day into cp.solved
+// First sync backfills 90 days, later ones the last 3. src/parsers/daily.ts turns each day into cp.solved
 // (source "codewars", added to problems solved on other sites) and codewars.honor.
 
 export type CodewarsDay = { date: string; solved: number; honor?: number }
@@ -14,9 +14,11 @@ export type Kata = { completedAt: string }
 
 type Completed = { totalPages: number; data: Kata[] }
 
+const blank = (date: string): CodewarsDay => ({ date, solved: 0 })
+
 /** Pure: completed kata into days in the user's time zone. Exported for tests. */
 export function codewarsDays(kata: Kata[], tz: string) {
-  const { days, day } = dayMap<CodewarsDay>((date) => ({ date, solved: 0 }))
+  const { days, day } = dayMap(blank)
   for (const k of kata) if (Number.isFinite(Date.parse(k.completedAt))) day(localDate(new Date(k.completedAt), tz)).solved++
   return days
 }
@@ -46,9 +48,9 @@ export const codewars: Connector = {
     }
     const byDay = codewarsDays(kata, tz)
     const honor = profile.honor
-    const todayDay = byDay.get(today) ?? { date: today, solved: 0 }
+    const todayDay = byDay.get(today) ?? blank(today)
     byDay.set(today, { ...todayDay, ...(typeof honor === 'number' ? { honor } : {}) })
-    const days = fillDays(byDay.values(), from, today, (date) => ({ date, solved: 0 }), backfilled)
+    const days = fillDays(byDay.values(), from, today, blank, backfilled)
     await emitDays(ctx, 'codewars', days)
     ctx.setCursor({ backfilled: true })
     ctx.log(`${kata.length} kata on ${days.length} days`)

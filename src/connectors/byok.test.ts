@@ -1,16 +1,15 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { togglDays } from './toggl'
-import { rescueDays } from './rescuetime'
-import { hevyDays } from './hevy'
-import { readwiseDays } from './readwise'
-import { codewarsDays } from './codewars'
-import { byokConnectors } from './byok'
+import { toggl, togglDays } from './toggl'
+import { rescuetime, rescueDays } from './rescuetime'
+import { hevy, hevyDays } from './hevy'
+import { readwise, readwiseDays } from './readwise'
+import { codewars, codewarsDays } from './codewars'
 
 const TZ = 'Asia/Kolkata'
 
 test('every key connector names the env vars its fields read', () => {
-  for (const c of byokConnectors) {
+  for (const c of [toggl, rescuetime, hevy, readwise, codewars]) {
     assert.deepEqual(c.fields.map((f) => f.env), c.env, c.id)
     assert.ok(c.description && c.provides.length, c.id)
   }

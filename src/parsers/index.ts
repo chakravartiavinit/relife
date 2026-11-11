@@ -5,8 +5,6 @@ import { binance } from './binance'
 import { chess } from './chess'
 import { competitive } from './competitive'
 import { daily } from './daily'
-import { byok } from './byok'
-import { feeds } from './feeds'
 import { github } from './github'
 import { shortcuts } from './shortcuts'
 import { sleep } from './sleep'
@@ -19,8 +17,6 @@ export const parsers: Parser[] = [
   chess,
   competitive,
   daily,
-  byok,
-  feeds,
   binance,
   appOrder,
   appOrderItems,
