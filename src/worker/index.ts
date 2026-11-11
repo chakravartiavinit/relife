@@ -1,11 +1,10 @@
 import { sql } from '@/db'
-import { getUser } from '@/core/user'
+import { clearUserCache, getUser } from '@/core/user'
 import { telegramConfigured } from '@/core/notify'
 import { connectors } from '@/connectors'
 import { startMacActivity } from './mac-activity'
 import { aiEnabled } from '@/ai/models'
 import { startBot } from '@/bot/telegram'
-import { applySecrets } from '@/core/secrets'
 import { backfillXp } from '@/core/xp'
 import { missingEnv } from './sync'
 import { startScheduler } from '@/core/jobs'
@@ -15,9 +14,10 @@ import { env } from '@/core/env'
 // The worker runs the bot, laptop activity and the job scheduler (src/jobs): syncs, parsing, reminders, rules, AI.
 
 async function main() {
-  const user = await getUser()
-  const tz = user.timezone
-  console.log(`[worker] starting for ${user.name} (${tz})`)
+  // Re-read every minute: Settings saves (time zone, notifications, the System's focus) happen in the web app,
+  // whose cache clear never reaches this process.
+  let user = await getUser()
+  console.log(`[worker] starting for ${user.name} (${user.timezone})`)
 
   // Say once what is off, so a missing connection never looks like a bug. Connect things on /connectors.
   if (!env('TELEGRAM_BOT_TOKEN')) console.log('[worker] Telegram not connected')
@@ -32,14 +32,15 @@ async function main() {
   let bot = startBot()
   // Keys typed on /connectors since the last minute; start the bot once its token arrives.
   const secrets = setInterval(() => {
-    void applySecrets(user.id).then(() => { if (!bot && env('TELEGRAM_BOT_TOKEN')) bot = startBot() }).catch((e) => console.error('[secrets]', e))
+    clearUserCache() // getUser() reloads the user and the saved keys
+    void getUser().then((u) => { user = u; if (!bot && env('TELEGRAM_BOT_TOKEN')) bot = startBot() }).catch((e) => console.error('[secrets]', e))
   }, 60_000)
 
   // XP: back-fill history once; the xp job keeps today and yesterday current.
   if (await backfillXp(user)) console.log('[xp] scored the last 90 days')
 
   // Everything time-based or event-driven is a job (src/jobs): syncs, parsing, rules, XP, AI.
-  const scheduler = startScheduler(JOBS, tz)
+  const scheduler = startScheduler(JOBS, () => user.timezone)
   // Laptop activity: the app in front, every 15s (macOS only, when connected).
   const stopMac = startMacActivity(user)
   console.log(`[worker] ready: ${JOBS.length} jobs`)
