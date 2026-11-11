@@ -27,7 +27,11 @@ export async function fetchJson<T>(url: string, init: RequestInit = {}, notFound
   if (res.status === 401 || res.status === 403) throw new Error('The key was rejected. Check it on Connectors, or make a new one.')
   if (res.status === 404) throw new Error(notFound)
   if (res.status === 429) throw new Error('Rate limited. It will try again on the next sync.')
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  if (!res.ok) {
+    // Keep the service's own words ("Malformed ApeKey"), so a connector can turn them into advice.
+    const said = await res.json().then((b: { message?: unknown; error?: unknown }) => b?.message ?? b?.error, () => null)
+    throw new Error(`HTTP ${res.status}${typeof said === 'string' && said ? `: ${said.slice(0, 200)}` : ''}`)
+  }
   return res.json() as Promise<T>
 }
 

@@ -12,13 +12,14 @@ type Result = { wpm: number; acc: number; timestamp: number; testDuration: numbe
 
 const r1 = (n: number) => Math.round(n * 10) / 10
 
-// Monkeytype's own status codes for Ape keys.
-const APE_ERRORS: Record<string, string> = {
-  'HTTP 470': 'Monkeytype rejected the Ape key. Check it, or make a new one.',
-  'HTTP 471': 'The Ape key is switched off. Turn it on in Monkeytype → Account settings → Ape keys.',
-  'HTTP 472': 'That doesn’t look like an Ape key. Copy it again from Monkeytype.',
-  'HTTP 479': 'Rate limited by Monkeytype. It will try again on the next sync.',
-}
+// Monkeytype's answers for a bad Ape key: its message text (checked live, Nov 2026) and its older status codes.
+const APE_ERRORS: [RegExp, string][] = [
+  [/malformed|HTTP 472/i, 'That doesn’t look like an Ape key. Copy it again from Monkeytype.'],
+  [/inactive|disabled|HTTP 471/i, 'The Ape key is switched off. Turn it on in Monkeytype → Account settings → Ape keys.'],
+  [/ApeKey not found|invalid|HTTP 470/i, 'Monkeytype doesn’t know this Ape key. Copy it again, or make a new one.'],
+  [/HTTP 479/, 'Rate limited by Monkeytype. It will try again on the next sync.'],
+]
+const apeError = (e: Error) => new Error(APE_ERRORS.find(([re]) => re.test(e.message))?.[1] ?? e.message)
 
 /** Pure: results into days in the user's time zone. Exported for tests. */
 export function typingDays(results: Result[], tz: string) {
@@ -51,7 +52,7 @@ export const monkeytype: Connector = {
     for (let page = 0; page < (backfilled ? 1 : 5); page++) {
       const r = await fetchJson<{ data: Result[] }>(`https://api.monkeytype.com/results?onOrAfterTimestamp=${since}&offset=${page * 1000}&limit=1000`, {
         headers: { Authorization: `ApeKey ${env('MONKEYTYPE_APE_KEY')!.trim()}` },
-      }).catch((e: Error) => { throw new Error(APE_ERRORS[e.message] ?? e.message) })
+      }, 'Monkeytype doesn’t know this Ape key. Copy it again, or make a new one.').catch((e: Error) => { throw apeError(e) })
       results.push(...r.data)
       if (r.data.length < 1000) break
     }

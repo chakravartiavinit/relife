@@ -87,3 +87,23 @@ test('xpDay puts XP on yesterday when Duolingo says the streak was last extended
   assert.equal(xpDay('2026-11-11', undefined), '2026-11-11')
   assert.equal(xpDay('2026-11-11', '2026-11-01'), '2026-11-11') // streak broken: new XP is today's
 })
+
+test('Monkeytype turns its key errors (checked live, Nov 2026) into advice', async () => {
+  const { setKeys } = await import('@/core/env')
+  const { monkeytype } = await import('./monkeytype')
+  const realFetch = globalThis.fetch
+  const ctx = { user: { id: 'u', name: 'Me', timezone: TZ, baseCurrency: 'INR', profile: {}, createdAt: new Date(), updatedAt: new Date() }, cursor: null, setCursor() {}, emit: async () => {}, log() {} }
+  setKeys(new Map([['MONKEYTYPE_APE_KEY', 'x']]))
+  try {
+    for (const [status, message, advice] of [
+      [400, 'Malformed ApeKey', /doesn’t look like an Ape key/],
+      [404, 'ApeKey not found', /doesn’t know this Ape key/],
+    ] as const) {
+      globalThis.fetch = (async () => new Response(JSON.stringify({ message, data: {} }), { status })) as typeof fetch
+      await assert.rejects(monkeytype.sync(ctx as never), advice)
+    }
+  } finally {
+    globalThis.fetch = realFetch
+    setKeys(new Map())
+  }
+})
