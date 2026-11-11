@@ -22,6 +22,7 @@ test('checkKeys reports a wrong key but lets network trouble through', async () 
   assert.equal(await checkKeys(fail(Object.assign(new Error('aborted'), { name: 'TimeoutError' })), () => undefined), undefined)
   assert.equal(await checkKeys(fail(new Error('Rate limited. It will try again on the next sync.')), () => undefined), undefined)
   assert.equal(await checkKeys(fail(new Error('HTTP 503')), () => undefined), undefined)
+  assert.equal(await checkKeys(fail(new SyntaxError("Unexpected token '<'")), () => undefined), undefined) // a portal page, not a wrong key
   // The check reads the values being saved.
   let seen: string | undefined
   assert.equal(await checkKeys(async (get) => { seen = get('X') }, (k) => (k === 'X' ? 'typed' : undefined)), undefined)

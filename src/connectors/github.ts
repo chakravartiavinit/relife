@@ -158,7 +158,11 @@ export const github: Connector = {
       byDate.get(date)!.commits = n
     }
 
+    // The first local day of the window may start before the first UTC midnight asked for (east of UTC), so it
+    // is partial: keep the full count an earlier sync sent.
+    const firstDay = localDate(new Date(midnight - days * 86_400_000), ctx.user.timezone)
     for (const d of byDate.values()) {
+      if (d.date <= firstDay) continue
       if (!d.contributions && !d.commits && d.date !== today) continue
       // The id includes the counts, so a day re-syncs when it changes and is skipped when not.
       const hash = createHash('sha256').update(JSON.stringify(d)).digest('hex').slice(0, 12)

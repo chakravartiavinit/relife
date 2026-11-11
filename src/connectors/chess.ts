@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import type { Connector, ConnectorCtx } from '@/core/types'
 import { env } from '@/core/env'
 import { addDays, localDate } from '@/core/time'
+import { fillDays } from './daily'
 import { fetchT, handleOf } from './net'
 
 // Lichess and Chess.com from your public username: no key, no login. Each sync rebuilds whole days
@@ -109,7 +110,9 @@ export const lichess: Connector = {
   async sync(ctx) {
     const u = encodeURIComponent(handleOf(env('LICHESS_USERNAME')))
     const tz = ctx.user.timezone
-    const backfilled = (ctx.cursor as { backfilled?: boolean } | null)?.backfilled
+    // v2: games export. Older cursors (activity feed, UTC days) get one fresh 90-day rebuild that overwrites them.
+    const prev = ctx.cursor as { backfilled?: boolean; v?: number } | null
+    const backfilled = prev?.backfilled && prev.v === 2
     const today = localDate(new Date(), tz)
     let from = addDays(today, backfilled ? -3 : -90)
     const user = await lichessProfile(u)
@@ -122,12 +125,15 @@ export const lichess: Connector = {
     const since = Date.parse(`${addDays(from, -1)}T00:00:00Z`) // a day early covers any time zone
     const res = await getRes(`https://lichess.org/api/games/user/${u}?since=${since}&max=${max}&moves=false&tags=false&sort=dateDesc`, 'application/x-ndjson', notFound('Lichess', decodeURIComponent(u)), 120_000)
     const games = (await res.text()).split('\n').filter(Boolean).map((l) => JSON.parse(l) as LichessGame)
-    if (games.length >= max) from = addDays(localDate(new Date(games.at(-1)!.lastMoveAt), tz), 1)
-    const days = lichessDays(games, user.id, main, tz, from)
+    // Never past today: a cap hit by today's games alone keeps today (maybe short) instead of zeroing it.
+    if (games.length >= max) from = [addDays(localDate(new Date(games.at(-1)!.lastMoveAt), tz), 1), today].sort()[0]
+    // Days without games are sent as zero, so a day the old activity feed credited wrongly is corrected. A first
+    // ever sync starts at the first day with games.
+    const days = new Map(fillDays(lichessDays(games, user.id, main, tz, from).values(), from, today, (d) => blank('lichess', d), !!prev).map((d) => [d.date, d]))
     const current = main ? user.perfs![main]?.rating : undefined
     if (current && !days.get(today)?.rating) Object.assign(days.get(today) ?? days.set(today, blank('lichess', today)).get(today)!, { rating: current, control: main })
     await emitDays(ctx, days.values())
-    ctx.setCursor({ backfilled: true })
+    ctx.setCursor({ backfilled: true, v: 2 })
     ctx.log(`${games.length} games, ${days.size} days${main ? `, main control ${main}` : ''}${games.length >= max ? `, stopped at ${max} games (from ${from})` : ''}`)
   },
 }

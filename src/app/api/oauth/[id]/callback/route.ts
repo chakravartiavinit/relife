@@ -14,7 +14,7 @@ export async function GET(req: Request, ctx: RouteContext<'/api/oauth/[id]/callb
     status: 303,
     headers: {
       Location: new URL(`/connectors?oauth=${id}${error ? `&error=${encodeURIComponent(error)}` : ''}`, requestOrigin(req.headers)).toString(),
-      'Set-Cookie': 'relife_oauth=; Path=/api/oauth; Max-Age=0; HttpOnly; SameSite=Lax',
+      'Set-Cookie': `relife_oauth=; Path=/api/oauth; Max-Age=0; HttpOnly; SameSite=Lax${requestOrigin(req.headers).startsWith('https:') ? '; Secure' : ''}`,
     },
   })
   if (!c) return done('Unknown connector.')

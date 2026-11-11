@@ -9,7 +9,7 @@ import { dayMap, emitDays, fetchJson, fillDays, rejectedAs, syncWindow } from '.
 
 export type TogglDay = { date: string; minutes: number; entries: number; topProject?: string }
 
-export type TogglEntry = { start: string; duration: number; project_name?: string | null }
+export type TogglEntry = { id?: number; start: string; duration: number; project_name?: string | null }
 
 /** Pure: time entries into days in the user's time zone. Running timers (negative duration) count once stopped. */
 export function togglDays(entries: TogglEntry[], tz: string) {
@@ -53,7 +53,9 @@ export const toggl: Connector = {
       const q = new URLSearchParams({ start_date: start, end_date: end, meta: 'true' })
       entries.push(...((await fetchJson<TogglEntry[] | null>(`https://api.track.toggl.com/api/v9/me/time_entries?${q}`, { headers }).catch(rejectedAs(REJECTED))) ?? []))
     }
-    const days = fillDays(togglDays(entries, tz), from, today, (date) => ({ date, minutes: 0, entries: 0 }), backfilled)
+    // Months meet at a day boundary; dedupe by id in case Toggl includes an entry in both.
+    const unique = [...new Map(entries.map((e, i) => [e.id ?? `i${i}`, e])).values()]
+    const days = fillDays(togglDays(unique, tz), from, today, (date) => ({ date, minutes: 0, entries: 0 }), backfilled)
     await emitDays(ctx, 'toggl', days)
     ctx.setCursor({ backfilled: true })
     ctx.log(`${entries.length} entries on ${days.length} days`)

@@ -5,6 +5,7 @@ import { homedir } from 'node:os'
 import { dirname } from 'node:path'
 import type { Connector, RawEvent } from '@/core/types'
 import { env } from '@/core/env'
+import { localDate } from '@/core/time'
 
 // iPhone Shortcuts append one line per event to an iCloud Drive file; the Mac syncs it locally.
 // We read from a byte offset, so nothing is lost while the laptop is off. See docs/SHORTCUTS.md.
@@ -35,7 +36,9 @@ export function inboxPath(set = env('ICLOUD_INBOX_PATH')) {
   return [set, DEFAULT_PATH, SHORTCUTS_PATH].filter((p): p is string => !!p).map(expand).find(isFile) ?? expand(set || DEFAULT_PATH)
 }
 
-type Cursor = { offset: number; ino: number }
+/** `tail`: hash of the bytes just before `offset`, to tell a re-saved copy of the same file from a new one. */
+type Cursor = { offset: number; ino: number; tail?: string }
+const TAIL = 256
 const MAX_READ = 8 * 1024 * 1024
 
 /**
@@ -57,7 +60,7 @@ export function consumable(buf: Buffer) {
  * · {type:'sleep', event:'start'|'end', at?}. Also used by POST /api/ingest. Bank texts and screenshot text
  * (plain lines, type 'sms' or 'ocr') are skipped: spending comes from the order apps on Connectors.
  */
-export function lineToRawEvent(raw: string, now: Date): RawEvent | null {
+export function lineToRawEvent(raw: string, now: Date, tz = 'UTC'): RawEvent | null {
   const line = raw.trim()
   if (!line) return null
   let j: Record<string, unknown> | null = null
@@ -68,9 +71,11 @@ export function lineToRawEvent(raw: string, now: Date): RawEvent | null {
 
   const parsed = new Date(String(j.at ?? ''))
   const at = Number.isNaN(parsed.getTime()) ? now : parsed
-  // A line with no date means "today": the same line on another day (weight 71.4 again) is new, not a repeat.
+  // A line with no date means "today" (your local day): the same line on another day (weight 71.4 again) is new,
+  // not a repeat. The file is only read again from the start when its content changed (see `sync`), so old lines
+  // aren't moved to today.
   const dated = !Number.isNaN(parsed.getTime()) || (typeof j.date === 'string' && /^\d{4}-\d{2}-\d{2}/.test(j.date))
-  const externalId = createHash('sha256').update(dated ? line : `${line}@${now.toISOString().slice(0, 10)}`).digest('hex')
+  const externalId = createHash('sha256').update(dated ? line : `${line}@${localDate(now, tz)}`).digest('hex')
   switch (j.type) {
     case 'sleep': {
       if (j.event !== 'start' && j.event !== 'end') return null
@@ -126,12 +131,23 @@ export const icloudInbox: Connector = {
     })
     if (!s) return // not set up yet; nothing to do
     const prev = (ctx.cursor as Cursor | null) ?? { offset: 0, ino: s.ino }
-    // File replaced or truncated (e.g. you cleared it): start over. Duplicates are ignored by id.
-    let offset = prev.ino !== s.ino || s.size < prev.offset ? 0 : prev.offset
-    if (s.size === offset) return
-
     const fh = await open(path, 'r')
     try {
+      // iCloud often saves a newer copy as a new file (new inode) with the same start. Carry on from the offset
+      // while the bytes before it are unchanged; start over only when the file shrank or its content changed
+      // (you cleared or edited it). Cursors from before `tail` existed trust the offset.
+      const tailAt = async (end: number) => {
+        const b = Buffer.alloc(Math.min(TAIL, end))
+        await fh.read(b, 0, b.length, end - b.length)
+        return createHash('sha256').update(b).digest('hex').slice(0, 16)
+      }
+      const same = s.size >= prev.offset && (prev.ino === s.ino || !prev.tail || (await tailAt(prev.offset)) === prev.tail)
+      let offset = same ? prev.offset : 0
+      if (s.size === offset) {
+        if (!prev.tail || prev.ino !== s.ino) ctx.setCursor({ offset, ino: s.ino, tail: await tailAt(offset) } satisfies Cursor)
+        return
+      }
+
       // At most 8 MB a run, so a big backlog (or a file that grew while the Mac was off) is read in pieces.
       const buf = Buffer.alloc(Math.min(s.size - offset, MAX_READ))
       const { bytesRead } = await fh.read(buf, 0, buf.length, offset)
@@ -142,13 +158,13 @@ export const icloudInbox: Connector = {
       if (!take) return
       const now = new Date()
       for (const line of chunk.subarray(0, take).toString('utf8').split('\n')) {
-        const ev = lineToRawEvent(line, now)
+        const ev = lineToRawEvent(line, now, ctx.user.timezone)
         if (ev) await ctx.emit(ev)
       }
       offset += take
+      ctx.setCursor({ offset, ino: s.ino, tail: await tailAt(offset) } satisfies Cursor)
     } finally {
       await fh.close()
     }
-    ctx.setCursor({ offset, ino: s.ino } satisfies Cursor)
   },
 }

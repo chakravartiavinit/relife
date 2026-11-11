@@ -36,12 +36,12 @@ export async function POST(req: Request) {
   let inserted = 0
   let skipped = 0 // blank, malformed or not a type ReLife reads (steps, health, sleep)
   for (const line of lines) {
-    const ev = lineToRawEvent(line, now)
+    const ev = lineToRawEvent(line, now, user.timezone)
     if (!ev) { if (line.trim()) skipped++; continue }
     received++
     if (await emitRaw(user.id, ev)) inserted++
   }
   // The events are saved; if parsing can't start now, the parse job picks them up.
-  const parsed = inserted ? await parseNow().catch(() => 'queued') : 'nothing new'
+  const parsed = inserted ? await parseNow().catch((e) => { console.error('[ingest] parse failed, the parse job retries:', e instanceof Error ? e.message : e); return 'queued' }) : 'nothing new'
   return Response.json({ received, inserted, skipped, parsed })
 }

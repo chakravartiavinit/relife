@@ -1,5 +1,7 @@
 import ccxt from 'ccxt'
 import { inflateRawSync } from 'node:zlib'
+import { createHash } from 'node:crypto'
+import { setTimeout as sleep } from 'node:timers/promises'
 import type { Connector, ConnectorCtx } from '@/core/types'
 import { USD_STABLES } from '@/domain/money'
 import { env } from '@/core/env'
@@ -12,7 +14,8 @@ import { env } from '@/core/env'
 // income are read from the start. Later syncs read only what's new.
 
 type Cursor = {
-  verified?: boolean
+  /** Fingerprint of the key whose permissions were checked (older cursors stored `true`). A new key is checked again. */
+  verified?: boolean | string
   symbols?: Record<string, number> // symbol → last trade timestamp (ms)
   assets?: string[] // assets held last sync, so sold-out ones get a zero holding
   scanned?: boolean // every spot pair checked once
@@ -25,6 +28,8 @@ type Cursor = {
   futuresFull?: boolean // older futures history read from Binance's yearly downloads
   futuresYears?: number // how many of those yearly files are done (kept if a later one fails, so none is asked for twice)
   futuresTries?: number // failed attempts at the file in progress; the monthly download quota is small
+  scanIndex?: number // first-sync pair scan: pairs done so far (sorted), so an outage resumes instead of starting over
+  futuresAnchor?: number // when the yearly downloads started: every file and the API catch-up are measured from it, so a resumed run leaves no gap
   payFrom?: number // Binance Pay
   rewardsFrom?: number // airdrops, Launchpool and other rewards
   fiatFrom?: number // crypto bought or sold with card or UPI
@@ -35,7 +40,6 @@ const DAY = 86_400_000
 const START = Date.parse('2019-01-01') // before any account here; empty windows are cheap
 const SCAN_QUOTES = ['USDT', 'FDUSD', 'USDC', 'BTC', 'BNB', 'ETH', 'BUSD', 'TUSD']
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const RETRY_WAITS = [3_000, 15_000, 60_000] // after a rate limit or an outage: three more tries, longer each time
 
 /** Worth trying again soon: Binance busy, rate limited or unreachable. Not a ban (418), a blocked region or a clock that's off. */
@@ -154,9 +158,11 @@ async function run(ctx: ConnectorCtx) {
   const ex = client()
   await ex.loadTimeDifference() // before the first signed call, so a clock a few seconds off isn't refused (-1021)
   const cursor: Cursor = { symbols: {}, ...((ctx.cursor as Cursor | null) ?? {}) }
-  if (!cursor.verified) {
+  // Disconnect keeps the cursor, so a replacement key must not inherit the old key's check.
+  const fingerprint = createHash('sha256').update(env('BINANCE_API_KEY') ?? '').digest('hex').slice(0, 16)
+  if (cursor.verified !== fingerprint) {
     await assertReadOnly(ex)
-    cursor.verified = true
+    cursor.verified = fingerprint
   }
   const markets = await ex.loadMarkets()
   const now = Date.now()
@@ -257,17 +263,25 @@ async function emitTrade(ctx: ConnectorCtx, cursor: Cursor, symbol: string, t: T
  * sold completely (never held at a sync) are counted too. Delisted pairs that refuse are skipped.
  */
 async function scanSpot(ex: Client, markets: Record<string, unknown>, ctx: ConnectorCtx, cursor: Cursor) {
-  const pairs = Object.entries(markets).filter(([, m]) => { const x = m as { spot?: boolean; quote?: string }; return x.spot && SCAN_QUOTES.includes(x.quote ?? '') }).map(([s]) => s)
-  ctx.log(`binance: checking ${pairs.length} spot pairs for past trades (first sync only)`)
+  const pairs = Object.entries(markets).filter(([, m]) => { const x = m as { spot?: boolean; quote?: string }; return x.spot && SCAN_QUOTES.includes(x.quote ?? '') }).map(([s]) => s).sort()
+  const start = cursor.scanIndex ?? 0
+  ctx.log(`binance: checking ${pairs.length - start} of ${pairs.length} spot pairs for past trades (first sync only)`)
   let found = 0
-  for (const symbol of pairs) {
+  for (let i = start; i < pairs.length; i++) {
+    const symbol = pairs[i]
     try {
       found += await tradesFromId(ex, symbol, 0, (t) => emitTrade(ctx, cursor, symbol, t))
     } catch (e) {
-      // A pair Binance refuses (delisted) is skipped. Anything that may pass (rate limit, outage, key) stops the
-      // scan: marking it done would leave that pair's trades out for good.
-      if (e instanceof ccxt.NetworkError || e instanceof ccxt.AuthenticationError || e instanceof ccxt.PermissionDenied || keyProblem(e)) throw e
+      // A pair Binance refuses (delisted) is skipped. A key problem stops the sync. An outage or rate limit pauses
+      // the scan here (marking it done would leave that pair's trades out for good); the rest of the sync still
+      // runs, and the next one resumes at this pair.
+      if (e instanceof ccxt.AuthenticationError || e instanceof ccxt.PermissionDenied || keyProblem(e)) throw e
+      if (e instanceof ccxt.NetworkError) {
+        ctx.log(`binance: spot scan paused at ${symbol} (${i}/${pairs.length}): ${e.message}`)
+        return
+      }
     }
+    cursor.scanIndex = i + 1
   }
   ctx.log(`binance: ${found} spot trades across ${Object.keys(cursor.symbols ?? {}).length} pairs`)
   cursor.scanned = true
@@ -398,10 +412,11 @@ async function emitIncome(ctx: ConnectorCtx, price: Price, r: Income) {
  */
 async function syncFutures(ex: Client, ctx: ConnectorCtx, cursor: Cursor, now: number, price: Price) {
   if (!cursor.futuresFull) {
+    const anchor = (cursor.futuresAnchor ??= now)
     // ponytail: three yearly files (Binance limits how many downloads you can ask for); older accounts need more.
     for (let y = 3 - (cursor.futuresYears ?? 0); y >= 1; y--) {
       let rows: Income[] = []
-      try { rows = await downloadIncome(ex, now - y * 365 * DAY, now - (y - 1) * 365 * DAY - 1) } catch (e) {
+      try { rows = await downloadIncome(ex, anchor - y * 365 * DAY, anchor - (y - 1) * 365 * DAY - 1) } catch (e) {
         // Each file counts against Binance's monthly download quota, so a file that keeps failing is given up on
         // after three runs (an account younger than that has nothing to give). Outages and key problems just wait.
         if (e instanceof ccxt.NetworkError || keyProblem(e) || (cursor.futuresTries = (cursor.futuresTries ?? 0) + 1) < 3) throw e
@@ -413,7 +428,7 @@ async function syncFutures(ex: Client, ctx: ConnectorCtx, cursor: Cursor, now: n
       cursor.futuresTries = 0
     }
     cursor.futuresFull = true
-    cursor.futuresFrom = now - 30 * DAY // the newest days come from the API below
+    cursor.futuresFrom = anchor - 30 * DAY // the newest days come from the API below
   }
   for (let from = cursor.futuresFrom ?? now - 90 * DAY; from < now; from += 90 * DAY) {
     const to = Math.min(now, from + 90 * DAY)
@@ -432,7 +447,7 @@ async function syncFutures(ex: Client, ctx: ConnectorCtx, cursor: Cursor, now: n
 async function downloadIncome(ex: Client, start: number, end: number): Promise<Income[]> {
   const { downloadId } = (await ex.fapiPrivateGetIncomeAsyn({ startTime: start, endTime: end })) as { downloadId: string }
   for (let i = 0; i < 60; i++) {
-    await new Promise((res) => setTimeout(res, 5000))
+    await sleep(5000)
     const s = (await ex.fapiPrivateGetIncomeAsynId({ downloadId })) as { status: string; url?: string }
     if (s.status !== 'completed' || !s.url) continue
     const file = await fetch(s.url, { signal: AbortSignal.timeout(60_000) })
