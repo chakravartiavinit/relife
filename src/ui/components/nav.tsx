@@ -29,7 +29,7 @@ export function NavPlaceholder() {
 function NavView({ counts = {}, areas, path }: { counts?: NavCounts; areas?: string[]; path: string }) {
   return (
     <nav aria-label="Main" className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-1">
-      <div className="flex flex-col gap-px">
+      <div className="flex flex-col gap-2">
         {PLAY.map((item) => (
           <NavRow key={item.href} item={item} path={path}>
             {item.href === '/' && counts.today ? <Mono active={isActive(path, item)}>{counts.today}</Mono> : null}
@@ -40,7 +40,7 @@ function NavView({ counts = {}, areas, path }: { counts?: NavCounts; areas?: str
 
       <div data-tour="areas">
         <div className="flex h-7 items-center px-2.5 text-[12px] font-medium text-ink-3">Stats</div>
-        <div className="flex flex-col gap-px">
+        <div className="flex flex-col gap-2">
           {visibleStats(path, areas).map((item) => (
             <NavRow key={item.href} item={item} path={path}>
               <span className="ml-auto font-mono text-[11px] font-normal text-ink-3">{counts.levels?.[item.area!] ? `LV ${counts.levels[item.area!]}` : null}</span>
@@ -49,7 +49,7 @@ function NavView({ counts = {}, areas, path }: { counts?: NavCounts; areas?: str
         </div>
       </div>
 
-      <div className="mt-auto flex flex-col gap-px">
+      <div className="mt-auto flex flex-col gap-2">
         {FOOTER.map((item) => (
           <NavRow key={item.href} item={item} path={path}>
             {item.href === '/sources' && counts.sources ? <CountBadge n={counts.sources} /> : null}
@@ -60,7 +60,7 @@ function NavView({ counts = {}, areas, path }: { counts?: NavCounts; areas?: str
   )
 }
 
-// Rows are 32px with a 1px gap, so they get no extra hit area: padding them to 40px would overlap their neighbours.
+// Rows are 32px with an 8px gap; the after: layer adds 4px above and below, so each hit area is 40px and none overlap.
 function NavRow({ item, path, children }: { item: NavItem; path: string; children?: React.ReactNode }) {
   const active = isActive(path, item)
   const Icon = item.icon
@@ -71,7 +71,7 @@ function NavRow({ item, path, children }: { item: NavItem; path: string; childre
       // The page itself is "page"; a nested page (a tracker, Screen time) keeps the row lit with "true".
       aria-current={active ? (path === item.href ? 'page' : 'true') : undefined}
       className={cn(
-        'relative flex h-8 items-center gap-2.5 rounded-sm px-2.5 text-[13px] transition-[background-color,color] duration-150',
+        'relative flex h-8 items-center gap-2.5 rounded-sm px-2.5 text-[13px] transition-[background-color,color] duration-150 after:absolute after:inset-x-0 after:-inset-y-1',
         active ? 'bg-raised-2 font-medium text-ink shadow-1' : 'text-ink-2 hover:bg-hover hover:text-ink',
         item.area ? 'font-normal' : 'font-medium',
       )}
@@ -105,7 +105,7 @@ function NudgeDot({ n }: { n: number }) {
   return (
     <>
       <span aria-hidden className="ml-auto size-1.5 rounded-full bg-accent" />
-      <span className="sr-only">{n} nudges waiting</span>
+      <span className="sr-only">{n === 1 ? "1 nudge waiting" : `${n} nudges waiting`}</span>
     </>
   )
 }

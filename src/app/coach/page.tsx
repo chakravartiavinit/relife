@@ -165,7 +165,7 @@ function ConnectCoach() {
           </span>
         ))}
       </div>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-[240px] flex-1">
         <h2 className="text-[15px] font-semibold text-ink">Connect an AI model to wake your coach</h2>
         <p className="mt-0.5 text-[13px] text-ink-3">Then ask anything about your data, and get a nudge each morning and a review every Sunday. Rule-based alerts already work.</p>
       </div>

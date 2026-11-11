@@ -1,6 +1,6 @@
 'use client'
 
-import { Command } from 'cmdk'
+import { Command, defaultFilter } from 'cmdk'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useTransition } from 'react'
 import { Plus, Search, Sparkles } from 'lucide-react'
@@ -84,6 +84,7 @@ export function CommandMenu() {
             <Command
               label="Command menu"
               loop
+              filter={rankLabelsFirst}
               className="overflow-hidden rounded-lg bg-raised shadow-3"
               onKeyDown={(e) => { if (e.key === 'Escape') close() }}
             >
@@ -196,7 +197,7 @@ export function CommandButton() {
       type="button"
       data-tour="command"
       onClick={openCommand}
-      className="flex h-8 w-full items-center gap-2 rounded-sm bg-raised pr-1.5 pl-2.5 text-[13px] text-ink-3 shadow-inset transition-[box-shadow,color] duration-150 hover:text-ink-2 hover:shadow-[inset_0_0_0_1px_var(--line-3)]"
+      className="relative flex h-8 w-full items-center gap-2 rounded-sm bg-raised after:absolute after:inset-x-0 after:-inset-y-1 pr-1.5 pl-2.5 text-[13px] text-ink-3 shadow-inset transition-[box-shadow,color] duration-150 hover:text-ink-2 hover:shadow-[inset_0_0_0_1px_var(--line-3)]"
     >
       <Search className="size-4" strokeWidth={1.5} aria-hidden />
       <span className="flex-1 text-left whitespace-nowrap">Log or search…</span>
@@ -212,4 +213,19 @@ export function LogButton() {
       <Plus className="size-4" strokeWidth={1.5} />
     </Button>
   )
+}
+
+/**
+ * Pages match by name, then by subtitle or old name ("habits" finds Routines), never by scattered letters: cmdk keeps
+ * groups in their written order, so a loose fuzzy hit in an earlier group would win Enter ("Sources" opened Routines).
+ * Log and Ask rows keep cmdk's own scoring.
+ */
+function rankLabelsFirst(value: string, search: string, keywords?: string[]) {
+  if (!value.startsWith('go ')) return defaultFilter(value, search, keywords)
+  const q = search.trim().toLowerCase()
+  if (!q) return 1
+  const label = value.slice(3).toLowerCase()
+  if (label.startsWith(q)) return 1
+  if (label.includes(q)) return 0.9
+  return keywords?.some((k) => k.toLowerCase().includes(q)) ? 0.8 : 0
 }

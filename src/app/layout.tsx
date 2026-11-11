@@ -65,7 +65,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
             {/* The rail stays the first <aside> in the DOM: the tour measures it. */}
             <aside className="sticky top-0 hidden h-dvh flex-col border-r border-line bg-sidebar px-2 py-3 lg:flex">
               <div className="flex h-9 items-center justify-between pr-1 pl-2.5">
-                <Link href="/" aria-label="ReLife, Today" className="rounded-sm">
+                <Link href="/" aria-label="ReLife, Today" className="relative rounded-sm after:absolute after:-inset-x-1 after:-inset-y-2.5">
                   <Wordmark className="h-5" />
                 </Link>
                 <div className="flex items-center">
