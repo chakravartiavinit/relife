@@ -375,7 +375,8 @@ The project was briefly called Savepoint, with its own crystal logo, in November
 
 - Secrets in `.env` (gitignored from the first commit; `.env.example` committed). OAuth refresh tokens encrypted at rest with `ENCRYPTION_KEY` (AES-256-GCM, `node:crypto`).
 - Exchange keys are read-only; the Binance connector checks key permissions on first sync and refuses keys that can trade or withdraw.
-- Web binds to `127.0.0.1`; remote access only through Tailscale. No ports exposed to the internet.
+- Web binds to `127.0.0.1`; remote access only through Tailscale. No ports exposed to the internet. `src/proxy.ts` refuses
+  any Host besides loopback, `*.ts.net` and `RELIFE_ALLOWED_HOSTS`, so a web page can't reach ReLife through DNS rebinding.
 - Telegram bot ignores every chat except `TELEGRAM_ALLOWED_CHAT_ID`.
 - LLM: account numbers and UPI handles masked in digests by default; parsing can run on a local model (`LLM_PARSE=local:...`). Read tools enforce user scope in code; no model-written SQL runs. New AI logs store operational metadata, not prompt or response excerpts. Providers still receive selected context.
 - Disk: FileVault on. Daily `pg_dump` to an encrypted folder.
