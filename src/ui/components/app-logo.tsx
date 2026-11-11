@@ -27,6 +27,14 @@ export const LOGO: Record<string, { src: string; fill?: boolean }> = {
   zepto: { src: '/connectors/zepto.png', fill: true },
   flipkart: { src: '/connectors/flipkart.png', fill: true },
   makemytrip: { src: '/connectors/makemytrip.png' },
+  leetcode: { src: '/connectors/leetcode.svg' },
+  strava: { src: '/connectors/strava.svg' },
+  wakatime: { src: '/connectors/wakatime.svg' },
+  monkeytype: { src: '/connectors/monkeytype.svg' },
+  duolingo: { src: '/connectors/duolingo.svg' },
+  todoist: { src: '/connectors/todoist.svg' },
+  lastfm: { src: '/connectors/lastfm.svg' },
+  steam: { src: '/connectors/steam.svg' },
 }
 const FALLBACK_ICON: Record<string, typeof Cable> = { fx: ArrowLeftRight, laptop: MonitorSmartphone, sms: MessageSquareText, ocr: ScanText, ingest: Zap }
 

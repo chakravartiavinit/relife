@@ -34,7 +34,7 @@ async function Mind() {
   const user = await getUser()
   const today = localDate(new Date(), user.timezone)
   const from = addDays(today, -27)
-  const data = await trackerDays(user, from, today, { slugs: ['mood', 'energy', 'screen-time', 'meditation'] })
+  const data = await trackerDays(user, from, today, { slugs: ['mood', 'energy', 'screen-time', 'meditation', 'tasks.done'] })
   const get = (slug: string) => data.find((d) => d.tracker.slug === slug)
   const last7 = (slug: string) => fillDays(get(slug)?.days ?? new Map(), addDays(today, -6), today).map((p) => p.value)
   const avg = (slug: string) => average(last7(slug))
@@ -72,8 +72,12 @@ async function Mind() {
       {get('energy')?.days.size ? (
         <MetricCard title="Energy" data={get('energy')} from={from} to={today} color={color} chart="area" domain={[1, 5]} empty={{ title: '', description: '' }} />
       ) : null}
+      {get('tasks.done')?.days.size ? (
+        <MetricCard title="Tasks done" data={get('tasks.done')} from={from} to={today} color={color} chart="bars" decimals={0} target={get('tasks.done')?.tracker.target} empty={{ title: '', description: '' }} />
+      ) : null}
       {get('screen-time')?.days.size ? (
-        <div className={get('energy')?.days.size ? 'xl:col-span-2' : undefined}>
+        // Full width when it would otherwise sit alone in a row.
+        <div className={[get('energy'), get('tasks.done')].filter((t) => t?.days.size).length % 2 ? 'xl:col-span-2' : undefined}>
           <MetricCard title="Screen time" data={get('screen-time')} from={from} to={today} color={color} chart="bars" empty={{ title: '', description: '' }} />
         </div>
       ) : null}

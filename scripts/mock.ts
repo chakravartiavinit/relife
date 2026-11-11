@@ -103,6 +103,15 @@ async function main() {
     { slug: 'guitar', name: 'Guitar', category: 'hobbies', kind: 'duration', unit: 'min', target: 30 },
     { slug: 'drawing', name: 'Drawing', category: 'hobbies', kind: 'duration', unit: 'min', target: 15 },
     { slug: 'chess', name: 'Chess', category: 'hobbies', kind: 'duration', unit: 'min', target: 10 },
+    // From the newer connectors (Strava, Todoist, WakaTime, Duolingo, Last.fm), same defaults as src/parsers/daily.ts.
+    { slug: 'exercise.minutes', name: 'Active minutes', category: 'health', kind: 'duration', unit: 'min', target: 30 },
+    { slug: 'run.km', name: 'Running', category: 'health', unit: 'km' },
+    { slug: 'tasks.done', name: 'Tasks done', category: 'mind', target: 5 },
+    { slug: 'coding.minutes', name: 'Coding time', category: 'skills', kind: 'duration', unit: 'min', target: 60 },
+    { slug: 'duolingo.xp', name: 'Duolingo XP', category: 'skills', target: 30 },
+    { slug: 'duolingo.streak', name: 'Duolingo streak', category: 'skills', aggregate: 'last' },
+    { slug: 'music', name: 'Music', category: 'hobbies', kind: 'duration', unit: 'min' },
+    { slug: 'music.songs', name: 'Songs played', category: 'hobbies' },
   ]
   const trackers = await db.insert(schema.trackers).values(trackerDefs.map((t) => ({ ...t, userId: uid }))).returning()
   const tid = Object.fromEntries(trackers.map((t) => [t.slug, t.id]))
@@ -136,6 +145,27 @@ async function main() {
     if (logs && r.chance(weekend ? 0.5 : 0.65)) entry('guitar', d, r.pick([15, 20, 30, 30, 45, 60]), 'manual')
     if (logs && r.chance(weekend ? 0.7 : 0.2)) entry('drawing', d, r.pick([20, 30, 45, 60, 90]), 'manual')
     if (logs && r.chance(0.3)) entry('chess', d, r.pick([10, 15, 20, 30]), 'manual')
+  })
+  // Connector data on its own generator, so adding it left every number above unchanged for a given seed.
+  const c = rng(seed ^ 0x5eed)
+  let streak = 0
+  days.forEach((d) => {
+    const wd = weekday(d)
+    const weekend = wd === 0 || wd === 6
+    // Strava: runs three mornings a week, a long one on Sunday; a lull two months in.
+    const ran = !lapse.has(d) && (wd === 0 ? c.chance(0.8) : [2, 4].includes(wd) ? c.chance(0.7) : c.chance(0.1))
+    const km = ran ? Math.round(c.normal(wd === 0 ? 9 : 5, 1.2) * 100) / 100 : 0
+    entry('exercise.minutes', d, ran ? Math.round(km * c.between(5.6, 6.6)) : 0, 'strava')
+    if (ran) entry('run.km', d, km, 'strava')
+    entry('tasks.done', d, Math.max(0, Math.round(c.normal(weekend ? 2 : 6, 2.2))), 'todoist')
+    entry('coding.minutes', d, weekend ? (c.chance(0.4) ? c.int(20, 150) : 0) : Math.max(0, Math.round(c.normal(190, 70))), 'wakatime')
+    const xp = c.chance(0.85) ? c.pick([10, 15, 20, 30, 40, 60]) : 0
+    streak = xp ? streak + 1 : 0
+    entry('duolingo.xp', d, xp, 'duolingo')
+    entry('duolingo.streak', d, streak, 'duolingo')
+    const songs = Math.max(0, Math.round(c.normal(weekend ? 35 : 22, 10)))
+    entry('music', d, Math.round(songs * 3.5), 'lastfm')
+    entry('music.songs', d, songs, 'lastfm')
   })
   for (let i = 0; i < entries.length; i += 500) await db.insert(schema.entries).values(entries.slice(i, i + 500))
 
@@ -303,6 +333,8 @@ async function main() {
     { userId: uid, connectorId: 'binance', status: 'ok', lastSyncAt: ago(0) },
     { userId: uid, connectorId: 'icloud-inbox', status: 'ok', lastSyncAt: ago(0) },
     { userId: uid, connectorId: 'fx', status: 'ok', lastSyncAt: ago(0) },
+    // Fixed times, not ago(): it draws from r, which would shift every number after it.
+    ...['strava', 'todoist', 'wakatime', 'duolingo', 'lastfm'].map((connectorId, i) => ({ userId: uid, connectorId, status: 'ok' as const, lastSyncAt: new Date(now.getTime() - (i + 1) * 7 * 60_000) })),
     { userId: uid, connectorId: 'gmail', status: 'error', failures: 3, lastError: 'invalid_grant: token expired', lastSyncAt: ago(2) },
   ])
   await db.insert(schema.syncRuns).values(Array.from({ length: 10 }, (_, i) => {

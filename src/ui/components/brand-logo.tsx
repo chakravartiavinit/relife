@@ -104,6 +104,13 @@ const BRANDS: [RegExp, string, boolean?][] = [
   [/codechef/i, '/connectors/codechef.svg'],
   [/atcoder/i, '/connectors/atcoder.png', true],
   [/chess\.com|chesscom/i, '/connectors/chessdotcom.svg'],
+  [/leetcode/i, '/connectors/leetcode.svg'],
+  [/strava/i, '/connectors/strava.svg'],
+  [/wakatime/i, '/connectors/wakatime.svg'],
+  [/monkeytype/i, '/connectors/monkeytype.svg'],
+  [/duolingo/i, '/connectors/duolingo.svg'],
+  [/todoist/i, '/connectors/todoist.svg'],
+  [/last\.?fm/i, '/connectors/lastfm.svg'],
   [/gmail/i, '/connectors/gmail.svg'],
   [/telegram/i, '/connectors/telegram.svg'],
 ]

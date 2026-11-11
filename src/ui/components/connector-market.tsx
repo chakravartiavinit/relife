@@ -58,7 +58,7 @@ const RANK: Record<ConnectorStatus, number> = { error: 0, setup: 1, waiting: 2, 
 const GROUPS: { key: string; title: string; hint: string; icon: typeof Cable; match: (c: ConnectorItem) => boolean }[] = [
   { key: 'money', title: 'Money', hint: 'Banks, crypto and currency', icon: Wallet, match: (c) => (c.section === 'built-in' || c.section === 'keys') && c.category === 'wealth' },
   { key: 'shopping', title: 'Shopping & food', hint: 'Orders from the apps you buy on', icon: ShoppingBag, match: (c) => c.section === 'shopping' },
-  { key: 'life', title: 'Health, skills & hobbies', hint: 'Your phone, your code and your games', icon: HeartPulse, match: (c) => (c.section === 'built-in' || c.section === 'keys') && c.category !== 'wealth' },
+  { key: 'life', title: 'Health, skills & hobbies', hint: 'Your phone, workouts, code, learning, tasks and play', icon: HeartPulse, match: (c) => (c.section === 'built-in' || c.section === 'keys') && c.category !== 'wealth' },
   { key: 'messaging', title: 'Messaging', hint: 'Reminders and quick logs', icon: Bot, match: (c) => c.section === 'messaging' },
   { key: 'ai', title: 'AI models', hint: 'Plans, reviews and reading odd messages', icon: Cpu, match: (c) => c.section === 'ai' },
 ]
