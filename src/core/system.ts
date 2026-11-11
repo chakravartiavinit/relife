@@ -1,11 +1,11 @@
-import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, ne, sql } from 'drizzle-orm'
 import { Output } from 'ai'
 import { z } from 'zod'
 import { db, schema } from '@/db'
 import { CATEGORIES } from '@/db/schema'
 import { describeChange, describeLink, findChanges, findLinks, formatValue, tone, type Signal } from '@/domain/patterns'
 import {
-  difficulty, fairTarget, hitRate, penaltyFor, rankFor, round, xpFor,
+  difficulty, fairTarget, hitRate, rankFor, round, xpFor,
   type Op, type QuestSpec, type Rank, type Stat, type SystemKind,
 } from '@/domain/system'
 import { rollChest } from '@/domain/quests'
@@ -19,6 +19,7 @@ import { basketLines } from './basket'
 import { habitSignals } from '@/domain/basket'
 import { canCoach, coachStats, questCandidates, questProgress, selectQuests, spendingSpike, type CoachStat, type QuestCandidate } from '@/domain/coach'
 import { addInsight } from './insights'
+import { getRecovery, insertCoachQuests, prepareRecovery, recoveryPaused } from './recovery'
 import { screenTimeDigest } from './activity'
 import { addDays, formatDay, localDate } from './time'
 import type { User } from './user'
@@ -26,7 +27,7 @@ import { totalXp } from './xp'
 
 // The System: every day it reads your connector data, decides what you should train (the AI picks
 // and words it; src/domain/system.ts keeps it fair), checks quests off from the data itself, turns
-// missed daily quests into penalty quests and calls emergency quests when a number slips sharply.
+// recorded misses into optional recovery choices and reviews sharp changes without punishment.
 
 export type SystemQuest = typeof schema.systemQuests.$inferSelect
 const Q = schema.systemQuests
@@ -95,12 +96,12 @@ async function aiDailies(user: User, candidates: QuestCandidate[], signals: Sign
       system: PERSONA,
       prompt: JSON.stringify({
         wantsToImprove: { stats: user.profile.improve ?? [], inTheirWords: user.profile.goals || undefined },
-        profile: user.profile,
+        constraints: user.profile.constraints,
         today,
         task: 'Select only from the validated candidates. Do not invent targets or actions. Prioritize goals, then recovery where performance slipped, while preserving what works. Spread effort across areas, at most one spending habit. Return an empty list when constraints, overload or uncertainty make every candidate unsuitable. Never infer a purchase was unplanned. Recent quest completion measures adherence, not causal benefit.',
         candidates: candidates.map((c) => ({ statId: c.statId, name: c.stat.name, area: c.stat.area, intent: c.intent, op: c.op, target: c.target, unit: c.stat.unit, evidence: c.stat })),
         patterns: { movesTogether: links, thisWeek: changes },
-        recentQuests: history.slice(0, 12).map((q) => ({ date: q.fromDate, title: q.title, status: q.status })),
+        recentQuests: history.slice(0, 12).map((q) => ({ date: q.fromDate, statId: q.statId, title: q.title, status: q.status, target: q.target, progress: q.progress, baseline: q.baseline })),
         // Where laptop time went this week, so quests can trade entertainment time for learning.
         screenTime: await screenTimeDigest(user),
       }),
@@ -130,9 +131,10 @@ async function ensureDailies(user: User, today: string, signals: Signal[], stats
   if (existing.length) return
   // Persist an intentional abstention across worker restarts; unavailable models still use a safe fallback.
   const decisionKey = `system:rest:${today}`
-  if (await restingToday(user, today)) return
+  if (await restingToday(user, today) || await recoveryPaused(user, today)) return
   const history = await recentHistory(user, today)
-  const d = difficulty(history.filter((q) => q.kind === 'daily' && q.status !== 'active').map((q) => q.status as 'cleared' | 'failed'))
+  if (history.filter((q) => q.status === 'active' && q.fromDate <= today && q.toDate >= today).length >= 3) return
+  const d = difficulty(history.filter((q) => q.kind === 'daily' && (q.status === 'cleared' || q.status === 'failed')).map((q) => q.status as 'cleared' | 'failed'))
   const candidates = questCandidates(stats, user.profile.improve ?? [], d, history, today)
   if (!candidates.length) return
   const selected = await aiDailies(user, candidates, signals, history, today)
@@ -143,54 +145,17 @@ async function ensureDailies(user: User, today: string, signals: Signal[], stats
   const chosen = selectQuests(candidates, selected ?? candidates.map((c) => c.statId), history, today)
   const drafts = chosen.map((c) => ({ spec: c, title: '', reason: `${c.intent === 'recovery' ? 'A smaller recovery step' : 'A modest growth step'}. Last 7 complete days: ${fmt(c.stat.recent!, c.stat.unit)}/day (${c.stat.recentDays} recorded); earlier baseline: ${fmt(c.stat.usual!, c.stat.unit)}/day (${c.stat.baselineDays} recorded).` }))
   const rows = toRows(user, 'daily', drafts, stats, Math.min(d, 3), today, (s) => `daily:${today}:${s.id}`)
-  if (!rows.length) return
-  const made = await db.insert(Q).values(rows).onConflictDoNothing().returning()
+  if (!rows.length) {
+    await addInsight(user, { kind: 'nudge', status: 'done', title: 'No additional quests today', body: 'No selected quest passed the final policy checks. Existing commitments remain unchanged.', payload: { dedupeKey: decisionKey } })
+    return
+  }
+  const made = await insertCoachQuests(user, today, rows)
   if (!made.length) return
   await notify(user, 'system', {
     text: [
       sysHead('⚔️', 'Daily quest has arrived', 'Small actions selected from your goals and recorded progress.'),
       '', blocks(made), '',
-      '⏳ <i>Ends at midnight. Unfinished quests become penalty quests.</i>',
-    ].join('\n'),
-    buttons: OPEN,
-  })
-}
-
-/**
- * Yesterday's missed daily quests become penalty quests today. A quest that failed early (spending over
- * the limit by noon) waits for its day to end; older misses are left alone; penalties don't chain.
- */
-async function penalties(user: User, today: string, stats: Stat[]) {
-  const failed = await db.select().from(Q).where(and(eq(Q.userId, user.id), eq(Q.kind, 'daily'), eq(Q.status, 'failed'), eq(Q.toDate, addDays(today, -1))))
-  if (!failed.length) return
-  const history = await recentHistory(user, today)
-  const d = difficulty(history.filter((q) => q.kind === 'daily' && q.status !== 'active').map((q) => q.status as 'cleared' | 'failed'))
-  const issued: SystemQuest[] = []
-  for (const q of failed) {
-    const s = stats.find((x) => x.id === q.statId)
-    // Missing evidence and sensitive measurements must not create an automatic escalation.
-    if (!s || !canCoach(s) || q.progress == null) continue
-    const p = penaltyFor(q, d, s)
-    const target = fairTarget(s, { statId: s.id, ...p, days: 1 }, Math.min(d, 3))
-    if (target == null) continue
-    const rank: Rank = s ? rankFor(s, { statId: q.statId, op: p.op, target, days: 1 }) : 'C'
-    const [row] = await db.insert(Q).values({
-      userId: user.id, kind: 'penalty', fromDate: today, toDate: today, statId: q.statId, statName: q.statName, area: q.area, unit: q.unit,
-      op: p.op, agg: q.agg, target, baseline: q.baseline, rank, xp: xpFor(rank, 'penalty'),
-      // The section already says "Penalty quest", so the title reads like a daily one: "Push 4 pull requests".
-      title: s ? plainTitle(s, p.op, target, 1) : `${q.statName}: ${fmt(target, q.unit)} or ${p.op === 'gte' ? 'more' : 'less'}`,
-      reason: `You failed “${q.title}” yesterday.`, parentId: q.id, ref: `penalty:${q.id}`,
-    }).onConflictDoNothing().returning()
-    if (row) issued.push(row)
-  }
-  if (!issued.length) return
-  // One message for all of them: what was missed, then what it costs.
-  await notify(user, 'system', {
-    text: [
-      sysHead('☠️', issued.length === 1 ? 'Penalty quest' : `${issued.length} penalty quests`, `You failed ${failed.length === 1 ? 'a daily quest' : `${failed.length} daily quests`} yesterday.`),
-      '', failed.map((q) => `❌ <s>${esc(q.title)}</s>`).join('\n'),
-      '', blocks(issued), '',
-      '⏳ <i>Clear them today to restore your record.</i>',
+      '⏳ <i>Ends at midnight. Missed quests offer recovery choices, not penalties.</i>',
     ].join('\n'),
     buttons: OPEN,
   })
@@ -199,26 +164,32 @@ async function penalties(user: User, today: string, stats: Stat[]) {
 /** When something slips sharply (spending up 2×, sleep collapsing), the System calls an emergency quest. */
 async function emergencies(user: User, today: string, signals: Signal[], stats: CoachStat[]) {
   await reviewSpending(user, today, signals)
-  if (await restingToday(user, today)) return
+  if (await restingToday(user, today) || await recoveryPaused(user, today)) return
   const recent = await db.select().from(Q).where(and(eq(Q.userId, user.id), eq(Q.kind, 'emergency'), gte(Q.fromDate, addDays(today, -7))))
   if (recent.some((q) => q.status === 'active')) return
   const links = findLinks(signals)
   const history = await recentHistory(user, today)
-  if (history.filter((q) => q.status === 'active' && q.toDate >= today).length >= 3) return
-  const candidates = questCandidates(stats, user.profile.improve ?? [], 2, history, today)
+  const start = addDays(today, 1)
+  if (history.filter((q) => q.status === 'active' && q.fromDate <= start && q.toDate >= start).length >= 3) return
+  const candidates = questCandidates(stats, user.profile.improve ?? [], 2, history, today, start)
   const eligible = new Set(candidates.map((c) => c.statId))
   const bad = findChanges(signals, links, today).find((c) => eligible.has(c.signal.id) && tone(c.signal, c.pct) === 'bad' && Math.abs(c.pct) >= 0.3 && !recent.some((q) => q.statId === c.signal.id))
   if (!bad) return
   const candidate = candidates.find((c) => c.statId === bad.signal.id)!
+  const decisionKey = `system:correction-rest:${today}:${candidate.statId}`
+  const [declined] = await db.select({ id: schema.insights.id }).from(schema.insights).where(and(eq(schema.insights.userId, user.id), sql`${schema.insights.payload}->>'dedupeKey' = ${decisionKey}`)).limit(1)
+  if (declined) return
   const d = 2
   const selected = await aiDailies(user, [candidate], signals, history, today, 'system.emergency-quest')
-  if (selected != null && !selected.includes(candidate.statId)) return
+  if (selected != null && !selected.includes(candidate.statId)) {
+    await addInsight(user, { kind: 'nudge', status: 'done', title: 'No corrective quest needed', body: 'The coach declined a new corrective quest from the available evidence.', payload: { dedupeKey: decisionKey } })
+    return
+  }
   const draft: Draft = { spec: candidate, title: '', reason: describeChange(bad) }
   // A corrective window starts tomorrow; today's irreversible spending cannot fail a new quest immediately.
-  const start = addDays(today, 1)
   const rows = toRows(user, 'emergency', [draft], stats, d, start, (x) => `emergency:${x.id}:${today}`)
   if (!rows.length) return
-  const [row] = await db.insert(Q).values(rows).onConflictDoNothing().returning()
+  const [row] = await insertCoachQuests(user, today, rows)
   if (!row) return
   await notify(user, 'system', {
     text: [
@@ -243,14 +214,14 @@ async function reviewSpending(user: User, today: string, signals: Signal[]) {
 
 /** Check every open quest against the data: pay cleared ones, fail expired ones. */
 async function judgeAll(user: User, today: string, signals: Signal[]) {
-  const open = await db.select().from(Q).where(and(eq(Q.userId, user.id), eq(Q.status, 'active')))
+  const open = await db.select().from(Q).where(and(eq(Q.userId, user.id), eq(Q.status, 'active'), ne(Q.kind, 'penalty')))
   const cleared: SystemQuest[] = []
   for (const q of open) {
     if (q.fromDate > today) continue
     const sig = signals.find((s) => s.id === q.statId)
     const { value, status } = questProgress(q, sig, today)
-    await db.update(Q).set({ progress: value, status, resolvedAt: status === 'active' ? null : new Date() }).where(and(eq(Q.id, q.id), eq(Q.status, 'active')))
-    if (status === 'cleared') cleared.push({ ...q, status, progress: value })
+    const [changed] = await db.update(Q).set({ progress: value, status, resolvedAt: status === 'active' ? null : new Date() }).where(and(eq(Q.id, q.id), eq(Q.userId, user.id), eq(Q.status, 'active'))).returning()
+    if (changed?.status === 'cleared') cleared.push(changed)
   }
   if (cleared.length) {
     const before = levelFor(await totalXp(user)).level
@@ -295,8 +266,8 @@ let running: Promise<void> | null = null
 let lastEmergencyCheck = 0
 
 /**
- * One pass of the System, safe to run often: judge open quests, hand out penalties for yesterday's
- * failures, make sure today's daily quests exist, and once an hour look for an emergency.
+ * Judge open quests, offer recovery after recorded misses, and issue eligible dailies unless paused.
+ * Review significant changes at most once an hour.
  */
 export function systemTick(user: User, now = new Date()) {
   running ??= (async () => {
@@ -309,27 +280,27 @@ export function systemTick(user: User, now = new Date()) {
       const signals = [...base, ...habits.filter((h) => h.offer)]
       const stats = coachStats(signals, today)
       await judgeAll(user, today, [...base, ...habits])
-      await penalties(user, today, stats)
-      // A stat already under a penalty quest today doesn't also get a daily quest.
-      const penalized = await db.select({ id: Q.statId }).from(Q).where(and(eq(Q.userId, user.id), eq(Q.kind, 'penalty'), eq(Q.fromDate, today)))
-      const taken = new Set(penalized.map((p) => p.id))
-      await ensureDailies(user, today, signals, stats.filter((x) => !taken.has(x.id)))
+      const recovery = await prepareRecovery(user, now, [...base, ...habits], stats)
+      if (recovery?.created) {
+        await notify(user, 'system', { text: sysHead('', 'Choose what helps today', 'New quests are paused today. Open Today to choose a smaller step, rest, or review your priorities.'), ref: `insight:${recovery.id}`, buttons: OPEN })
+      }
+      if (!await recoveryPaused(user, today)) await ensureDailies(user, today, signals, stats)
       if (Date.now() - lastEmergencyCheck > 55 * 60_000) { lastEmergencyCheck = Date.now(); await emergencies(user, today, signals, stats) }
     } finally { running = null }
   })()
   return running
 }
 
-/** At 21:00: what's still open, with the penalty that follows. */
+/** At 21:00: a gentle summary of open quests, without a penalty threat. */
 export async function systemWarning(user: User, now = new Date()) {
   const today = localDate(now, user.timezone)
-  const open = await db.select().from(Q).where(and(eq(Q.userId, user.id), eq(Q.status, 'active'), inArray(Q.kind, ['daily', 'penalty']), eq(Q.toDate, today)))
+  const open = await db.select().from(Q).where(and(eq(Q.userId, user.id), eq(Q.status, 'active'), inArray(Q.kind, ['daily', 'recovery']), eq(Q.toDate, today)))
   if (!open.length) return
   await notify(user, 'system', {
     text: [
       sysHead('⏳', '3 hours remain', open.length === 1 ? 'One quest is still open.' : `${open.length} quests are still open.`),
       '', blocks(open, { progress: true }), '',
-      '☠️ <i>Unfinished daily quests become penalty quests at midnight.</i>',
+      '<i>Leave space for rest. Missed daily quests offer recovery choices tomorrow.</i>',
     ].join('\n'),
     buttons: OPEN,
   })
@@ -341,8 +312,8 @@ export async function systemBoard(user: User, now = new Date()) {
   const rows = await db.select().from(Q).where(and(eq(Q.userId, user.id), gte(Q.toDate, addDays(today, -1)))).orderBy(Q.createdAt)
   const shown = rows.filter((q) => q.status === 'active' || q.toDate >= today || (q.resolvedAt && localDate(q.resolvedAt, user.timezone) === today))
   const history = await recentHistory(user, today)
-  const d = difficulty(history.filter((q) => q.kind === 'daily' && q.status !== 'active').map((q) => q.status as 'cleared' | 'failed'))
+  const d = difficulty(history.filter((q) => q.kind === 'daily' && (q.status === 'cleared' || q.status === 'failed')).map((q) => q.status as 'cleared' | 'failed'))
   // Only worth the extra query when there's nothing to show yet.
   const hasData = shown.length > 0 || (await loadSignals(user, now)).signals.some((s) => s.direction !== 'none')
-  return { quests: shown, difficulty: d, today, hasData }
+  return { quests: shown, difficulty: d, today, hasData, recovery: await getRecovery(user, now) }
 }

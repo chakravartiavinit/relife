@@ -10,10 +10,10 @@ export async function generate<TOOLS extends ToolSet = {}, OUTPUT extends Output
 ): Promise<GenerateTextResult<TOOLS, OUTPUT>> {
   const started = Date.now()
   const m = modelId(task) ?? 'unknown'
-  const runtime = prepareRuntime(args)
+  const runtime = prepareRuntime(task, label, args)
   try {
     const res = await generateText(runtime.args)
-    await db.insert(schema.llmRuns).values(successfulRun(label, m, Date.now() - started, res.totalUsage)).catch(() => {})
+    await db.insert(schema.llmRuns).values(successfulRun(label, m, Date.now() - started, res.totalUsage, res.finishReason)).catch(() => {})
     return res
   } catch (err) {
     await db.insert(schema.llmRuns).values(failedRun(label, m, Date.now() - started, err, runtime.timeoutSignal, args.abortSignal)).catch(() => {})

@@ -191,7 +191,7 @@ async function Today() {
         <aside className="flex flex-col gap-6 [&>*:last-child]:flex-1" aria-label="Also today">
           <Quests
             system={{
-              difficulty: system.difficulty, hasData: system.hasData, timezone: user.timezone,
+              difficulty: system.difficulty, hasData: system.hasData, timezone: user.timezone, recovery: system.recovery,
               quests: system.quests.map((q) => ({
                 id: q.id, kind: q.kind, title: q.title, reason: q.reason, rank: q.rank, xp: q.xp, status: q.status,
                 progress: q.progress, target: q.target, op: q.op, unit: q.unit, toDate: q.toDate, statId: q.statId, area: q.area,

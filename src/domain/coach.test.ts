@@ -76,8 +76,19 @@ test('selection rejects invented IDs, deduplicates and caps the total active loa
   assert.deepEqual(selectQuests(cs, ['a'], [history(), history(), history()], today), [])
 })
 
-test('an active quest blocks a conflicting candidate, including a future recovery window', () => {
-  assert.deepEqual(candidates([signal()], [history({ statId: 'tracker:practice', fromDate: addDays(today, 1), toDate: addDays(today, 1) })]), [])
+test('active conflicts and load are evaluated on the proposed quest date', () => {
+  const future = history({ statId: 'tracker:practice', fromDate: addDays(today, 1), toDate: addDays(today, 1) })
+  assert.equal(candidates([signal()], [future]).length, 1)
+  assert.deepEqual(questCandidates(coachStats([signal()], today), [], 2, [future], today, addDays(today, 1)), [])
+})
+
+test('count precision and one-day hit rates survive a missing yesterday', () => {
+  const s = signal({}, 3, 2)
+  s.days.delete(addDays(today, -1))
+  const [q] = candidates([s])
+  assert.equal(Number.isInteger(q.target), true)
+  assert.equal(coachStats([s], today)[0].history?.length, 0)
+  assert.equal(coachStats([s], today)[0].observations?.length, 27)
 })
 
 test('selection allows at most one spending habit and respects yesterday\'s completion', () => {
@@ -117,9 +128,9 @@ test('future quests do not consume today\'s values or clear early', () => {
 
 test('missing or partial reduction data cannot earn completion; explicit zero can', () => {
   const q = { fromDate: addDays(today, -2), toDate: addDays(today, -1), agg: 'sum' as const, op: 'lte' as const, target: 50 }
-  assert.deepEqual(questProgress(q, undefined, today), { value: null, status: 'failed' })
+  assert.deepEqual(questProgress(q, undefined, today), { value: null, status: 'unverified' })
   const s = signal({ days: new Map([[q.fromDate, 0]]) })
-  assert.deepEqual(questProgress(q, s, today), { value: null, status: 'failed' })
+  assert.deepEqual(questProgress(q, s, today), { value: null, status: 'unverified' })
   s.days.set(q.toDate, 0)
   assert.deepEqual(questProgress(q, s, today), { value: 0, status: 'cleared' })
 })
@@ -130,5 +141,5 @@ test('averaged increases wait for the complete quest window', () => {
   assert.equal(questProgress(q, s, today).status, 'active')
   assert.equal(questProgress(q, s, addDays(today, 2)).status, 'cleared')
   s.days.delete(q.toDate)
-  assert.deepEqual(questProgress(q, s, addDays(today, 2)), { value: null, status: 'failed' })
+  assert.deepEqual(questProgress(q, s, addDays(today, 2)), { value: null, status: 'unverified' })
 })

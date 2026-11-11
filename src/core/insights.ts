@@ -25,6 +25,8 @@ export async function acceptInsight(user: User, id: string) {
   const [ins] = await db.select().from(schema.insights)
     .where(and(eq(schema.insights.id, id), eq(schema.insights.userId, user.id)))
   if (!ins || ins.status !== 'pending') return ins
+  // Recovery decisions need an explicit versioned choice in core/recovery.ts.
+  if (ins.payload.recovery) return null
   for (const a of ins.payload.actions ?? []) await applyAction(user, a)
   if (ins.kind === 'plan') {
     await db.insert(schema.plans).values({ userId: user.id, goal: ins.title, insightId: ins.id })
@@ -34,8 +36,12 @@ export async function acceptInsight(user: User, id: string) {
 }
 
 export async function dismissInsight(user: User, id: string) {
+  const [ins] = await db.select({ payload: schema.insights.payload }).from(schema.insights)
+    .where(and(eq(schema.insights.id, id), eq(schema.insights.userId, user.id)))
+  if (ins?.payload.recovery) return false
   await db.update(schema.insights).set({ status: 'dismissed' })
     .where(and(eq(schema.insights.id, id), eq(schema.insights.userId, user.id)))
+  return true
 }
 
 async function applyAction(user: User, a: ProposedAction) {

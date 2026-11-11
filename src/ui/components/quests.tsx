@@ -14,6 +14,7 @@ import { Capsule } from './capsule'
 import { announceXp, useToast } from './toast'
 import { cn } from '../cn'
 import { SystemQuests, type SystemQuestItem } from './system-quests'
+import type { RecoveryView } from '@/domain/recovery'
 import { EASE_OUT_STRONG } from '@/ui/beui/lib/ease'
 
 export type QuestItem = { key: string; title: string; area: string; measure: QuestMeasure; target: number; progress: number; done: boolean; rarity: Rarity }
@@ -32,7 +33,7 @@ const areaColor = (a: string) => (a in CATEGORY ? CATEGORY[a as keyof typeof CAT
 
 /** Today's quests, this week's quest, chests waiting to be opened and streak freezes held. */
 export function Quests({ system, weekly, chests, freezes, frozeOn, weekLeft }: {
-  system: { quests: SystemQuestItem[]; difficulty: number; hasData: boolean; timezone: string }
+  system: { quests: SystemQuestItem[]; difficulty: number; hasData: boolean; timezone: string; recovery?: RecoveryView | null }
   weekly: QuestItem[]; chests: ChestItem[]; freezes: number; frozeOn: string[]; weekLeft: number
 }) {
   const [opening, setOpening] = useState(false)

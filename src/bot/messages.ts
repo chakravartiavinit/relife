@@ -96,13 +96,15 @@ export async function todayView(user: User, now = new Date()): Promise<{ text: s
 
   // The System's quests first: they're checked off by your data, not by tapping.
   if (system.quests.length) {
-    const label = { daily: '⚔️ Daily quests', penalty: '☠️ Penalty quest', emergency: '🚨 Emergency quest' } as const
-    for (const k of ['emergency', 'penalty', 'daily'] as const) {
+    const label = { daily: '⚔️ Daily quests', penalty: 'Retired penalty history', emergency: 'Corrective quest', recovery: 'Chosen recovery step' } as const
+    for (const k of ['recovery', 'emergency', 'daily', 'penalty'] as const) {
       const qs = system.quests.filter((q) => q.kind === k)
       if (!qs.length) continue
       lines.push('', `<b>${label[k]}</b>${k === 'daily' ? ` · ${qs.filter((q) => q.status === 'cleared').length}/${qs.length}` : ''}`, ...qs.map(questLine))
     }
   }
+
+  if (system.recovery) lines.push('', '<b>Recovery choices</b>', 'New quests are paused today. Open Today to choose a smaller step, rest, or review your priorities.')
 
   const goals = agenda.filter((i) => (i.schedule.meta as ScheduleMeta).trackerSlug && i.schedule.target && !isPayment(i.schedule))
   const goalIds = new Set(goals.map((g) => g.schedule.id))

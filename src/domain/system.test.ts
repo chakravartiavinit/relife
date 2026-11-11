@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { difficulty, fairTarget, hitRate, fallbackQuests, judge, penaltyFor, rankFor, stretch, windowValue, xpFor, type Stat } from './system'
+import { difficulty, fairTarget, hitRate, judge, round, rankFor, stretch, windowValue, xpFor, type Stat } from './system'
 
 const stat = (o: Partial<Stat> = {}): Stat => ({ id: 'steps', name: 'Steps', area: 'health', unit: null, direction: 'up', agg: 'sum', usual: 6000, recent: 5500, daysLogged: 30, ...o })
 
@@ -49,6 +49,7 @@ test('judge clears "more" quests early and only settles "less" quests after the 
   assert.equal(judge(more, 7200, '2026-11-07'), 'cleared')
   assert.equal(judge(more, 5000, '2026-11-07'), 'active')
   assert.equal(judge(more, 5000, '2026-11-08'), 'failed')
+  assert.equal(judge(more, null, '2026-11-08'), 'unverified')
   const less = { op: 'lte' as const, target: 400, to: '2026-11-07', agg: 'sum' as const }
   assert.equal(judge(less, 100, '2026-11-07'), 'active')
   assert.equal(judge(less, 500, '2026-11-07'), 'failed')
@@ -63,14 +64,7 @@ test('windowValue totals counts and averages measures', () => {
   assert.equal(windowValue(new Map(), '2026-11-06', '2026-11-06', 'sum'), null)
 })
 
-test('penalty is the same quest a stretch harder; fallback favours focus stats', () => {
-  assert.ok(penaltyFor({ op: 'gte', target: 100, agg: 'sum' }, 2).target > 100)
-  assert.ok(penaltyFor({ op: 'lte', target: 100, agg: 'sum' }, 2).target < 100)
-  // Counts stay whole and always go up by at least one: 3 pull requests becomes 4, never 3.5.
-  const prs = { usual: 2.9, unit: null, history: [3, 2, 4, 3] }
-  assert.equal(penaltyFor({ op: 'gte', target: 3, agg: 'sum' }, 2, prs).target, 4)
-  assert.equal(penaltyFor({ op: 'gte', target: 23, agg: 'sum' }, 2, prs).target % 1, 0)
-  const qs = fallbackQuests([stat(), stat({ id: 'mood', name: 'Mood', usual: 3.5, recent: 3, agg: 'avg' })], ['mood'], 2, 1)
-  assert.equal(qs[0].statId, 'mood')
-  assert.equal(qs[0].target, 3.9)
+test('observed integer counts stay whole even when gap-free history is empty', () => {
+  assert.equal(round(2.2, { usual: 3, history: [], observations: [3, 2, 4, 3] }), 2)
+  assert.equal(round(2.2, { usual: 3, history: [] }), 2.2)
 })

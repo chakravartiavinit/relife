@@ -3,7 +3,8 @@ import {
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 import type { NotifyCategory, NotifyPrefs } from '@/domain/notify'
-import type { Agg, Op, Rank, SystemKind } from '@/domain/system'
+import type { Agg, Op, QuestStatus, Rank, SystemKind } from '@/domain/system'
+import type { RecoveryPayload } from '@/domain/recovery'
 import type { ActivityKind, LibraryKind } from '@/domain/activity'
 
 const bytea = customType<{ data: Buffer }>({ dataType: () => 'bytea' })
@@ -326,7 +327,7 @@ export const insights = pgTable('insights', {
   title: text('title').notNull(),
   body: text('body').notNull(),
   // proposed actions the user can approve, e.g. [{ type: 'schedule', ... }]
-  payload: jsonb('payload').$type<{ actions?: ProposedAction[]; dedupeKey?: string; emoji?: string; meta?: string; review?: ReviewContent }>().notNull().default({}),
+  payload: jsonb('payload').$type<{ actions?: ProposedAction[]; dedupeKey?: string; emoji?: string; meta?: string; recovery?: RecoveryPayload; review?: ReviewContent }>().notNull().default({}),
   status: text('status').$type<'pending' | 'accepted' | 'dismissed' | 'done'>().notNull().default('pending'),
   sourceRunId: uuid('source_run_id'),
   ...stamps(),
@@ -423,7 +424,7 @@ export const systemQuests = pgTable('system_quests', {
   xp: integer('xp').notNull(),
   title: text('title').notNull(),
   reason: text('reason'),
-  status: text('status').$type<'active' | 'cleared' | 'failed'>().notNull().default('active'),
+  status: text('status').$type<QuestStatus>().notNull().default('active'),
   progress: num('progress'),
   parentId: uuid('parent_id'),
   ref: text('ref').notNull(),

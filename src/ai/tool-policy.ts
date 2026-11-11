@@ -2,7 +2,7 @@ import { addDays, daysBetween } from '@/core/time'
 
 export const MAX_HISTORY_DAYS = 90
 const nonMedicineScheduleKinds = ['routine', 'subscription', 'bill', 'renewal'] as const
-const scheduleKinds = [...nonMedicineScheduleKinds, 'medicine'] as const
+const medicationOrDose = /\b(?:medicine|medications?|meds?|prescriptions?|pills?|tablets?|capsules?|dosages?|doses?|vitamins?|supplements?|melatonin|insulin|syrup)(?=\b|\d)|\b\d+(?:\.\d+)?\s*(?:mg|mcg|µg|iu)\b/i
 
 /** True only for an actual Gregorian calendar date, not merely a YYYY-MM-DD-shaped string. */
 export function isLocalDate(value: string) {
@@ -14,9 +14,9 @@ export function isLocalDate(value: string) {
 type DateRange = { from?: string; to?: string }
 
 /** Resolves an inclusive local-date range without allowing future or overlong history reads. */
-export function resolveHistoryRange(today: string, input: DateRange, defaultFrom: string) {
-  const from = input.from ?? defaultFrom
+export function resolveHistoryRange(today: string, input: DateRange, defaultFrom: (to: string) => string) {
   const to = input.to ?? today
+  const from = input.from ?? defaultFrom(to)
   if (!isLocalDate(from) || !isLocalDate(to)) return { error: 'Dates must be real YYYY-MM-DD calendar dates.' } as const
   if (from > to) return { error: 'The start date must be on or before the end date.' } as const
   if (to > today) return { error: 'Date ranges cannot include future dates.' } as const
@@ -24,18 +24,13 @@ export function resolveHistoryRange(today: string, input: DateRange, defaultFrom
   return { from, to } as const
 }
 
-/** A medicine tool is available only when the user explicitly raised medication. */
-export function hasExplicitMedicineIntent(question: string) {
-  return /\b(medicine|medication|medications|meds?|prescription|pill|pills|tablet|tablets|dosage|dose|vitamin|supplement)\b/i.test(question)
+export function allowedScheduleKinds() {
+  return nonMedicineScheduleKinds
 }
 
-export function allowedScheduleKinds(allowMedicine: boolean) {
-  return allowMedicine ? scheduleKinds : nonMedicineScheduleKinds
-}
-
-/** Medicine proposals may create a reminder only; generic quantity fields could encode a dose. */
-export function canProposeSchedule(kind: string, target?: number, unit?: string) {
-  return kind !== 'medicine' || (target === undefined && unit === undefined)
+/** AI schedule suggestions never create medicine reminders or encode medication/dosage in another kind. */
+export function isSafeAiScheduleProposal(kind: string, ...text: (string | undefined)[]) {
+  return kind !== 'medicine' && !text.some((value) => value != null && medicationOrDose.test(value))
 }
 
 export function defaultMetricFrom(today: string) {

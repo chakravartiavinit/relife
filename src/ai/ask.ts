@@ -4,7 +4,6 @@ import { aiEnabled, model } from './models'
 import { generate } from './run'
 import { COACH_SYSTEM, digestText } from './context'
 import { dataTools } from './tools'
-import { hasExplicitMedicineIntent } from './tool-policy'
 
 /** "Ask your data" for Telegram /ask and the dashboard. Never throws. */
 export async function askData(question: string): Promise<{ answer: string; error?: string }> {
@@ -17,9 +16,9 @@ export async function askData(question: string): Promise<{ answer: string; error
     const user = await getUser()
     const res = await generate('chat', 'chat.ask', {
       model: model('chat'),
-      system: `${COACH_SYSTEM}\nAnswer the question using the digest and tools. Use tools for exact numbers. If you suggest a new routine, call propose_schedule so the user can approve it. Do not suggest medicine or dosage changes unless the user explicitly asks about their existing medication. Never recommend, set, or change a dose. Reply in plain text, under 120 words.\nDigest: ${await digestText(user)}`,
+      system: `${COACH_SYSTEM}\nAnswer the question using the digest and tools. Use tools for exact numbers. If you suggest a new routine, call propose_schedule so the user can approve it. Never suggest medicine or dosage changes. For a medicine reminder, direct the user to the existing medicine form. Reply in plain text, under 120 words.\nDigest: ${await digestText(user)}`,
       prompt: q,
-      tools: dataTools(user, { allowMedicine: hasExplicitMedicineIntent(q) }),
+      tools: dataTools(user),
       stopWhen: stepCountIs(6),
     })
     return { answer: res.text.trim() || 'I could not find an answer in your data.' }

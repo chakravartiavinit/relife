@@ -259,7 +259,7 @@ const COMMANDS = [
 const DESCRIPTION = [
   'ReLife turns your real life into a game. The System reads your own data (spending, sleep, steps, commits, mood) and sets daily quests to make you stronger.',
   '',
-  'Clear quests for XP, levels and reward boxes. Miss one and a penalty quest follows. Reminders, a /today checklist and nudges arrive here too.',
+  'Clear quests for XP, levels and reward boxes. Missed daily quests pause new quests and offer recovery choices, not penalties. Reminders, a /today checklist and nudges arrive here too.',
   '',
   'Start with /quests or /status, or just type: "water 500", "mood 4", "spent 120 chai".',
 ].join('\n')

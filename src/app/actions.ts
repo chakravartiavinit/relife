@@ -412,6 +412,21 @@ export async function summonSystem() {
   refresh()
 }
 
+/** Today: explicitly choose a recovery response; the server owns the exact preview and target. */
+export async function chooseQuestRecovery(input: unknown) {
+  const parsed = z.object({ insightId: z.string().uuid(), version: z.number().int().positive(), choice: z.enum(['smaller', 'rest', 'priorities']) }).safeParse(input)
+  if (!parsed.success) return { ok: false as const, error: 'This recovery choice is invalid. Refresh and try again.' }
+  try {
+    const { chooseRecovery } = await import('@/core/recovery')
+    const result = await chooseRecovery(await getUser(), parsed.data)
+    refresh()
+    if (result.status === 'accepted' || result.status === 'already_chosen') return { ok: true as const, choice: result.view.choice }
+    return { ok: false as const, retryOnly: false, error: result.status === 'stale' ? 'This preview changed or expired. Review the current choices before trying again.' : result.status === 'unavailable' ? 'This smaller step is no longer available. Rest or review your priorities instead.' : 'This recovery choice is no longer available. Refresh Today.' }
+  } catch {
+    return { ok: false as const, retryOnly: true, error: 'Could not confirm your choice. Retry to check and save it safely.' }
+  }
+}
+
 /** Settings → The System: which stats to train first. */
 export async function saveSystemFocus(ids: string[]) {
   const user = await getUser()

@@ -1,21 +1,24 @@
 'use client'
 
 import { useEffect, useState, useTransition } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   Bike, BookOpen, Check, CircleDot, Cookie, CupSoda, Droplet, Footprints, GitCommitHorizontal, GitPullRequest, GraduationCap, Laptop, Loader2,
-  MessageSquareCode, Moon, MoonStar, Puzzle, ShoppingBag, Siren, Skull, Smartphone, Smile, Sparkles, Target, Tv, Wallet, X, Zap, type LucideIcon,
+  MessageSquareCode, Moon, MoonStar, Puzzle, ShoppingBag, Siren, Smartphone, Smile, Sparkles, Target, Tv, Wallet, X, Zap, type LucideIcon,
 } from 'lucide-react'
 import { CATEGORY } from '../tokens'
-import { summonSystem } from '@/app/actions'
+import { chooseQuestRecovery, summonSystem } from '@/app/actions'
 import { formatValue } from '@/domain/patterns'
-import type { Rank, SystemKind } from '@/domain/system'
-import { Button } from './button'
+import type { QuestStatus, Rank, SystemKind } from '@/domain/system'
+import type { RecoveryChoice, RecoveryView } from '@/domain/recovery'
+import { Button, buttonClass } from './button'
 import { Capsule } from './capsule'
 import { cn } from '../cn'
 
 export type SystemQuestItem = {
   id: string; kind: SystemKind; title: string; reason: string | null; rank: Rank; xp: number
-  status: 'active' | 'cleared' | 'failed'; progress: number | null; target: number; op: 'gte' | 'lte'
+  status: QuestStatus; progress: number | null; target: number; op: 'gte' | 'lte'
   unit: string | null; toDate: string
   /** What it measures (github.commits, spend:apps, habit:item:diet coke…) and its life area, for the icon and colour. */
   statId?: string; area?: string
@@ -25,10 +28,11 @@ export const RANK_COLOR: Record<Rank, string> = {
   E: 'var(--ink-3)', D: 'var(--good)', C: 'var(--sky)', B: 'var(--pill)', A: 'var(--medal-gold)', S: 'var(--medal-sakura)',
 }
 
-const GROUP: Record<SystemKind, { label: string; color: string; icon?: typeof Skull }> = {
+const GROUP: Record<SystemKind, { label: string; color: string; icon?: LucideIcon }> = {
   daily: { label: 'Daily quest', color: 'var(--pill-ink)' },
-  penalty: { label: 'Penalty quest', color: 'var(--bad)', icon: Skull },
-  emergency: { label: 'Emergency quest', color: 'var(--warn)', icon: Siren },
+  penalty: { label: 'Retired quest history', color: 'var(--ink-3)' },
+  emergency: { label: 'Corrective quest', color: 'var(--pill-ink)', icon: Siren },
+  recovery: { label: 'Chosen recovery step', color: 'var(--pill-ink)' },
 }
 
 /** Time left until midnight in the user's time zone (not the browser's), ticking each minute. */
@@ -49,9 +53,9 @@ function useUntilMidnight(timeZone: string) {
 }
 
 /** The System's quests: daily ones set from your data, plus any penalty or emergency quest. */
-export function SystemQuests({ quests, difficulty, hasData, timezone }: { quests: SystemQuestItem[]; difficulty: number; hasData: boolean; timezone: string }) {
+export function SystemQuests({ quests, difficulty, hasData, timezone, recovery }: { quests: SystemQuestItem[]; difficulty: number; hasData: boolean; timezone: string; recovery?: RecoveryView | null }) {
   const left = useUntilMidnight(timezone)
-  const kinds = (['emergency', 'penalty', 'daily'] as const).filter((k) => quests.some((q) => q.kind === k))
+  const kinds = (['recovery', 'emergency', 'daily', 'penalty'] as const).filter((k) => quests.some((q) => q.kind === k))
   const dailies = quests.filter((q) => q.kind === 'daily')
   const cleared = dailies.filter((q) => q.status === 'cleared').length
 
@@ -67,6 +71,7 @@ export function SystemQuests({ quests, difficulty, hasData, timezone }: { quests
         </span>
       </div>
 
+      {recovery ? <RecoveryPanel recovery={recovery} /> : null}
       {quests.length ? (
         <div className="flex flex-col gap-4">
           {kinds.map((k) => {
@@ -85,15 +90,80 @@ export function SystemQuests({ quests, difficulty, hasData, timezone }: { quests
           {dailies.length && cleared === dailies.length ? (
             <p className="flex items-center gap-1.5 text-[12.5px] font-medium text-good"><Sparkles className="size-3.5" strokeWidth={2} aria-hidden />All daily quests cleared. A reward box was granted.</p>
           ) : dailies.length ? (
-            <p className="text-[12px] text-ink-3">Unfinished daily quests turn into penalty quests at midnight.</p>
+            <p className="text-[12px] text-ink-3">Missed daily quests offer recovery choices, not penalties.</p>
           ) : null}
         </div>
-      ) : <Summon hasData={hasData} />}
+      ) : !recovery ? <Summon hasData={hasData} /> : null}
     </div>
   )
 }
 
-const ORDER = { active: 0, cleared: 1, failed: 2 } as const
+const ORDER: Record<QuestStatus, number> = { active: 0, cleared: 1, failed: 2, unverified: 3, cancelled: 4 }
+
+/** An explicit choice, never a new commitment until the server confirms it. */
+export function RecoveryPanel({ recovery }: { recovery: RecoveryView }) {
+  const router = useRouter()
+  const [pending, start] = useTransition()
+  const [attempt, setAttempt] = useState<RecoveryChoice | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [retryOnly, setRetryOnly] = useState(false)
+  const choose = (choice: RecoveryChoice) => {
+    setAttempt(choice)
+    setError(null)
+    start(async () => {
+      try {
+        const result = await chooseQuestRecovery({ insightId: recovery.id, version: recovery.version, choice })
+        if (!result.ok) { setError(result.error); setRetryOnly('retryOnly' in result && result.retryOnly === true) }
+        else if (result.choice === 'priorities') router.push('/settings#system')
+      } catch {
+        setError('Could not confirm your choice. Retry to check and save it safely.')
+        setRetryOnly(true)
+      }
+      router.refresh()
+    })
+  }
+  const preview = recovery.preview
+  const saved = recovery.choice
+  return (
+    <section aria-label="Recovery choices" aria-busy={pending} className="mb-4 rounded-[14px] bg-ink/[0.025] p-3 dark:bg-white/[0.035]">
+      {saved ? (
+        <div role="status" className="flex flex-col gap-2.5">
+          <h3 className="flex items-center gap-1.5 text-[13.5px] font-medium text-ink"><Check className="size-4 text-good" strokeWidth={2} aria-hidden />{saved === 'rest' ? 'Rest today is saved.' : saved === 'smaller' ? 'Your smaller step is saved.' : 'Priorities review selected.'}</h3>
+          {saved === 'smaller' && preview ? <p className="text-[13px] text-ink-2">{preview.title}</p> : null}
+          <p className="text-[12.5px] leading-relaxed text-ink-3">{saved !== 'smaller' ? 'No recovery quest added. ' : ''}New quests stay paused until tomorrow.</p>
+          {saved === 'priorities' ? <Link href="/settings#system" className={buttonClass({ variant: 'secondary', size: 'lg' })}>Open priorities</Link> : null}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          <div>
+            <h3 className="text-[13.5px] font-medium text-ink">Choose what helps today</h3>
+            <p className="mt-1 text-[12.5px] leading-relaxed text-ink-3">Was yesterday too much, do you need rest, or have your priorities changed? New quests are paused today.</p>
+          </div>
+          <ul className="flex flex-col gap-2">
+            {recovery.missed.map((q) => <li key={q.id} className="text-[12.5px] leading-relaxed text-ink-2"><span className="font-medium">{q.title}</span><span className="block text-ink-3 tabular-nums">Yesterday · {q.progress == null ? 'No data' : formatValue(q.progress, q.unit)} of {formatValue(q.target, q.unit)}</span></li>)}
+          </ul>
+          {preview ? (
+            <div className="rounded-md bg-surface p-3">
+              <p className="text-[11.5px] text-ink-3">Optional smaller step</p>
+              <p className="mt-1 text-[13.5px] leading-relaxed font-medium text-ink">{preview.title}</p>
+              <p className="mt-1 text-[11.5px] text-ink-3 tabular-nums">{preview.fromDate === recovery.localDate ? 'Today' : 'Tomorrow'} · {preview.fromDate} · Rank {preview.rank} · {preview.xp} XP</p>
+            </div>
+          ) : <p id={`recovery-unavailable-${recovery.id}`} className="text-[12.5px] leading-relaxed text-ink-3">No safe smaller step is available from the current data. Rest or review your priorities instead.</p>}
+          {error ? <p role="alert" className="text-[12.5px] leading-relaxed text-bad">{error}</p> : null}
+          {pending ? <p role="status" className="text-[12.5px] leading-relaxed text-ink-3">Saving your choice. No recovery quest is confirmed yet.</p> : null}
+          <div className="flex flex-col gap-2.5">
+            <Button size="lg" variant="primary" disabled={pending || !preview || (retryOnly && attempt !== 'smaller')} aria-describedby={!preview ? `recovery-unavailable-${recovery.id}` : undefined} onClick={() => choose('smaller')}>
+              {pending && attempt === 'smaller' ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden /> : null}
+              {pending && attempt === 'smaller' ? 'Adding smaller step…' : error && attempt === 'smaller' ? 'Retry smaller step' : 'Take the smaller step'}
+            </Button>
+            <Button size="lg" variant="secondary" disabled={pending || (retryOnly && attempt !== 'rest')} onClick={() => choose('rest')}>{pending && attempt === 'rest' ? 'Saving rest…' : error && attempt === 'rest' ? 'Retry rest choice' : 'Rest today'}</Button>
+            <Button size="lg" variant="ghost" disabled={pending || (retryOnly && attempt !== 'priorities')} onClick={() => choose('priorities')}>{pending && attempt === 'priorities' ? 'Saving priorities choice…' : error && attempt === 'priorities' ? 'Retry priorities choice' : 'Update priorities'}</Button>
+          </div>
+        </div>
+      )}
+    </section>
+  )
+}
 
 /** An icon for what a quest measures; the life area's icon when nothing more specific fits. */
 const STAT_ICON: [RegExp, LucideIcon][] = [
@@ -119,6 +189,7 @@ function QuestRow({ q }: { q: SystemQuestItem }) {
   const over = q.op === 'lte' && value > q.target
   const done = q.status === 'cleared'
   const failed = q.status === 'failed'
+  const neutral = q.status === 'unverified' || q.status === 'cancelled'
   return (
     <li
       className={cn('flex gap-3 rounded-[14px] p-3 transition-[background-color] duration-150', !done && !failed && 'bg-ink/[0.025] dark:bg-white/[0.035]')}
@@ -146,7 +217,9 @@ function QuestRow({ q }: { q: SystemQuestItem }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
           <p className={cn('text-[13.5px] leading-snug font-medium', done ? 'text-ink-2' : failed ? 'text-ink-3' : 'text-ink')}>{q.title}</p>
-          {done ? (
+          {neutral ? (
+            <span className="inline-flex h-6 shrink-0 items-center rounded-full bg-surface-2 px-2 text-[11.5px] font-semibold text-ink-2">{q.status === 'unverified' ? 'No data' : 'Retired'}</span>
+          ) : done ? (
             <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-full bg-good/12 px-2 text-[11.5px] font-semibold text-good tabular-nums"><Check className="size-3.5" strokeWidth={2.5} aria-hidden />+{q.xp} XP</span>
           ) : failed ? (
             <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-full bg-bad/10 px-2 text-[11.5px] font-semibold text-bad"><X className="size-3.5" strokeWidth={2.5} aria-hidden />Failed</span>
@@ -157,7 +230,9 @@ function QuestRow({ q }: { q: SystemQuestItem }) {
         {q.reason ? (
           <p title={q.reason} className={cn('mt-1 text-[12.5px] leading-relaxed text-ink-3 text-pretty', done || failed ? 'line-clamp-1' : 'line-clamp-2')}>{q.reason}</p>
         ) : null}
-        {!done && !failed ? (
+        {neutral ? <p className="mt-1 text-[12.5px] leading-relaxed text-ink-3">{q.status === 'unverified' ? 'No measurement was available. This was not counted as a miss.' : 'This old penalty quest is no longer active. History and earned XP stay unchanged.'}</p> : null}
+        {!done && !failed && !neutral && q.progress == null ? <p className="mt-2 text-[12.5px] text-ink-3">No measurement yet</p> : null}
+        {!done && !failed && !neutral && q.progress != null ? (
           <div className="mt-2 flex items-center gap-2.5">
             <Capsule
               value={Math.min(value, q.target)} max={q.target || 1} size="sm"

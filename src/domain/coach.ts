@@ -28,6 +28,7 @@ export function coachStats(signals: Signal[], today: string): CoachStat[] {
     return {
       id: s.id, name: s.name, area: s.area, unit: s.unit, direction: s.direction, agg: s.agg ?? 'sum',
       usual: mean(baseline), recent: mean(recent), daysLogged: observations.length, history,
+      observations: observations.filter(([d]) => d >= addDays(today, -28)).map(([, v]) => v),
       baselineDays: baseline.length, recentDays: recent.length, lastObserved: observations.at(-1)?.[0] ?? null,
       baselineFrom, baselineTo, recentFrom, recentTo,
     }
@@ -45,16 +46,19 @@ export function canCoach(s: Stat): boolean {
 }
 
 /** Code owns every candidate target. The model may select candidates, not invent new measurements. */
-export function questCandidates(stats: CoachStat[], focus: string[], d: number, history: QuestHistory[], today: string): QuestCandidate[] {
-  const active = new Set(history.filter((q) => q.status === 'active' && q.toDate >= today).map((q) => q.statId))
+export function questCandidates(stats: CoachStat[], focus: string[], d: number, history: QuestHistory[], today: string, startsOn = today): QuestCandidate[] {
+  const active = new Set(history.filter((q) => q.status === 'active' && q.fromDate <= startsOn && q.toDate >= startsOn).map((q) => q.statId))
+  const rested = new Set(history.filter((q) => q.status === 'cleared' && q.toDate === addDays(startsOn, -1)).map((q) => q.statId))
   const candidates = stats.flatMap((s): QuestCandidate[] => {
     if (!canCoach(s) || active.has(s.id) || s.baselineDays < 10 || s.recentDays < 4 || !s.lastObserved || s.lastObserved < addDays(today, -2)) return []
     if (s.usual == null || s.recent == null || s.usual <= 0 || s.recent < 0) return []
     if (s.id.startsWith('habit:') && s.recent <= s.usual) return []
+    if (s.id.startsWith('habit:') && rested.has(s.id)) return []
     const recovery = s.direction === 'up' ? s.recent < s.usual : s.recent > s.usual
     const reference = recovery ? s.recent : s.usual
     if (reference <= 0) return []
     const spec: QuestSpec = { statId: s.id, op: s.direction === 'up' ? 'gte' : 'lte', days: 1, target: reference * (s.direction === 'up' ? 1 + stretch(Math.min(d, 3)) : 1 - stretch(Math.min(d, 3))) }
+    if (s.observations?.length && s.observations.every(Number.isInteger)) spec.target = spec.op === 'gte' ? Math.ceil(spec.target) : Math.floor(spec.target)
     const target = fairTarget(s, spec, Math.min(d, 3))
     if (target == null || (spec.op === 'gte' ? target <= reference : target >= reference)) return []
     const candidate = { ...spec, target, intent: recovery ? 'recovery' as const : 'growth' as const, stat: s }
@@ -76,7 +80,7 @@ export function selectQuests(candidates: QuestCandidate[], ids: string[], histor
     seen.add(id)
     return [c]
   })
-  const active = history.filter((q) => q.status === 'active' && q.toDate >= today).length
+  const active = history.filter((q) => q.status === 'active' && q.fromDate <= today && q.toDate >= today).length
   return balanceHabits(chosen, history, today).slice(0, Math.min(Math.max(0, 3 - active), Math.max(0, limit)))
 }
 
@@ -96,7 +100,7 @@ export function questProgress(q: { fromDate: string; toDate: string; agg: Agg; o
 
 /** A same-day spending spike asks for context; it must never automatically prescribe deprivation. */
 export function spendingSpike(signals: Signal[], today: string): { signal: Signal; current: number; usual: number; n: number } | null {
-  for (const signal of signals.filter((s) => s.id === 'spend:apps' || s.id === 'spend').sort((a) => a.id === 'spend:apps' ? -1 : 1)) {
+  for (const signal of signals.filter((s) => s.id === 'spend:apps' || s.id === 'spend').sort((a, b) => Number(b.id === 'spend:apps') - Number(a.id === 'spend:apps'))) {
     const current = signal.days.get(today)
     const xs = [...signal.days].filter(([d, v]) => d >= addDays(today, -28) && d < today && Number.isFinite(v) && v >= 0).map(([, v]) => v)
     if (current == null || !Number.isFinite(current) || xs.length < 14) continue
