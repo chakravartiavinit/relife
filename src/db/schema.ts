@@ -53,6 +53,8 @@ export type UserProfile = {
   improve?: string[]
   /** Usual wake and bed times ("HH:MM", local), from setup. Quiet hours start from them; the AI reads them too. */
   day?: { wake: string; sleep: string }
+  /** ISO time the Today setup checklist was hidden. */
+  setupHiddenAt?: string
 }
 
 export const users = pgTable('users', {

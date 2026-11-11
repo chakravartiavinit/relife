@@ -583,6 +583,15 @@ export async function aiReady() {
   return { ready: aiEnabled('plan'), model: modelId('plan') ?? null }
 }
 
+/** Today → Finish setting up → Hide: the checklist stays away for good. */
+export async function hideSetupChecklist() {
+  const user = await getUser()
+  await db.update(schema.users).set({ profile: { ...(await freshProfile(user.id)), setupHiddenAt: new Date().toISOString() } }).where(eq(schema.users.id, user.id))
+  const { clearUserCache } = await import('@/core/user')
+  clearUserCache()
+  refresh()
+}
+
 export async function skipOnboardingAction() {
   const user = await getUser()
   const { skipOnboarding } = await import('@/core/onboarding')

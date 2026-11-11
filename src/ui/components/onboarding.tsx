@@ -1,9 +1,12 @@
 import Link from 'next/link'
 import { and, eq, inArray, sql } from 'drizzle-orm'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Check, ChevronRight, Compass } from 'lucide-react'
 import { db, schema } from '@/db'
 import type { User } from '@/core/user'
+import { hideSetupChecklist } from '@/app/actions'
 import { Capsule } from './capsule'
+import { buttonClass } from './button'
+import { cn } from '../cn'
 import { env } from '@/core/env'
 
 export type Step = { id: string; title: string; body: string; href: string; cta: string; done: boolean }
@@ -23,44 +26,90 @@ export async function onboardingSteps(user: User): Promise<Step[]> {
     },
     {
       id: 'goals', title: 'Write what levelling up means to you', cta: 'Set goals', href: '/settings',
-      body: 'Your observer reads this before every suggestion.', done: !!user.profile.goals?.trim(),
+      body: 'Your coach reads this before every suggestion.', done: !!user.profile.goals?.trim(),
     },
     {
-      id: 'telegram', title: 'Get reminders on Telegram', cta: 'Connect', href: '/connectors',
+      id: 'telegram', title: 'Get reminders on Telegram', cta: 'Connect Telegram', href: '/connectors',
       body: 'Check things off with one tap from your phone.', done: has('TELEGRAM_BOT_TOKEN') && has('TELEGRAM_ALLOWED_CHAT_ID'),
     },
     {
-      id: 'sources', title: 'Connect GitHub, Binance or an order app', cta: 'Connect', href: '/connectors',
-      body: 'Commits, trades and what you spend on Zomato, Amazon and others flow in by themselves.',
+      id: 'sources', title: 'Connect GitHub, Binance or an order app', cta: 'Connect an app', href: '/connectors',
+      body: 'Commits, trades and what you spend on Zomato, Amazon and others flow in by themselves, at full XP.',
       done: has('GITHUB_TOKEN') || has('BINANCE_API_KEY'),
     },
     {
       id: 'iphone', title: 'Send steps and sleep from your iPhone', cta: 'Open guide', href: '/connectors',
-      body: 'A few Shortcuts automations. See docs/SHORTCUTS.md.', done: inbox.n > 0,
+      body: 'A few Shortcuts automations, and your step and sleep quests clear themselves.', done: inbox.n > 0,
     },
   ]
 }
 
-/** Side-rail version for Today: progress and the next step only. */
+/**
+ * Today's side rail: every setup step at a glance. Done ones are ticked, the next one is open with its
+ * action, the rest are one line each. The tour's last stop points here; Hide puts it away for good.
+ */
 export function OnboardingCompact({ steps }: { steps: Step[] }) {
   const done = steps.filter((s) => s.done).length
   const next = steps.find((s) => !s.done)
   if (!next) return null
   return (
-    <section aria-labelledby="setup-h" className="rounded-lg bg-surface p-5 shadow-1">
+    <section data-tour="setup" aria-labelledby="setup-h" className="rounded-lg bg-surface p-5 shadow-1">
       <div className="flex items-center justify-between gap-3">
         <h2 id="setup-h" className="text-[15px] font-semibold tracking-[-0.01em] text-ink">Finish setting up</h2>
-        <span className="text-[12px] text-ink-3 tabular-nums">{done} of {steps.length}</span>
-      </div>
-      <Capsule value={done} max={steps.length} label="Setup progress" size="sm" color="var(--good)" className="mt-3" />
-      <Link href={next.href} className="group mt-4 flex items-start gap-3 rounded-md">
-        <span aria-hidden className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-ink text-[11px] font-semibold text-bg tabular-nums">{done + 1}</span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-[14px] leading-snug font-medium text-ink group-hover:underline">{next.title}</span>
-          <span className="mt-0.5 block text-[12.5px] leading-snug text-ink-3">{next.body}</span>
+        <span className="flex items-center gap-1">
+          <span className="text-[12px] text-ink-3 tabular-nums">{done} of {steps.length}</span>
+          <form action={hideSetupChecklist}>
+            <button type="submit" className={buttonClass({ variant: 'ghost', size: 'sm', className: '-me-2 h-10 px-2 text-[12px] text-ink-3' })}>Hide</button>
+          </form>
         </span>
-        <ArrowRight className="mt-0.5 size-4 shrink-0 text-ink-3 transition-[translate] duration-150 group-hover:translate-x-0.5" strokeWidth={1.5} />
-      </Link>
+      </div>
+      <Capsule value={done} max={steps.length} label="Setup progress" size="sm" color="var(--good)" className="mt-2" />
+
+      <ol className="mt-4 flex flex-col gap-1">
+        {steps.map((s, k) => {
+          const now = s === next
+          if (now) {
+            return (
+              // Concentric: radius 16 block, 12px padding, radius 8 button.
+              <li key={s.id} aria-current="step" className="rounded-[16px] bg-pill-wash p-3 shadow-[0_0_0_1.5px_var(--pill)]">
+                <p className="flex items-start gap-2.5">
+                  <span aria-hidden className="mt-px grid size-5 shrink-0 place-items-center rounded-full bg-pill text-[11px] font-bold text-white tabular-nums">{k + 1}</span>
+                  <span className="min-w-0">
+                    <span className="block text-[14px] leading-5 font-semibold text-ink">{s.title}</span>
+                    <span className="mt-0.5 block text-[12.5px] leading-snug text-ink-2">{s.body}</span>
+                  </span>
+                </p>
+                <Link href={s.href} className={buttonClass({ variant: 'primary', size: 'md', className: 'mt-3 ms-[30px] h-10' })}>
+                  {s.cta}<ArrowRight className="size-3.5 rtl:-scale-x-100" strokeWidth={2} />
+                </Link>
+              </li>
+            )
+          }
+          return (
+            <li key={s.id}>
+              <Link href={s.href} className={cn(
+                'group flex min-h-10 items-center gap-2.5 rounded-[12px] px-3 py-2 transition-[background-color] duration-150 ease-out-quint hover:bg-surface-2',
+                'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill',
+              )}>
+                {s.done ? (
+                  <span aria-hidden className="grid size-5 shrink-0 place-items-center rounded-full bg-good text-white"><Check className="size-3" strokeWidth={3} /></span>
+                ) : (
+                  <span aria-hidden className="grid size-5 shrink-0 place-items-center rounded-full text-[11px] font-semibold text-ink-3 shadow-[inset_0_0_0_1.5px_var(--hairline)] tabular-nums">{k + 1}</span>
+                )}
+                <span className={cn('min-w-0 flex-1 truncate text-[13px] leading-5', s.done ? 'text-ink-3' : 'font-medium text-ink-2 group-hover:text-ink')}>
+                  {s.title}<span className="sr-only">{s.done ? ' (done)' : ''}</span>
+                </span>
+                <ChevronRight aria-hidden className="size-4 shrink-0 text-ink-3 transition-[translate,color] duration-150 group-hover:translate-x-0.5 group-hover:text-ink rtl:-scale-x-100" strokeWidth={1.5} />
+              </Link>
+            </li>
+          )
+        })}
+      </ol>
+
+      {/* A full load: the tour opens from the address on arrival. */}
+      <a href="/?tour" className="mt-3 inline-flex h-10 items-center gap-1.5 rounded-md px-1 text-[12.5px] font-medium text-ink-3 transition-[color] duration-150 hover:text-ink focus-visible:outline-2 focus-visible:outline-pill">
+        <Compass className="size-3.5" strokeWidth={2} aria-hidden />Replay the tour
+      </a>
     </section>
   )
 }

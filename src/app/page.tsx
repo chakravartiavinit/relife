@@ -202,7 +202,7 @@ async function Today() {
             freezes={quests.freezes} frozeOn={quests.frozeOn}
             weekLeft={daysBetween(today, addDays(weekStart(today), 6))}
           />
-          {steps.some((s) => !s.done) ? <OnboardingCompact steps={steps} /> : null}
+          {!user.profile.setupHiddenAt && steps.some((s) => !s.done) ? <OnboardingCompact steps={steps} /> : null}
         </aside>
       </div>
     </div>
