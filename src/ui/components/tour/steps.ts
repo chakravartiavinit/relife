@@ -1,11 +1,17 @@
 import { IlloAreas, IlloConnect, IlloLog, IlloProgress, IlloRemind, IlloToday, IlloWelcome } from './illos'
 
-/** The product tour: step 0 is the centred welcome, the rest point at a `data-tour` anchor. */
-export const TOUR_STEPS: { anchor: string | null; title: string; body: string; Illo: () => React.JSX.Element }[] = [
+/**
+ * The product tour: step 0 is the centred welcome, the rest point at a `data-tour` anchor. An `optional`
+ * stop is left out when its anchor isn't on the page (the Today checklist goes once setup is finished).
+ * A stop without `Illo` shows no picture.
+ */
+export type TourStep = { anchor: string | null; title: string; body: string; Illo?: () => React.JSX.Element; optional?: boolean }
+
+export const TOUR_STEPS: TourStep[] = [
   {
     anchor: null,
     title: 'Welcome to ReLife',
-    body: 'ReLife turns your days into a character you level up. A one-minute tour shows the six things you\'ll use most.',
+    body: 'ReLife turns your days into a character you level up. A one-minute tour shows the things you\'ll use most.',
     Illo: IlloWelcome,
   },
   {
@@ -43,5 +49,11 @@ export const TOUR_STEPS: { anchor: string | null; title: string; body: string; I
     title: 'Reminders that wait for a tap',
     body: 'ReLife can nudge you on Telegram. Tap Done there and it counts here. Quiet hours and limits live in Settings.',
     Illo: IlloRemind,
+  },
+  {
+    anchor: 'setup',
+    title: 'Finish setting up',
+    body: 'A few things are left, like your phone and your apps. Each one makes ReLife log more for you. Hide this card when you’re done with it.',
+    optional: true,
   },
 ]

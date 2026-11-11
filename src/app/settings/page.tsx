@@ -40,7 +40,11 @@ export default function SettingsPage() {
         eyebrow="Settings"
         title="Settings"
         description="Your profile, how ReLife looks, which AI it uses and where your data lives. Data sources and API keys are on Connectors."
-        actions={<Link href="/welcome" className={buttonClass({ variant: 'secondary', size: 'sm' })}>Run setup again</Link>}
+        actions={<>
+          {/* A full load: the tour opens from the address on arrival. */}
+          <a href="/?tour" className={buttonClass({ variant: 'ghost', size: 'sm' })}>Take the tour</a>
+          <Link href="/welcome" className={buttonClass({ variant: 'secondary', size: 'sm' })}>Run setup again</Link>
+        </>}
       />
       <div className="grid gap-8 lg:grid-cols-[200px_minmax(0,1fr)] xl:gap-12">
         <nav aria-label="Settings sections" className="hidden lg:block">

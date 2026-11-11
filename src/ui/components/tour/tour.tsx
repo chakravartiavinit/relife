@@ -7,14 +7,18 @@ import { Button, buttonClass } from '../button'
 import { cn } from '../../cn'
 import { EASE_OUT, EASE_OUT_STRONG, SPRING_LAYOUT } from '@/ui/beui/lib/ease'
 import { ILLO_ASSETS, IlloWelcome } from './illos'
-import { TOUR_STEPS } from './steps'
+import { TOUR_STEPS, type TourStep } from './steps'
 
 // The guided tour, in the same language as setup (/welcome): small cards, a centred display title on the
 // welcome, one full-width action, thin progress capsules. Seen once, so it can afford a staged entrance;
 // between stops only what changes moves: the ring and the card glide, the picture cross-fades inside a
 // frame that holds still, the words slide the way you're going.
+// Setup hands over with `?tour=setup`: it has just welcomed the player, so the tour skips its own welcome
+// and the ring flies straight to the first stop. The last stop is the Today checklist, so the tour ends
+// on what to do next.
 
-const LAST = TOUR_STEPS.length - 1
+/** Stops that can show now: an optional one only while its anchor is on the page. */
+const available = () => TOUR_STEPS.filter((s) => !s.optional || document.querySelector(`[data-tour="${s.anchor}"]`))
 /** Fired when the tour closes, so anything that waited for it (the payments toast) can go ahead. */
 export const TOUR_END = 'relife:tour-end'
 /** True while the tour is on screen, or about to open from `?tour`. Ambient notices wait for it. */
@@ -27,11 +31,15 @@ const SPRING = { type: 'spring', duration: 0.3, bounce: 0 } as const
 const SWAP = { initial: { scale: 0.25, opacity: 0, filter: 'blur(4px)' }, animate: { scale: 1, opacity: 1, filter: 'blur(0px)' }, exit: { scale: 0.25, opacity: 0, filter: 'blur(4px)' }, transition: SPRING }
 const FOCUS = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill'
 // The step card: 320px wide, with its picture inset 8px. The picture's height is fixed by its shape.
-const PLATE_H = 8 + ((320 - 16) * 460) / 720
+const CARD_W = 320
+const PLATE_H = 8 + ((CARD_W - 16) * 460) / 720
 
 type Rect = { left: number; top: number; width: number; height: number; radius: number }
-/** Where the current step points. `rect: null` = no visible anchor (sidebar hidden): centred card, no spotlight. */
-type Pos = { rect: Rect | null; cardX: number }
+/**
+ * Where the current step points. `rect: null` = no visible anchor, or no room beside it (a phone): centred
+ * card, no spotlight. `side` is where the card sits: right of sidebar items, left of anything else.
+ */
+type Pos = { rect: Rect | null; cardX: number; side: 'right' | 'left' }
 
 // The welcome arrives in order: the card, then its picture, title, words and action, 60ms apart.
 const welcome: Variants = {
@@ -54,13 +62,17 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(v, hi
 
 function measure(anchor: string | null, scroll: boolean): Pos {
   const el = anchor ? document.querySelector(`[data-tour="${anchor}"]`) : null
-  if (!el || el.getClientRects().length === 0) return { rect: null, cardX: 0 }
+  if (!el || el.getClientRects().length === 0) return { rect: null, cardX: 0, side: 'right' }
   if (scroll) el.scrollIntoView({ block: 'nearest' })
   const { left, top, width, height } = el.getBoundingClientRect()
-  const aside = document.querySelector('aside')?.getBoundingClientRect().right ?? left + width
   // The ring follows the item's own corners (a group of rows has none, so it gets a small one).
   const radius = parseFloat(getComputedStyle(el).borderTopLeftRadius) || 8
-  return { rect: { left, top, width, height, radius }, cardX: aside + 12 }
+  const rect = { left, top, width, height, radius }
+  // Sidebar items: the card stands just past the sidebar's edge. Anything else: on its left.
+  const nav = document.querySelector('aside')
+  if (nav?.contains(el)) return { rect, cardX: nav.getBoundingClientRect().right + 12, side: 'right' }
+  const x = left - 12 - CARD_W
+  return x >= 12 ? { rect, cardX: x, side: 'left' } : { rect: null, cardX: 0, side: 'right' }
 }
 
 /** Keeps a ref'd element's height in state, so the card can animate to it instead of jumping. */
@@ -81,6 +93,9 @@ function useHeight(on: boolean, fallback: number) {
 /** Guided tour: a welcome card, then a spotlight and a step card per sidebar stop. Opens on `?tour` or `relife:tour`. */
 export function Tour() {
   const [{ step, dir }, setState] = useState<{ step: number | null; dir: number }>({ step: null, dir: 1 })
+  // Read from the page while the tour is open (the checklist stop comes and goes with the checklist).
+  const steps: TourStep[] = step === null ? TOUR_STEPS : available()
+  const LAST = steps.length - 1
   const [pos, setPos] = useState<Pos | null>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const startRef = useRef<HTMLButtonElement>(null)
@@ -91,7 +106,8 @@ export function Tour() {
   // they give the card's height, which places it without a per-frame loop.
   const [wordsRef, wordsH] = useHeight(cardShown, 112)
   const [footRef, footH] = useHeight(cardShown, 68)
-  const cardH = PLATE_H + wordsH + footH
+  const current = step !== null && step > 0 ? steps[step] ?? null : null
+  const cardH = (current?.Illo ? PLATE_H : 0) + wordsH + footH
 
   const go = (to: number, d: number) => setState({ step: to, dir: d })
   const close = () => {
@@ -103,8 +119,10 @@ export function Tour() {
   const next = () => { if (step !== null) { if (step < LAST) go(step + 1, 1); else close() } }
 
   // Open on `?tour` (read once, no useSearchParams so the layout needs no Suspense) or on `relife:tour`.
+  // `?tour=setup` comes from setup, which has just said welcome: start at the first stop.
   useEffect(() => {
-    if (new URLSearchParams(location.search).has('tour')) setState({ step: 0, dir: 1 })
+    const q = new URLSearchParams(location.search).get('tour')
+    if (q !== null) setState({ step: q === 'setup' ? 1 : 0, dir: 1 })
     const open = () => setState({ step: 0, dir: 1 })
     window.addEventListener('relife:tour', open)
     return () => window.removeEventListener('relife:tour', open)
@@ -127,7 +145,7 @@ export function Tour() {
   // Measure the anchor before paint so the card and ring land in place; re-measure on resize and scroll.
   useLayoutEffect(() => {
     if (!inSteps) return
-    const anchor = TOUR_STEPS[step].anchor
+    const anchor = steps[step]?.anchor ?? null
     setPos(measure(anchor, true))
     let frame = 0
     const remeasure = () => {
@@ -141,7 +159,7 @@ export function Tour() {
       window.removeEventListener('resize', remeasure)
       window.removeEventListener('scroll', remeasure, { capture: true })
     }
-  }, [inSteps, step])
+  }, [inSteps, step]) // `steps` is read from the page for this step
 
   // Focus follows the step: the card on every stop, "Show me around" on the welcome.
   useEffect(() => {
@@ -163,10 +181,10 @@ export function Tour() {
   })
 
   const r = pos?.rect ?? null
+  const left = pos?.side === 'left'
   const y = r ? clamp(r.top + r.height / 2 - 72, 12, innerHeight - cardH - 12) : 0
   const arrowTop = r ? clamp(r.top + r.height / 2 - y - 6, 16, cardH - 28) : 0
   const cardXY = r ? { x: pos!.cardX, y } : { x: 0, y: 0 }
-  const current = inSteps ? TOUR_STEPS[step] : null
 
   // One dimming layer for the whole tour: during the welcome it is a zero-size spotlight hidden behind the card, so
   // its 100vmax shadow is the backdrop. "Show me around" then flies it out to the first item, so the page never
@@ -234,25 +252,27 @@ export function Tour() {
             exit={{ opacity: 0, scale: 0.98, transition: LEAVE }}
             transition={{ x: glide, y: glide, opacity: ENTER, scale: ENTER }}
             // Grows out of the arrow tip, i.e. from the item it points at.
-            style={{ transformOrigin: r ? `0 ${arrowTop + 6}px` : '50% 100%' }}>
+            style={{ transformOrigin: r ? `${left ? '100%' : '0'} ${arrowTop + 6}px` : '50% 100%' }}>
             {r ? (
               // Moves on transform (`y`), not `top`, so the glide never touches layout.
               // Rotation goes through Motion too: a CSS `rotate` would apply before the translate and push it diagonally.
-              <motion.span aria-hidden className="absolute top-0 -left-1.5 size-3 rounded-[2px] bg-surface"
-                style={{ rotate: 45, boxShadow: '-1px 1px 0 var(--divider)' }} initial={{ y: arrowTop }} animate={{ y: arrowTop }} transition={glide} />
+              <motion.span aria-hidden className={cn('absolute top-0 size-3 rounded-[2px] bg-surface', left ? '-right-1.5' : '-left-1.5')}
+                style={{ rotate: 45, boxShadow: left ? '1px -1px 0 var(--divider)' : '-1px 1px 0 var(--divider)' }} initial={{ y: arrowTop }} animate={{ y: arrowTop }} transition={glide} />
             ) : null}
 
             {/* The frame holds still; only the picture inside it changes, cross-fading through a 4px blur. */}
-            <div className="relative mx-2 mt-2 aspect-[720/460] overflow-hidden rounded-[12px] bg-surface-2">
-              <AnimatePresence initial={false}>
-                <motion.div key={step} className="absolute inset-0"
-                  initial={{ opacity: 0, filter: 'blur(4px)' }}
-                  animate={{ opacity: 1, filter: 'blur(0px)', transition: { duration: 0.3, ease: EASE_OUT_STRONG } }}
-                  exit={{ opacity: 0, filter: 'blur(4px)', transition: LEAVE }}>
-                  <current.Illo />
-                </motion.div>
-              </AnimatePresence>
-            </div>
+            {current.Illo ? (
+              <div className="relative mx-2 mt-2 aspect-[720/460] overflow-hidden rounded-[12px] bg-surface-2">
+                <AnimatePresence initial={false}>
+                  <motion.div key={step} className="absolute inset-0"
+                    initial={{ opacity: 0, filter: 'blur(4px)' }}
+                    animate={{ opacity: 1, filter: 'blur(0px)', transition: { duration: 0.3, ease: EASE_OUT_STRONG } }}
+                    exit={{ opacity: 0, filter: 'blur(4px)', transition: LEAVE }}>
+                    <current.Illo />
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            ) : null}
             {/* Close sits on the card's corner, half outside it (as the capsule sits on setup's card), so it
                 never covers the picture. A 28px button with a 40px hit area. */}
             <button type="button" onClick={close} aria-label="Close the tour"
@@ -276,10 +296,10 @@ export function Tour() {
             <div ref={footRef} className="flex items-center gap-1.5 p-4">
               {/* One capsule per stop, as in setup: finished ones ink, this one capsule blue. */}
               <ol aria-hidden className="flex items-center gap-1">
-                {TOUR_STEPS.slice(1).map((_, k) => {
+                {steps.slice(1).map((_, k) => {
                   const state = k + 1 < step ? 'done' : k + 1 === step ? 'now' : 'next'
                   return (
-                    <li key={k} className="relative h-1.5 w-3.5 overflow-hidden rounded-full bg-ink/[0.08] dark:bg-white/[0.1]">
+                    <li key={k} className="relative h-1.5 w-3 overflow-hidden rounded-full bg-ink/[0.08] dark:bg-white/[0.1]">
                       {/* Slides instead of scaling, so the round end stays round. */}
                       <span className={cn(
                         'absolute inset-0 rounded-full transition-[translate,background-color] duration-300 ease-[var(--ease-out-strong)] motion-reduce:transition-none',
@@ -290,7 +310,7 @@ export function Tour() {
                   )
                 })}
               </ol>
-              <span aria-live="polite" className="sr-only">Step {step} of {LAST}</span>
+              <span aria-live="polite" className="ms-1 text-[12px] whitespace-nowrap text-ink-3 tabular-nums"><span className="sr-only">Step </span>{step} of {LAST}</span>
               <span className="ms-auto flex items-center gap-1.5">
                 <AnimatePresence initial={false}>
                   {step > 1 ? (
