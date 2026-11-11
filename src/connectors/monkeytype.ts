@@ -21,6 +21,11 @@ const APE_ERRORS: [RegExp, string][] = [
 ]
 const apeError = (e: Error) => new Error(APE_ERRORS.find(([re]) => re.test(e.message))?.[1] ?? e.message)
 
+/** The key as typed: people sometimes paste the whole "ApeKey …" header value. */
+const apeKey = (raw: string | undefined) => (raw ?? '').trim().replace(/^ApeKey\s+/i, '')
+
+const UNKNOWN_KEY = 'Monkeytype doesn’t know this Ape key. Copy it again, or make a new one.'
+
 /** Pure: results into days in the user's time zone. Exported for tests. */
 export function typingDays(results: Result[], tz: string) {
   const { days, day } = dayMap<TypingDay & { all: Result[] }>((date) => ({ date, tests: 0, minutes: 0, all: [] }))
@@ -44,6 +49,10 @@ export const monkeytype: Connector = {
   fields: [{ env: 'MONKEYTYPE_APE_KEY', label: 'Ape key', secret: true, hint: 'monkeytype.com → Account settings → Ape keys → Generate, then switch it on.' }],
   env: ['MONKEYTYPE_APE_KEY'],
   everyMinutes: 120,
+  async check(get) {
+    // Stats don't use up the few result reads an Ape key gets each day.
+    await fetchJson('https://api.monkeytype.com/users/stats', { headers: { Authorization: `ApeKey ${apeKey(get('MONKEYTYPE_APE_KEY'))}` } }, UNKNOWN_KEY).catch((e: Error) => { throw apeError(e) })
+  },
   async sync(ctx) {
     const { tz, today, from, backfilled } = syncWindow(ctx, 90)
     const since = Date.parse(`${from}T00:00:00Z`) - 86_400_000 // a day early covers any time zone
@@ -51,8 +60,8 @@ export const monkeytype: Connector = {
     // At most 1000 a call and 30 calls a day: a few pages cover even heavy typists' backfill.
     for (let page = 0; page < (backfilled ? 1 : 5); page++) {
       const r = await fetchJson<{ data: Result[] }>(`https://api.monkeytype.com/results?onOrAfterTimestamp=${since}&offset=${page * 1000}&limit=1000`, {
-        headers: { Authorization: `ApeKey ${env('MONKEYTYPE_APE_KEY')!.trim()}` },
-      }, 'Monkeytype doesn’t know this Ape key. Copy it again, or make a new one.').catch((e: Error) => { throw apeError(e) })
+        headers: { Authorization: `ApeKey ${apeKey(env('MONKEYTYPE_APE_KEY'))}` },
+      }, UNKNOWN_KEY).catch((e: Error) => { throw apeError(e) })
       results.push(...r.data)
       if (r.data.length < 1000) break
     }

@@ -25,3 +25,24 @@ test('chesscomDays counts results, minutes and the main-control rating per local
   assert.equal(d.rating, 1204) // last rated blitz game of the day, not the daily one
   assert.equal(days.size, 1)
 })
+
+test('lichessDays counts results, real minutes and the main-control rating per local day', async () => {
+  const { lichessDays } = await import('./chess')
+  const g = (end: string, side: 'white' | 'black', winner: 'white' | 'black' | undefined, o: { status?: string; perf?: string; mins?: number; rating?: number; diff?: number } = {}) => ({
+    createdAt: Date.parse(end) - (o.mins ?? 5) * 60_000, lastMoveAt: Date.parse(end), status: o.status ?? 'mate', winner, perf: o.perf ?? 'blitz', speed: o.perf ?? 'blitz', rated: true,
+    players: { white: { user: { id: side === 'white' ? 'me' : 'opp' }, rating: o.rating, ratingDiff: o.diff }, black: { user: { id: side === 'black' ? 'me' : 'opp' }, rating: o.rating, ratingDiff: o.diff } },
+  })
+  const days = lichessDays([
+    g('2026-11-06T10:00:00Z', 'white', 'white', { rating: 1500, diff: 8 }),
+    g('2026-11-06T11:00:00Z', 'black', 'white', { rating: 1508, diff: -6 }),
+    g('2026-11-06T12:00:00Z', 'white', undefined, { status: 'draw', perf: 'bullet', rating: 1900, diff: 1 }),
+    g('2026-11-06T13:00:00Z', 'white', undefined, { status: 'aborted' }),
+    g('2026-11-05T23:00:00Z', 'black', 'black'), // 04:30 on the 6th in Kolkata
+    g('2026-10-01T10:00:00Z', 'white', 'white'), // before `from`
+  ], 'me', 'blitz', 'Asia/Kolkata', '2026-11-01')
+  const d = days.get('2026-11-06')!
+  assert.deepEqual([d.games, d.wins, d.draws, d.losses], [4, 2, 1, 1])
+  assert.equal(d.minutes, 20)
+  assert.equal(d.rating, 1502) // after the last rated blitz game: 1508 - 6, not the bullet one
+  assert.equal(days.size, 1)
+})

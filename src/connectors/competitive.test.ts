@@ -33,3 +33,35 @@ test('codechefRows reads times (India time), problems and accepted marks', () =>
   assert.deepEqual([rows[0].problem, rows[0].accepted, rows[1].accepted], ['SUMS', true, false])
   assert.equal(rows[1].at, now.getTime() - 5 * 60_000)
 })
+
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
+
+test('codeforces.check names an unknown handle, accepts a pasted profile link, and lets rate limits through as transient', async () => {
+  const { codeforces } = await import('./competitive')
+  const real = globalThis.fetch
+  const seen: string[] = []
+  try {
+    globalThis.fetch = (async (url: string) => {
+      seen.push(String(url))
+      return String(url).includes('handles=nobody')
+        ? json({ status: 'FAILED', comment: 'handles: User with handle nobody not found' }, 400)
+        : json({ status: 'OK', result: [{ rating: 1500 }] })
+    }) as typeof fetch
+    await assert.rejects(codeforces.check!((k) => (k === 'CODEFORCES_HANDLE' ? 'nobody' : undefined)), /No Codeforces user “nobody”\. Check the handle\./)
+    await codeforces.check!((k) => (k === 'CODEFORCES_HANDLE' ? 'https://codeforces.com/profile/tourist' : undefined))
+    assert.match(seen.at(-1)!, /handles=tourist$/)
+  } finally {
+    globalThis.fetch = real
+  }
+})
+
+test('leetcode.check reads LeetCode’s "does not exist" answer', async () => {
+  const { leetcode } = await import('./competitive')
+  const real = globalThis.fetch
+  try {
+    globalThis.fetch = (async () => json({ errors: [{ message: 'That user does not exist.' }], data: { matchedUser: null } })) as typeof fetch
+    await assert.rejects(leetcode.check!(() => '@nobody'), /No LeetCode user “nobody”\. Check the username\./)
+  } finally {
+    globalThis.fetch = real
+  }
+})
