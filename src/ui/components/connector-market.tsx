@@ -217,7 +217,7 @@ function ConnectorDialog({ c, trigger }: { c: ConnectorItem; trigger: React.Reac
   const [open, setOpen] = useState(false)
   const uid = useId()
   const status = STATUS[c.status]
-  const secrets = c.fields.filter((f) => f.secret)
+  const secrets = c.fields.filter((f) => f.secret && !f.optional) // the ones you must have
   return (
     <CenterMorphModal open={open} onOpenChange={setOpen}>
       <CenterMorphModalTrigger>{trigger}</CenterMorphModalTrigger>

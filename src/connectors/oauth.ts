@@ -10,6 +10,11 @@ export const appFields = (service: string, hint: string): SetupField[] => [
 
 /** A fresh access token. Imported lazily: core/oauth reads the connector list through core/secrets. */
 export async function token(ctx: ConnectorCtx, c: Connector) {
-  const { accessToken } = await import('@/core/oauth')
-  return accessToken(ctx.user, c)
+  const [{ accessToken }, { decrypt }] = await Promise.all([import('@/core/oauth'), import('@/core/secrets')])
+  // Before sign-in, Strava kept its newest refresh token encrypted in the cursor. Use it once; the next
+  // cursor drops it and the rotated token is saved with the sign-in tokens.
+  const legacy = (ctx.cursor as { token?: string } | null)?.token
+  let fallback: string | undefined
+  if (legacy) try { fallback = decrypt(Buffer.from(legacy, 'base64')).t } catch { /* key changed: use the pasted one */ }
+  return accessToken(ctx.user, c, fallback)
 }

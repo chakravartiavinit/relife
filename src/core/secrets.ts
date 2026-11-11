@@ -1,7 +1,7 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { and, asc, eq } from 'drizzle-orm'
+import { and, asc, eq, isNotNull, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { MANAGED_ENV, integration } from './integrations'
 import { setKeys } from './env'
@@ -87,37 +87,47 @@ export type SaveResult = { ok: true } | { ok: false; error: string }
 export async function connect(userId: string, id: string, input: Record<string, unknown>): Promise<SaveResult> {
   const spec = integration(id)
   if (!spec) return { ok: false, error: 'Unknown connector.' }
-  const [row] = await db.select().from(schema.connections)
-    .where(and(eq(schema.connections.userId, userId), eq(schema.connections.connectorId, id)))
-  const values: Record<string, string> = row ? stored(row) : {}
-  const clientId = spec.oauth ? values[spec.oauth.clientIdEnv] : undefined
-  for (const f of spec.fields) {
-    let v = typeof input[f.env] === 'string' ? (input[f.env] as string).trim() : ''
-    if (!v) continue
-    if (v.length > 500 || /[\r\n]/.test(v)) return { ok: false, error: `${f.label} doesn’t look right.` }
-    if (f.env === 'LLM_DEFAULT' && !v.includes(':')) v = `${id}:${v}`
-    if (f.env === 'TELEGRAM_ALLOWED_CHAT_ID' && !/^-?\d+$/.test(v)) return { ok: false, error: 'Chat ID is a number, like 123456789.' }
-    values[f.env] = v
-  }
-  // Tokens from one app don't work with another: a new client ID means signing in again.
-  if (spec.oauth && clientId && values[spec.oauth.clientIdEnv] !== clientId) delete values[OAUTH_KEY]
-  const missing = spec.fields.find((f) => !f.optional && !values[f.env] && !FROM_ENV[f.env])
-  if (missing) return { ok: false, error: `Add your ${/^[A-Z][A-Z]/.test(missing.label) ? missing.label : missing.label[0].toLowerCase() + missing.label.slice(1)}.` }
+  // Locked, so a token refresh saved by a sync at the same moment isn't overwritten with the old token.
+  const result = await db.transaction(async (tx): Promise<SaveResult> => {
+    const [row] = await tx.select().from(schema.connections)
+      .where(and(eq(schema.connections.userId, userId), eq(schema.connections.connectorId, id))).for('update')
+    const values: Record<string, string> = row ? stored(row) : {}
+    // The app and pasted token in use before this save (saved, or from .env), to spot a change.
+    const before = spec.oauth ? [spec.oauth.clientIdEnv, spec.oauth.refreshTokenEnv].map((k) => (k ? values[k] || FROM_ENV[k] : undefined)) : []
+    for (const f of spec.fields) {
+      let v = typeof input[f.env] === 'string' ? (input[f.env] as string).trim() : ''
+      if (!v) continue
+      if (v.length > 500 || /[\r\n]/.test(v)) return { ok: false, error: `${f.label} doesn’t look right.` }
+      if (f.env === 'LLM_DEFAULT' && !v.includes(':')) v = `${id}:${v}`
+      if (f.env === 'TELEGRAM_ALLOWED_CHAT_ID' && !/^-?\d+$/.test(v)) return { ok: false, error: 'Chat ID is a number, like 123456789.' }
+      values[f.env] = v
+    }
+    // Tokens from one app don't work with another: a new client ID means signing in again. A newly pasted
+    // refresh token replaces the sign-in, so setups without a browser can recover.
+    if (spec.oauth) {
+      const after = [spec.oauth.clientIdEnv, spec.oauth.refreshTokenEnv].map((k) => (k ? values[k] || FROM_ENV[k] : undefined))
+      if (after.some((v, i) => v !== before[i])) delete values[OAUTH_KEY]
+    }
+    const missing = spec.fields.find((f) => !f.optional && !values[f.env] && !FROM_ENV[f.env])
+    if (missing) return { ok: false, error: `Add your ${/^[A-Z][A-Z]/.test(missing.label) ? missing.label : missing.label[0].toLowerCase() + missing.label.slice(1)}.` }
 
-  const patch = {
-    enabled: true, status: 'never' as const, failures: 0, lastError: null,
-    secretsEncrypted: Object.keys(values).length ? encrypt(values) : null,
-  }
-  await db.insert(schema.connections).values({ userId, connectorId: id, ...patch })
-    .onConflictDoUpdate({ target: [schema.connections.userId, schema.connections.connectorId], set: { ...patch, updatedAt: new Date() } })
-  await applySecrets(userId)
-  return { ok: true }
+    const patch = {
+      enabled: true, status: 'never' as const, failures: 0, lastError: null,
+      secretsEncrypted: Object.keys(values).length ? encrypt(values) : null,
+    }
+    await tx.insert(schema.connections).values({ userId, connectorId: id, ...patch })
+      .onConflictDoUpdate({ target: [schema.connections.userId, schema.connections.connectorId], set: { ...patch, updatedAt: new Date() } })
+    return { ok: true }
+  })
+  if (result.ok) await applySecrets(userId)
+  return result
 }
 
 /** Disconnect and forget saved keys. Sync progress (cursor) is kept so reconnecting doesn't re-import. */
 export async function disconnect(userId: string, id: string) {
   await db.update(schema.connections)
-    .set({ enabled: false, status: 'disabled', secretsEncrypted: null, lastError: null })
+    // Strava used to keep its rotated refresh token in the cursor (`token`, `seed`): forget that too.
+    .set({ enabled: false, status: 'disabled', secretsEncrypted: null, lastError: null, cursor: sql`${schema.connections.cursor} - 'token' - 'seed'` })
     .where(and(eq(schema.connections.userId, userId), eq(schema.connections.connectorId, id)))
   await applySecrets(userId)
 }
@@ -136,12 +146,18 @@ export async function oauthTokens(userId: string, id: string): Promise<OAuthToke
   return raw ? (JSON.parse(raw) as OAuthTokens) : null
 }
 
+/** Locked against a dialog save; skipped when the connection was disconnected meanwhile, so a forget sticks. */
 export async function saveOAuthTokens(userId: string, id: string, tokens: OAuthTokens) {
-  const [row] = await db.select().from(schema.connections)
-    .where(and(eq(schema.connections.userId, userId), eq(schema.connections.connectorId, id)))
-  if (!row) throw new Error('Connect it first.')
-  const values = { ...stored(row), [OAUTH_KEY]: JSON.stringify(tokens) }
-  await db.update(schema.connections).set({ secretsEncrypted: encrypt(values), updatedAt: new Date() }).where(eq(schema.connections.id, row.id))
+  await db.transaction(async (tx) => {
+    const [row] = await tx.select().from(schema.connections)
+      .where(and(
+        eq(schema.connections.userId, userId), eq(schema.connections.connectorId, id),
+        eq(schema.connections.enabled, true), isNotNull(schema.connections.secretsEncrypted),
+      )).for('update')
+    if (!row) throw new Error('Connect it first.')
+    const values = { ...stored(row), [OAUTH_KEY]: JSON.stringify(tokens) }
+    await tx.update(schema.connections).set({ secretsEncrypted: encrypt(values), updatedAt: new Date() }).where(eq(schema.connections.id, row.id))
+  })
 }
 
 /** Which connections have signed in, for the Connectors page. */

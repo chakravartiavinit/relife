@@ -48,7 +48,7 @@ export const strava: Connector = {
   description: 'Every run, ride, walk and workout you record on Strava: active minutes and distance each day.',
   provides: ['Active minutes', 'Running', 'Cycling'],
   fields: [
-    ...appFields('STRAVA', 'From your app at strava.com/settings/api. Set its authorization callback domain to localhost.'),
+    ...appFields('STRAVA', 'From your app at strava.com/settings/api. Set its authorization callback domain to 127.0.0.1 (the host of the redirect address).'),
     { env: 'STRAVA_REFRESH_TOKEN', label: 'Refresh token', secret: true, optional: true, hint: 'Only if this Mac has no browser: paste one instead of signing in (docs/CONNECTORS.md).' },
   ],
   env: ['STRAVA_CLIENT_ID', 'STRAVA_CLIENT_SECRET'],

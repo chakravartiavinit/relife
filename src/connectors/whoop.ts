@@ -60,12 +60,14 @@ export const whoop: Connector = {
     clientSecretEnv: 'WHOOP_CLIENT_SECRET',
     setupUrl: 'https://developer-dashboard.whoop.com',
     httpsOnly: true,
+    // WHOOP swaps the refresh token on every refresh and only sends a new one when `offline` is asked again.
+    tokenParams: { scope: 'offline' },
   },
   everyMinutes: 60,
   async sync(ctx) {
     const headers = { Authorization: `Bearer ${await token(ctx, whoop)}` }
     const { tz, today, from } = syncWindow(ctx, 90)
-    // A day early, so a night that started before the window's first day is whole.
+    // Two days early, so a night that started before the window's first day is whole.
     const start = new Date(Date.parse(`${from}T00:00:00Z`) - 2 * 86_400_000).toISOString()
     const get = async <T,>(path: string) => {
       const out: T[] = []

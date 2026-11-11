@@ -7,6 +7,13 @@ import { oauthTokens, saveOAuthTokens, type OAuthTokens } from './secrets'
 // /api/oauth/<id>/callback) and fresh access tokens for syncs. Refresh tokens that the service rotates
 // (Oura, Strava) are saved before anything else, because the old one stops working.
 
+/** The address the browser used to reach ReLife. `req.url` is not reliable for this (Next reports `localhost` even
+ * when you opened 127.0.0.1), and the redirect address you register with the service must match it exactly. */
+export function requestOrigin(h: { get(name: string): string | null }) {
+  const first = (name: string) => h.get(name)?.split(',')[0].trim() || undefined // proxies chain values with commas
+  return `${first('x-forwarded-proto') ?? 'http'}://${first('x-forwarded-host') ?? first('host') ?? '127.0.0.1:3030'}`
+}
+
 export const callbackPath = (id: string) => `/api/oauth/${id}/callback`
 
 export function authorizeUrl(spec: OAuthSpec, redirectUri: string, state: string) {
@@ -28,6 +35,7 @@ export function readTokens(json: unknown, previousRefresh?: string, now = Date.n
 }
 
 async function tokenRequest(spec: OAuthSpec, params: Record<string, string>, previousRefresh?: string) {
+  if (!env(spec.clientIdEnv) || !env(spec.clientSecretEnv)) throw new Error('Add the client ID and secret on Connectors, then sign in.')
   const res = await fetch(spec.tokenUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
@@ -54,11 +62,15 @@ export async function canAuthorize(user: User, c: Connector) {
   return !!(await oauthTokens(user.id, c.id)) || !!(c.oauth.refreshTokenEnv && env(c.oauth.refreshTokenEnv))
 }
 
-/** A valid access token for a sync, refreshed when it's within a minute of expiring. */
-export async function accessToken(user: User, c: Connector): Promise<string> {
+/**
+ * A valid access token for a sync, refreshed when it's within a minute of expiring. `fallbackRefresh` is a refresh
+ * token kept before sign-in existed (Strava's rotated one in its cursor); it beats the pasted one, which Strava has
+ * usually replaced by then.
+ */
+export async function accessToken(user: User, c: Connector, fallbackRefresh?: string): Promise<string> {
   const spec = c.oauth!
   let tokens = await oauthTokens(user.id, c.id)
-  const pasted = spec.refreshTokenEnv ? env(spec.refreshTokenEnv)?.trim() : undefined
+  const pasted = fallbackRefresh || (spec.refreshTokenEnv ? env(spec.refreshTokenEnv)?.trim() : undefined)
   if (!tokens && pasted) tokens = { access: '', refresh: pasted, expiresAt: 0 }
   if (!tokens) throw new Error(`Sign in with ${c.name} on Connectors to finish connecting.`)
   if (tokens.access && (!tokens.expiresAt || tokens.expiresAt - 60_000 > Date.now())) return tokens.access

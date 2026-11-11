@@ -11,7 +11,7 @@ import { KEY_ENV, modelId, type Task } from '@/ai/models'
 import { PageHeader, Skeleton } from '@/ui/components/card'
 import { ConnectorMarket, type ConnectorItem, type FieldView } from '@/ui/components/connector-market'
 import { envDefault, savedFields, signedIn } from '@/core/secrets'
-import { callbackPath } from '@/core/oauth'
+import { callbackPath, requestOrigin } from '@/core/oauth'
 import { integration } from '@/core/integrations'
 import type { SetupField } from '@/core/types'
 import { env } from '@/core/env'
@@ -80,7 +80,7 @@ async function Connectors() {
   ])
   // The address the service sends you back to: the one this page was opened on (127.0.0.1:3030 by default).
   const h = await headers()
-  const origin = `${h.get('x-forwarded-proto') ?? 'http'}://${h.get('x-forwarded-host') ?? h.get('host') ?? '127.0.0.1:3030'}`
+  const origin = requestOrigin(h)
   const workerAlive = heartbeat && Date.now() - heartbeat.at.getTime() < 3 * 60_000
   const isConnected = (id: string) => !!rows.find((r) => r.connectorId === id)?.enabled
   const view = (id: string, fields: SetupField[]): FieldView[] => fields.map((f) => {

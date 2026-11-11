@@ -162,7 +162,7 @@ through it.
 3. Paste the app's client ID and secret and press **Connect**. The service's sign-in page opens; approve it and you
    come back to Connectors, where the first sync starts within a minute.
 
-The tokens are kept encrypted with the connection's keys and refreshed before they expire; services that rotate the
+The tokens are kept encrypted with the connection's keys and refreshed before they expire (WHOOP is asked for `offline` again on each refresh); services that rotate the
 refresh token (Strava, Oura, WHOOP, Withings) have the new one saved at once. Disconnect forgets them. A new client ID
 means signing in again. If a refresh is refused, the sync fails with "Sign in again on Connectors" and the dialog's
 **Sign in again** button fixes it. The sign-in flow is in `src/core/oauth.ts` and `src/app/api/oauth/`; a connector
@@ -186,19 +186,24 @@ checks off quests from them. Synced days earn full XP (`src/domain/xp.ts`). Pars
 | Oura | Health | `sleep.hours`, `sleep.score`, `hrv`, `resting.hr` (shared), `oura.readiness`, `oura.steps` | 7 hours of sleep, 8,000 steps |
 | WHOOP | Health | `sleep.hours`, `sleep.score`, `hrv`, `resting.hr` (shared), `whoop.recovery`, `whoop.strain` | 7 hours of sleep |
 | Withings | Health | `weight`, `body.fat`, `sleep.hours`, `sleep.score` (shared), `withings.steps` | 7 hours of sleep, 8,000 steps |
-| Google Calendar | Mind | `meetings.minutes`, `focus.minutes` | An hour of Focus time |
-| Toggl Track | Skills | `tracked.minutes` | An hour tracked |
-| RescueTime | Mind | `productivity.pulse`, `productive.minutes`, `distracting.minutes` | Four productive hours |
-| Hevy | Health | `exercise.minutes` (adds to Strava's), `hevy.workouts`, `hevy.volume` | 30 active minutes (shared with Strava) |
+| Google Calendar | Mind | `meetings.minutes`, `focus.minutes` | An hour of Focus time (half XP: a block is a plan) |
+| Toggl Track | Skills | `tracked.minutes` | An hour tracked (one deep-work award a day, see below) |
+| RescueTime | Mind | `productivity.pulse`, `productive.minutes`, `distracting.minutes` | Four productive hours (one deep-work award a day) |
+| Hevy | Health | `hevy.minutes`, `hevy.workouts`, `hevy.volume` | 30 active minutes (the larger of Hevy and Strava) |
 | Readwise | Mind | `highlights.made` | 3 highlights |
 | Codewars | Skills | `cp.solved` (source `codewars`), `codewars.honor` | A problem solved |
 | Letterboxd | Hobbies | `films.watched` | None: time spent, not practice |
-| Open Library | Mind | `books.read` | A finished book |
+| Open Library | Mind | `books.read` | A finished book (half XP: a shelf is a claim) |
 | Anki | Skills | `anki.cards`, `anki.minutes` | 20 cards reviewed |
 
 Sleep, sleep score, HRV and resting heart rate are shared trackers, so a quest on sleep works with whichever device you
-wear; each device's value is kept apart (by source) and the latest sync of a day is shown. Steps stay per device
-(`steps`, `oura.steps`, `withings.steps`) so two devices never add up; XP takes the highest of the day.
+wear; each device's value is kept apart (by source) and the one that changed most recently is shown. Steps stay per
+device (`steps`, `oura.steps`, `withings.steps`) so two devices never add up; XP takes the highest of the day.
+
+Only synced numbers earn connector XP: a value typed into one of these trackers counts as typed-in (half, capped). One
+hour of work seen by several tools pays once: coding time (WakaTime) first, then tracked time (Toggl), then four
+productive hours (RescueTime). Focus time blocks and books marked read are what you plan or claim rather than what a
+service measured, so they pay half and don't count as verified.
 
 Fitbit is not here: Google shut the Fitbit Web API down on 2 November 2026 and moved it to the Google Health API.
 Goodreads is not here either: it switched off its public shelf feeds in late October 2026, so Open Library stands in
@@ -210,14 +215,17 @@ workout** (18:00, once a week, only for people who usually work out 2 or more da
 ### Strava
 
 Sign in (see [Signing in](#signing-in-oauth)). Create the app at [strava.com/settings/api](https://www.strava.com/settings/api)
-and set its **authorization callback domain** to `localhost` (Strava allows `127.0.0.1` too); Strava checks only the
+and set its **authorization callback domain** to the host of the redirect address, `127.0.0.1` by default (Strava
+allows `localhost` too); Strava checks only the
 domain, not the whole address.
 
 No browser on this Mac? Paste a refresh token instead: open
 `https://www.strava.com/oauth/authorize?client_id=<ID>&response_type=code&redirect_uri=http://localhost&approval_prompt=force&scope=read,activity:read_all`,
 copy the `code=` from the page it lands on, trade it with
 `curl -s -X POST https://www.strava.com/oauth/token -d client_id=<ID> -d client_secret=<SECRET> -d code=<CODE> -d grant_type=authorization_code`
-and put its `refresh_token` in the optional field. It is used until you sign in.
+and put its `refresh_token` in the optional field. It is used until you sign in, and pasting a new one replaces the
+sign-in. Coming from an older ReLife that took only a pasted token? The newest token it kept is used once, so you stay
+connected.
 
 Days follow the local time Strava records for each activity. The first sync backfills 90 days, later ones the last 7.
 Active minutes are moving time, every sport.
@@ -313,8 +321,9 @@ A day with nothing logged has no pulse.
 ### Hevy
 
 [hevy.com/settings?developer](https://hevy.com/settings?developer) (the API needs **Hevy Pro**). Each day keeps the
-number of workouts, minutes (end minus start) and volume (kg × reps, warm-up sets left out). Minutes also go into
-`exercise.minutes` with source `hevy`, so a gym session and a Strava run add up. First sync backfills 90 days.
+number of workouts, minutes (end minus start) and volume (kg × reps, warm-up sets left out). Minutes go into their own
+`hevy.minutes`, not Strava's `exercise.minutes`: Hevy can post each workout to Strava too, so adding them would count a
+session twice. XP and the workout-gap alert take the larger of the two each day. First sync backfills 90 days.
 
 ### Readwise
 
@@ -343,9 +352,10 @@ backfills 365 days.
 ### Anki
 
 Install the **AnkiConnect** add-on in Anki (Tools → Add-ons → Get Add-ons → `2055492159`) and keep Anki open. No key is
-needed unless you set an `apiKey` in the add-on's config; the address defaults to `http://127.0.0.1:8765`. Cards come
-from Anki's own count per day (its day starts at the rollover hour, 4 am by default); minutes add up each review's answer
-time, which Anki caps at 60 seconds. When Anki is closed the sync says so, and the next one catches up. 90-day backfill.
+needed unless you set an `apiKey` in the add-on's config; the address defaults to `http://127.0.0.1:8765`. Cards are the
+answers you gave each local day (learn, review, relearn and filtered decks); "Set due date" and reschedule entries are
+left out. Minutes add up each answer's time, which Anki caps at 60 seconds. If the review log can't be read, Anki's own
+daily count stands in, without minutes. When Anki is closed the sync says so, and the next one catches up. 90-day backfill.
 
 ## Binance
 
