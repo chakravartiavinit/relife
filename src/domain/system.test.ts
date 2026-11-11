@@ -11,15 +11,19 @@ test('difficulty rises with clears and eases after misses', () => {
   assert.equal(stretch(3), 0.15)
 })
 
-test('fairTarget keeps AI targets between your usual and three stretches past it', () => {
+test('fairTarget bounds targets near current capacity and caps extreme stretches', () => {
   const s = stat()
-  assert.equal(fairTarget(s, { statId: 'steps', op: 'gte', target: 50000, days: 1 }, 2), 7801) // 6000 × 1.3 + 1
-  assert.equal(fairTarget(s, { statId: 'steps', op: 'gte', target: 3000, days: 1 }, 2), 6000)
-  const spend = stat({ id: 'spend:apps', unit: 'INR', direction: 'down', usual: 600 })
+  assert.equal(fairTarget(s, { statId: 'steps', op: 'gte', target: 50000, days: 1 }, 2), 7151) // recent 5500 × 1.3 + 1
+  assert.equal(fairTarget(s, { statId: 'steps', op: 'gte', target: 3000, days: 1 }, 2), 5500)
+  const spend = stat({ id: 'spend:apps', unit: 'INR', direction: 'down', usual: 600, recent: 600 })
   assert.equal(fairTarget(spend, { statId: 'spend:apps', op: 'lte', target: 0, days: 1 }, 2), 420)
-  assert.equal(fairTarget(spend, { statId: 'spend:apps', op: 'lte', target: 0, days: 2 }, 5), 0)
+  assert.equal(fairTarget(spend, { statId: 'spend:apps', op: 'lte', target: 0, days: 2 }, 5), 780)
   assert.equal(fairTarget(undefined, { statId: 'x', op: 'gte', target: 1, days: 1 }, 2), null)
   assert.equal(fairTarget(stat({ daysLogged: 1 }), { statId: 'steps', op: 'gte', target: 7000, days: 1 }, 2), null)
+  assert.equal(fairTarget(s, { statId: 'invented', op: 'gte', target: 7000, days: 1 }, 2), null)
+  assert.equal(fairTarget(s, { statId: 'steps', op: 'gte', target: 7000, days: 0 }, 2), null)
+  assert.equal(fairTarget(s, { statId: 'steps', op: 'lte', target: 7000, days: 1 }, 2), null)
+  assert.equal(fairTarget(stat({ usual: NaN }), { statId: 'steps', op: 'gte', target: 7000, days: 1 }, 2), null)
 })
 
 test('rankFor uses how often past days met the target when there is history', () => {
@@ -56,6 +60,7 @@ test('windowValue totals counts and averages measures', () => {
   assert.equal(windowValue(days, '2026-11-06', '2026-11-07', 'sum'), 14)
   assert.equal(windowValue(days, '2026-11-06', '2026-11-08', 'avg'), 7)
   assert.equal(windowValue(new Map(), '2026-11-06', '2026-11-06', 'avg'), null)
+  assert.equal(windowValue(new Map(), '2026-11-06', '2026-11-06', 'sum'), null)
 })
 
 test('penalty is the same quest a stretch harder; fallback favours focus stats', () => {

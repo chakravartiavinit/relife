@@ -49,13 +49,18 @@ function base(s: Stat, days: number) {
 }
 
 /**
- * Keep an AI-proposed target fair: at least your usual (for "more") or at most it (for "less"), and no
- * more than three stretches beyond it. Returns null when the stat doesn't exist or has no data.
+ * Keep a target near observed capacity. When performance slips, use recent capacity rather than
+ * demand a jump back to the old baseline. Invalid specifications never reach persistence.
  */
 export function fairTarget(s: Stat | undefined, spec: QuestSpec, d: number): number | null {
-  if (!s || s.daysLogged < 3) return null
-  const b = base(s, spec.days)
-  const max = 3 * stretch(d)
+  if (!s || s.id !== spec.statId || s.daysLogged < 3 || !Number.isFinite(d) || !Number.isInteger(spec.days) || spec.days < 1 || spec.days > 3) return null
+  if (!['gte', 'lte'].includes(spec.op) || (s.direction === 'up' && spec.op !== 'gte') || (s.direction === 'down' && spec.op !== 'lte')) return null
+  const usual = s.usual ?? s.recent
+  if (usual == null || !Number.isFinite(usual) || usual < 0 || (s.recent != null && (!Number.isFinite(s.recent) || s.recent < 0))) return null
+  const recent = s.recent ?? usual
+  const reference = spec.op === 'gte' ? Math.min(usual, recent) : Math.max(usual, recent)
+  const b = s.agg === 'sum' ? reference * spec.days : reference
+  const max = Math.min(0.35, 3 * stretch(d))
   let t = spec.target
   if (!Number.isFinite(t)) return null
   if (spec.op === 'gte') t = Math.min(Math.max(t, b), b * (1 + max) + 1)
@@ -105,8 +110,8 @@ export function rankFor(s: Stat, spec: QuestSpec): Rank {
 /** The quest's value so far over its window: a total for counts and money, an average for mood or sleep. */
 export function windowValue(days: Map<string, number>, from: string, to: string, agg: Agg): number | null {
   const vals: number[] = []
-  for (let d = from; d <= to; d = addDays(d, 1)) { const v = days.get(d); if (v != null) vals.push(v) }
-  if (agg === 'sum') return vals.reduce((a, v) => a + v, 0)
+  for (let d = from; d <= to; d = addDays(d, 1)) { const v = days.get(d); if (v != null && Number.isFinite(v)) vals.push(v) }
+  if (agg === 'sum') return vals.length ? vals.reduce((a, v) => a + v, 0) : null
   return vals.length ? vals.reduce((a, v) => a + v, 0) / vals.length : null
 }
 
@@ -117,7 +122,7 @@ export function windowValue(days: Map<string, number>, from: string, to: string,
  */
 export function judge(q: { op: Op; target: number; to: string; agg: Agg }, value: number | null, today: string): 'active' | 'cleared' | 'failed' {
   const over = today > q.to
-  if (q.op === 'gte') return value != null && value >= q.target ? 'cleared' : over ? 'failed' : 'active'
+  if (q.op === 'gte') return value != null && value >= q.target && (q.agg === 'sum' || over) ? 'cleared' : over ? 'failed' : 'active'
   if (value != null && q.agg === 'sum' && value > q.target) return 'failed'
   if (!over) return 'active'
   return value != null && value <= q.target ? 'cleared' : 'failed'

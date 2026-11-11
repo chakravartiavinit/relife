@@ -1,0 +1,134 @@
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { addDays } from '@/core/time'
+import { canCoach, coachStats, questCandidates, questProgress, selectQuests, spendingSpike, type QuestHistory } from './coach'
+import type { Signal } from './patterns'
+
+const today = '2026-11-11'
+function signal(overrides: Partial<Signal> = {}, usual = 60, recent = 50): Signal {
+  const days = new Map<string, number>()
+  for (let i = 35; i >= 1; i--) days.set(addDays(today, -i), i > 7 ? usual : recent)
+  return { id: 'tracker:practice', name: 'Practice minutes', area: 'skills', group: 'practice', direction: 'up', agg: 'sum', days, ...overrides }
+}
+const candidates = (signals: Signal[], history: QuestHistory[] = []) => questCandidates(coachStats(signals, today), [], 2, history, today)
+const history = (overrides: Partial<QuestHistory> = {}): QuestHistory => ({ statId: 'other', fromDate: today, toDate: today, status: 'active', ...overrides })
+
+test('evidence excludes today, future data and nonfinite values from complete-day baselines', () => {
+  const s = signal()
+  s.days.set(today, 50_000)
+  s.days.set(addDays(today, 1), 90_000)
+  s.days.set(addDays(today, -12), NaN)
+  const [e] = coachStats([s], today)
+  assert.equal(e.usual, 60)
+  assert.equal(e.recent, 50)
+  assert.equal(e.baselineDays, 27)
+  assert.equal(e.recentDays, 7)
+  assert.equal(e.recentTo, '2026-11-10')
+})
+
+test('recovery targets follow recent capacity rather than an unreachable former baseline', () => {
+  const [q] = candidates([signal({}, 100, 20)])
+  assert.equal(q.intent, 'recovery')
+  assert.equal(q.target, 22)
+  assert.equal(q.stat.usual, 100)
+})
+
+test('candidate evidence must have a baseline, recent observations and freshness', () => {
+  const sparse = signal()
+  for (let i = 35; i >= 10; i--) sparse.days.delete(addDays(today, -i))
+  assert.deepEqual(candidates([sparse]), [])
+  const stale = signal()
+  for (let i = 1; i <= 3; i++) stale.days.delete(addDays(today, -i))
+  assert.deepEqual(candidates([stale]), [])
+  const thin = signal()
+  for (let i = 2; i <= 7; i++) thin.days.delete(addDays(today, -i))
+  assert.deepEqual(candidates([thin]), [])
+})
+
+test('gaps do not become consecutive observations for multi-day hit rates', () => {
+  const s = signal()
+  s.days.delete(addDays(today, -3))
+  assert.equal(coachStats([s], today)[0].history?.length, 2)
+})
+
+test('automatic quests exclude sensitive measures and aggregate essential spending', () => {
+  for (const [id, name, area] of [
+    ['tracker:sleep.hours', 'Sleep hours', 'health'], ['tracker:meds', 'Medication doses', 'health'],
+    ['tracker:weight', 'Weight', 'health'], ['tracker:calories', 'Calories', 'health'],
+    ['tracker:mood', 'Mood', 'mind'], ['spend', 'Spending', 'wealth'], ['spend:apps', 'App spending', 'wealth'],
+  ]) assert.deepEqual(candidates([signal({ id, name, area })]), [], id)
+  assert.equal(canCoach(coachStats([signal({ id: 'tracker:steps', name: 'Steps', area: 'health' })], today)[0]), true)
+})
+
+test('discretionary habit candidates require a worsening pattern, never a zero-spend target', () => {
+  const habit = { id: 'habit:cat:Snacks', name: 'Snacks spending', area: 'wealth', direction: 'down' as const, unit: 'INR' }
+  assert.deepEqual(candidates([signal(habit, 100, 90)]), [])
+  const [q] = candidates([signal(habit, 100, 150)])
+  assert.equal(q.intent, 'recovery')
+  assert.equal(q.target, 135)
+})
+
+test('selection rejects invented IDs, deduplicates and caps the total active load', () => {
+  const cs = candidates(['a', 'b', 'c', 'd'].map((id) => signal({ id })))
+  assert.equal(selectQuests(cs, ['invented', 'a', 'a', 'b', 'c', 'd'], [], today).length, 3)
+  assert.deepEqual(selectQuests(cs, [], [], today), [])
+  assert.equal(selectQuests(cs, ['a', 'b', 'c'], [history(), history({ statId: 'other2' })], today).length, 1)
+  assert.deepEqual(selectQuests(cs, ['a'], [history(), history(), history()], today), [])
+})
+
+test('an active quest blocks a conflicting candidate, including a future recovery window', () => {
+  assert.deepEqual(candidates([signal()], [history({ statId: 'tracker:practice', fromDate: addDays(today, 1), toDate: addDays(today, 1) })]), [])
+})
+
+test('selection allows at most one spending habit and respects yesterday\'s completion', () => {
+  const cs = candidates(['a', 'b'].map((id) => signal({ id: `habit:${id}`, area: 'wealth', name: 'Discretionary spending', direction: 'down' }, 100, 150)))
+  assert.equal(selectQuests(cs, cs.map((c) => c.statId), [], today).length, 1)
+  const rested = history({ statId: 'habit:a', status: 'cleared', fromDate: addDays(today, -1), toDate: addDays(today, -1) })
+  assert.deepEqual(selectQuests(cs, ['habit:a'], [rested], today), [])
+})
+
+test('same-day spending spikes use only prior observations and prefer the narrower app signal', () => {
+  const overall = signal({ id: 'spend', area: 'wealth' }, 100, 100)
+  const apps = signal({ id: 'spend:apps', area: 'wealth' }, 50, 50)
+  overall.days.set(today, 1000)
+  apps.days.set(today, 300)
+  const spike = spendingSpike([overall, apps], today)!
+  assert.equal(spike.signal.id, 'spend:apps')
+  assert.equal(spike.usual, 50)
+  assert.equal(spike.n, 28)
+  assert.equal(spike.current, 300)
+})
+
+test('ordinary spending, insufficient history and zero baselines do not trigger a spike', () => {
+  const ordinary = signal({ id: 'spend' }, 100, 100)
+  ordinary.days.set(today, 150)
+  assert.equal(spendingSpike([ordinary], today), null)
+  const thin = signal({ id: 'spend', days: new Map([[today, 1000], [addDays(today, -1), 10]]) })
+  assert.equal(spendingSpike([thin], today), null)
+  const zero = signal({ id: 'spend' }, 0, 0)
+  zero.days.set(today, 1000)
+  assert.equal(spendingSpike([zero], today), null)
+})
+
+test('future quests do not consume today\'s values or clear early', () => {
+  const q = { fromDate: addDays(today, 1), toDate: addDays(today, 1), agg: 'sum' as const, op: 'gte' as const, target: 5 }
+  assert.deepEqual(questProgress(q, signal(), today), { value: null, status: 'active' })
+})
+
+test('missing or partial reduction data cannot earn completion; explicit zero can', () => {
+  const q = { fromDate: addDays(today, -2), toDate: addDays(today, -1), agg: 'sum' as const, op: 'lte' as const, target: 50 }
+  assert.deepEqual(questProgress(q, undefined, today), { value: null, status: 'failed' })
+  const s = signal({ days: new Map([[q.fromDate, 0]]) })
+  assert.deepEqual(questProgress(q, s, today), { value: null, status: 'failed' })
+  s.days.set(q.toDate, 0)
+  assert.deepEqual(questProgress(q, s, today), { value: 0, status: 'cleared' })
+})
+
+test('averaged increases wait for the complete quest window', () => {
+  const q = { fromDate: today, toDate: addDays(today, 1), agg: 'avg' as const, op: 'gte' as const, target: 5 }
+  const s = signal({ days: new Map([[today, 10], [q.toDate, 0]]) })
+  assert.equal(questProgress(q, s, today).status, 'active')
+  assert.equal(questProgress(q, s, addDays(today, 2)).status, 'cleared')
+  s.days.delete(q.toDate)
+  assert.deepEqual(questProgress(q, s, addDays(today, 2)), { value: null, status: 'failed' })
+})
