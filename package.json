@@ -30,8 +30,6 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "croner": "^11.0.0",
-    "d3-scale": "^4.0.3",
-    "d3-shape": "^3.2.1",
     "drizzle-orm": "^0.45.4",
     "grammy": "^1.46.0",
     "lucide-react": "^1.69.0",
@@ -48,8 +46,6 @@
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
-    "@types/d3-scale": "^4.0.9",
-    "@types/d3-shape": "^3.2.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
