@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, gte, inArray, lte, ne, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { CATEGORIES } from '@/db/schema'
-import { ACHIEVEMENTS, longestRun, type AchievementStats } from '@/achievements'
+import { ACHIEVEMENTS, type AchievementStats } from '@/achievements'
 import { areaLevelFor, levelFor, medalFor, nextTitle, scoreDay, titleFor, type Area, type DayInput } from '@/domain/xp'
 import { streaks } from '@/domain/streaks'
 import { loadAdherence } from '@/core/adherence'
@@ -299,10 +299,4 @@ export async function recentXp(user: User, limit = 40) {
     reason: schema.xpEvents.reason, verified: schema.xpEvents.verified, ref: schema.xpEvents.ref, source: schema.xpEvents.source,
   }).from(schema.xpEvents).where(eq(schema.xpEvents.userId, user.id))
     .orderBy(desc(schema.xpEvents.localDate), desc(schema.xpEvents.amount)).limit(limit)
-}
-
-/** Days with any XP, all time. */
-export async function activeXpDays(user: User) {
-  const [r] = await db.select({ n: sql<number>`count(distinct ${schema.xpEvents.localDate})::int` }).from(schema.xpEvents).where(eq(schema.xpEvents.userId, user.id))
-  return r.n
 }

@@ -42,11 +42,6 @@ export function monthLabel(m: string) {
   return new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${m}-01T00:00:00Z`))
 }
 
-/** Percent change, or null when the base is zero. */
-export function pctChange(now: number, before: number) {
-  return before > 0 ? ((now - before) / before) * 100 : null
-}
-
 /**
  * Month-to-date spending against a usual month: where spending would be today on a usual month, and where this
  * month lands if it keeps the same daily pace. `vsUsual` is the projected month against the usual one (0.2 = 20% more).

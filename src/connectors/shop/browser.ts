@@ -103,8 +103,6 @@ export async function closeLoginWindow(id: string) {
   await Promise.race([exited, new Promise((r) => setTimeout(r, 10_000))])
 }
 
-export const loginWindowOpen = (id: string) => open.has(id)
-
 /** Loads a page in a hidden window with the saved session; collects the JSON it fetches and its text. */
 export async function readPage(id: string, url: string, opts: { scrolls?: number } = {}) {
   if (open.has(id)) throw new Error('Finish logging in, then press Connect and sync again.')
