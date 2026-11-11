@@ -35,8 +35,8 @@ diagrams (processes, data flow, data model, job engine, nudges, AI, security and
   water in millilitres with a 2–4 L target), money spent today, a look at yesterday, and The System's quests.
 - **Live**: open pages refresh when new data lands, and each new bank debit or credit pops up once.
 - **The System**: daily quests in the style of Solo Leveling. The AI picks what to train from what's slipping and
-  what you want to improve; tested rules keep it fair (targets near your usual, ranks E–S, penalty and emergency
-  quests). It also spots spending habits from order items, like a soft drink bought on most days, and sets at
+  what you want to improve; tested rules keep targets near recorded capacity, with ranks E–S. Missed daily quests
+  pause new quests and offer a smaller step, rest, or a priorities review instead of penalties. It also spots spending habits from order items and sets at
   most one habit quest a day.
 - **Progress** (`/profile`): your character sheet. Level, title, streak, the week per area, consistency,
   achievements, weekly quests, chests and streak freezes.

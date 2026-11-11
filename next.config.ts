@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
   // data/ is private runtime state (keys, Chrome profiles, caches): never part of a build.
   outputFileTracingExcludes: { '*': ['data/**'] },
   // Allow opening the dev server from your phone over Tailscale (MagicDNS names).
-  allowedDevOrigins: ['*.ts.net'],
+  allowedDevOrigins: ['*.ts.net', ...(process.env.NEXT_ALLOWED_DEV_ORIGINS?.split(',').map((origin) => origin.trim()).filter(Boolean) ?? [])],
   turbopack: {
     rules: {
       '*.css': {

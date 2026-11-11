@@ -25,7 +25,7 @@ export type NotifyPrefs = {
 
 export const CATEGORY_INFO: Record<NotifyCategory, { label: string; emoji: string; about: string; repeatable: boolean; defaults: Delivery }> = {
   system: {
-    label: 'The System', emoji: '⚔️', about: 'Daily quests, penalty and emergency quests, clears, and a warning before midnight.', repeatable: false,
+    label: 'The System', emoji: '⚔️', about: 'Daily quests, optional recovery choices, significant changes, and progress summaries.', repeatable: false,
     defaults: { mode: 'once', everyMin: 60, times: 0, quiet: true, maxPerDay: null },
   },
   reminders: {

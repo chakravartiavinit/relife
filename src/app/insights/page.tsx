@@ -97,7 +97,7 @@ async function Insights({ searchParams }: { searchParams: PageProps<'/insights'>
                         ))}
                       </ul>
                     ) : null}
-                    <div className="mt-4"><InsightActions id={i.id} hasActions={actions.length > 0} /></div>
+                    <div className="mt-4">{i.payload.recovery ? <Link href="/" className={buttonClass({ variant: 'primary', size: 'lg' })}>Choose recovery on Today</Link> : <InsightActions id={i.id} hasActions={actions.length > 0} />}</div>
                   </li>
                 )
               })}

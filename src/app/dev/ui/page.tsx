@@ -15,6 +15,8 @@ import { BeuiGallery } from '@/ui/components/gallery-beui'
 import { PositionCard } from '@/ui/components/wealth/position-card'
 import { IlloGallery } from '@/ui/components/tour/illos'
 import { ToastGallery } from '@/ui/components/toast'
+import { RecoveryPanel, SystemQuests } from '@/ui/components/system-quests'
+import type { RecoveryView } from '@/domain/recovery'
 
 export const metadata: Metadata = { title: 'UI gallery' }
 
@@ -25,6 +27,12 @@ const days = Array.from({ length: 21 }, (_, i) => {
   const d = new Date(Date.UTC(2026, 9, 10 + i))
   return { date: d.toISOString().slice(0, 10), value: i === 6 ? null : Math.round(5 + 3 * Math.sin(i / 2) + (i % 3)) }
 })
+
+const recoverySample: RecoveryView = {
+  id: '00000000-0000-4000-8000-000000000000', version: 1, localDate: '2026-11-11', choice: null, questId: null,
+  missed: [{ id: 'sample-miss', title: 'Push 4 commits', progress: 1, target: 4, unit: null }],
+  preview: { parentId: 'sample-miss', statId: 'tracker:github.commits', metric: 'Commits', title: 'Push 1 commit', target: 1, unit: null, op: 'gte', aggregation: 'sum', fromDate: '2026-11-11', toDate: '2026-11-11', rank: 'E', xp: 20, area: 'skills', baseline: 2 },
+}
 
 export default function UiGallery() {
   return (
@@ -124,6 +132,20 @@ export default function UiGallery() {
 
       <Section title="Toasts">
         <ToastGallery />
+      </Section>
+
+      <Section title="System recovery">
+        <p className="mb-4 text-[13px] text-ink-3">Synthetic examples. Choices require a real Today recovery record before the server can save them.</p>
+        <div className="grid gap-6 sm:grid-cols-2">
+          <Card><RecoveryPanel recovery={recoverySample} /></Card>
+          <Card><RecoveryPanel recovery={{ ...recoverySample, preview: null }} /></Card>
+          <Card><RecoveryPanel recovery={{ ...recoverySample, choice: 'rest' }} /></Card>
+          <Card><RecoveryPanel recovery={{ ...recoverySample, choice: 'smaller', questId: 'sample-recovery' }} /></Card>
+          <Card><SystemQuests difficulty={2} hasData timezone="Asia/Kolkata" quests={[
+            { id: 'sample-unverified', title: 'Practice for 45 minutes', kind: 'daily', status: 'unverified', reason: null, rank: 'E', xp: 20, target: 45, progress: null, op: 'gte', unit: 'min', toDate: '2026-11-10' },
+            { id: 'sample-retired', title: 'An old penalty quest', kind: 'penalty', status: 'cancelled', reason: null, rank: 'E', xp: 25, target: 4, progress: null, op: 'gte', unit: null, toDate: '2026-11-10' },
+          ]} /></Card>
+        </div>
       </Section>
 
       <Section title="Tour illustrations">

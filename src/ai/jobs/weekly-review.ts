@@ -10,16 +10,17 @@ import type { User } from '@/core/user'
 import { aiEnabled, model } from '../models'
 import { generate } from '../run'
 import { COACH_SYSTEM, digestText } from '../context'
+import { isSafeAiScheduleProposal } from '../tool-policy'
 
 const action = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('schedule'),
-    name: z.string(),
-    kind: z.enum(['routine', 'medicine', 'subscription', 'bill', 'renewal']),
+    name: z.string().max(120),
+    kind: z.string().max(40).describe('routine, subscription, bill, or renewal; unsupported kinds are discarded'),
     category: z.enum(CATEGORIES),
     rrule: z.string().describe('RRULE line without DTSTART, e.g. FREQ=DAILY;BYHOUR=7;BYMINUTE=0'),
-    target: z.number().optional(),
-    unit: z.string().optional(),
+    target: z.number().finite().optional(),
+    unit: z.string().max(40).optional(),
   }),
   z.object({
     type: z.literal('tracker'),
@@ -54,11 +55,12 @@ export async function weeklyReview(user: User, now = new Date()) {
   const res = await generate('plan', 'job.weekly-review', {
     model: model('plan'),
     output: Output.object({ schema }),
-    system: `${COACH_SYSTEM}\nWrite this week's review. Wins and problems must cite numbers from the digest. Propose one change for next week, and only actions that directly implement it.`,
+    system: `${COACH_SYSTEM}\nWrite this week's review. Wins and problems must cite numbers from the digest. Propose one change for next week, and only actions that directly implement it. Never suggest medicine or dosage changes; direct medicine reminders to the existing medicine form.`,
     prompt: await digestText(user, now),
   })
   const r = res.output
   if (!r) return null
+  const actions = r.actions.filter((action) => action.type !== 'schedule' || isSafeAiScheduleProposal(action.kind, action.name, action.unit))
   const review: ReviewContent = { wins: r.wins, watch: r.problems, focus: r.focus, plan: r.plan }
   // Plain text too, for "Why?", search and anything that can't lay out the parts.
   const body = [
@@ -68,12 +70,12 @@ export async function weeklyReview(user: User, now = new Date()) {
   ].filter(Boolean).join('\n\n')
   const row = await addInsight(user, {
     kind: 'review', title: r.title, body,
-    payload: { actions: r.actions as ProposedAction[], review, dedupeKey: `review:${localDate(now, user.timezone)}` },
+    payload: { actions: actions as ProposedAction[], review, dedupeKey: `review:${localDate(now, user.timezone)}` },
   })
   if (!row) return null
   await notify(user, 'analysis', {
-    text: reviewText({ title: r.title, ...review, actions: r.actions }), ref: `insight:${row.id}`,
-    buttons: r.actions.length ? [[{ text: r.actions.length === 1 ? '✅ Add it' : `✅ Add all ${r.actions.length}`, data: `i:a:${row.id}` }, { text: 'Not now', data: `i:d:${row.id}` }]] : undefined,
+    text: reviewText({ title: r.title, ...review, actions }), ref: `insight:${row.id}`,
+    buttons: actions.length ? [[{ text: actions.length === 1 ? '✅ Add it' : `✅ Add all ${actions.length}`, data: `i:a:${row.id}` }, { text: 'Not now', data: `i:d:${row.id}` }]] : undefined,
   })
   return row
 }

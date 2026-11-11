@@ -38,7 +38,8 @@
     ".next-mock/types/**/*.ts",
     ".next-mock/dev/types/**/*.ts",
     "node_modules/.cache/relife-mock-next/types/**/*.ts",
-    "node_modules/.cache/relife-mock-next/dev/types/**/*.ts"
+    "node_modules/.cache/relife-mock-next/dev/types/**/*.ts",
+    ".next/dev/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

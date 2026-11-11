@@ -129,7 +129,7 @@ cron (daily 08:00, weekly Sun 21:00) ──▶ context.ts builds digest (stats, 
 Approve ──▶ creates schedules / trackers (plans reuse the reminder engine)
 ```
 
-Chat (`/ask` in Telegram, ⌘K "Ask" in dashboard) uses tool calling: read tools + a read-only SQL tool, and propose-only write tools.
+Chat (`/ask` in Telegram, ⌘K "Ask" in dashboard) uses bounded, user-scoped metric, spending, portfolio, people, learning and quest tools, plus pending-only schedule suggestions. No general SQL tool is exposed. See `docs/AI_COACH.md` for current evidence, runtime and recovery policies.
 
 ---
 
@@ -179,7 +179,7 @@ sync_runs        connector_id, started_at, finished_at, ok, error, events_count
 insights         kind (nudge|review|plan|alert), title, body, payload jsonb,
                  status (pending|accepted|dismissed|done), source_run_id
 plans            goal, horizon, status, insight_id
-llm_runs         task, model, prompt_tokens, completion_tokens, cost_usd, ms, request, response
+llm_runs         task, model, tokens, ms, success/error category, safe finish/status metadata (new rows omit prompt/response text)
 ```
 
 Money: amounts stored as `numeric(20,8)` in the original currency. Conversion to INR happens at read time using `fx_rates(date, base, quote, rate)` (daily, cached).
@@ -377,7 +377,7 @@ The project was briefly called Savepoint, with its own crystal logo, in November
 - Exchange keys are read-only; the Binance connector checks key permissions on first sync and refuses keys that can trade or withdraw.
 - Web binds to `127.0.0.1`; remote access only through Tailscale. No ports exposed to the internet.
 - Telegram bot ignores every chat except `TELEGRAM_ALLOWED_CHAT_ID`.
-- LLM: account numbers and UPI handles masked in prompts by default; parsing can run on a local model (`LLM_PARSE=local:...`). The `run_sql` tool uses a read-only Postgres role.
+- LLM: account numbers and UPI handles masked in digests by default; parsing can run on a local model (`LLM_PARSE=local:...`). Read tools enforce user scope in code; no model-written SQL runs. New AI logs store operational metadata, not prompt or response excerpts. Providers still receive selected context.
 - Disk: FileVault on. Daily `pg_dump` to an encrypted folder.
 
 ---
