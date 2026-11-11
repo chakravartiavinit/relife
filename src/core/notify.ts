@@ -45,17 +45,6 @@ export async function sendMessage(text: string, opts: { buttons?: Button[][] } =
   }
 }
 
-export async function editMessage(messageId: number, text: string, buttons?: Button[][]) {
-  const c = client()
-  const chat = env('TELEGRAM_ALLOWED_CHAT_ID')
-  if (!c || !chat) return
-  try {
-    await c.editMessageText(chat, messageId, text, { parse_mode: 'HTML', reply_markup: keyboard(buttons) })
-  } catch {
-    // "message is not modified" and edits of old messages are harmless.
-  }
-}
-
 /** Remove a message (an older copy of a repeated reminder). Fails quietly: Telegram only deletes recent ones. */
 export async function deleteMessage(messageId: number) {
   const c = client()

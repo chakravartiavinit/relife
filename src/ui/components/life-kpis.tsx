@@ -12,7 +12,7 @@ import { formatMoney, formatNumber } from '@/domain/money'
 import { shiftMonth, monthRange } from '@/domain/wealth'
 import { CATEGORY } from '../tokens'
 import { Capsule } from './capsule'
-import { IconChip, Skeleton } from './card'
+import { IconChip } from './card'
 import { Sparkline, type Point } from './charts'
 import { Ticker } from './ticker'
 import { cn } from '../cn'
@@ -276,13 +276,5 @@ function StreakTile({ current, best, doneToday, days }: {
         ))}
       </ol>
     </Link>
-  )
-}
-
-export function LifeKpisSkeleton() {
-  return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-4" aria-busy>
-      {Array.from({ length: 7 }, (_, i) => <Skeleton key={i} className={cn('h-[176px] rounded-lg', i === 0 && 'col-span-2')} />)}
-    </div>
   )
 }

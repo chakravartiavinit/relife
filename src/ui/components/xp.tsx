@@ -1,11 +1,4 @@
-import Link from 'next/link'
-import { Trophy } from 'lucide-react'
 import type { Medal } from '@/domain/xp'
-import { formatNumber } from '@/domain/money'
-import { CATEGORY } from '../tokens'
-import { Capsule } from './capsule'
-import { Card, CardHeader } from './card'
-import { buttonClass } from './button'
 import { cn } from '../cn'
 
 // Level, medals and achievements. Server components; data comes from core/xp.ts.
@@ -52,29 +45,6 @@ export function MedalDisc({ medal, size = 28, label }: { medal: Medal | null; si
   )
 }
 
-/** Circular progress around the level number. */
-export function LevelRing({ level, progress, size = 148 }: { level: number; progress: number; size?: number }) {
-  const r = 44, c = 2 * Math.PI * r
-  return (
-    <div className="relative shrink-0" style={{ width: size, height: size }} role="img" aria-label={`Level ${level}, ${Math.round(progress * 100)}% to the next level`}>
-      <svg viewBox="0 0 100 100" className="absolute inset-0 -rotate-90">
-        <circle cx="50" cy="50" r={r} fill="none" stroke="var(--hairline)" strokeWidth="7" />
-        <circle
-          cx="50" cy="50" r={r} fill="none" stroke="var(--pill)" strokeWidth="7" strokeLinecap="round" strokeDasharray={c}
-          className="reveal-ring"
-          style={{ '--len': c, '--off': c * (1 - Math.min(1, Math.max(0.02, progress))) } as React.CSSProperties}
-        />
-      </svg>
-      <div className="absolute inset-[16%] grid place-items-center rounded-full bg-ink text-bg shadow-[inset_0_1px_0_oklch(1_0_0/0.15),0_8px_20px_-8px_oklch(0.2_0.04_250/0.5)]">
-        <span className="flex flex-col items-center leading-none">
-          <span className="text-[10px] font-semibold tracking-[0.16em] uppercase opacity-60">Level</span>
-          <span className="mt-1 font-display text-[40px] font-bold tabular-nums">{level}</span>
-        </span>
-      </div>
-    </div>
-  )
-}
-
 /** Every title as a stepped track: passed, current, ahead. */
 export function TitleTrack({ level, titles }: { level: number; titles: { level: number; title: string }[] }) {
   const current = [...titles].reverse().find((t) => level >= t.level)!
@@ -106,76 +76,3 @@ export function TitleTrack({ level, titles }: { level: number; titles: { level: 
   )
 }
 
-type Summary = {
-  level: number; title: string; total: number; floor: number; next: number; progress: number; today: number
-  nextTitle: { level: number; title: string } | null
-  areas: { area: keyof typeof CATEGORY; xp: number; level: number; progress: number; medal: { medal: Medal; label: string } | null }[]
-  recent: { key: string; name: string; tier: 'bronze' | 'silver' | 'gold' }[]
-}
-
-/** Compact level card for Today's header. */
-export function LevelChip({ s }: { s: Summary }) {
-  return (
-    <Link
-      href="/profile"
-      className="flex w-full items-center gap-3 rounded-lg sm:w-72 bg-surface px-3 py-3 shadow-1 transition-[box-shadow] duration-150 hover:shadow-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill"
-    >
-      <LevelMark level={s.level} size="sm" />
-      <span className="min-w-0 flex-1">
-        <span className="flex items-baseline justify-between gap-2">
-          <span className="truncate text-[13px] font-semibold text-ink">{s.title}</span>
-          <span className="shrink-0 text-[12px] font-medium text-pill-ink tabular-nums">+{formatNumber(s.today)} XP today</span>
-        </span>
-        <Capsule value={s.progress} max={1} size="sm" color="var(--pill)" label={`Level ${s.level} progress`} className="mt-2" />
-        <span className="mt-1 block text-[11px] text-ink-3 tabular-nums">{formatNumber(s.next - s.total)} XP to level {s.level + 1}</span>
-      </span>
-    </Link>
-  )
-}
-
-/** Overview card: level, area levels with medals, latest achievements. */
-export function LevelPanel({ s }: { s: Summary }) {
-  return (
-    <Card className="p-6">
-      <CardHeader
-        title="Level" icon={<Trophy strokeWidth={2} />} color="var(--medal-gold)"
-        description="XP from keeping your plan and from measures that are the same for everyone"
-        action={<Link href="/profile" className={buttonClass({ variant: 'ghost', size: 'sm' })}>Profile</Link>}
-      />
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-        <div className="flex items-start gap-5">
-          <LevelMark level={s.level} size="lg" />
-          <div className="min-w-0 flex-1">
-            <div className="font-display text-[24px] leading-tight font-bold tracking-[-0.02em] text-ink">{s.title}</div>
-            <div className="mt-1 text-[13px] text-ink-3 tabular-nums">{formatNumber(s.total)} XP · +{formatNumber(s.today)} today</div>
-            <Capsule value={s.progress} max={1} color="var(--pill)" label={`Level ${s.level} progress`} className="mt-4" />
-            <div className="mt-2 flex justify-between text-[12px] text-ink-3 tabular-nums">
-              <span>{formatNumber(s.next - s.total)} XP to level {s.level + 1}</span>
-              {s.nextTitle ? <span>{s.nextTitle.title} at {s.nextTitle.level}</span> : null}
-            </div>
-            {s.recent.length ? (
-              <ul aria-label="Latest achievements" className="mt-5 flex flex-wrap gap-2">
-                {s.recent.map((a) => (
-                  <li key={a.key} className="flex h-8 items-center gap-2 rounded-full bg-surface-2 pr-3 pl-1 text-[12.5px] text-ink-2 shadow-[inset_0_0_0_1px_var(--hairline)]">
-                    <MedalDisc medal={a.tier} size={24} label={`${a.tier} achievement`} />
-                    {a.name}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </div>
-        </div>
-        <ul aria-label="Area levels" className="flex flex-col gap-3">
-          {s.areas.map((a) => (
-            <li key={a.area} className="grid grid-cols-[7rem_3rem_minmax(0,1fr)_28px] items-center gap-3">
-              <span className="flex items-center gap-2 text-[13px] text-ink-2"><span aria-hidden className="size-2 rounded-full" style={{ background: CATEGORY[a.area].color }} />{CATEGORY[a.area].label}</span>
-              <span className="text-[13px] font-semibold text-ink tabular-nums">Lv {a.level}</span>
-              <Capsule value={a.progress} max={1} size="sm" color={CATEGORY[a.area].color} label={`${CATEGORY[a.area].label} level ${a.level} progress`} />
-              <MedalDisc medal={a.medal?.medal ?? null} label={a.medal ? `${a.medal.label} medal in ${CATEGORY[a.area].label}` : `No ${CATEGORY[a.area].label} medal yet`} />
-            </li>
-          ))}
-        </ul>
-      </div>
-    </Card>
-  )
-}

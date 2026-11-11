@@ -32,5 +32,3 @@ export async function convert(amount: number, from: string, to: string, day = ne
   if (a == null || b == null) return null
   return (amount / a) * b
 }
-
-export function clearFxMemo() { memo.clear() }

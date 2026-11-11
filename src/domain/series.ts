@@ -13,20 +13,6 @@ export function average(values: (number | null)[]) {
 }
 
 /**
- * Week × weekday grid (Monday first) ending on `endDay`, for heat calendars.
- * Returns intensities in 0..1 and the count that 1 stands for.
- */
-export function weekGrid(days: Map<string, number>, endDay: string, weeks: number) {
-  const end = new Date(`${endDay}T00:00:00Z`)
-  const monday = addDays(endDay, -((end.getUTCDay() + 6) % 7))
-  const start = addDays(monday, -(weeks - 1) * 7)
-  const max = Math.max(1, ...[...days.values()])
-  const values = Array.from({ length: weeks }, (_, w) =>
-    Array.from({ length: 7 }, (_, d) => (days.get(addDays(start, w * 7 + d)) ?? 0) / max))
-  return { values, max }
-}
-
-/**
  * Bridge gaps for trend lines: interior nulls are linearly interpolated between logged days.
  * Leading/trailing nulls stay null; callers trim them rather than invent values.
  */

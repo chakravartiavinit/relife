@@ -1,18 +1,5 @@
 // Line-art in the poster's blue sketch style. Decorative only.
 
-export function Clouds({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 320 120" fill="none" aria-hidden className={className}>
-      <g stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M24 86c-10 0-16-7-16-15s7-15 16-14c2-11 12-19 24-17 6-9 20-12 30-5 9-6 23-3 28 8 11-1 20 7 20 18 9 1 15 8 14 16-1 6-6 9-12 9H24Z" />
-        <path d="M54 58c3-5 9-8 15-7M100 54c4-1 9 0 12 4" />
-        <path d="M196 52c-7 0-12-5-12-11s5-11 12-10c2-8 9-13 17-12 5-6 15-8 22-3 7-4 17-2 20 6 8-1 15 5 15 13 6 1 10 6 10 12-1 4-4 6-9 6h-75Z" opacity=".7" />
-        <path d="M232 104h60M250 112h30" opacity=".5" />
-      </g>
-    </svg>
-  )
-}
-
 export function Petal({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
     <svg viewBox="0 0 20 20" aria-hidden className={className} style={style}>
