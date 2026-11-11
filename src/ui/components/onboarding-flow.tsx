@@ -247,9 +247,9 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
             </motion.p>
             {done ? (
               <div className="flex shrink-0 items-center gap-2">
-                <a href="/" className={buttonClass({ variant: 'ghost', size: 'lg', className: 'h-10 px-3 text-[14px] max-sm:hidden' })}>Go to Today</a>
+                <a href="/" className={buttonClass({ variant: 'ghost', size: 'lg', className: 'h-10 px-3 text-[14px]' })}>{/* Short on a phone, so both fit. */}<span className="max-sm:hidden">Go to </span>Today</a>
                 <a ref={go} href="/?tour=setup" className={buttonClass({ variant: 'primary', size: 'lg', className: 'h-10 text-[14px]' })}>
-                  Show me around<ArrowRight className="size-4 rtl:-scale-x-100" strokeWidth={2} />
+                  <span className="max-sm:hidden">Show me around</span><span className="sm:hidden">Take the tour</span><ArrowRight className="size-4 rtl:-scale-x-100" strokeWidth={2} />
                 </a>
               </div>
             ) : (

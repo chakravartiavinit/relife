@@ -172,7 +172,13 @@ export function Tour() {
     }
     window.addEventListener('resize', remeasure)
     window.addEventListener('scroll', remeasure, { capture: true })
+    // The anchor can leave the page while its stop is showing (Hide on the checklist): re-measure then, so the
+    // card centres instead of pointing at the gap.
+    const anchorEl = anchor ? document.querySelector(`[data-tour="${anchor}"]`) : null
+    const gone = new MutationObserver(remeasure)
+    if (anchorEl?.parentElement) gone.observe(anchorEl.parentElement, { childList: true })
     return () => {
+      gone.disconnect()
       cancelAnimationFrame(frame)
       window.removeEventListener('resize', remeasure)
       window.removeEventListener('scroll', remeasure, { capture: true })
@@ -294,7 +300,7 @@ export function Tour() {
             {/* Close sits on the card's corner, half outside it (as the capsule sits on setup's card), so it
                 never covers the picture. A 28px button with a 40px hit area. */}
             <button type="button" onClick={close} aria-label="Close the tour"
-              className={cn('absolute -top-2.5 -right-2.5 grid size-7 place-items-center rounded-full bg-surface text-ink-2 shadow-2 transition-[color,scale] duration-150 ease-out-quint after:absolute after:-inset-1.5 hover:text-ink active:scale-[0.96]', FOCUS)}>
+              className={cn('absolute -top-2.5 -right-2.5 z-10 grid size-7 place-items-center rounded-full bg-surface text-ink-2 shadow-2 transition-[color,scale] duration-150 ease-out-quint after:absolute after:-inset-1.5 hover:text-ink active:scale-[0.96]', FOCUS)}>
               <X className="size-3.5" strokeWidth={2} />
             </button>
 

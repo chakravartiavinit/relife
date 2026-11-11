@@ -59,7 +59,7 @@ export function OnboardingCompact({ steps }: { steps: Step[] }) {
         <span className="flex items-center gap-1">
           <span className="text-[12px] text-ink-3 tabular-nums">{done} of {steps.length}</span>
           <form action={hideSetupChecklist}>
-            <button type="submit" className={buttonClass({ variant: 'ghost', size: 'sm', className: '-me-2 h-8 px-2 text-[12px] text-ink-3' })}>Hide</button>
+            <button type="submit" className={buttonClass({ variant: 'ghost', size: 'sm', className: '-me-2 h-10 px-2 text-[12px] text-ink-3' })}>Hide</button>
           </form>
         </span>
       </div>
@@ -79,7 +79,7 @@ export function OnboardingCompact({ steps }: { steps: Step[] }) {
                     <span className="mt-0.5 block text-[12.5px] leading-snug text-ink-2">{s.body}</span>
                   </span>
                 </p>
-                <Link href={s.href} className={buttonClass({ variant: 'primary', size: 'sm', className: 'mt-3 ms-[30px]' })}>
+                <Link href={s.href} className={buttonClass({ variant: 'primary', size: 'md', className: 'mt-3 ms-[30px] h-10' })}>
                   {s.cta}<ArrowRight className="size-3.5 rtl:-scale-x-100" strokeWidth={2} />
                 </Link>
               </li>
