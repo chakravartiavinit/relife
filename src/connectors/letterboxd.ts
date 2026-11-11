@@ -1,7 +1,8 @@
 import type { Connector } from '@/core/types'
 import { env } from '@/core/env'
 import { localDate } from '@/core/time'
-import { dayMap, emitDays, fillDays } from './daily'
+import { checkStatus, dayMap, emitDays, fillDays, request } from './daily'
+import { handleOf } from './net'
 
 // Letterboxd: the films you log in your diary, from your public RSS feed (letterboxd.com/<you>/rss/). No key.
 // The feed holds only your latest 50 diary entries, so the first sync backfills whatever the feed has and
@@ -54,9 +55,21 @@ export function letterboxdDays(watches: Watch[]) {
 
 /** The username from a bare name or a profile link (letterboxd.com/dave/). */
 export function letterboxdUser(input: string) {
-  const name = input.trim().replace(/^https?:\/\//i, '').replace(/^(?:www\.)?letterboxd\.com\//i, '').split(/[/?#]/)[0]
+  const name = handleOf(input)
   if (!/^[\w-]+$/.test(name)) throw new Error('That is not a Letterboxd username. Use the name after letterboxd.com/ on your profile.')
   return name
+}
+
+/** The feed text for a username (or profile link). */
+async function feed(input: string) {
+  const user = letterboxdUser(input)
+  const res = await request(`https://letterboxd.com/${user}/rss/`, { headers: { Accept: 'application/rss+xml' } })
+  if (res.status === 403) throw new Error('Letterboxd blocked the request (HTTP 403). It will try again on the next sync; the network may be blocked.')
+  checkStatus(res, 'Letterboxd user not found, or the profile is private. Check the username.')
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const xml = await res.text()
+  if (!xml.includes('<rss')) throw new Error('Letterboxd did not return a feed. It will try again on the next sync.')
+  return xml
 }
 
 export const letterboxd: Connector = {
@@ -68,14 +81,11 @@ export const letterboxd: Connector = {
   fields: [{ env: 'LETTERBOXD_USERNAME', label: 'Letterboxd username', placeholder: 'dave', hint: 'Your public profile name (letterboxd.com/<name>) or its link. The feed holds your latest 50 diary entries.' }],
   env: ['LETTERBOXD_USERNAME'],
   everyMinutes: 120,
+  async check(get) {
+    await feed(get('LETTERBOXD_USERNAME')!)
+  },
   async sync(ctx) {
-    const user = letterboxdUser(env('LETTERBOXD_USERNAME')!)
-    const res = await fetch(`https://letterboxd.com/${user}/rss/`, { headers: { 'User-Agent': 'ReLife (self-hosted life tracker)', Accept: 'application/rss+xml' } })
-    if (res.status === 404) throw new Error('Letterboxd user not found, or the profile is private. Check the username.')
-    if (res.status === 429) throw new Error('Rate limited. It will try again on the next sync.')
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const xml = await res.text()
-    if (!xml.includes('<rss')) throw new Error('Letterboxd did not return a feed. It will try again on the next sync.')
+    const xml = await feed(env('LETTERBOXD_USERNAME')!)
     const watches = letterboxdWatches(xml)
     let days = letterboxdDays(watches).sort((a, b) => a.date.localeCompare(b.date))
     // A full feed is cut off mid-history, so its oldest day may be missing films it really had.

@@ -1,5 +1,5 @@
 import type { Connector } from '@/core/types'
-import { appFields, token as accessToken } from './oauth'
+import { apiError, appFields, checkApp, token as accessToken } from './oauth'
 import { dayMap, emitDays, fetchJson, fillDays, syncWindow } from './daily'
 
 // Strava: every run, ride, walk, swim and workout you record, as minutes moving and distance per day.
@@ -64,6 +64,8 @@ export const strava: Connector = {
     setupUrl: 'https://www.strava.com/settings/api',
   },
   everyMinutes: 60,
+  // A wrong client ID is answered 401 with an Application error (checked live); a wrong code is 400 (Strava docs).
+  check: (get) => checkApp('Strava', strava, get),
   async sync(ctx) {
     const token = await accessToken(ctx, strava)
     const { from, today, backfilled } = syncWindow(ctx, 90, 7)
@@ -72,6 +74,7 @@ export const strava: Connector = {
     const activities: Activity[] = []
     for (let page = 1; page <= 10; page++) {
       const list = await fetchJson<Activity[]>(`https://www.strava.com/api/v3/athlete/activities?after=${after}&per_page=200&page=${page}`, { headers: { Authorization: `Bearer ${token}` } })
+        .catch(apiError('Strava', ' Keep “View data about your activities” ticked on Strava’s permission page.'))
       activities.push(...list)
       if (list.length < 200) break
     }

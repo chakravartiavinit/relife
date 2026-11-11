@@ -28,7 +28,7 @@ export function authorizeUrl(spec: OAuthSpec, redirectUri: string, state: string
 export function readTokens(json: unknown, previousRefresh?: string, now = Date.now()): OAuthTokens {
   const j = json as Record<string, unknown>
   const t = (j.body && typeof j.body === 'object' ? j.body : j) as Record<string, unknown>
-  if (typeof j.status === 'number' && j.status !== 0) throw new Error(`The service refused the sign-in (status ${j.status}${j.error ? `: ${j.error}` : ''}).`)
+  if (typeof j.status === 'number' && j.status !== 0) throw new Error(`The service refused the sign-in (status ${j.status}${j.error ? `: ${j.error}` : ''}). Sign in again on Connectors.`)
   if (typeof t.access_token !== 'string') throw new Error(`No access token in the reply${t.error ? `: ${t.error_description ?? t.error}` : ''}.`)
   const expiresAt = typeof t.expires_at === 'number' ? t.expires_at * 1000 : typeof t.expires_in === 'number' ? now + t.expires_in * 1000 : undefined
   return { access: t.access_token, refresh: typeof t.refresh_token === 'string' ? t.refresh_token : previousRefresh, expiresAt }
@@ -40,6 +40,10 @@ async function tokenRequest(spec: OAuthSpec, params: Record<string, string>, pre
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
     body: new URLSearchParams({ client_id: env(spec.clientIdEnv)!.trim(), client_secret: env(spec.clientSecretEnv)!.trim(), ...spec.tokenParams, ...params }),
+    signal: AbortSignal.timeout(20_000), // a stalled token endpoint must not hang the sync or the callback
+  }).catch((e: Error) => {
+    if (e.name === 'TimeoutError' || e.name === 'AbortError') throw new Error('The service took too long to answer. Try again in a minute.')
+    throw e
   })
   const json = await res.json().catch(() => ({}))
   if (res.status === 400 || res.status === 401) {
@@ -48,6 +52,31 @@ async function tokenRequest(spec: OAuthSpec, params: Record<string, string>, pre
   }
   if (!res.ok) throw new Error(`Token request failed: HTTP ${res.status}`)
   return readTokens(json, previousRefresh)
+}
+
+/** The service says the app itself is unknown: wrong client ID or secret (RFC 6749 `invalid_client`, or Strava's Application error). */
+export function isBadClient(status: number, json: unknown) {
+  const j = (json ?? {}) as { error?: unknown; errors?: { resource?: unknown }[] }
+  return (status === 400 || status === 401) && (j.error === 'invalid_client' || (Array.isArray(j.errors) && j.errors.some((e) => e?.resource === 'Application')))
+}
+
+/**
+ * Before the sign-in redirect: send the client ID and secret with a made-up code. A wrong ID or secret is answered
+ * `invalid_client`; right ones get `invalid_grant` for the code. Only the first one is an error here; anything else
+ * (network, 5xx, odd replies) passes and shows up at sign-in. Wire it only for services that answer this way.
+ */
+export async function checkClient(name: string, spec: OAuthSpec, get: (env: string) => string | undefined) {
+  const id = get(spec.clientIdEnv)?.trim(), secret = get(spec.clientSecretEnv)?.trim()
+  if (!id || !secret) return
+  const res = await fetch(spec.tokenUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+    body: new URLSearchParams({ client_id: id, client_secret: secret, ...spec.tokenParams, grant_type: 'authorization_code', code: 'relife-check', redirect_uri: 'http://127.0.0.1/relife-check' }),
+    signal: AbortSignal.timeout(10_000),
+  })
+  if (isBadClient(res.status, await res.json().catch(() => ({})))) {
+    throw new Error(`${name} doesn’t recognise this client ID and secret. Copy both again from your app at ${new URL(spec.setupUrl).host}.`)
+  }
 }
 
 /** The callback: trade the one-time code for tokens and keep them. */

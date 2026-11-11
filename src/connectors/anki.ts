@@ -37,6 +37,12 @@ export function ankiDays(counts: [string, number][], reviews: Review[] | null, t
   return [...days].map(([date, d]) => ({ date, cards: d.cards, minutes: Math.round(d.ms / 60_000) }))
 }
 
+/** The address as typed: `localhost:8765` gets its http://, a trailing slash goes. */
+const ankiUrl = (typed?: string) => {
+  const t = typed?.trim().replace(/\/+$/, '')
+  return t ? (/^https?:\/\//i.test(t) ? t : `http://${t}`) : 'http://127.0.0.1:8765'
+}
+
 async function call<T>(url: string, key: string | undefined, action: string, params: object = {}) {
   let res: Response
   try {
@@ -51,6 +57,9 @@ async function call<T>(url: string, key: string | undefined, action: string, par
   return body.result
 }
 
+/** Marks the message of an Anki that isn't running: not a typo, so saving the address is fine. */
+const isNotOpen = (e: unknown) => (e as Error).message === NOT_OPEN
+
 export const anki: Connector = {
   id: 'anki',
   name: 'Anki',
@@ -63,9 +72,13 @@ export const anki: Connector = {
   ],
   env: [],
   everyMinutes: 60,
+  async check(get) {
+    // Anki is often closed when you connect, and that is fine: only a wrong address or key is a problem to fix now.
+    await call(ankiUrl(get('ANKI_CONNECT_URL')), get('ANKI_CONNECT_KEY')?.trim() || undefined, 'version').catch((e) => { if (!isNotOpen(e)) throw e })
+  },
   async sync(ctx) {
     const { tz, today, from, backfilled } = syncWindow(ctx, 90)
-    const url = env('ANKI_CONNECT_URL')?.trim() || 'http://127.0.0.1:8765'
+    const url = ankiUrl(env('ANKI_CONNECT_URL'))
     const key = env('ANKI_CONNECT_KEY')?.trim() || undefined
     const counts = await call<[string, number][]>(url, key, 'getNumCardsReviewedByDay')
     // Review rows: cardReviews reads one deck at a time (exact deck, not its subdecks). Start a day early so any

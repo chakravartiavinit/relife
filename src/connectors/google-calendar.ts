@@ -1,7 +1,7 @@
 import type { Connector } from '@/core/types'
 import { localDate } from '@/core/time'
 import { dayMap, emitDays, fetchJson, fillDays, syncWindow } from './daily'
-import { appFields, token } from './oauth'
+import { appFields, checkApp, token } from './oauth'
 
 // Google Calendar, signed in with OAuth (read-only). Each day: minutes in meetings (events with other
 // people that you didn't decline) and minutes of Focus time blocks. Only times and counts are kept, never
@@ -45,7 +45,7 @@ export const googleCalendar: Connector = {
   category: 'mind',
   description: 'Time in meetings and in Focus time blocks each day, from your Google Calendar. Titles and guests stay in Google.',
   provides: ['Meeting time', 'Focus time'],
-  fields: appFields('GOOGLE_CALENDAR', 'An OAuth client (Web application) from console.cloud.google.com → APIs & Services → Credentials.'),
+  fields: appFields('GOOGLE_CALENDAR', 'A “Web application” OAuth client from console.cloud.google.com → APIs & Services → Credentials, with the Google Calendar API turned on. Set the consent screen to In production, or Google ends the sign-in after 7 days.'),
   env: ['GOOGLE_CALENDAR_CLIENT_ID', 'GOOGLE_CALENDAR_CLIENT_SECRET'],
   oauth: {
     authorizeUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
@@ -58,6 +58,7 @@ export const googleCalendar: Connector = {
     setupUrl: 'https://console.cloud.google.com/apis/credentials',
   },
   everyMinutes: 60,
+  check: (get) => checkApp('Google', googleCalendar, get),
   async sync(ctx) {
     const headers = { Authorization: `Bearer ${await token(ctx, googleCalendar)}` }
     const { tz, today, from, backfilled } = syncWindow(ctx, 60)

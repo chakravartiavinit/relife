@@ -1,7 +1,7 @@
 import type { Connector } from '@/core/types'
 import { env } from '@/core/env'
 import { addDays, localDate } from '@/core/time'
-import { dayMap, emitDays, fetchJson, fillDays, syncWindow } from './daily'
+import { dayMap, emitDays, fetchJson, fillDays, rejectedAs, syncWindow } from './daily'
 
 // Readwise: highlights you make while reading (Kindle, articles, books, podcasts…), counted per day. Only counts
 // and the number of different books or articles are kept, never the text. First sync backfills 90 days, later
@@ -25,6 +25,9 @@ export function readwiseDays(highlights: Highlight[], tz: string) {
   return [...days.values()].map(({ books, ...d }): ReadwiseDay => ({ ...d, sources: books.size }))
 }
 
+const REJECTED = 'Readwise rejected the token. Copy it again from readwise.io/access_token.'
+const auth = (token: string) => ({ Authorization: `Token ${token.trim()}` })
+
 export const readwise: Connector = {
   id: 'readwise',
   name: 'Readwise',
@@ -34,16 +37,18 @@ export const readwise: Connector = {
   fields: [{ env: 'READWISE_TOKEN', label: 'Access token', secret: true, hint: 'readwise.io/access_token.' }],
   env: ['READWISE_TOKEN'],
   everyMinutes: 120,
+  async check(get) {
+    await fetchJson('https://readwise.io/api/v2/auth/', { headers: auth(get('READWISE_TOKEN')!) }).catch(rejectedAs(REJECTED)) // answers 204 for a good token
+  },
   async sync(ctx) {
     const { tz, today, from, backfilled } = syncWindow(ctx, 90)
-    const headers = { Authorization: `Token ${env('READWISE_TOKEN')!.trim()}` }
+    const headers = auth(env('READWISE_TOKEN')!)
     const q = new URLSearchParams({ highlighted_at__gt: `${addDays(from, -1)}T00:00:00Z`, page_size: '1000' })
     const highlights: Highlight[] = []
     let next: string | null = `https://readwise.io/api/v2/highlights/?${q}`
     // The highlight list allows 20 requests a minute; 1000 a page makes that plenty.
     for (let page = 0; next && page < 20; page++) {
-      const r: Page = await fetchJson<Page>(next, { headers })
-        .catch((e: Error) => { throw new Error(e.message.includes('rejected') ? 'Readwise rejected the token. Copy it again from readwise.io/access_token.' : e.message) })
+      const r: Page = await fetchJson<Page>(next, { headers }).catch(rejectedAs(REJECTED))
       highlights.push(...r.results)
       next = r.next
     }

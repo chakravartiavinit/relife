@@ -1,7 +1,7 @@
 import type { Connector } from '@/core/types'
 import { addDays } from '@/core/time'
 import { dayMap, emitDays, fetchJson, syncWindow } from './daily'
-import { appFields, token } from './oauth'
+import { apiError, appFields, checkApp, token } from './oauth'
 
 // Oura Ring, signed in with OAuth (personal access tokens were retired in December 2025). Each day: sleep
 // hours and score, readiness, HRV, lowest heart rate and steps. Oura keys every summary to the day you
@@ -60,6 +60,7 @@ export const oura: Connector = {
     setupUrl: 'https://cloud.ouraring.com/oauth/applications',
   },
   everyMinutes: 60,
+  check: (get) => checkApp('Oura', oura, get),
   async sync(ctx) {
     const headers = { Authorization: `Bearer ${await token(ctx, oura)}` }
     const { today, from } = syncWindow(ctx, 90)
@@ -70,6 +71,7 @@ export const oura: Connector = {
         // end_date a day later: Oura's end is exclusive for some collections.
         const q = new URLSearchParams({ start_date: from, end_date: addDays(today, 1), ...(next ? { next_token: next } : {}) })
         const p = await fetchJson<Page<T>>(`https://api.ouraring.com/v2/usercollection/${collection}?${q}`, { headers })
+          .catch(apiError('Oura', ' Oura only shares data while your membership is active.'))
         out.push(...p.data)
         next = p.next_token
       } while (next)

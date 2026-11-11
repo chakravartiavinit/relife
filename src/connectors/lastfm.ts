@@ -1,7 +1,8 @@
 import type { Connector } from '@/core/types'
 import { env } from '@/core/env'
 import { localDate } from '@/core/time'
-import { dayMap, emitDays, fetchJson, fillDays, syncWindow } from './daily'
+import { dayMap, emitDays, fillDays, request, syncWindow } from './daily'
+import { handleOf } from './net'
 
 // Last.fm: every song you scrobble from Spotify, Apple Music, YouTube Music and the rest. Each day becomes
 // tracks played, an estimate of minutes listened (Last.fm doesn't store song lengths in the feed) and the
@@ -30,6 +31,28 @@ export function lastfmDays(tracks: Track[], tz: string) {
   }))
 }
 
+/** Last.fm sends its error code in the body, often with a 403, so read the body before the status. */
+function lastfmError(code: number, message?: string) {
+  if (code === 6) return 'Last.fm user not found. Check the username (the name in last.fm/user/<name>).'
+  if (code === 10 || code === 26) return 'Last.fm rejected the API key. Copy it again from last.fm/api/accounts.'
+  if (code === 17) return 'This Last.fm profile hides recent listening. Untick "Hide recent listening information" in Last.fm Settings → Privacy.'
+  if (code === 29) return 'Rate limited. It will try again on the next sync.'
+  if ([8, 11, 16].includes(code)) return `Last.fm timed out or is busy (error ${code}). It will try again on the next sync.`
+  return `Last.fm: ${message ?? `error ${code}`}`
+}
+
+async function recent(get: (env: string) => string | undefined, extra: Record<string, string>) {
+  const q = new URLSearchParams({
+    method: 'user.getrecenttracks', user: handleOf(get('LASTFM_USERNAME')), api_key: get('LASTFM_API_KEY')!.trim(), format: 'json', ...extra,
+  })
+  const res = await request(`https://ws.audioscrobbler.com/2.0/?${q}`)
+  const body = await res.json().catch(() => null) as Recent | null
+  if (body?.error) throw new Error(lastfmError(body.error, body.message))
+  if (res.status === 429) throw new Error(lastfmError(29))
+  if (!res.ok || !body) throw new Error(`HTTP ${res.status}`)
+  return body
+}
+
 export const lastfm: Connector = {
   id: 'lastfm',
   name: 'Last.fm',
@@ -42,18 +65,15 @@ export const lastfm: Connector = {
   ],
   env: ['LASTFM_USERNAME', 'LASTFM_API_KEY'],
   everyMinutes: 60,
+  async check(get) {
+    await recent(get, { limit: '1' })
+  },
   async sync(ctx) {
     const { tz, today, from, backfilled } = syncWindow(ctx, 60)
     const fromTs = Math.floor(Date.parse(`${from}T00:00:00Z`) / 1000) - 86_400 // a day early covers any time zone
     const tracks: Track[] = []
     for (let page = 1; page <= 30; page++) {
-      const q = new URLSearchParams({
-        method: 'user.getrecenttracks', user: env('LASTFM_USERNAME')!.trim(), api_key: env('LASTFM_API_KEY')!.trim(),
-        format: 'json', limit: '200', from: String(fromTs), page: String(page),
-      })
-      const r = await fetchJson<Recent>(`https://ws.audioscrobbler.com/2.0/?${q}`, {}, 'Username not found. Check the spelling.')
-        .catch((e: Error) => { throw new Error(e.message.startsWith('HTTP 400') || e.message.includes('rejected') ? 'Last.fm rejected the username or API key. Check both.' : e.message) })
-      if (r.error) throw new Error(`Last.fm: ${r.message ?? r.error}`)
+      const r = await recent(env, { limit: '200', from: String(fromTs), page: String(page) })
       const list = r.recenttracks?.track
       tracks.push(...(Array.isArray(list) ? list : list ? [list] : []))
       if (page >= Number(r.recenttracks?.['@attr'].totalPages ?? 1)) break

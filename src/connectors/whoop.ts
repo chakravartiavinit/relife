@@ -1,7 +1,7 @@
 import type { Connector } from '@/core/types'
 import { localDate } from '@/core/time'
 import { dayMap, emitDays, fetchJson, syncWindow } from './daily'
-import { appFields, token } from './oauth'
+import { apiError, appFields, checkApp, token } from './oauth'
 
 // WHOOP, signed in with OAuth (developer API v2). Each day: recovery, HRV, resting heart rate, sleep hours
 // and sleep performance (on the day you woke up), and the day's strain (on the day the cycle started).
@@ -64,6 +64,7 @@ export const whoop: Connector = {
     tokenParams: { scope: 'offline' },
   },
   everyMinutes: 60,
+  check: (get) => checkApp('WHOOP', whoop, get),
   async sync(ctx) {
     const headers = { Authorization: `Bearer ${await token(ctx, whoop)}` }
     const { tz, today, from } = syncWindow(ctx, 90)
@@ -75,6 +76,7 @@ export const whoop: Connector = {
       for (let i = 0; i < 40; i++) {
         const q = new URLSearchParams({ start, limit: '25', ...(next ? { nextToken: next } : {}) })
         const p = await fetchJson<Page<T>>(`https://api.prod.whoop.com/developer/v2/${path}?${q}`, { headers })
+          .catch(apiError('WHOOP'))
         out.push(...p.records)
         next = p.next_token
         if (!next) break

@@ -2,6 +2,7 @@ import type { Connector } from '@/core/types'
 import { env } from '@/core/env'
 import { localDate } from '@/core/time'
 import { dayMap, emitDays, fetchJson, fillDays, syncWindow } from './daily'
+import { handleOf } from './net'
 
 // Codewars: kata you complete, per day, from your public profile (no key). A kata counts once, on the day you
 // first completed it. Honor is today's total only (Codewars keeps no history), so it is set on today.
@@ -13,6 +14,9 @@ export type CodewarsDay = { date: string; solved: number; honor?: number }
 export type Kata = { completedAt: string }
 
 type Completed = { totalPages: number; data: Kata[] }
+
+// Codewars usernames are case sensitive: "G964" is a 404 where "g964" works.
+const notFoundText = (name: string) => `No Codewars user “${name}”. Usernames are case sensitive, so copy it exactly.`
 
 const blank = (date: string): CodewarsDay => ({ date, solved: 0 })
 
@@ -32,11 +36,15 @@ export const codewars: Connector = {
   fields: [{ env: 'CODEWARS_USERNAME', label: 'Codewars username', placeholder: 'g964', hint: 'Your public username, from codewars.com/users/<name>.' }],
   env: ['CODEWARS_USERNAME'],
   everyMinutes: 60,
+  async check(get) {
+    const name = handleOf(get('CODEWARS_USERNAME'))
+    await fetchJson(`https://www.codewars.com/api/v1/users/${encodeURIComponent(name)}`, {}, notFoundText(name))
+  },
   async sync(ctx) {
     const { tz, today, from, backfilled } = syncWindow(ctx, 90)
-    const user = encodeURIComponent(env('CODEWARS_USERNAME')!.trim())
-    const api = `https://www.codewars.com/api/v1/users/${user}`
-    const notFound = 'Codewars user not found. Check the username.'
+    const name = handleOf(env('CODEWARS_USERNAME'))
+    const api = `https://www.codewars.com/api/v1/users/${encodeURIComponent(name)}`
+    const notFound = notFoundText(name)
     const profile = await fetchJson<{ honor?: number }>(api, {}, notFound)
     const kata: Kata[] = []
     // 200 a page, newest first, pages count from 0.

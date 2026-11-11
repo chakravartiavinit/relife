@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto'
 import type { Connector, ConnectorCtx } from '@/core/types'
 import { env } from '@/core/env'
 import { addDays, localDate, wallToUtc } from '@/core/time'
+import { setTimeout as sleep } from 'node:timers/promises'
+import { fetchT, handleOf, retryOnce } from './net'
 
 // Competitive programming from public handles: no key, no login. Each sync rebuilds whole days
 // (problems solved, submissions, contest rating) and emits one raw event per day and site;
@@ -21,9 +23,12 @@ export type CpDay = {
 
 const UA = { 'User-Agent': 'Mozilla/5.0 (ReLife self-hosted tracker)' }
 
-async function get(url: string) {
-  const res = await fetch(url, { headers: UA })
-  if (res.status === 404) throw new Error('Handle not found. Check the spelling.')
+const notFound = (site: string, h: string, word = 'handle') => `No ${site} user “${h}”. Check the ${word}.`
+
+/** GET with a timeout and errors a person can act on. `missing` is shown for a 404 (and for any redirect when `manual`). */
+async function get(url: string, missing = 'Handle not found. Check the spelling.', manual = false) {
+  const res = await fetchT(url, { headers: UA, ...(manual ? { redirect: 'manual' as const } : {}) })
+  if (res.status === 404 || (manual && res.status >= 300 && res.status < 400)) throw new Error(missing)
   if (res.status === 429 || res.status === 503) throw new Error('Rate limited. It will try again next hour.')
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res
@@ -82,6 +87,24 @@ const handleField = (env: string, site: string, example: string) => ({
 
 type CfSubmission = { creationTimeSeconds: number; verdict?: string; problem: { contestId?: number; index: string; name: string } }
 
+/**
+ * Codeforces answers a bad handle with HTTP 400 and {status: "FAILED", comment}, and allows about one call every
+ * two seconds ("Call limit exceeded"), so calls go one at a time and a refused one is retried once.
+ */
+async function cfApi<T>(path: string, handle: string, retry = true): Promise<T> {
+  const res = await fetchT(`https://codeforces.com/api/${path}`, { headers: UA })
+  const j = (await res.json().catch(() => null)) as { status?: string; comment?: string; result?: T } | null
+  if (j?.status === 'OK') return j.result as T
+  const limited = res.status === 429 || res.status === 503 || /limit exceeded/i.test(j?.comment ?? '')
+  if (limited && retry) {
+    await sleep(2200)
+    return cfApi<T>(path, handle, false)
+  }
+  if (limited) throw new Error('Rate limited. It will try again next hour.')
+  if (/not found/i.test(j?.comment ?? '')) throw new Error(notFound('Codeforces', handle))
+  throw new Error(j?.comment ? `Codeforces: ${j.comment}` : `HTTP ${res.status}`)
+}
+
 export const codeforces: Connector = {
   id: 'codeforces',
   name: 'Codeforces',
@@ -91,19 +114,17 @@ export const codeforces: Connector = {
   fields: [handleField('CODEFORCES_HANDLE', 'Codeforces', 'tourist')],
   env: ['CODEFORCES_HANDLE'],
   everyMinutes: 60,
+  async check(get) {
+    const h = handleOf(get('CODEFORCES_HANDLE'))
+    await cfApi(`user.info?handles=${encodeURIComponent(h)}`, h)
+  },
   async sync(ctx) {
-    const h = encodeURIComponent(env('CODEFORCES_HANDLE')!.trim())
+    const handle = handleOf(env('CODEFORCES_HANDLE'))
+    const h = encodeURIComponent(handle)
     const { tz, today, from, backfilled } = window(ctx)
-    const api = async <T>(path: string) => {
-      const j = (await (await get(`https://codeforces.com/api/${path}`)).json()) as { status: string; comment?: string; result: T }
-      if (j.status !== 'OK') throw new Error(j.comment?.includes('not found') ? 'Handle not found. Check the spelling.' : `Codeforces: ${j.comment}`)
-      return j.result
-    }
-    const [subs, ratings, [info]] = await Promise.all([
-      api<CfSubmission[]>(`user.status?handle=${h}&from=1&count=${backfilled ? 300 : 3000}`),
-      api<{ ratingUpdateTimeSeconds: number; newRating: number }[]>(`user.rating?handle=${h}`),
-      api<{ rating?: number }[]>(`user.info?handles=${h}`),
-    ])
+    const [info] = await cfApi<{ rating?: number }[]>(`user.info?handles=${h}`, handle)
+    const subs = await cfApi<CfSubmission[]>(`user.status?handle=${h}&from=1&count=${backfilled ? 300 : 3000}`, handle)
+    const ratings = await cfApi<{ ratingUpdateTimeSeconds: number; newRating: number }[]>(`user.rating?handle=${h}`, handle)
     const days = cpDays('codeforces', {
       submissions: subs.map((s) => ({ at: s.creationTimeSeconds * 1000, problem: `${s.problem.contestId ?? ''}${s.problem.index}:${s.problem.name}`, accepted: s.verdict === 'OK' })),
       ratings: ratings.map((r) => ({ at: r.ratingUpdateTimeSeconds * 1000, rating: r.newRating })),
@@ -117,8 +138,11 @@ export const codeforces: Connector = {
 
 // ---------------------------------------------------------------------------------------------- AtCoder
 
-type AcSubmission = { epoch_second: number; problem_id: string; result: string }
+type AcSubmission = { id: number; epoch_second: number; problem_id: string; result: string }
 type AcHistory = { IsRated: boolean; NewRating: number; EndTime: string }[]
+
+/** AtCoder Problems and the contest history both answer an unknown handle with an empty list; only the profile page says 404. */
+const atcoderExists = (h: string) => get(`https://atcoder.jp/users/${encodeURIComponent(h)}`, notFound('AtCoder', h))
 
 export const atcoder: Connector = {
   id: 'atcoder',
@@ -129,28 +153,35 @@ export const atcoder: Connector = {
   fields: [handleField('ATCODER_HANDLE', 'AtCoder', 'tourist')],
   env: ['ATCODER_HANDLE'],
   everyMinutes: 60,
+  async check(get) {
+    await atcoderExists(handleOf(get('ATCODER_HANDLE')))
+  },
   async sync(ctx) {
-    const h = encodeURIComponent(env('ATCODER_HANDLE')!.trim())
+    const handle = handleOf(env('ATCODER_HANDLE'))
+    const h = encodeURIComponent(handle)
     const { tz, today, from } = window(ctx)
     // AtCoder Problems returns at most 500 submissions per call; walk forward from the window start.
+    // The next call starts at the last second seen (not one after), so a second split across two pages loses nothing; ids dedupe.
     let since = Math.floor(wallToUtc(new Date(`${addDays(from, -1)}T00:00:00Z`), tz).getTime() / 1000)
-    const subs: AcSubmission[] = []
+    const subs = new Map<number, AcSubmission>()
     for (let i = 0; i < 20; i++) {
       const page = (await (await get(`https://kenkoooo.com/atcoder/atcoder-api/v3/user/submissions?user=${h}&from_second=${since}`)).json()) as AcSubmission[]
-      subs.push(...page)
-      if (page.length < 500) break
-      since = page[page.length - 1].epoch_second + 1
+      const before = subs.size
+      for (const s of page) subs.set(s.id, s)
+      if (page.length < 500 || subs.size === before) break
+      since = page[page.length - 1].epoch_second
     }
-    const history = (await (await get(`https://atcoder.jp/users/${h}/history/json`)).json()) as AcHistory
+    const history = (await (await get(`https://atcoder.jp/users/${h}/history/json`, notFound('AtCoder', handle))).json()) as AcHistory
+    if (!subs.size && !history.length) await atcoderExists(handle) // both are empty for a typo too
     const rated = history.filter((c) => c.IsRated)
     const days = cpDays('atcoder', {
-      submissions: subs.map((s) => ({ at: s.epoch_second * 1000, problem: s.problem_id, accepted: s.result === 'AC' })),
+      submissions: [...subs.values()].map((s) => ({ at: s.epoch_second * 1000, problem: s.problem_id, accepted: s.result === 'AC' })),
       ratings: rated.map((c) => ({ at: Date.parse(c.EndTime), rating: c.NewRating })),
       current: rated.at(-1)?.NewRating,
     }, tz, from, today)
     await emitDays(ctx, days.values())
     ctx.setCursor({ backfilled: true })
-    ctx.log(`${subs.length} submissions, ${days.size} days`)
+    ctx.log(`${subs.size} submissions, ${days.size} days`)
   },
 }
 
@@ -183,6 +214,13 @@ export function codechefRows(html: string, now: Date) {
   return rows
 }
 
+/** The profile page, or an error when the handle doesn't exist (CodeChef redirects those to its home page). */
+async function codechefProfile(h: string, handle: string) {
+  const url = `https://www.codechef.com/users/${h}`
+  // CodeChef throttles bursts: wait a moment and ask once more.
+  return retryOnce(async () => (await get(url, notFound('CodeChef', handle), true)).text(), /rate limit/i, 3000)
+}
+
 export const codechef: Connector = {
   id: 'codechef',
   name: 'CodeChef',
@@ -192,16 +230,22 @@ export const codechef: Connector = {
   fields: [handleField('CODECHEF_HANDLE', 'CodeChef', 'gennady.korotkevich')],
   env: ['CODECHEF_HANDLE'],
   everyMinutes: 60,
+  async check(get) {
+    const handle = handleOf(get('CODECHEF_HANDLE'))
+    await codechefProfile(encodeURIComponent(handle), handle)
+  },
   async sync(ctx) {
-    const h = encodeURIComponent(env('CODECHEF_HANDLE')!.trim())
+    const handle = handleOf(env('CODECHEF_HANDLE'))
+    const h = encodeURIComponent(handle)
     const { tz, today, from, backfilled } = window(ctx)
-    const profile = await (await get(`https://www.codechef.com/users/${h}`)).text()
+    const profile = await codechefProfile(h, handle)
     const json = profile.match(/var all_rating = (\[[\s\S]*?\]);/)?.[1]
     const ratings = (json ? (JSON.parse(json) as { rating: string; end_date: string }[]) : [])
       .map((r) => ({ at: wallToUtc(new Date(`${r.end_date.replace(' ', 'T')}Z`), 'Asia/Kolkata').getTime(), rating: Number(r.rating) }))
     const now = new Date()
     const subs: ReturnType<typeof codechefRows> = []
     for (let page = 0; page < (backfilled ? 3 : 25); page++) {
+      if (page) await sleep(500) // gentle: CodeChef answers 429 to quick bursts
       const j = (await (await get(`https://www.codechef.com/recent/user?page=${page}&user_handle=${h}`)).json()) as { max_page: number; content: string }
       const rows = codechefRows(j.content, now)
       subs.push(...rows)
@@ -266,6 +310,20 @@ export function leetcodeDays(d: LcData, tz: string, from: string, today: string)
   return days
 }
 
+/** One GraphQL call to LeetCode's public endpoint, with errors a person can act on. */
+async function leetcodeQuery(query: string, username: string) {
+  const res = await fetchT('https://leetcode.com/graphql', {
+    method: 'POST',
+    headers: { ...UA, 'Content-Type': 'application/json', Referer: 'https://leetcode.com' },
+    body: JSON.stringify({ query, variables: { u: username } }),
+  })
+  if (res.status === 429 || res.status === 403) throw new Error('Rate limited or blocked by LeetCode. It will try again next hour.')
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const j = (await res.json()) as { data?: LcData; errors?: { message: string }[] }
+  if (!j.data?.matchedUser) throw new Error(j.errors?.some((e) => /does not exist/i.test(e.message)) ? notFound('LeetCode', username, 'username') : `LeetCode: ${j.errors?.[0]?.message ?? 'no data'}`)
+  return j.data
+}
+
 export const leetcode: Connector = {
   id: 'leetcode',
   name: 'LeetCode',
@@ -275,18 +333,13 @@ export const leetcode: Connector = {
   fields: [{ env: 'LEETCODE_USERNAME', label: 'LeetCode username', placeholder: 'lee215', hint: 'Your public username, from leetcode.com/u/<name>. No key or login needed.' }],
   env: ['LEETCODE_USERNAME'],
   everyMinutes: 60,
+  async check(get) {
+    await leetcodeQuery('query($u: String!) { matchedUser(username: $u) { username } }', handleOf(get('LEETCODE_USERNAME')))
+  },
   async sync(ctx) {
     const { tz, today, from } = window(ctx)
-    const res = await fetch('https://leetcode.com/graphql', {
-      method: 'POST',
-      headers: { ...UA, 'Content-Type': 'application/json', Referer: 'https://leetcode.com' },
-      body: JSON.stringify({ query: LC_QUERY, variables: { u: env('LEETCODE_USERNAME')!.trim() } }),
-    })
-    if (res.status === 429) throw new Error('Rate limited. It will try again next hour.')
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const j = (await res.json()) as { data?: LcData; errors?: { message: string }[] }
-    if (!j.data?.matchedUser) throw new Error(j.errors?.some((e) => /does not exist/i.test(e.message)) ? 'Username not found. Check the spelling.' : `LeetCode: ${j.errors?.[0]?.message ?? 'no data'}`)
-    const days = leetcodeDays(j.data, tz, from, today)
+    const data = await leetcodeQuery(LC_QUERY, handleOf(env('LEETCODE_USERNAME')))
+    const days = leetcodeDays(data, tz, from, today)
     await emitDays(ctx, days.values())
     ctx.setCursor({ backfilled: true })
     ctx.log(`${days.size} days`)

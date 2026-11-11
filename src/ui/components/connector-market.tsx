@@ -541,6 +541,9 @@ function SignInStep({ c }: { c: ConnectorItem }) {
 function ConnectForm({ c, onDone }: { c: ConnectorItem; onDone: () => void }) {
   const [state, action, pending] = useActionState(connectIntegration.bind(null, c.id), null)
   const [leaving, startLeave] = useTransition()
+  // A `<form action>` clears its inputs when the action finishes. Submit by hand instead, so a rejected key or
+  // username stays in the box to be corrected.
+  const [, startSubmit] = useTransition()
   const toast = useToast()
   const uid = useId()
   useEffect(() => {
@@ -558,7 +561,10 @@ function ConnectForm({ c, onDone }: { c: ConnectorItem; onDone: () => void }) {
   }, [state, c.connected, c.name, c.id, c.category, c.sync, onDone, toast])
 
   return (
-    <form action={action} className="flex flex-col gap-4">
+    <form
+      onSubmit={(e) => { e.preventDefault(); const data = new FormData(e.currentTarget); startSubmit(() => action(data)) }}
+      className="flex flex-col gap-4"
+    >
       {c.login ? <LoginStep c={c} /> : null}
       {c.oauth ? <SignInStep c={c} /> : null}
       {c.fields.length ? c.fields.map((f) => (

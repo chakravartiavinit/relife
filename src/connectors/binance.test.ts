@@ -23,3 +23,49 @@ test('unzipFirst reads a one-file deflated zip', () => {
   const zip = Buffer.concat([local, name, data, cd, name, eocd])
   assert.equal(unzipFirst(zip).toString('utf8'), CSV)
 })
+
+import ccxt from 'ccxt'
+import { binance, keyProblem, readOnlyProblem, windowRows } from './binance'
+
+/** Answers every Binance request with `reply` (a body, or an Error to throw); no network. */
+function fakeBinance(reply: (url: string) => unknown) {
+  const proto = ccxt.binance.prototype as unknown as { fetch: (url: string) => Promise<unknown> }
+  const real = proto.fetch
+  const urls: string[] = []
+  proto.fetch = async (url: string) => { urls.push(url); const r = reply(url); if (r instanceof Error) throw r; return r }
+  return { urls, restore: () => { proto.fetch = real } }
+}
+
+test('keyProblem turns Binance codes into advice', () => {
+  assert.match(keyProblem(new Error('binance {"code":-2015,"msg":"Invalid API-key, IP, or permissions for action."}'))!, /trusted IP/)
+  assert.match(keyProblem(new Error('binance {"code":-2014,"msg":"API-key format invalid."}'))!, /paste both again/i)
+  assert.match(keyProblem(new Error('binance {"code":-1021,"msg":"Timestamp outside recvWindow"}'))!, /clock/)
+  assert.equal(keyProblem(new Error('binance {"code":-1121,"msg":"Invalid symbol."}')), null)
+  assert.equal(keyProblem(new Error('socket hang up')), null)
+})
+
+test('readOnlyProblem names every permission that can move money', () => {
+  assert.equal(readOnlyProblem({ enableReading: true, enableWithdrawals: false }), null)
+  assert.match(readOnlyProblem({ enableReading: true, enableWithdrawals: true, enableFutures: true })!, /enableWithdrawals, enableFutures/)
+})
+
+test('check reports a rejected key and passes a read-only one', async () => {
+  const bad = fakeBinance((url) => url.includes('/time') ? { serverTime: Date.now() } : new ccxt.AuthenticationError('binance {"code":-2015,"msg":"Invalid API-key, IP, or permissions for action."}'))
+  try { await assert.rejects(binance.check!((k) => (k === 'BINANCE_API_KEY' ? 'k' : 's')), /Enable Reading/) } finally { bad.restore() }
+  const ok = fakeBinance((url) => url.includes('/time') ? { serverTime: Date.now() } : { enableReading: true, enableWithdrawals: false, enableSpotAndMarginTrading: false })
+  try { await binance.check!(() => 'x') } finally { ok.restore() }
+  const trading = fakeBinance((url) => url.includes('/time') ? { serverTime: Date.now() } : { enableReading: true, enableWithdrawals: true })
+  try { await assert.rejects(binance.check!(() => 'x'), /not read-only/) } finally { trading.restore() }
+})
+
+test('check lets a transient failure pass for the first sync to report', async () => {
+  const down = fakeBinance(() => new ccxt.RequestTimeout('binance GET timed out'))
+  try { await binance.check!(() => 'x') } finally { down.restore() }
+})
+
+test('windowRows splits a full window so nothing past the row limit is lost', async () => {
+  const all = Array.from({ length: 25 }, (_, i) => ({ t: i * 10 })) // at most 10 rows per call
+  const read = async (a: number, b: number) => all.filter((r) => r.t >= a && r.t <= b).slice(0, 10)
+  const rows = await windowRows(0, 249, 10, read)
+  assert.equal(new Set(rows.map((r) => r.t)).size, 25)
+})

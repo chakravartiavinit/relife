@@ -146,6 +146,13 @@ export type Connector = {
   oauth?: OAuthSpec
   everyMinutes: number
   sync(ctx: ConnectorCtx): Promise<void>
+  /**
+   * One cheap request that tests the keys or username before they're saved, so a typo shows in the Connect dialog
+   * instead of as a failing sync later. `get` reads the values being saved (dialog input, saved value or .env).
+   * Throw an Error with advice for a wrong key or username. Network trouble, timeouts, 429s and 5xx don't block
+   * saving (see `isTransient` in core/secrets.ts).
+   */
+  check?(get: (env: string) => string | undefined): Promise<void>
 }
 
 export type ParserCtx = { user: User; db: Db }

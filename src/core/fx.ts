@@ -4,18 +4,21 @@ import { USD_STABLES } from '@/domain/money'
 
 // Rates are stored as "units of quote per 1 USD" per day (fetched by the `fx` connector).
 
-const memo = new Map<string, number | null>()
+// Kept for an hour: the web and the worker are long-running, and today's rate lands when the fx sync runs.
+const memo = new Map<string, { rate: number | null; at: number }>()
+const MEMO_MS = 60 * 60_000
 
 async function usdRate(quote: string, day: string): Promise<number | null> {
   const q = quote.toUpperCase()
   if (USD_STABLES.has(q)) return 1
   const k = `${q}|${day}`
-  if (memo.has(k)) return memo.get(k)!
+  const hit = memo.get(k)
+  if (hit && Date.now() - hit.at < MEMO_MS) return hit.rate
   const [row] = await db.select().from(schema.fxRates)
     .where(and(eq(schema.fxRates.quote, q), lte(schema.fxRates.date, day)))
     .orderBy(desc(schema.fxRates.date)).limit(1)
   const rate = row?.rate ?? FALLBACK[q] ?? null
-  memo.set(k, rate)
+  memo.set(k, { rate, at: Date.now() })
   return rate
 }
 
