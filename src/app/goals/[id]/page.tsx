@@ -74,7 +74,7 @@ async function Detail({ params }: { params: PageProps<'/goals/[id]'>['params'] }
         </div>
         <aside className="flex flex-col gap-6" aria-label="Actions and history">
           <Card>
-            <CardHeader icon={<Repeat strokeWidth={1.5} />} title="Linked actions" description={s ? `${day(s.window.from)}–${day(s.window.to)}` : undefined} />
+            <CardHeader icon={<Repeat strokeWidth={1.5} />} title="Linked actions" description={s ? (s.window.days > 0 ? `${day(s.window.from)}–${day(s.window.to)}` : 'No full days yet') : undefined} />
             <ul className="flex flex-col gap-4">
               {(s?.actions ?? []).map((a) => (
                 <li key={`${a.kind}:${a.id}`}>

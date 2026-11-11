@@ -3,7 +3,7 @@ import { and, desc, eq, inArray, isNull, lte, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import {
   BASELINE_DAYS, CADENCE_DAYS, CAP_MESSAGE, MAX_ACTIVE, goalFields, goalIsSensitive, goalSnapshot, goalStatIds, isActivityMeasure,
-  nextReviewOn, reviewLines, trackerBaseline, validateGoal,
+  nextReviewOn, reviewLines, reviewWindow, trackerBaseline, validateGoal,
   type ActionSource, type GoalActionLink, type GoalDecision, type GoalErrors, type GoalFields,
   type GoalInput, type GoalSnapshot, type GoalStatus,
 } from '@/domain/goals'
@@ -52,7 +52,8 @@ export async function snapshotsFor(user: User, list: Goal[], reviewDate: string,
   ])
   const daysOf = (id: string) => days.find((d) => d.tracker.id === id)?.days ?? new Map<string, number>()
   for (const g of list) {
-    const window = { from: addDays(reviewDate, -CADENCE_DAYS[g.cadence]), to: addDays(reviewDate, -1) }
+    // The same window the snapshot uses, so routine days before the baseline date never count.
+    const window = reviewWindow(g, reviewDate)
     const actions = g.actions.map((link: GoalActionLink): { link: GoalActionLink; source: ActionSource | null } => {
       if (link.kind === 'tracker') {
         const t = trackers.find((x) => x.id === link.id)

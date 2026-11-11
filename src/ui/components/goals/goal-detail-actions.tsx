@@ -17,11 +17,11 @@ export function GoalDetailActions({ g, picker, today, activeCount, reviewDue }: 
   const atCap = g.status === 'paused' && activeCount >= MAX_ACTIVE
   if (confirmFinish) {
     return (
-      <div role="group" aria-labelledby="goal-finish-q" className="flex flex-col gap-2 rounded-md bg-bad/8 px-3 py-3">
+      <div role="group" aria-labelledby="goal-finish-q" onKeyDown={(e) => { if (e.key === 'Escape' && !pending) setConfirmFinish(false) }} className="flex flex-col gap-2 rounded-md bg-bad/8 px-3 py-3">
         <p id="goal-finish-q" className="text-[13.5px] text-ink">Finish this goal? Finished goals can’t be resumed or edited.</p>
         <div className="flex flex-wrap gap-2">
           <Button variant="primary" disabled={pending} onClick={() => set('finished')}><Flag className="size-4" strokeWidth={1.5} />{pending ? 'Finishing…' : 'Finish goal'}</Button>
-          <Button variant="ghost" disabled={pending} onClick={() => setConfirmFinish(false)} data-autofocus>Cancel</Button>
+          <Button variant="ghost" disabled={pending} onClick={() => setConfirmFinish(false)} autoFocus>Cancel</Button>
         </div>
       </div>
     )

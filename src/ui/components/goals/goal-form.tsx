@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useEffect, useId, useMemo, useState } from 'react'
+import { startTransition, useActionState, useEffect, useId, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Check, ChartLine, ClipboardCheck, Info, Plus, Target, TriangleAlert, type LucideIcon } from 'lucide-react'
 import { decideGoalReviewAction, saveGoal, type GoalFormState } from '@/app/actions'
@@ -195,8 +195,9 @@ function GoalForm({ mode, initial, picker, today, onDone }: { mode: Mode; initia
   const full = actions.length >= MAX_ACTIONS
   const activeAfter = mode.kind === 'create' || mode.kind === 'draft' ? mode.activeCount + 1 : null
 
+  // Not `<form action={action}>`: React resets an action form once it settles, which wiped every typed field on a validation error.
   return (
-    <form action={action} className="flex flex-col gap-6" noValidate>
+    <form onSubmit={(e) => { e.preventDefault(); const form = new FormData(e.currentTarget); startTransition(() => action(form)) }} className="flex flex-col gap-6" noValidate>
       {goal ? (
         <>
           <input type="hidden" name="id" value={goal.id} /><input type="hidden" name="version" value={goal.version} />

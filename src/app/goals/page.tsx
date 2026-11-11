@@ -40,7 +40,7 @@ async function Goals({ searchParams }: { searchParams: PageProps<'/goals'>['sear
         actions={<NewGoalButton today={data.today} picker={data.picker} activeCount={data.activeCount} autoOpen={sp.new === '1'} />}
       />
       {/* DOM order: Review due → Active → Drafts → Paused and finished. On wide screens review and drafts sit in the right column. */}
-      <div className={cn('grid gap-6', hasAside && 'lg:grid-cols-[minmax(0,1fr)_340px] lg:grid-rows-[auto_1fr_auto]')}>
+      <div className={cn('grid grid-cols-[minmax(0,1fr)] gap-6', hasAside && 'lg:grid-cols-[minmax(0,1fr)_340px] lg:grid-rows-[auto_1fr_auto]')}>
         {data.due.length ? (
           <div className="lg:col-start-2 lg:row-start-1">
             <ReviewDueCard count={data.due.length} date={data.today} />
