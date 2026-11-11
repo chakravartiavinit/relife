@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, getTableColumns, lte, sql } from 'drizzle-orm'
 import { db, isMock, schema } from '@/db'
 import { connectors } from '@/connectors'
 import { emitRawMany } from '@/core/ingest'
@@ -61,6 +61,17 @@ export async function runConnector(connectorId: string): Promise<{ ok: boolean; 
     await db.update(schema.syncRuns).set({ finishedAt: new Date(), ok: false, error, eventsCount: events }).where(eq(schema.syncRuns.id, run.id))
     return { ok: false, events, error }
   }
+}
+
+/**
+ * The last `perConnector` runs of every connector. Ranked per connector, so one that syncs every minute (the
+ * iCloud inbox) can't push the hourly and daily ones out of a shared "latest N" list.
+ */
+export async function recentSyncRuns(perConnector = 4) {
+  const r = schema.syncRuns
+  const ranked = db.select({ ...getTableColumns(r), n: sql<number>`row_number() over (partition by ${r.connectorId} order by ${r.startedAt} desc)::int`.as('n') })
+    .from(r).as('ranked')
+  return db.select().from(ranked).where(lte(ranked.n, perConnector)).orderBy(ranked.connectorId, ranked.n)
 }
 
 /** Status of every connector for the Connectors page. */

@@ -2,11 +2,11 @@ import type { Metadata } from 'next'
 import { connection } from 'next/server'
 import { headers } from 'next/headers'
 import { Suspense } from 'react'
-import { desc, eq } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { db, isMock, schema } from '@/db'
 import { getUser } from '@/core/user'
 import { formatDay, formatTime, localDate } from '@/core/time'
-import { connectorStatus } from '@/worker/sync'
+import { connectorStatus, recentSyncRuns } from '@/worker/sync'
 import { KEY_ENV, modelId, type Task } from '@/ai/models'
 import { PageHeader, Skeleton } from '@/ui/components/card'
 import { ConnectorMarket, type ConnectorItem, type FieldView } from '@/ui/components/connector-market'
@@ -79,7 +79,7 @@ async function Connectors() {
   const [sources, [heartbeat], runs, saved, rows, jobs] = await Promise.all([
     connectorStatus(),
     db.select().from(schema.heartbeats).where(eq(schema.heartbeats.name, 'worker')),
-    db.select().from(schema.syncRuns).orderBy(desc(schema.syncRuns.startedAt)).limit(200),
+    recentSyncRuns(),
     savedFields(user.id),
     db.select().from(schema.connections).where(eq(schema.connections.userId, user.id)),
     db.select().from(schema.jobs),
@@ -144,7 +144,7 @@ async function Connectors() {
 
   // Each dialog shows its own last few syncs.
   for (const i of items) {
-    i.syncs = runs.filter((r) => r.connectorId === i.id).slice(0, 4).map((r) => ({
+    i.syncs = runs.filter((r) => r.connectorId === i.id).map((r) => ({
       at: `${formatDay(localDate(r.startedAt, user.timezone))}, ${formatTime(r.startedAt, user.timezone)}`, ok: r.ok, events: r.eventsCount,
     }))
   }

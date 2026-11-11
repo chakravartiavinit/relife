@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'node:crypto'
-import { emitRaw } from '@/core/ingest'
+import { emitRawMany } from '@/core/ingest'
+import type { RawEvent } from '@/core/types'
 import { parseNow } from '@/jobs'
 import { getUser } from '@/core/user'
 import { lineToRawEvent } from '@/connectors/icloud-inbox'
@@ -32,15 +33,18 @@ export async function POST(req: Request) {
 
   const user = await getUser()
   const now = new Date()
-  let received = 0
-  let inserted = 0
   let skipped = 0 // blank, malformed or not a type ReLife reads (steps, health, sleep)
+  const events: RawEvent[] = []
   for (const line of lines) {
     const ev = lineToRawEvent(line, now, user.timezone)
-    if (!ev) { if (line.trim()) skipped++; continue }
-    received++
-    if (await emitRaw(user.id, ev)) inserted++
+    if (ev) events.push(ev)
+    else if (line.trim()) skipped++
   }
+  const received = events.length
+  // A 1 MB body can hold tens of thousands of lines: insert in batches, one statement each (and under
+  // Postgres's 65,535-parameter limit), instead of one round trip per line.
+  let inserted = 0
+  for (let i = 0; i < events.length; i += 1000) inserted += await emitRawMany(user.id, events.slice(i, i + 1000))
   // The events are saved; if parsing can't start now, the parse job picks them up.
   const parsed = inserted ? await parseNow().catch((e) => { console.error('[ingest] parse failed, the parse job retries:', e instanceof Error ? e.message : e); return 'queued' }) : 'nothing new'
   return Response.json({ received, inserted, skipped, parsed })

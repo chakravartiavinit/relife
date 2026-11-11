@@ -324,7 +324,7 @@ export const syncRuns = pgTable('sync_runs', {
   ok: boolean('ok'),
   error: text('error'),
   eventsCount: integer('events_count').notNull().default(0),
-})
+}, (t) => [index('sync_runs_connector_started').on(t.connectorId, t.startedAt)]) // each connector's latest runs
 
 export const insights = pgTable('insights', {
   id: id(),

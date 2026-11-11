@@ -467,6 +467,7 @@ the web and worker never run the same job twice.</p>
   <tr><td><code>sync:&lt;connector&gt;</code></td><td>per connector, and on connect</td><td>connected with keys</td><td>Fetches new raw events.</td></tr>
   <tr><td><code>parse</code></td><td>every minute, and on <code>raw.added</code></td><td>always</td><td>Parses new raw events 500 at a time until none are left.</td></tr>
   <tr><td><code>retry-failed</code></td><td>03:30 daily</td><td>always</td><td>Gives failed parses another chance.</td></tr>
+  <tr><td><code>prune-sync-runs</code></td><td>03:45 daily</td><td>always</td><td>Deletes sync history older than 30 days.</td></tr>
   <tr><td><code>xp</code></td><td>every 5 min, and on <code>data.changed</code></td><td>always</td><td>Rescores XP; celebrates level-ups.</td></tr>
   <tr><td><code>system</code></td><td>every 5 min, and on <code>data.changed</code></td><td>always</td><td>Issues and clears daily quests.</td></tr>
   <tr><td><code>system:warn</code></td><td>21:00</td><td>Telegram</td><td>Warns about unfinished quests.</td></tr>
