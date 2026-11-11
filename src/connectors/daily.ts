@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import type { ConnectorCtx } from '@/core/types'
 import { addDays, localDate } from '@/core/time'
+import { fetchT } from './net'
 
 // Shared by the connectors that send one summary per day (WakaTime, Strava, Todoist, Last.fm, Steam…).
 
@@ -21,18 +22,41 @@ export async function emitDays(ctx: ConnectorCtx, source: string, days: Iterable
   }
 }
 
-/** fetch + JSON with errors a person can act on, shown on the Connectors page. */
-export async function fetchJson<T>(url: string, init: RequestInit = {}, notFound = 'Not found. Check the username.'): Promise<T> {
-  const res = await fetch(url, { ...init, headers: { 'User-Agent': 'ReLife (self-hosted life tracker)', Accept: 'application/json', ...init.headers } })
+/** fetch with a 30s limit and messages a person can act on: "timed out" and "Network problem" both mean "try again later". */
+export function request(url: string, init: RequestInit = {}): Promise<Response> {
+  return fetchT(url, { ...init, headers: { 'User-Agent': 'ReLife (self-hosted life tracker)', Accept: 'application/json', ...init.headers } }, 30_000)
+}
+
+/** The status errors every service shares, with words for the Connectors page. */
+export function checkStatus(res: Response, notFound: string) {
   if (res.status === 401 || res.status === 403) throw new Error('The key was rejected. Check it on Connectors, or make a new one.')
   if (res.status === 404) throw new Error(notFound)
   if (res.status === 429) throw new Error('Rate limited. It will try again on the next sync.')
+}
+
+/** fetch + JSON with errors a person can act on, shown on the Connectors page. A 204 answers `undefined`. */
+export async function fetchJson<T>(url: string, init: RequestInit = {}, notFound = 'Not found. Check the username.'): Promise<T> {
+  const res = await request(url, init)
+  checkStatus(res, notFound)
   if (!res.ok) {
     // Keep the service's own words ("Malformed ApeKey"), so a connector can turn them into advice.
     const said = await res.json().then((b: { message?: unknown; error?: unknown }) => b?.message ?? b?.error, () => null)
     throw new Error(`HTTP ${res.status}${typeof said === 'string' && said ? `: ${said.slice(0, 200)}` : ''}`)
   }
+  if (res.status === 204) return undefined as T
   return res.json() as Promise<T>
+}
+
+/** `.catch(rejectedAs('…'))`: swaps the generic "key was rejected" for advice naming the service and where to get a new key. */
+export const rejectedAs = (advice: string, also?: RegExp) => (e: Error): never => {
+  throw new Error(e.message.includes('rejected') || also?.test(e.message) ? advice : e.message)
+}
+
+/** A pasted username: trims, drops a leading @, and takes the name from a profile link (`last.fm/user/rj/` with marker `user` → `rj`). */
+export function pastedName(input: string, marker: string) {
+  const parts = input.trim().replace(/^https?:\/\//i, '').split(/[?#]/)[0].split('/').filter(Boolean)
+  const i = parts.findIndex((p) => p === marker || p.endsWith(`.${marker}`))
+  return (i >= 0 ? parts[i + 1] ?? '' : parts.at(-1) ?? '').replace(/^@/, '')
 }
 
 /**

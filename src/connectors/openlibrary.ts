@@ -1,7 +1,7 @@
 import type { Connector } from '@/core/types'
 import { env } from '@/core/env'
 import { localDate } from '@/core/time'
-import { dayMap, emitDays, fetchJson, fillDays, syncWindow } from './daily'
+import { dayMap, emitDays, fetchJson, fillDays, pastedName, rejectedAs, syncWindow } from './daily'
 
 // Open Library: the books on your public "Already Read" shelf, each on the day you marked it read. No key.
 // This stands in for Goodreads, which switched off its public shelf feeds in late October 2026. You can
@@ -28,9 +28,25 @@ export function openLibraryDays(entries: Entry[], tz: string) {
 
 /** The username from a bare name or a profile link (openlibrary.org/people/mekBot). */
 export function openLibraryUser(input: string) {
-  const name = input.trim().replace(/^https?:\/\//i, '').replace(/^(?:www\.)?openlibrary\.org\/people\//i, '').split(/[/?#]/)[0]
+  const name = pastedName(input, 'people')
   if (!/^[\w-]+$/.test(name)) throw new Error('That is not an Open Library username. Use the name in your profile link (openlibrary.org/people/<name>).')
   return name
+}
+
+const NOT_FOUND = 'Open Library user not found. Check the username (the name in openlibrary.org/people/<name>).'
+const PRIVATE = 'Your Open Library reading log is private. Make it public under Account → Preferences → Privacy → Reading Log, then connect again.'
+
+/** One page of the shelf (100 books). A private log answers 403, which fetchJson words as a rejected key. Open Library now and then answers a slow 500, so a 5xx is tried once more. */
+const shelf = async (user: string, page: number, limit?: number): Promise<Shelf> => {
+  const url = `https://openlibrary.org/people/${user}/books/already-read.json?page=${page}${limit ? `&limit=${limit}` : ''}`
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await fetchJson<Shelf>(url, {}, NOT_FOUND).catch(rejectedAs(PRIVATE))
+    } catch (e) {
+      if (attempt >= 2 || !/^HTTP 5\d\d/.test((e as Error).message)) throw e
+      await new Promise((r) => setTimeout(r, 1500))
+    }
+  }
 }
 
 export const openlibrary: Connector = {
@@ -39,15 +55,18 @@ export const openlibrary: Connector = {
   category: 'mind',
   description: 'Books you finish, from your public Open Library "Already Read" shelf. No key or login needed.',
   provides: ['Books read', 'Titles'],
-  fields: [{ env: 'OPENLIBRARY_USERNAME', label: 'Open Library username', placeholder: 'mekBot', hint: 'Your profile name (openlibrary.org/people/<name>). Your reading log must be public in Account settings.' }],
+  fields: [{ env: 'OPENLIBRARY_USERNAME', label: 'Open Library username', placeholder: 'mekBot', hint: 'Your profile name (openlibrary.org/people/<name>). Make your reading log public: Account → Preferences → Privacy.' }],
   env: ['OPENLIBRARY_USERNAME'],
   everyMinutes: 120,
+  async check(get) {
+    await shelf(openLibraryUser(get('OPENLIBRARY_USERNAME')!), 1, 1)
+  },
   async sync(ctx) {
     const { tz, today, from, backfilled } = syncWindow(ctx, 365)
     const user = openLibraryUser(env('OPENLIBRARY_USERNAME')!)
     const entries: Entry[] = []
     for (let page = 1; page <= 20; page++) {
-      const r = await fetchJson<Shelf>(`https://openlibrary.org/people/${user}/books/already-read.json?page=${page}`, {}, 'Open Library user not found, or the reading log is private. Check the username and that your reading log is public.')
+      const r = await shelf(user, page)
       entries.push(...(r.reading_log_entries ?? []))
       if (!r.reading_log_entries?.length || entries.length >= (r.numFound ?? 0)) break
     }

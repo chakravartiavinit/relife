@@ -1,6 +1,6 @@
 import type { Connector } from '@/core/types'
 import { env } from '@/core/env'
-import { emitDays, fetchJson, syncWindow } from './daily'
+import { emitDays, fetchJson, rejectedAs, syncWindow } from './daily'
 
 // WakaTime: time spent coding in your editor, per day, with the top language and project.
 // The free plan keeps 14 days of history, so the first sync backfills 14 days; later ones the last 3.
@@ -17,6 +17,9 @@ type Summary = {
 
 const top = (xs?: { name: string; total_seconds: number }[]) => xs?.filter((x) => x.total_seconds >= 60).sort((a, b) => b.total_seconds - a.total_seconds)[0]?.name
 
+const REJECTED = 'WakaTime rejected the API key. Copy it again from wakatime.com → Settings → Account → API Key.'
+const auth = (key: string) => ({ Authorization: `Basic ${Buffer.from(key.trim()).toString('base64')}` })
+
 export const wakatime: Connector = {
   id: 'wakatime',
   name: 'WakaTime',
@@ -26,11 +29,13 @@ export const wakatime: Connector = {
   fields: [{ env: 'WAKATIME_API_KEY', label: 'API key', secret: true, placeholder: 'waka_…', hint: 'wakatime.com → Settings → Account → API Key.' }],
   env: ['WAKATIME_API_KEY'],
   everyMinutes: 60,
+  async check(get) {
+    await fetchJson('https://wakatime.com/api/v1/users/current', { headers: auth(get('WAKATIME_API_KEY')!) }).catch(rejectedAs(REJECTED))
+  },
   async sync(ctx) {
     const { tz, today, from } = syncWindow(ctx, 14)
-    const auth = `Basic ${Buffer.from(env('WAKATIME_API_KEY')!.trim()).toString('base64')}`
     const q = new URLSearchParams({ start: from, end: today, timezone: tz })
-    const { data } = await fetchJson<{ data: Summary[] }>(`https://wakatime.com/api/v1/users/current/summaries?${q}`, { headers: { Authorization: auth } })
+    const { data } = await fetchJson<{ data: Summary[] }>(`https://wakatime.com/api/v1/users/current/summaries?${q}`, { headers: auth(env('WAKATIME_API_KEY')!) }).catch(rejectedAs(REJECTED))
     const days: WakaDay[] = data.map((s) => ({
       date: s.range.date,
       minutes: Math.round(s.grand_total.total_seconds / 60),

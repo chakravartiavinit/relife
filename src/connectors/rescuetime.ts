@@ -1,6 +1,6 @@
 import type { Connector } from '@/core/types'
 import { env } from '@/core/env'
-import { emitDays, fetchJson, syncWindow } from './daily'
+import { emitDays, fetchJson, rejectedAs, syncWindow } from './daily'
 
 // RescueTime: how productive your computer time was. The daily summary feed gives one row per day for the
 // last two weeks (never today), so the first sync backfills 14 days and later ones refresh the same window.
@@ -32,6 +32,11 @@ export function rescueDays(rows: RescueRow[], from: string, today: string): Resc
     .sort((a, b) => a.date.localeCompare(b.date))
 }
 
+// RescueTime answers a wrong key with HTTP 400 "key not found".
+const REJECTED = 'RescueTime did not accept the API key. Make a new one at rescuetime.com/anapi/manage.'
+const FEED = 'https://www.rescuetime.com/anapi/daily_summary_feed'
+const bearer = (key: string) => ({ Authorization: `Bearer ${key.trim()}` })
+
 export const rescuetime: Connector = {
   id: 'rescuetime',
   name: 'RescueTime',
@@ -41,11 +46,12 @@ export const rescuetime: Connector = {
   fields: [{ env: 'RESCUETIME_API_KEY', label: 'API key', secret: true, hint: 'rescuetime.com/anapi/manage → Create a new API key.' }],
   env: ['RESCUETIME_API_KEY'],
   everyMinutes: 120,
+  async check(get) {
+    await fetchJson(FEED, { headers: bearer(get('RESCUETIME_API_KEY')!) }).catch(rejectedAs(REJECTED, /^HTTP 400/))
+  },
   async sync(ctx) {
     const { today, from } = syncWindow(ctx, 14)
-    const rows = await fetchJson<RescueRow[]>('https://www.rescuetime.com/anapi/daily_summary_feed', { headers: { Authorization: `Bearer ${env('RESCUETIME_API_KEY')!.trim()}` } })
-      // RescueTime answers a wrong key with HTTP 400 "key not found".
-      .catch((e: Error) => { throw new Error(/^HTTP 400|rejected/.test(e.message) ? 'RescueTime did not accept the API key. Make a new one at rescuetime.com/anapi/manage.' : e.message) })
+    const rows = await fetchJson<RescueRow[]>(FEED, { headers: bearer(env('RESCUETIME_API_KEY')!) }).catch(rejectedAs(REJECTED, /^HTTP 400/))
     const days = rescueDays(Array.isArray(rows) ? rows : [], from, today)
     await emitDays(ctx, 'rescuetime', days)
     ctx.setCursor({ backfilled: true })
