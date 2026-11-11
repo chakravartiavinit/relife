@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { streakAlert } from './streak-at-risk'
 import { workoutGapAlert } from './workout-gap'
 import { addDays } from '@/core/time'
+import { hideUrlQuery } from '@/domain/text'
 
 test('streakAlert warns only for a real streak not yet extended today', () => {
   assert.equal(streakAlert(41, false)?.title, '41-day Duolingo streak ends tonight')
@@ -26,4 +27,10 @@ test('workoutGapAlert fires after 4 synced empty days for someone who usually mo
   // Missing days (not synced) aren't a gap.
   const missing = new Map(days); missing.delete(addDays(today, -1))
   assert.equal(workoutGapAlert(missing, today), null)
+})
+
+test('hideUrlQuery drops signed query strings from connector errors', () => {
+  const err = 'binance GET https://api.binance.com/sapi/v1/margin/allPairs?timestamp=1&signature=abc request timed out (10000'
+  assert.equal(hideUrlQuery(err), 'binance GET https://api.binance.com/sapi/v1/margin/allPairs request timed out (10000')
+  assert.equal(hideUrlQuery('fetch failed'), 'fetch failed')
 })

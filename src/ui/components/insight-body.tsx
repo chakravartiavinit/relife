@@ -1,21 +1,65 @@
 import Link from 'next/link'
-import { Check, Eye, Target } from 'lucide-react'
+import { ArrowDown, ArrowUp, Check, Eye, Target } from 'lucide-react'
 import type { ReviewContent, ReviewPoint } from '@/db/schema'
+import { hideUrlQuery } from '@/domain/text'
 import { CATEGORY } from '@/ui/tokens'
 import { cn } from '@/ui/cn'
 import { buttonClass } from './button'
 
 // How an insight's text is shown in the app. Weekly reviews come in parts (wins, watch, next week) and get a real
-// layout; anything older or plain is lightly formatted: "**Wins**" headings, "- " bullets and **bold** spans.
+// layout; alerts get their numbers in a table; anything older or plain is lightly formatted: "**Wins**" headings,
+// "- " bullets and **bold** spans.
 
 const SECTION = {
   wins: { label: 'Wins', icon: Check, color: 'var(--good)' },
   watch: { label: 'Watch', icon: Eye, color: 'var(--warn)' },
 } as const
 
-export function InsightBody({ body, review }: { body: string; review?: ReviewContent }) {
+export function InsightBody({ body, review, kind }: { body: string; review?: ReviewContent; kind?: string }) {
   if (review) return <Review r={review} />
+  if (kind === 'alert') return <AlertBody text={body} />
   return <Formatted text={body} />
+}
+
+/**
+ * An alert is stored as one line of what happened, then its exact numbers one per line (src/rules/run.ts), like
+ * "Yesterday ₹0 · ▼ 100%". The numbers go in an inset table with the change as a pill on the right.
+ */
+function AlertBody({ text }: { text: string }) {
+  const [lead, ...data] = hideUrlQuery(text).split('\n').filter((l) => l.trim())
+  return (
+    <div className="flex max-w-[68ch] flex-col gap-3">
+      <p className="text-[14px] leading-relaxed text-ink-2 text-pretty [overflow-wrap:anywhere]">{lead}</p>
+      {data.length ? (
+        <ul aria-label="Numbers" className="divide-y divide-divider rounded-[12px] bg-surface-2 px-3.5">
+          {data.map((line, i) => {
+            const m = /^(.*?)\s*·\s*([▲▼])\s*([\d.,]+%)$/.exec(line)
+            return (
+              <li key={i} className="flex min-h-10 items-center justify-between gap-3 py-2 text-[13px] text-ink-2 tabular-nums">
+                <span className="min-w-0 [overflow-wrap:anywhere]"><Amounts text={m ? m[1] : line} /></span>
+                {m ? <Change up={m[2] === '▲'} pct={m[3]} /> : null}
+              </li>
+            )
+          })}
+        </ul>
+      ) : null}
+    </div>
+  )
+}
+
+/** Money and percentages in ink, the words around them in the muted body colour. */
+function Amounts({ text }: { text: string }) {
+  return <>{text.split(/([-−]?[₹$€£]\d[\d,]*(?:\.\d+)?|\b\d[\d,]*(?:\.\d+)?%)/).map((part, i) => (i % 2 ? <span key={i} className="font-medium text-ink">{part}</span> : part))}</>
+}
+
+function Change({ up, pct }: { up: boolean; pct: string }) {
+  const Icon = up ? ArrowUp : ArrowDown
+  return (
+    <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-full bg-surface px-2 text-[12px] font-medium text-ink-2 shadow-1">
+      <Icon className="size-3" strokeWidth={2.5} aria-hidden />
+      <span className="sr-only">{up ? 'Up' : 'Down'} </span>{pct}
+    </span>
+  )
 }
 
 function Review({ r }: { r: ReviewContent }) {
@@ -103,7 +147,7 @@ function Formatted({ text }: { text: string }) {
   // An old review's "Next week" block becomes the same callout as a new one.
   const heading = (line: string) => /^\*\*(.+)\*\*:?$/.exec(line.trim())?.[1] ?? /^([A-Z][\w ]{1,20}):$/.exec(line.trim())?.[1]
   return (
-    <div className="flex max-w-[68ch] flex-col gap-3 text-[14px] leading-relaxed text-ink-2">
+    <div className="flex max-w-[68ch] flex-col gap-3 text-[14px] leading-relaxed text-ink-2 [overflow-wrap:anywhere]">
       {blocks.map((block, n) => {
         const lines = block.split('\n')
         const title = heading(lines[0])
