@@ -1,0 +1,36 @@
+{
+  "note": "Fixture: an Open Library day (a book marked read).",
+  "event": {
+    "source": "openlibrary",
+    "externalId": "2026-11-06:abc",
+    "at": "2026-11-07T10:00:00.000Z",
+    "body": {
+      "date": "2026-11-06",
+      "books": 1,
+      "titles": [
+        "Atomic Habits"
+      ]
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "tracker": "books.read",
+      "date": "2026-11-06",
+      "value": 1,
+      "source": "openlibrary",
+      "verified": true,
+      "meta": {
+        "titles": [
+          "Atomic Habits"
+        ]
+      },
+      "defaults": {
+        "name": "Books read",
+        "category": "mind",
+        "kind": "number",
+        "direction": "up"
+      }
+    }
+  ]
+}

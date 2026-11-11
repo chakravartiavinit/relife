@@ -1,0 +1,27 @@
+{
+  "note": "Fixture: a Letterboxd day with no films still counts as zero.",
+  "event": {
+    "source": "letterboxd",
+    "externalId": "2026-11-07:abc",
+    "at": "2026-11-07T10:00:00.000Z",
+    "body": {
+      "date": "2026-11-07",
+      "films": 0
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "tracker": "films.watched",
+      "date": "2026-11-07",
+      "value": 0,
+      "source": "letterboxd",
+      "verified": true,
+      "defaults": {
+        "name": "Films watched",
+        "category": "hobbies",
+        "kind": "number"
+      }
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "note": "Fixture: an Anki day when review times could not be read: cards only.",
+  "event": {
+    "source": "anki",
+    "externalId": "2026-11-07:abc",
+    "at": "2026-11-07T10:00:00.000Z",
+    "body": {
+      "date": "2026-11-07",
+      "cards": 40
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "tracker": "anki.cards",
+      "date": "2026-11-07",
+      "value": 40,
+      "source": "anki",
+      "verified": true,
+      "defaults": {
+        "name": "Anki cards",
+        "category": "skills",
+        "kind": "number",
+        "unit": "cards",
+        "direction": "up",
+        "target": 20
+      }
+    }
+  ]
+}
