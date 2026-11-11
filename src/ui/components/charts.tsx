@@ -32,7 +32,7 @@ function fmt(v: number, unit?: string) {
   return unit ? `${n} ${unit}` : n
 }
 const tick = (v: number) => new Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 }).format(v)
-const goalColor = 'var(--ink-3)'
+const goalColor = 'var(--text-3)'
 /** One series colour for both themes (the token itself changes with the theme). */
 const tone = (label: string, color: string) => ({ label, colors: { light: [color], dark: [color] } })
 const named = (name: string, unit?: string) => (unit ? `${name} (${unit})` : name)
@@ -48,7 +48,7 @@ export function seriesName(label: string) {
   return s ? s[0].toUpperCase() + s.slice(1) : 'Value'
 }
 // Mixed into a raised surface rather than transparent, so a below-goal bar still reads on a dark card.
-const faded = (c: string) => `color-mix(in oklch, ${c} 50%, var(--surface-3))`
+const faded = (c: string) => `color-mix(in oklch, ${c} 50%, var(--track))`
 
 const GHOST = [38, 62, 45, 80, 55, 30, 68, 50, 74, 42, 58, 85, 48, 64, 36, 70, 52, 44, 78, 60]
 
@@ -57,9 +57,9 @@ function ChartEmpty({ height, label }: { height: number; label: string }) {
   return (
     <figure aria-label={`${label}: no data yet`} className="relative m-0 grid place-items-center" style={{ height }}>
       <div aria-hidden className="absolute inset-x-1 bottom-6 top-3 flex items-end gap-[3px] opacity-60 [mask-image:linear-gradient(to_top,black,transparent)]">
-        {GHOST.map((h, i) => <span key={i} className="flex-1 rounded-t-[4px] bg-surface-2" style={{ height: `${h}%` }} />)}
+        {GHOST.map((h, i) => <span key={i} className="flex-1 rounded-t-[4px] bg-fill" style={{ height: `${h}%` }} />)}
       </div>
-      <figcaption className="relative rounded-full bg-surface px-3.5 py-1.5 text-[12.5px] font-medium text-ink-3 shadow-1">No data yet</figcaption>
+      <figcaption className="relative rounded-full bg-raised px-3.5 py-1.5 text-[12px] font-medium text-ink-3 shadow-1">No data yet</figcaption>
     </figure>
   )
 }

@@ -8,6 +8,8 @@ import { loadWealthOverview, spendColor } from '@/core/wealth-overview'
 import { formatMoney } from '@/domain/money'
 import { dueLabel, monthLabel, timeAgo } from '@/domain/wealth'
 import { AreaHeader } from '@/ui/components/area-header'
+import { PageTabs } from '@/ui/components/kit/page-tabs'
+import { TABS } from '@/ui/nav-model'
 import { Card, CardHeader, KpiStrip, Skeleton } from '@/ui/components/card'
 import { StackedBars } from '@/ui/components/charts'
 import { EmptyState } from '@/ui/components/empty'
@@ -34,7 +36,7 @@ const more = (href: string, label: string) => (
 export default function WealthPage() {
   return (
     <>
-      <AreaHeader area="wealth" title="Money" description="Spending from your order apps, investments on Binance and every subscription, in one place." />
+      <AreaHeader area="wealth" title="Money" description="Spending from your order apps, investments on Binance and every subscription, in one place." tabs={<PageTabs label="Wealth" current="/wealth" items={TABS['/wealth']} />} />
       <Suspense fallback={<WealthSkeleton />}>
         <Wealth />
       </Suspense>
@@ -54,7 +56,7 @@ async function Wealth() {
         <EmptyState
           title="No money data yet" icon={Coins} color={ACCENT}
           description="Connect Binance, your order apps (Zomato, Swiggy, Blinkit, Zepto, Amazon, Flipkart) or add a subscription, and this page fills in."
-          action={<Link href="/connectors" className={buttonClass({ variant: 'primary' })}>Open connectors</Link>}
+          action={<Link href="/sources/browse" className={buttonClass({ variant: 'primary' })}>Open sources</Link>}
         />
       </Card>
     )
@@ -172,7 +174,7 @@ function MonthPace({ o, money }: Props) {
 function Nudges({ o }: { o: Overview }) {
   return (
     <Card>
-      <CardHeader title="What ReLife noticed" icon={<BellRing strokeWidth={2} />} color={ACCENT} description="Money nudges sent to Telegram, last 30 days" action={more('/insights', 'All')} />
+      <CardHeader title="What ReLife noticed" icon={<BellRing strokeWidth={2} />} color={ACCENT} description="Money nudges sent to Telegram, last 30 days" action={more('/coach', 'All')} />
       {o.nudges.length ? (
         <ul className="flex flex-col gap-1">
           {o.nudges.map((n) => (
@@ -255,7 +257,7 @@ async function Investments({ o, money }: Props) {
   return (
     <Card>
       <CardHeader title="Investments" icon={<Coins strokeWidth={2} />} color={ACCENT} description="Binance" action={more('/wealth/portfolio', 'Portfolio')} />
-      {invest.empty ? <p className="text-[13px] text-ink-3">Connect Binance on Connectors to see holdings and profit.</p> : (
+      {invest.empty ? <p className="text-[13px] text-ink-3">Connect Binance on Sources to see holdings and profit.</p> : (
         <div className="flex flex-col gap-4">
           <div>
             <p className="font-display text-[26px] leading-none font-extrabold tracking-[-0.02em] text-ink tabular-nums"><Ticker value={invest.worth} currency={o.base} /></p>

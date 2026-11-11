@@ -137,7 +137,7 @@ async function Hobbies() {
                 <HobbyImage name={c.t.name} />
                 <div className="min-w-0 flex-1">
                   <h2 className="truncate text-[16px] font-semibold tracking-[-0.01em] text-ink">
-                    <Link href={`/trackers/${c.t.slug}`} className="rounded-sm hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">{c.t.name}</Link>
+                    <Link href={`/routines/trackers/${c.t.slug}`} className="rounded-sm hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">{c.t.name}</Link>
                   </h2>
                   <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px] text-ink-3 tabular-nums">
                     <span className="inline-flex items-center gap-1"><Flame className="size-3.5" strokeWidth={1.5} aria-hidden style={{ color: c.streak ? 'var(--warn)' : undefined }} />{c.streak ? `${c.streak}-day streak` : 'No streak'}</span>
@@ -172,7 +172,7 @@ async function Hobbies() {
                 </ul>
               ) : /chess/i.test(c.t.name) ? (
                 <p className="text-[12.5px] text-ink-3">
-                  Play online? <Link href="/connectors" className="font-medium text-pill-ink hover:underline">Connect Lichess or Chess.com</Link> and your games, time and rating sync on their own.
+                  Play online? <Link href="/sources/browse" className="font-medium text-pill-ink hover:underline">Connect Lichess or Chess.com</Link> and your games, time and rating sync on their own.
                 </p>
               ) : null}
               {c.spark.some((p) => (p.value ?? 0) > 0) ? <Sparkline data={c.spark} color={color} height={40} label={`${c.t.name}, minutes per day for 4 weeks`} /> : null}

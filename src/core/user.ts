@@ -10,7 +10,7 @@ export async function getUser(): Promise<User> {
   if (cached) return cached
   const [existing] = await db.select().from(schema.users).orderBy(asc(schema.users.createdAt)).limit(1)
   if (existing) {
-    // Connected keys (saved in the Connectors dialog) go into process.env before anything reads it.
+    // Connected keys (saved in the Sources dialog) go into process.env before anything reads it.
     await (await import('./secrets')).applySecrets(existing.id)
     return (cached = existing)
   }

@@ -6,6 +6,7 @@ import {
   MessageSquareCode, Moon, MoonStar, Puzzle, ShoppingBag, Siren, Skull, Smartphone, Smile, Sparkles, Target, Tv, Wallet, X, Zap, type LucideIcon,
 } from 'lucide-react'
 import { CATEGORY } from '../tokens'
+import { RankLetter } from './kit/rank'
 import { summonSystem } from '@/app/actions'
 import { formatValue } from '@/domain/patterns'
 import type { Rank, SystemKind } from '@/domain/system'
@@ -21,12 +22,8 @@ export type SystemQuestItem = {
   statId?: string; area?: string
 }
 
-export const RANK_COLOR: Record<Rank, string> = {
-  E: 'var(--ink-3)', D: 'var(--good)', C: 'var(--sky)', B: 'var(--pill)', A: 'var(--medal-gold)', S: 'var(--medal-sakura)',
-}
-
 const GROUP: Record<SystemKind, { label: string; color: string; icon?: typeof Skull }> = {
-  daily: { label: 'Daily quest', color: 'var(--pill-ink)' },
+  daily: { label: 'Daily quest', color: 'var(--accent-text)' },
   penalty: { label: 'Penalty quest', color: 'var(--bad)', icon: Skull },
   emergency: { label: 'Emergency quest', color: 'var(--warn)', icon: Siren },
 }
@@ -58,10 +55,10 @@ export function SystemQuests({ quests, difficulty, hasData, timezone }: { quests
   return (
     <div>
       <div className="mb-2 flex items-center justify-between gap-3">
-        <p className="text-[11px] font-semibold tracking-[0.12em] text-pill-ink uppercase">[System]</p>
+        <p className="text-[11px] font-semibold tracking-[0.12em] text-accent-text uppercase">[System]</p>
         <span className="flex items-center gap-2 text-[11.5px] text-ink-3 tabular-nums">
           <span title={`Difficulty ${difficulty} of 5: it rises as you clear quests and eases after misses.`} className="flex items-center gap-0.5" aria-label={`Difficulty ${difficulty} of 5`}>
-            {[1, 2, 3, 4, 5].map((i) => <span key={i} aria-hidden className="h-2.5 w-1 rounded-full" style={{ background: i <= difficulty ? 'var(--pill)' : 'var(--hairline)' }} />)}
+            {[1, 2, 3, 4, 5].map((i) => <span key={i} aria-hidden className="h-2.5 w-1 rounded-full" style={{ background: i <= difficulty ? 'var(--accent)' : 'var(--line-2)' }} />)}
           </span>
           {left && dailies.some((q) => q.status === 'active') ? <span>· {left} left</span> : null}
         </span>
@@ -112,8 +109,7 @@ const RANK_HINT: Record<Rank, string> = { E: 'easy', D: 'light', C: 'steady', B:
  * (XP to win, cleared, failed), why it was set, and progress toward the target. Resolved quests step back.
  */
 function QuestRow({ q }: { q: SystemQuestItem }) {
-  const area = q.area && q.area in CATEGORY ? CATEGORY[q.area as keyof typeof CATEGORY].color : 'var(--pill)'
-  const rank = RANK_COLOR[q.rank]
+  const area = q.area && q.area in CATEGORY ? CATEGORY[q.area as keyof typeof CATEGORY].color : 'var(--accent)'
   const Icon = iconFor(q)
   const value = q.progress ?? 0
   const over = q.op === 'lte' && value > q.target
@@ -121,37 +117,30 @@ function QuestRow({ q }: { q: SystemQuestItem }) {
   const failed = q.status === 'failed'
   return (
     <li
-      className={cn('flex gap-3 rounded-[14px] p-3 transition-[background-color] duration-150', !done && !failed && 'bg-ink/[0.025] dark:bg-white/[0.035]')}
-      style={done ? { background: 'color-mix(in oklch, var(--good) 7%, transparent)' } : failed ? { background: 'color-mix(in oklch, var(--bad) 5%, transparent)' } : undefined}
+      className={cn('flex gap-3 rounded-lg p-3 transition-[background-color] duration-150', !done && !failed && 'bg-fill-soft')}
+      style={done ? { background: 'var(--mint-bg)' } : failed ? { background: 'var(--red-bg)' } : undefined}
     >
       {/* self-start: a stretched wrapper would be as tall as the row and drop the rank badge to the row's bottom. */}
       <span className="relative shrink-0 self-start">
         <span
           aria-hidden
-          className={cn('grid size-9 place-items-center rounded-[10px]', (done || failed) && 'opacity-60')}
-          style={{ color: `color-mix(in oklch, ${area} 80%, var(--ink))`, background: `color-mix(in oklch, ${area} 15%, transparent)` }}
+          className={cn('grid size-9 place-items-center rounded-md', (done || failed) && 'opacity-60')}
+          style={{ color: area, background: `color-mix(in oklch, ${area} 15%, transparent)` }}
         >
           <Icon className="size-[18px]" strokeWidth={2} />
         </span>
-        <span
-          title={`Rank ${q.rank}: ${RANK_HINT[q.rank]}`}
-          aria-label={`Rank ${q.rank}, ${RANK_HINT[q.rank]}`}
-          className="absolute -right-1.5 -bottom-1.5 grid size-[18px] place-items-center rounded-full bg-surface font-display text-[10px] font-extrabold shadow-1"
-          style={{ color: `color-mix(in oklch, ${rank} 85%, var(--ink))`, boxShadow: `0 0 0 1.5px color-mix(in oklch, ${rank} 45%, transparent)` }}
-        >
-          {q.rank}
-        </span>
+        <RankLetter rank={q.rank} className="absolute -right-1.5 -bottom-1.5 bg-raised" />
       </span>
 
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
           <p className={cn('text-[13.5px] leading-snug font-medium', done ? 'text-ink-2' : failed ? 'text-ink-3' : 'text-ink')}>{q.title}</p>
           {done ? (
-            <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-full bg-good/12 px-2 text-[11.5px] font-semibold text-good tabular-nums"><Check className="size-3.5" strokeWidth={2.5} aria-hidden />+{q.xp} XP</span>
+            <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-full bg-good-bg px-2 text-[11.5px] font-semibold text-good tabular-nums"><Check className="size-3.5" strokeWidth={2.5} aria-hidden />+{q.xp} XP</span>
           ) : failed ? (
-            <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-full bg-bad/10 px-2 text-[11.5px] font-semibold text-bad"><X className="size-3.5" strokeWidth={2.5} aria-hidden />Failed</span>
+            <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-full bg-bad-bg px-2 text-[11.5px] font-semibold text-bad"><X className="size-3.5" strokeWidth={2.5} aria-hidden />Failed</span>
           ) : (
-            <span className="inline-flex h-6 shrink-0 items-center rounded-full px-2 text-[11.5px] font-semibold tabular-nums" style={{ color: 'color-mix(in oklch, var(--medal-gold) 80%, var(--ink))', background: 'color-mix(in oklch, var(--medal-gold) 12%, transparent)' }}>+{q.xp} XP</span>
+            <span className="inline-flex h-6 shrink-0 items-center rounded-full px-2 text-[11.5px] font-semibold tabular-nums" style={{ color: 'var(--mint)', background: 'var(--mint-bg)' }}>+{q.xp} XP</span>
           )}
         </div>
         {q.reason ? (

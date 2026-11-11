@@ -5,36 +5,31 @@ import { getUser } from '@/core/user'
 import { xpSummary } from '@/core/xp'
 import { MEDALS } from '@/domain/xp'
 import { formatNumber } from '@/domain/money'
+import { AREA_ART } from '../area-art'
 import { CATEGORY } from '../tokens'
-import { Capsule } from './capsule'
+import { Bar } from './kit/bar'
+import { Hero } from './kit/hero'
+import { Skeleton } from './kit/skeleton'
+import { IconTile } from './routine-art'
 import { MedalDisc } from './xp'
-import { AREA_ICON, CapsuleIcon } from './capsule-icon'
-import { SystemLabel } from './card'
 
-// Each area page opens like a stat screen in the game: the area's colour, its icon, and its own level.
+// Each area page opens with a Hero: the area's picture on a tile in its colour, and its own level.
 // The title and copy render at once; the level streams in (it needs the database).
 
-export function AreaHeader({ area, title, description, actions }: {
-  area: Category; title: string; description?: string; actions?: React.ReactNode
+export function AreaHeader({ area, title, description, actions, tabs }: {
+  area: Category; title: string; description?: string; actions?: React.ReactNode; tabs?: React.ReactNode
 }) {
   const c = CATEGORY[area].color
-  const Icon = AREA_ICON[area]
   return (
-    <header className="relative isolate mb-6 overflow-hidden rounded-[24px] bg-surface p-5 shadow-2 sm:p-6">
-      <div aria-hidden className="halftone inset-y-0 right-0 -z-10 w-2/3" style={{ '--tone': c } as React.CSSProperties} />
-      <div className="grid gap-5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:gap-6">
-        <CapsuleIcon color={c} icon={Icon} size="lg" className="ms-2 sm:ms-1" />
-        <div className="min-w-0">
-          <SystemLabel color={c}>{CATEGORY[area].label}</SystemLabel>
-          <h1 className="mt-0.5 font-display text-[28px] leading-[1.05] font-extrabold tracking-[-0.03em] text-ink sm:text-[34px]">{title}</h1>
-          {description ? <p className="mt-1.5 max-w-[60ch] text-[14px] leading-relaxed text-ink-2">{description}</p> : null}
-        </div>
-        <div className="flex flex-wrap items-center gap-3 sm:flex-col sm:items-end">
-          <Suspense fallback={<div className="h-[68px] w-[220px] rounded-[16px] bg-surface/60" />}><AreaLevel area={area} /></Suspense>
-          {actions}
-        </div>
-      </div>
-    </header>
+    <Hero
+      meta={CATEGORY[area].label}
+      art={<IconTile src={AREA_ART[area]} tint={c} size="lg" className="max-sm:hidden" />}
+      title={title}
+      lede={description}
+      actions={actions}
+      side={<Suspense fallback={<Skeleton className="h-[88px] rounded-lg" />}><AreaLevel area={area} /></Suspense>}
+      tabs={tabs}
+    />
   )
 }
 
@@ -47,15 +42,15 @@ async function AreaLevel({ area }: { area: Category }) {
   const toNext = Math.max(0, Math.ceil((a.next - a.xp * 3) / 3))
   const c = CATEGORY[area].color
   return (
-    <div className="flex w-full items-center gap-3 rounded-[16px] bg-surface/75 px-4 py-3 shadow-1 backdrop-blur-sm sm:w-[240px]">
+    <div className="stat-bg flex w-full items-center gap-3 rounded-lg px-4 py-3">
       <MedalDisc medal={a.medal?.medal ?? null} size={30} label={a.medal ? `${a.medal.label} medal` : 'No medal yet'} />
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2">
-          <span className="font-display text-[20px] leading-none font-extrabold text-ink tabular-nums">Lv {a.level}</span>
-          <span className="text-[11.5px] text-ink-3 tabular-nums">{formatNumber(a.xp)} XP</span>
+          <span className="text-[20px] leading-6 font-semibold tracking-[-0.02em] text-ink tabular-nums">Lv {a.level}</span>
+          <span className="font-mono text-[12px] text-ink-3">{formatNumber(a.xp)} XP</span>
         </div>
-        <Capsule value={a.progress} max={1} size="sm" color={c} label={`${CATEGORY[area].label} level progress`} className="mt-2" />
-        <div className="mt-1 text-[11px] text-ink-3 tabular-nums">{formatNumber(toNext)} XP to Lv {a.level + 1}{next ? ` · ${next.label} at ${next.level}` : ''}</div>
+        <Bar value={a.progress} max={1} size={4} color={c} label={`${CATEGORY[area].label} level progress`} className="mt-2" />
+        <div className="t-meta mt-1.5 tabular-nums">{formatNumber(toNext)} XP to Lv {a.level + 1}{next ? ` · ${next.label} at ${next.level}` : ''}</div>
       </div>
     </div>
   )

@@ -27,7 +27,7 @@ export const TOUR_STEPS: TourStep[] = [
     Illo: IlloLog,
   },
   {
-    anchor: '/profile',
+    anchor: '/character',
     title: 'Watch your character grow',
     body: 'Every check-off earns XP. Keep your streak going for up to ×1.5 XP, open chests and unlock achievements.',
     Illo: IlloProgress,
@@ -39,9 +39,9 @@ export const TOUR_STEPS: TourStep[] = [
     Illo: IlloAreas,
   },
   {
-    anchor: '/connectors',
+    anchor: '/sources',
     title: 'Your day, logged for you',
-    body: 'Connect GitHub, your order apps or your phone, and what you do there lands here by itself, at full XP. You pick what syncs.',
+    body: 'Add GitHub, your order apps or your phone as a source, and what you do there lands here by itself, at full XP. You pick what syncs.',
     Illo: IlloConnect,
   },
   {

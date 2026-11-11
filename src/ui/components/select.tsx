@@ -114,8 +114,8 @@ export function Select({ value, defaultValue, onChange, name, id, disabled, clas
         className={cn(
           'group relative inline-flex items-center gap-2 text-start transition-[background-color,box-shadow,color] duration-150 ease-out-quint focus-visible:outline-none disabled:opacity-50',
           pill
-            ? 'h-8 rounded-full bg-surface-2 ps-3 pe-7 text-[12px] font-medium text-ink-2 hover:bg-surface-3 hover:text-ink focus-visible:shadow-[0_0_0_2px_var(--pill)] aria-expanded:bg-surface-3 aria-expanded:text-ink'
-            : 'h-9 w-full rounded-md bg-surface ps-3 pe-8 text-sm text-ink shadow-1 focus-visible:shadow-[0_0_0_2px_var(--pill)] aria-expanded:shadow-[0_0_0_2px_var(--pill)]',
+            ? 'h-7 rounded-full bg-raised-2 ps-3 pe-7 text-[12px] font-medium text-ink-2 shadow-inset hover:bg-hover hover:text-ink focus-visible:shadow-[0_0_0_2px_var(--accent)] aria-expanded:bg-hover aria-expanded:text-ink'
+            : 'h-8 w-full rounded-sm bg-raised ps-3 pe-8 text-[13px] text-ink shadow-inset focus-visible:shadow-[0_0_0_2px_var(--accent)] aria-expanded:shadow-[0_0_0_2px_var(--accent)]',
           className,
         )}
       >
@@ -134,7 +134,7 @@ export function Select({ value, defaultValue, onChange, name, id, disabled, clas
         onClick={(e) => e.preventDefault()}
         style={{ transformOrigin: above ? 'bottom' : 'top' }}
         className={cn(
-          'fixed m-0 max-h-80 overflow-y-auto overscroll-contain rounded-[14px] bg-surface p-1 text-ink shadow-3',
+          'fixed m-0 max-h-80 overflow-y-auto overscroll-contain rounded-lg bg-raised p-1 text-ink shadow-3',
           // Enter: fade and grow from the trigger, 150ms. Exit: a quicker fade. Reduced motion: fade only.
           'opacity-0 transition-[opacity,scale,display,overlay] transition-discrete duration-100 ease-out',
           'open:opacity-100 open:duration-150 open:ease-out-quint starting:open:scale-[0.96] starting:open:opacity-0 motion-reduce:starting:open:scale-100',
@@ -148,13 +148,13 @@ export function Select({ value, defaultValue, onChange, name, id, disabled, clas
               onClick={() => !o.disabled && pick(o.value)}
               onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !o.disabled) { e.preventDefault(); pick(o.value) } }}
               className={cn(
-                'flex h-10 cursor-pointer items-center gap-2.5 rounded-[10px] ps-2.5 pe-3 text-[13.5px] whitespace-nowrap outline-none transition-[background-color] duration-150',
-                'hover:bg-ink/[0.05] focus:bg-ink/[0.05] dark:hover:bg-white/[0.06] dark:focus:bg-white/[0.06]',
+                'flex h-9 cursor-pointer items-center gap-2.5 rounded-sm ps-2.5 pe-3 text-[13px] whitespace-nowrap outline-none transition-[background-color] duration-150',
+                'hover:bg-hover focus:bg-hover',
                 on ? 'font-medium text-ink' : 'text-ink-2',
                 o.disabled && 'cursor-not-allowed opacity-40',
               )}
             >
-              <Check aria-hidden strokeWidth={2.25} className={cn('size-4 shrink-0 text-pill-ink', !on && 'invisible')} />
+              <Check aria-hidden strokeWidth={2.25} className={cn('size-4 shrink-0 text-accent-text', !on && 'invisible')} />
               {o.color ? <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: o.color }} /> : null}
               <span className="truncate">{o.label}</span>
             </div>

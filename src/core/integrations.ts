@@ -1,7 +1,7 @@
 import { connectors } from '@/connectors'
 import type { SetupField } from './types'
 
-// Everything the Connectors page can connect: data sources (src/connectors), Telegram and AI providers.
+// Everything the Sources page can connect: data sources (src/connectors), Telegram and AI providers.
 // Only the `fields` listed here can be saved from the Connect dialog, so it can never set other env vars.
 
 export type Integration = { id: string; fields: SetupField[]; required: string[] }

@@ -105,7 +105,7 @@ export type Connector = {
   id: string
   name: string
   category: Category
-  /** One sentence for the Connectors card: what flows in. */
+  /** One sentence for the Sources card: what flows in. */
   description: string
   /** Short capability chips, most important first, e.g. ['Commits', 'Pull requests']. */
   provides: string[]

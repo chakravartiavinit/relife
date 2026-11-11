@@ -31,7 +31,7 @@ export function startBot(): Bot | null {
     if (allowed && chat === allowed) return next()
     if (!allowed && ctx.message?.text?.startsWith('/start')) {
       await ctx.reply(
-        `Your chat id is <code>${esc(chat)}</code>.\nPaste it into Telegram → Manage on the ReLife Connectors page.`,
+        `Your chat id is <code>${esc(chat)}</code>.\nPaste it into Telegram → Manage on the ReLife Sources page.`,
         { parse_mode: 'HTML' },
       )
     }

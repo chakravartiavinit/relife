@@ -1,12 +1,13 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, Outfit } from 'next/font/google'
+import { IBM_Plex_Mono, Inter } from 'next/font/google'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { Wordmark } from '@/ui/components/logo'
 import { cn } from '@/ui/cn'
-import { NavPlaceholder, SystemNavPlaceholder, TabBar } from '@/ui/components/nav'
-import { NavForUser, SystemNavWithCounts } from '@/ui/components/system-nav-server'
-import { CommandButton, CommandMenu } from '@/ui/components/command-menu'
+import { NavPlaceholder, TabBarPlaceholder } from '@/ui/components/nav'
+import { NavForUser, TabBarForUser } from '@/ui/components/system-nav-server'
+import { PlayerBlock, PlayerBlockSkeleton } from '@/ui/components/player-block'
+import { CommandButton, CommandMenu, LogButton } from '@/ui/components/command-menu'
 import { Tour } from '@/ui/components/tour/tour'
 import { ThemeToggle, THEME_SCRIPT } from '@/ui/components/theme-toggle'
 import { ToastProvider } from '@/ui/components/toast'
@@ -15,11 +16,10 @@ import { Celebration } from '@/ui/components/petals'
 import { Celebrations } from '@/ui/components/celebrate'
 import { PaymentToasts } from '@/ui/components/payment-toasts'
 import { LiveRefresh } from '@/ui/components/live-refresh'
-import { SidebarProfile, SidebarProfileSkeleton } from '@/ui/components/sidebar-profile'
 import './globals.css'
 
 const inter = Inter({ variable: '--font-inter', subsets: ['latin'], display: 'swap' })
-const outfit = Outfit({ variable: '--font-outfit', subsets: ['latin'], weight: ['600', '700', '800', '900'], display: 'swap' })
+const plexMono = IBM_Plex_Mono({ variable: '--font-plex-mono', subsets: ['latin'], weight: ['400', '500'], display: 'swap' })
 
 export const metadata: Metadata = {
   title: { default: 'ReLife', template: '%s · ReLife' },
@@ -29,8 +29,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f7fafc' },
-    { media: '(prefers-color-scheme: dark)', color: '#1a2129' },
+    { media: '(prefers-color-scheme: light)', color: '#fbfbfc' },
+    { media: '(prefers-color-scheme: dark)', color: '#08090a' },
   ],
   viewportFit: 'cover',
 }
@@ -42,10 +42,9 @@ function MockBadge({ wide = false }: { wide?: boolean }) {
     <span
       title="Random data from the relife_mock database. Your real data is untouched."
       className={cn(
-        'inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-semibold whitespace-nowrap text-warn shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--warn)_35%,transparent)]',
-        wide && '-mt-1 h-8 w-full justify-center rounded-md text-[12px]',
+        'inline-flex h-6 items-center gap-1.5 rounded-full bg-warn-bg px-2.5 text-[11px] font-medium whitespace-nowrap text-warn shadow-[inset_0_0_0_1px_var(--amber-line)]',
+        wide && 'h-8 w-full justify-center rounded-sm text-[12px]',
       )}
-      style={{ background: 'color-mix(in oklch, var(--warn) 14%, transparent)' }}
     >
       <span aria-hidden className="size-1.5 rounded-full bg-warn" />
       {wide ? 'Mock mode · random data' : 'Mock'}
@@ -55,44 +54,46 @@ function MockBadge({ wide = false }: { wide?: boolean }) {
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="en" className={`${inter.variable} ${outfit.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} ${plexMono.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className="min-h-dvh">
         <AppMotion>
         <ToastProvider>
-          <div className="mx-auto flex min-h-dvh max-w-[1480px]">
-            <aside className="sticky top-0 hidden h-dvh w-[264px] shrink-0 p-3 lg:block">
-              {/* Floating glass panel: radius 24 with 12px padding, so inner rows use 12. */}
-              <div className="flex h-full flex-col gap-4 rounded-xl bg-glass p-3 shadow-2 backdrop-blur-xl">
-                <div className="flex items-center justify-between pt-2 pr-1 pl-2.5">
-                  <Link href="/" aria-label="ReLife, Today" className="rounded-sm">
-                    <Wordmark className="h-[30px]" />
-                  </Link>
+          <div className="min-h-dvh lg:grid lg:grid-cols-[var(--sidebar-w)_minmax(0,1fr)]">
+            {/* The rail stays the first <aside> in the DOM: the tour measures it. */}
+            <aside className="sticky top-0 hidden h-dvh flex-col border-r border-line bg-sidebar px-2 py-3 lg:flex">
+              <div className="flex h-9 items-center justify-between pr-1 pl-2.5">
+                <Link href="/" aria-label="ReLife, Today" className="relative rounded-sm after:absolute after:-inset-x-1 after:-inset-y-2.5">
+                  <Wordmark className="h-5" />
+                </Link>
+                <div className="flex items-center">
+                  <LogButton />
                   <ThemeToggle />
                 </div>
-                <CommandButton />
-                <MockBadge wide />
-                <div className="scroll-fade -mx-1 -my-2 min-h-0 flex-1 overflow-y-auto px-1 pt-2 pb-7">
-                  {/* Nav reads the pathname; keep it out of the static shell's blocking path. */}
-                  <Suspense fallback={<NavPlaceholder />}><NavForUser /></Suspense>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Suspense fallback={<SystemNavPlaceholder />}><SystemNavWithCounts /></Suspense>
-                  <Suspense fallback={<SidebarProfileSkeleton />}><SidebarProfile /></Suspense>
-                </div>
               </div>
+              <div className="mt-2 mb-3"><CommandButton /></div>
+              <MockBadge wide />
+              {/* Nav reads the pathname; keep it out of the static shell's blocking path. */}
+              <div className="flex min-h-0 flex-1 flex-col">
+                <Suspense fallback={<NavPlaceholder />}><NavForUser /></Suspense>
+              </div>
+              <Suspense fallback={<PlayerBlockSkeleton />}><PlayerBlock /></Suspense>
             </aside>
-            <main className="min-w-0 flex-1 px-5 pt-6 pb-32 sm:px-8 lg:py-9 lg:pr-10 lg:pl-7">
-              <div className="mb-6 flex items-center justify-between lg:hidden">
-                <Link href="/" aria-label="ReLife, Today"><Wordmark className="h-7" /></Link>
-                <div className="flex items-center gap-1"><MockBadge /><ThemeToggle /></div>
+            {/* Horizontal padding matches the Hero's negative margins (kit/hero.tsx): 20 / 32 / 36px. */}
+            <main className="min-w-0 px-5 pt-6 pb-32 sm:px-8 lg:px-9 lg:pt-9 lg:pb-16">
+              <div className="mx-auto max-w-[1128px]">
+                {/* Until each page's Hero carries its own header, phones get a slim top row. */}
+                <div className="-mt-1 mb-4 flex items-center justify-between lg:hidden">
+                  <Link href="/" aria-label="ReLife, Today"><Wordmark className="h-6" /></Link>
+                  <div className="flex items-center gap-1"><MockBadge /><LogButton /></div>
+                </div>
+                {children}
               </div>
-              {children}
             </main>
           </div>
-          <Suspense fallback={null}><TabBar /></Suspense>
+          <Suspense fallback={<TabBarPlaceholder />}><TabBarForUser /></Suspense>
           <CommandMenu />
           <Tour />
           <Celebration />

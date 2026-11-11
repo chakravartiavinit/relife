@@ -30,14 +30,14 @@ export const LOGO: Record<string, { src: string; fill?: boolean }> = {
 }
 const FALLBACK_ICON: Record<string, typeof Cable> = { fx: ArrowLeftRight, laptop: MonitorSmartphone, sms: MessageSquareText, ocr: ScanText, ingest: Zap }
 
-/** Real logo on a white tile with the 1px image outline (black 10% light, white 10% dark). */
+/** Real logo on a white tile with a hairline ring (`.logo` in the mockups; white so dark glyphs stay readable). */
 export function AppLogo({ id, category, size = 'md' }: { id: string; category?: Category; size?: 'xs' | 'sm' | 'md' | 'lg' }) {
   const logo = LOGO[id]
-  const box = { xs: 'size-9 rounded-[10px]', sm: 'size-10 rounded-[11px]', md: 'size-12 rounded-[13px]', lg: 'size-14 rounded-[15px]' }[size]
+  const box = { xs: 'size-9 rounded-md', sm: 'size-10 rounded-md', md: 'size-12 rounded-lg', lg: 'size-14 rounded-lg' }[size]
   const glyph = { xs: 'size-5', sm: 'size-6', md: 'size-7', lg: 'size-8' }[size]
   if (logo) {
     return (
-      <span aria-hidden className={cn('grid shrink-0 place-items-center overflow-hidden bg-white shadow-[0_0_0_1px_oklch(0_0_0/0.1)] dark:shadow-[0_0_0_1px_oklch(1_0_0/0.1)]', box)}>
+      <span aria-hidden className={cn('grid shrink-0 place-items-center overflow-hidden bg-white shadow-inset', box)}>
         {/* eslint-disable-next-line @next/next/no-img-element -- local files, nothing to optimise */}
         <img src={logo.src} alt="" className={cn('outline-none', logo.fill ? 'size-full object-cover' : cn(glyph, 'object-contain'))} />
       </span>
@@ -46,7 +46,7 @@ export function AppLogo({ id, category, size = 'md' }: { id: string; category?: 
   const Icon = FALLBACK_ICON[id] ?? Cable
   const cat = category ? CATEGORY[category] : undefined
   return (
-    <span aria-hidden className={cn('grid shrink-0 place-items-center', box)} style={{ background: cat?.wash ?? 'var(--surface-2)', color: cat?.color ?? 'var(--ink-2)' }}>
+    <span aria-hidden className={cn('grid shrink-0 place-items-center', box)} style={{ background: cat?.wash ?? 'var(--raised-2)', color: cat?.color ?? 'var(--text-2)' }}>
       <Icon className={size === 'sm' ? 'size-5' : 'size-6'} strokeWidth={1.75} />
     </span>
   )

@@ -250,7 +250,7 @@ function ScheduleForm({ initial, onDone }: { initial: ScheduleInitial; onDone: (
   )
 }
 
-/** "New routine" button; also opens itself for `/habits?new=1`. */
+/** "New routine" button; also opens itself for `/routines?new=1`. */
 export function NewScheduleButton({ today, autoOpen = false }: { today: string; autoOpen?: boolean }) {
   const [open, setOpen] = useState(autoOpen)
   const router = useRouter()
@@ -265,7 +265,7 @@ export function NewScheduleButton({ today, autoOpen = false }: { today: string; 
         initial={blankSchedule(today)}
         onClose={() => {
           setOpen(false)
-          if (autoOpen) router.replace('/habits', { scroll: false })
+          if (autoOpen) router.replace('/routines', { scroll: false })
         }}
       />
     </>

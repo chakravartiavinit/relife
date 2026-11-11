@@ -61,7 +61,7 @@ export async function runConnector(connectorId: string): Promise<{ ok: boolean; 
   }
 }
 
-/** Status of every connector for the Connectors page. */
+/** Status of every connector for the Sources page. */
 export async function connectorStatus() {
   const user = await getUser()
   const rows = await db.select().from(schema.connections).where(eq(schema.connections.userId, user.id))

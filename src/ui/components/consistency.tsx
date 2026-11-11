@@ -32,7 +32,7 @@ export async function Consistency({ user, now }: { user: User; now: Date }) {
 
   return (
     <Card>
-      <CardHeader title="Consistency" icon={<CalendarCheck strokeWidth={2} />} color="var(--pill)" description="Routines done each day, by area" action={<Link href="/habits" className={buttonClass({ variant: 'ghost', size: 'sm' })}>Habits</Link>} />
+      <CardHeader title="Consistency" icon={<CalendarCheck strokeWidth={2} />} color="var(--pill)" description="Routines done each day, by area" action={<Link href="/routines" className={buttonClass({ variant: 'ghost', size: 'sm' })}>Routines</Link>} />
       {grid.length ? (
         <div className="overflow-x-auto">
           <table className="w-full table-fixed sm:min-w-[560px] border-separate border-spacing-1">

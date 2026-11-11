@@ -6,7 +6,7 @@ import { popupView, recordSegments, setSiteKind, siteKind, trackCourse } from '@
 import { ACTIVITY_KINDS } from '@/domain/activity'
 
 // The browser extension posts stretches of focused time here, every minute or so.
-// Auth: the ACTIVITY_TOKEN set on Connectors → Laptop activity, sent as a bearer token.
+// Auth: the ACTIVITY_TOKEN set on Sources → Laptop activity, sent as a bearer token.
 // Only reachable from this machine unless you expose the port yourself.
 
 const seg = z.object({
@@ -50,7 +50,7 @@ function authorized(req: Request, token: string) {
 export async function POST(req: Request) {
   const user = await getUser() // loads saved keys, including ACTIVITY_TOKEN
   const token = env('ACTIVITY_TOKEN')
-  if (!token) return Response.json({ error: 'Laptop activity is not connected. Set a token on the Connectors page.' }, { status: 503 })
+  if (!token) return Response.json({ error: 'Laptop activity is not connected. Set a token on the Sources page.' }, { status: 503 })
   if (!authorized(req, token)) return Response.json({ error: 'unauthorized' }, { status: 401 })
   const parsed = body.safeParse(await req.json().catch(() => null))
   if (!parsed.success) return Response.json({ error: 'bad request', issues: parsed.error.issues.slice(0, 3) }, { status: 400 })

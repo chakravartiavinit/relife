@@ -9,8 +9,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'Level up your real life, one day at a time.',
     start_url: '/',
     display: 'standalone',
-    background_color: '#f7fafc',
-    theme_color: '#3B8BCC',
+    background_color: '#08090a',
+    theme_color: '#08090a',
     icons: [
       { src: BRAND['icon-192'], sizes: '192x192', type: 'image/png' },
       { src: BRAND['icon-512'], sizes: '512x512', type: 'image/png' },
