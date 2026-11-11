@@ -6,8 +6,9 @@ turn it into entries, transactions, trades and holdings. Each connector lives in
 
 A connector runs only after you connect it on the **Connectors** page. Connect opens a dialog for its
 keys, which are stored encrypted in your local database; values already in `.env` fill any field you
-leave blank. Disconnect forgets the keys but keeps sync progress. Every sync is safe to repeat:
-events carry stable ids.
+leave blank. Before saving, most connectors make one quick request to test the key or username, so a
+typo shows in the dialog instead of as a failing sync later (network trouble doesn't block saving).
+Disconnect forgets the keys but keeps sync progress. Every sync is safe to repeat: events carry stable ids.
 
 | Connector | Keys (dialog fields or `.env`) | Runs every | What it records |
 |---|---|---|---|
@@ -117,7 +118,8 @@ time spent. Library cards on Skills, Hobbies and Activity show the last one and 
 
 ## Codeforces, CodeChef, AtCoder and LeetCode
 
-Your public handle is all they need: no key, no login. They feed the Skills area.
+Your public handle is all they need: no key, no login. They feed the Skills area. You can paste the handle, `@handle`
+or your profile link; Connect checks that the handle exists.
 
 - **Codeforces** uses the official API: every submission (problems solved, submissions) and your contest rating.
 - **AtCoder** uses [AtCoder Problems](https://kenkoooo.com/atcoder/) for submissions and your public contest
@@ -136,11 +138,13 @@ System can set quests on problems solved or rating. Hourly; the first sync backf
 
 ## Lichess and Chess.com
 
-Your public username is all they need: no key, no login. Each feeds the **Chess** hobby (Hobbies page).
+Your public username is all they need: no key, no login. Each feeds the **Chess** hobby (Hobbies page). A pasted
+profile link or `@name` works too.
 
-- **Lichess** reads your public activity feed (games, wins, draws, losses and the rating after each day)
-  and today's rating from your profile. Its game export isn't used, so minutes are estimated from the game speed (bullet 2, blitz 7, rapid 20,
-  classical 50 minutes a game).
+- **Lichess** reads your games from Lichess's public games export (no key): each game's real start and end give
+  the minutes played, with wins, draws, losses and the rating after your last rated game in your main time control
+  each day. The first sync takes your latest ~1,500 games (about a minute for heavy players); later syncs take the
+  last few days. Closed accounts and unknown names are reported when you connect.
 - **Chess.com** reads your monthly game archives: exact minutes from each game's start and end times
   (correspondence games don't count as time), results, and your rating in the time control you play most.
 
@@ -289,7 +293,7 @@ changes.
 
 Settings → Integrations → Developer → **API token**. Only the number of completed tasks per day (and the name of
 the project with the most) is stored, never task names. The first sync backfills 84 days (Todoist allows 3 months
-a request).
+a request). ReLife uses Todoist's v1 API; the older REST v2 and Sync v9 APIs now answer 410 Gone.
 
 ### Last.fm
 
@@ -309,7 +313,7 @@ last sync counts on the next day).
 
 [track.toggl.com/profile](https://track.toggl.com/profile) → **API Token** (bottom of the page). Only minutes per day,
 the number of entries and the project with the most time are stored, never descriptions. A running timer counts once you
-stop it. The first sync backfills 90 days (the free plan may keep less), later ones the last 3.
+stop it. The first sync backfills 85 days, a month per request (Toggl refuses start dates older than about 3 months), later ones the last 3.
 
 ### RescueTime
 
@@ -368,8 +372,8 @@ Create a **read-only** key:
    read-only key is the minimum.
 4. Put the key and secret in `.env` as `BINANCE_API_KEY` and `BINANCE_API_SECRET`.
 
-On the first sync ReLife checks the key's permissions and **refuses to run** if the key can trade,
-withdraw or transfer.
+Connect tests the key before saving it: a wrong key, an IP that isn't on the key's trusted list, or a key that can
+trade, withdraw or transfer is refused with advice. Every sync checks the permissions again.
 
 What it syncs:
 
@@ -380,8 +384,9 @@ What it syncs:
   every asset you hold, against the quotes in `BINANCE_QUOTES`
   (default `USDT,FDUSD,USDC`). Add other pairs you traded but no longer hold to `BINANCE_SYMBOLS`,
   for example `BINANCE_SYMBOLS=SOL/BTC,DOGE/USDT`.
-- **P2P orders** (INR on-ramp and off-ramp), completed orders only, from the start.
-- **Convert** history.
+- **P2P orders** (INR on-ramp and off-ramp), completed orders only, as far back as Binance keeps them.
+- **Convert** history. Convert, deposits, withdrawals and P2P are read in time windows; a window that comes back
+  full is split, so nothing past the API's row limit is dropped.
 - **USDⓈ-M futures**: wallet, open positions, and every income entry (closed P&L, funding, fees,
   transfers). The API only reaches back a few months, so the first sync also asks Binance for yearly
   download files of older futures history (three years).
@@ -419,7 +424,8 @@ logged in as you. Personal use only, and not an official integration.
    text when that data isn't recognised.
 
 - Sessions live in `data/browser/<app>` (git-ignored). Delete that folder to forget a login.
-- Uses your installed Google Chrome; set `CHROME_PATH` in `.env` if it's somewhere else.
+- Uses your installed Google Chrome (found automatically on macOS and in the usual Linux places); set `CHROME_PATH`
+  in `.env` if it's somewhere else. Connect says so when Chrome is missing.
 - Each order becomes one transaction on the app's own account, with its items and order id. The order id
   keeps it from being counted twice when the order is read again.
 - Cancelled and failed orders are skipped.
@@ -435,7 +441,8 @@ logged in as you. Personal use only, and not an official integration.
 1. Create `src/connectors/<id>.ts` exporting a `Connector` (`id`, `name`, `category`, `description`,
    `provides`, `fields`, `env`, `everyMinutes`, `sync`). `fields` are the inputs of its Connect dialog on
    /connectors; each names the env var the connector reads. In `sync`, call `ctx.emit()` with a stable `externalId` per event and
-   save progress with `ctx.setCursor()`.
+   save progress with `ctx.setCursor()`. Add a `check(get)` that makes one cheap request with the values being
+   saved (`get('<ENV>')`, not `env()`) and throws advice when the key or username is wrong.
 2. Add it to the list in `src/connectors/index.ts`.
 3. Write a parser in `src/parsers/` that matches its `source`, add it to `src/parsers/index.ts`
    (before `llmFallback`), and add a fixture in `src/parsers/fixtures/`. A source that sends one summary per day

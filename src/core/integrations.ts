@@ -1,10 +1,10 @@
 import { connectors } from '@/connectors'
-import type { OAuthSpec, SetupField } from './types'
+import type { Connector, OAuthSpec, SetupField } from './types'
 
 // Everything the Connectors page can connect: data sources (src/connectors), Telegram and AI providers.
 // Only the `fields` listed here can be saved from the Connect dialog, so it can never set other env vars.
 
-export type Integration = { id: string; fields: SetupField[]; required: string[]; oauth?: OAuthSpec }
+export type Integration = { id: string; fields: SetupField[]; required: string[]; oauth?: OAuthSpec; check?: Connector['check'] }
 
 const model = (id: string, example: string): SetupField => ({
   env: 'LLM_DEFAULT', label: 'Default model', optional: true, placeholder: `${id}:${example}`,
@@ -34,7 +34,7 @@ export const EXTRA: Integration[] = [
 
 export function integration(id: string): Integration | undefined {
   const c = connectors.find((x) => x.id === id)
-  return c ? { id: c.id, fields: c.fields, required: c.env, oauth: c.oauth } : EXTRA.find((x) => x.id === id)
+  return c ? { id: c.id, fields: c.fields, required: c.env, oauth: c.oauth, check: c.check?.bind(c) } : EXTRA.find((x) => x.id === id)
 }
 
 /** Every env var any integration owns. Only these are switched on and off by connect/disconnect. */

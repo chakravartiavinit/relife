@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { and, asc, eq, isNotNull, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
-import { MANAGED_ENV, integration } from './integrations'
+import { MANAGED_ENV, integration, type Integration } from './integrations'
 import { setKeys } from './env'
 
 // Keys typed into the Connect dialog are stored AES-256-GCM encrypted in connections.secrets_encrypted.
@@ -83,10 +83,49 @@ export async function savedFields(userId: string) {
 
 export type SaveResult = { ok: true } | { ok: false; error: string }
 
+/** Network trouble, not a wrong key: timeouts, refused connections, rate limits and server errors. */
+export function isTransient(err: unknown) {
+  if (!(err instanceof Error)) return false
+  if (err.name === 'AbortError' || err.name === 'TimeoutError' || err instanceof TypeError) return true // fetch failed / timed out
+  return /timed out|rate limit|HTTP 5\d\d|ECONNREFUSED|ECONNRESET|ENOTFOUND|EAI_AGAIN|fetch failed|network/i.test(err.message)
+}
+
+const CHECK_TIMEOUT_MS = 15_000
+
+/** Run a connector's key check. A problem the user can fix comes back as a message; anything transient passes. */
+export async function checkKeys(check: NonNullable<Integration['check']>, get: (env: string) => string | undefined): Promise<string | undefined> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    await Promise.race([
+      check(get),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(Object.assign(new Error('Check timed out'), { name: 'TimeoutError' })), CHECK_TIMEOUT_MS) }),
+    ])
+    return undefined
+  } catch (err) {
+    if (isTransient(err)) return undefined // can't tell now: save, and the first sync reports it
+    return (err instanceof Error ? err.message : String(err)).slice(0, 300)
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 /** Validate dialog input and connect. Blank fields keep the saved value or fall back to .env. */
 export async function connect(userId: string, id: string, input: Record<string, unknown>): Promise<SaveResult> {
   const spec = integration(id)
   if (!spec) return { ok: false, error: 'Unknown connector.' }
+  // Test the keys first (outside the lock: it's a network call), so a typo shows here, not as a failing sync later.
+  if (spec.check) {
+    const [row] = await db.select().from(schema.connections)
+      .where(and(eq(schema.connections.userId, userId), eq(schema.connections.connectorId, id)))
+    const saved: Record<string, string> = row ? stored(row) : {}
+    const typed = (k: string) => (typeof input[k] === 'string' ? (input[k] as string).trim() : '') || undefined
+    const get = (k: string) => (spec.fields.some((f) => f.env === k) ? typed(k) : undefined) ?? saved[k] ?? FROM_ENV[k]
+    // Missing required fields are reported below with a clearer message.
+    if (spec.fields.every((f) => f.optional || get(f.env))) {
+      const problem = await checkKeys(spec.check, get)
+      if (problem) return { ok: false, error: problem }
+    }
+  }
   // Locked, so a token refresh saved by a sync at the same moment isn't overwritten with the old token.
   const result = await db.transaction(async (tx): Promise<SaveResult> => {
     const [row] = await tx.select().from(schema.connections)

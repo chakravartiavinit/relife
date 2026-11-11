@@ -12,3 +12,18 @@ test('saved keys round-trip and tampering is rejected', async () => {
   buf[buf.length - 1] ^= 1
   assert.throws(() => decrypt(buf))
 })
+
+test('checkKeys reports a wrong key but lets network trouble through', async () => {
+  const { checkKeys } = await import('./secrets')
+  const fail = (err: Error) => async () => { throw err }
+  assert.equal(await checkKeys(fail(new Error('The key was rejected. Check it on Connectors, or make a new one.')), () => undefined), 'The key was rejected. Check it on Connectors, or make a new one.')
+  assert.equal(await checkKeys(fail(new Error('Not found. Check the username.')), () => undefined), 'Not found. Check the username.')
+  assert.equal(await checkKeys(fail(new TypeError('fetch failed')), () => undefined), undefined)
+  assert.equal(await checkKeys(fail(Object.assign(new Error('aborted'), { name: 'TimeoutError' })), () => undefined), undefined)
+  assert.equal(await checkKeys(fail(new Error('Rate limited. It will try again on the next sync.')), () => undefined), undefined)
+  assert.equal(await checkKeys(fail(new Error('HTTP 503')), () => undefined), undefined)
+  // The check reads the values being saved.
+  let seen: string | undefined
+  assert.equal(await checkKeys(async (get) => { seen = get('X') }, (k) => (k === 'X' ? 'typed' : undefined)), undefined)
+  assert.equal(seen, 'typed')
+})
