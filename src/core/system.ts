@@ -13,13 +13,13 @@ import { levelFor, titleFor } from '@/domain/xp'
 import { formatMoney } from '@/domain/money'
 import { esc } from './notify'
 import { blocks, questBlock, sysHead } from '@/bot/system-ui'
-import { notify } from './outbox'
+import { delivered, notify } from './outbox'
 import { loadSignals } from './patterns'
 import { basketLines } from './basket'
 import { habitSignals } from '@/domain/basket'
 import { canCoach, coachStats, lateClear, questCandidates, questProgress, selectQuests, spendingSpike, type CoachStat, type QuestCandidate } from '@/domain/coach'
 import { addInsight } from './insights'
-import { getRecovery, insertCoachQuests, prepareRecovery, recoveryPaused } from './recovery'
+import { getRecovery, insertCoachQuests, prepareRecovery, recoveryPaused, type PreparedRecovery } from './recovery'
 import { screenTimeDigest } from './activity'
 import { addDays, formatDay, localDate } from './time'
 import type { User } from './user'
@@ -241,9 +241,9 @@ async function recheckYesterday(user: User, today: string, signals: Signal[]) {
       .where(and(eq(Q.id, q.id), eq(Q.userId, user.id), eq(Q.status, q.status))).returning()
     if (changed) cleared.push(changed)
   }
-  // Silent unless it ends a pause the user saw (announceLift): Today shows the cleared quest either way.
+  // Silent (no clear, reward box or level-up messages): Today shows the cleared quest, and announceLift speaks
+  // only when it ends a pause the user saw.
   await reward(user, cleared, { today, boxDay: yesterday, announce: false })
-  return cleared
 }
 
 /** Pay cleared quests once each (`sq:<id>`), then the day's reward box and any level-up. */
@@ -262,12 +262,14 @@ async function reward(user: User, cleared: SystemQuest[], { today, boxDay, annou
         text: [sysHead('✅', cleared.length === 1 ? 'Quest cleared' : `${cleared.length} quests cleared`, 'Rewards have been granted.'), '', blocks(cleared), '', `<b>Rewards</b> +${total} XP`].join('\n'),
       })
     }
-    await allClearBox(user, boxDay)
+    await allClearBox(user, boxDay, announce)
     const after = levelFor(await totalXp(user)).level
     if (after > before) {
-      const { celebrate } = await import('@/bot/ui')
       const { levelChests } = await import('./quests')
       await levelChests(user, before, after)
+      // Late clears stay silent: the chests are granted, the celebration is skipped.
+      if (!announce) return
+      const { celebrate } = await import('@/bot/ui')
       await celebrate(user, { levelUp: { level: after, title: titleFor(after), from: before, newTitle: titleFor(after) !== titleFor(before) }, unlocked: [] })
     }
   }
@@ -277,11 +279,11 @@ async function reward(user: User, cleared: SystemQuest[], { today, boxDay, annou
  * Late data ended today's pause. Send one message only when the pause message already reached the user; a queued
  * one is dropped by the outbox, because the decision is no longer pending.
  */
-async function announceLift(user: User, insightId: string, late: SystemQuest[]) {
-  const N = schema.notifications
-  const [seen] = await db.select({ id: N.id }).from(N)
-    .where(and(eq(N.userId, user.id), eq(N.ref, `insight:${insightId}`), inArray(N.status, ['sent', 'answered']))).limit(1)
-  if (!seen) return
+async function announceLift(user: User, recovery: PreparedRecovery) {
+  if (!await delivered(user.id, `insight:${recovery.id}`)) return
+  // Read the decision's own misses: another process may have cleared them before this one lifted the pause.
+  const ids = recovery.missed.map((q) => q.id)
+  const late = ids.length ? await db.select().from(Q).where(and(eq(Q.userId, user.id), inArray(Q.id, ids), eq(Q.status, 'cleared'))) : []
   const total = late.reduce((a, q) => a + q.xp, 0)
   await notify(user, 'system', {
     text: [
@@ -293,14 +295,14 @@ async function announceLift(user: User, insightId: string, late: SystemQuest[]) 
 }
 
 /** Clearing every daily quest of a day earns a reward box (a chest). */
-async function allClearBox(user: User, today: string) {
+async function allClearBox(user: User, today: string, announce = true) {
   const day = await db.select({ status: Q.status }).from(Q).where(and(eq(Q.userId, user.id), eq(Q.kind, 'daily'), eq(Q.fromDate, today)))
   if (!day.length || day.some((q) => q.status !== 'cleared')) return
   const ref = `system-all:${today}`
   const roll = rollChest('rare', ref)
   const [chest] = await db.insert(schema.chests).values({ userId: user.id, rarity: 'rare', ref, xp: roll.xp, freeze: roll.freeze, reason: 'All daily quests cleared' })
     .onConflictDoNothing().returning()
-  if (chest) {
+  if (chest && announce) {
     await notify(user, 'system', {
       text: sysHead('🎁', 'All daily quests cleared', 'A reward box has been granted. Open it to see what’s inside.'),
       buttons: [[{ text: '🎁 Open reward box', data: `c:o:${chest.id}` }]],
@@ -327,12 +329,12 @@ export function systemTick(user: User, now = new Date()) {
       const signals = [...base, ...habits.filter((h) => h.offer)]
       const stats = coachStats(signals, today)
       await judgeAll(user, today, [...base, ...habits])
-      const late = await recheckYesterday(user, today, [...base, ...habits])
+      await recheckYesterday(user, today, [...base, ...habits])
       const recovery = await prepareRecovery(user, now, [...base, ...habits], stats)
       if (recovery?.created) {
         await notify(user, 'system', { text: sysHead('', 'Choose what helps today', 'New quests are paused today. Open Today to choose a smaller step, rest, or review your priorities.'), ref: `insight:${recovery.id}`, buttons: OPEN })
       }
-      if (recovery?.lifted) await announceLift(user, recovery.id, late)
+      if (recovery?.lifted) await announceLift(user, recovery)
       if (!await recoveryPaused(user, today)) await ensureDailies(user, today, signals, stats)
       if (Date.now() - lastEmergencyCheck > 55 * 60_000) { lastEmergencyCheck = Date.now(); await emergencies(user, today, signals, stats) }
     } finally { running = null }
