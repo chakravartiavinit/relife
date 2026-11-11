@@ -17,8 +17,8 @@ function authorized(req: Request) {
 }
 
 export async function POST(req: Request) {
-  if (!process.env.INGEST_TOKEN) return Response.json({ error: 'INGEST_TOKEN is not set' }, { status: 503 })
-  if (!authorized(req)) return Response.json({ error: 'unauthorized' }, { status: 401 })
+  if (!process.env.INGEST_TOKEN) return Response.json({ error: 'INGEST_TOKEN is not set on this computer. Add it to .env and restart ReLife.' }, { status: 503 })
+  if (!authorized(req)) return Response.json({ error: 'unauthorized: send the header Authorization: Bearer <INGEST_TOKEN>' }, { status: 401 })
 
   const raw = await req.text()
   if (raw.length > 1_000_000) return Response.json({ error: 'body too large' }, { status: 413 })
@@ -34,12 +34,14 @@ export async function POST(req: Request) {
   const now = new Date()
   let received = 0
   let inserted = 0
+  let skipped = 0 // blank, malformed or not a type ReLife reads (steps, health, sleep)
   for (const line of lines) {
     const ev = lineToRawEvent(line, now)
-    if (!ev) continue
+    if (!ev) { if (line.trim()) skipped++; continue }
     received++
     if (await emitRaw(user.id, ev)) inserted++
   }
-  const parsed = inserted ? await parseNow() : 'nothing new'
-  return Response.json({ received, inserted, parsed })
+  // The events are saved; if parsing can't start now, the parse job picks them up.
+  const parsed = inserted ? await parseNow().catch(() => 'queued') : 'nothing new'
+  return Response.json({ received, inserted, skipped, parsed })
 }

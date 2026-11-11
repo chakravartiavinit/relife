@@ -23,6 +23,8 @@ type Cursor = {
   flowsFrom?: number // deposits and withdrawals
   futuresFrom?: number // futures income
   futuresFull?: boolean // older futures history read from Binance's yearly downloads
+  futuresYears?: number // how many of those yearly files are done (kept if a later one fails, so none is asked for twice)
+  futuresTries?: number // failed attempts at the file in progress; the monthly download quota is small
   payFrom?: number // Binance Pay
   rewardsFrom?: number // airdrops, Launchpool and other rewards
   fiatFrom?: number // crypto bought or sold with card or UPI
@@ -33,23 +35,85 @@ const DAY = 86_400_000
 const START = Date.parse('2019-01-01') // before any account here; empty windows are cheap
 const SCAN_QUOTES = ['USDT', 'FDUSD', 'USDC', 'BTC', 'BNB', 'ETH', 'BUSD', 'TUSD']
 
-function client() {
-  return new ccxt.binance({
-    apiKey: env('BINANCE_API_KEY'),
-    secret: env('BINANCE_API_SECRET'),
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+const RETRY_WAITS = [3_000, 15_000, 60_000] // after a rate limit or an outage: three more tries, longer each time
+
+/** Worth trying again soon: Binance busy, rate limited or unreachable. Not a ban (418), a blocked region or a clock that's off. */
+const retriable = (e: unknown) => e instanceof ccxt.NetworkError && !/\b418\b|restricted location|\b451\b|"code":\s*-1021/i.test(e.message)
+
+/** `retry: false` for the Connect dialog's check, which has 15 seconds. */
+function client(key = env('BINANCE_API_KEY'), secret = env('BINANCE_API_SECRET'), retry = true) {
+  const ex = new ccxt.binance({
+    apiKey: key,
+    secret,
     enableRateLimit: true,
+    timeout: 30_000, // a request that never answers would hang the whole sync
     options: { adjustForTimeDifference: true },
   })
+  // Every request goes through here, so a 429 or a hiccup waits and retries (signed again, with a fresh
+  // timestamp) instead of failing a sync that may be ten minutes in.
+  const fetch2 = ex.fetch2.bind(ex) as (...a: unknown[]) => Promise<unknown>
+  ex.fetch2 = (async (...a: unknown[]) => {
+    for (let i = 0; ; i++) {
+      try { return await fetch2(...a) } catch (e) {
+        if (!retry || i >= RETRY_WAITS.length || !retriable(e)) throw e
+        await sleep(RETRY_WAITS[i])
+      }
+    }
+  }) as typeof ex.fetch2
+  return ex
 }
 type Client = ReturnType<typeof client>
 
-/** Refuse keys that can move money. */
-async function assertReadOnly(ex: Client) {
-  const r = (await ex.sapiGetAccountApiRestrictions()) as Record<string, unknown>
+/**
+ * Binance's answer to a bad key, in words that say what to fix. ccxt puts the Binance code in the message
+ * (`{"code":-2015,...}`). Null when it's something else.
+ */
+export function keyProblem(e: unknown): string | null {
+  const code = /"code":\s*(-\d+)/.exec(e instanceof Error ? e.message : String(e))?.[1]
+  switch (code) {
+    case '-2014': case '-2008': case '-1022':
+      return 'Binance doesn’t accept this API key or secret. Paste both again in full, with no spaces.'
+    case '-2015':
+      return 'Binance rejected the key. In API Management check that the key still exists, that “Enable Reading” is ticked, and that its trusted IP list includes this computer’s public IP (run curl ifconfig.me).'
+    case '-2017':
+      return 'Binance has locked this API key. Create a new read-only key in API Management.'
+    case '-1021':
+      return 'This computer’s clock is off from Binance’s. Turn on automatic date and time in System Settings, then try again.'
+    default:
+      return null
+  }
+}
+
+/** Binance serves nothing to some countries (HTTP 451); retrying never helps. */
+const blockedRegion = (e: unknown) => /restricted location|\b451\b/i.test(e instanceof Error ? e.message : String(e))
+
+/** The permissions that make a key unsafe, as a sentence; null when the key is read-only. */
+export function readOnlyProblem(r: Record<string, unknown>): string | null {
   const risky = ['enableSpotAndMarginTrading', 'enableWithdrawals', 'enableInternalTransfer', 'permitsUniversalTransfer', 'enableMargin', 'enableFutures', 'enableVanillaOptions']
     .filter((k) => r[k] === true)
-  if (risky.length) {
-    throw new Error(`Binance key is not read-only (${risky.join(', ')}). Create a key with only "Enable Reading" ticked.`)
+  return risky.length ? `Binance key is not read-only (${risky.join(', ')}). Create a key with only "Enable Reading" ticked.` : null
+}
+
+/** Refuse keys that can move money. */
+async function assertReadOnly(ex: Client) {
+  const problem = readOnlyProblem((await ex.sapiGetAccountApiRestrictions()) as Record<string, unknown>)
+  if (problem) throw new Error(problem)
+}
+
+/** Rows of a time window from an endpoint that can't page: a full answer may have more behind it, so the window is halved until it isn't. Repeats are dropped later by id. */
+export async function windowRows<R>(start: number, end: number, limit: number, read: (start: number, end: number) => Promise<R[] | null>): Promise<R[]> {
+  const rows = (await read(start, end)) ?? []
+  if (rows.length < limit || end - start < 2) return rows
+  const mid = Math.floor((start + end) / 2)
+  return [...(await windowRows(start, mid, limit, read)), ...(await windowRows(mid + 1, end, limit, read))]
+}
+
+/** A window of history Binance refuses as too old is skipped; rate limits, outages and key problems are not, so a cursor never moves past unread data. */
+async function window<T>(fn: () => Promise<T>): Promise<T | null> {
+  try { return await fn() } catch (e) {
+    if (e instanceof ccxt.NetworkError || e instanceof ccxt.AuthenticationError || e instanceof ccxt.PermissionDenied || keyProblem(e)) throw e
+    return null
   }
 }
 
@@ -61,73 +125,96 @@ export const binance: Connector = {
   provides: ['Spot', 'Futures', 'P2P', 'Deposits'],
   fields: [
     { env: 'BINANCE_API_KEY', label: 'API key', secret: true },
-    { env: 'BINANCE_API_SECRET', label: 'API secret', secret: true, hint: 'Create a read-only key in Binance API Management. Leave trading and withdrawals off.' },
+    { env: 'BINANCE_API_SECRET', label: 'API secret', secret: true, hint: 'Binance → API Management → Create API. Tick only “Enable Reading”; leave trading, withdrawals and futures off. If you limit the key to trusted IPs, add this computer’s public IP (curl ifconfig.me). ReLife tests the key when you connect.' },
   ],
   env: ['BINANCE_API_KEY', 'BINANCE_API_SECRET'],
   everyMinutes: 15, // balances and prices for the portfolio; later runs only fetch what's new
-  async sync(ctx) {
-    const ex = client()
-    const cursor: Cursor = { symbols: {}, ...((ctx.cursor as Cursor | null) ?? {}) }
-    if (!cursor.verified) {
+  /** One signed read of the key's permissions: a wrong key, a blocked IP or a key that can trade is reported before saving. */
+  async check(get) {
+    const ex = client(get('BINANCE_API_KEY'), get('BINANCE_API_SECRET'), false)
+    try {
+      await ex.loadTimeDifference()
       await assertReadOnly(ex)
-      cursor.verified = true
+    } catch (e) {
+      const problem = keyProblem(e)
+      if (problem) throw new Error(problem)
+      if (e instanceof Error && e.message.startsWith('Binance key is not read-only')) throw e
+      // Anything else (Binance busy, offline, blocked region): can't tell now; the first sync reports it.
     }
-    const markets = await ex.loadMarkets()
-    const now = Date.now()
-    const prices = priceBook(ex, markets)
-
-    // Balances snapshot (one per hour): Spot plus Funding (where P2P buys land), priced via */USDT.
-    const bal = await ex.fetchBalance()
-    const totals = { ...(bal.total as unknown as Record<string, number>) }
-    await optional(ctx, 'Funding wallet', async () => {
-      const funding = (await ex.fetchBalance({ type: 'funding' })).total as unknown as Record<string, number>
-      for (const [a, q] of Object.entries(funding)) if (q > 0) totals[a] = (totals[a] ?? 0) + q
-    })
-    const held = Object.entries(totals).filter(([, q]) => q > 0)
-    const priceable = (a: string) => (a.startsWith('LD') && markets[`${a.slice(2)}/USDT`] ? a.slice(2) : a) // Simple Earn "LDBTC"
-    const symbols = [...new Set(held.map(([a]) => priceable(a)).filter((a) => !USD_STABLES.has(a) && markets[`${a}/USDT`]).map((a) => `${a}/USDT`))]
-    const tickers = symbols.length ? await ex.fetchTickers(symbols) : {}
-    const price = (a: string) => (USD_STABLES.has(a) ? 1 : tickers[`${priceable(a)}/USDT`]?.last ?? undefined)
-    const assets = held.map(([asset, qty]) => ({ asset, qty, priceUsd: price(asset) }))
-    for (const gone of (cursor.assets ?? []).filter((a) => !totals[a])) assets.push({ asset: gone, qty: 0, priceUsd: undefined })
-    const totalUsd = assets.reduce((s, a) => s + a.qty * (a.priceUsd ?? 0), 0)
-    // USDⓈ-M futures: margin balance (wallet + unrealized) and open positions.
-    let futures: unknown = null
-    await optional(ctx, 'Futures account', async () => {
-      const a = (await ex.fapiPrivateV2GetAccount()) as { totalWalletBalance?: string; totalUnrealizedProfit?: string; totalMarginBalance?: string; totalMaintMargin?: string; positions?: Record<string, string>[] }
-      // Mark and liquidation prices come from position risk. On cross margin the whole wallet backs a
-      // position, so how close it is to liquidation can't be read from its own margin.
-      const risk = (await ex.fapiPrivateV2GetPositionRisk()) as Record<string, string>[]
-      const riskOf = (p: Record<string, string>) => risk.find((r) => r.symbol === p.symbol && r.positionSide === p.positionSide)
-      const positions = (a.positions ?? []).filter((p) => Number(p.positionAmt) !== 0).map((p) => {
-        const r = riskOf(p)
-        return {
-          symbol: p.symbol, size: Number(p.positionAmt), entry: Number(p.entryPrice), unrealized: Number(p.unrealizedProfit),
-          leverage: Number(p.leverage), notional: Number(p.notional), margin: Number(p.initialMargin), side: Number(p.positionAmt) > 0 ? 'long' : 'short',
-          mark: r ? Number(r.markPrice) : undefined, liquidation: r && Number(r.liquidationPrice) > 0 ? Number(r.liquidationPrice) : undefined,
-          marginType: r?.marginType,
-        }
-      })
-      const balance = Number(a.totalMarginBalance ?? 0)
-      // Binance's margin ratio: liquidation starts at 100%.
-      futures = { walletUsd: Number(a.totalWalletBalance ?? 0), unrealizedUsd: Number(a.totalUnrealizedProfit ?? 0), marginUsd: balance, marginRatio: balance > 0 ? Number(a.totalMaintMargin ?? 0) / balance : null, positions }
-    })
-    const at = new Date(now).toISOString()
-    await ctx.emit({ source: 'binance', externalId: `balances:${at.slice(0, 13)}`, at: new Date(now), body: { type: 'balances', at, totalUsd, assets, futures } })
-    cursor.assets = held.map(([a]) => a)
-
-    if (!cursor.scanned) await scanSpot(ex, markets, ctx, cursor)
-    await syncTrades(ex, markets, ctx, cursor, held.map(([a]) => priceable(a)))
-    await optional(ctx, 'P2P', () => syncP2P(ex, ctx, cursor, now))
-    await optional(ctx, 'Convert', () => syncConvert(ex, ctx, cursor, now))
-    await optional(ctx, 'Deposits and withdrawals', () => syncFlows(ex, ctx, cursor, now, prices))
-    await optional(ctx, 'Futures income', () => syncFutures(ex, ctx, cursor, now, prices))
-    await optional(ctx, 'Binance Pay', () => syncPay(ex, ctx, cursor, now, prices))
-    await optional(ctx, 'Rewards', () => syncRewards(ex, ctx, cursor, now, prices))
-    await optional(ctx, 'Card and UPI orders', () => syncFiat(ex, ctx, cursor, now))
-    await optional(ctx, 'Small balance conversions', () => syncDust(ex, ctx, cursor, now, prices))
-    ctx.setCursor(cursor)
   },
+  async sync(ctx) {
+    try { await run(ctx) } catch (e) {
+      throw blockedRegion(e) ? new Error('Binance doesn’t serve requests from this location (HTTP 451). Run ReLife from another region or through a VPN.')
+        : keyProblem(e) ? new Error(keyProblem(e)!) : e
+    }
+  },
+}
+
+async function run(ctx: ConnectorCtx) {
+  const ex = client()
+  await ex.loadTimeDifference() // before the first signed call, so a clock a few seconds off isn't refused (-1021)
+  const cursor: Cursor = { symbols: {}, ...((ctx.cursor as Cursor | null) ?? {}) }
+  if (!cursor.verified) {
+    await assertReadOnly(ex)
+    cursor.verified = true
+  }
+  const markets = await ex.loadMarkets()
+  const now = Date.now()
+  const prices = priceBook(ex, markets)
+
+  // Balances snapshot (one per hour): Spot plus Funding (where P2P buys land), priced via */USDT.
+  const bal = await ex.fetchBalance()
+  const totals = { ...(bal.total as unknown as Record<string, number>) }
+  await optional(ctx, 'Funding wallet', async () => {
+    const funding = (await ex.fetchBalance({ type: 'funding' })).total as unknown as Record<string, number>
+    for (const [a, q] of Object.entries(funding)) if (q > 0) totals[a] = (totals[a] ?? 0) + q
+  })
+  const held = Object.entries(totals).filter(([, q]) => q > 0)
+  const priceable = (a: string) => (a.startsWith('LD') && markets[`${a.slice(2)}/USDT`] ? a.slice(2) : a) // Simple Earn "LDBTC"
+  const symbols = [...new Set(held.map(([a]) => priceable(a)).filter((a) => !USD_STABLES.has(a) && markets[`${a}/USDT`]).map((a) => `${a}/USDT`))]
+  const tickers = symbols.length ? await ex.fetchTickers(symbols) : {}
+  const price = (a: string) => (USD_STABLES.has(a) ? 1 : tickers[`${priceable(a)}/USDT`]?.last ?? undefined)
+  const assets = held.map(([asset, qty]) => ({ asset, qty, priceUsd: price(asset) }))
+  for (const gone of (cursor.assets ?? []).filter((a) => !totals[a])) assets.push({ asset: gone, qty: 0, priceUsd: undefined })
+  const totalUsd = assets.reduce((s, a) => s + a.qty * (a.priceUsd ?? 0), 0)
+  // USDⓈ-M futures: margin balance (wallet + unrealized) and open positions.
+  let futures: unknown = null
+  let futuresReadable = false // no futures account or permission: don't ask for its income every sync
+  await optional(ctx, 'Futures account', async () => {
+    const a = (await ex.fapiPrivateV2GetAccount()) as { totalWalletBalance?: string; totalUnrealizedProfit?: string; totalMarginBalance?: string; totalMaintMargin?: string; positions?: Record<string, string>[] }
+    // Mark and liquidation prices come from position risk. On cross margin the whole wallet backs a
+    // position, so how close it is to liquidation can't be read from its own margin.
+    const risk = (await ex.fapiPrivateV2GetPositionRisk()) as Record<string, string>[]
+    const riskOf = (p: Record<string, string>) => risk.find((r) => r.symbol === p.symbol && r.positionSide === p.positionSide)
+    const positions = (a.positions ?? []).filter((p) => Number(p.positionAmt) !== 0).map((p) => {
+      const r = riskOf(p)
+      return {
+        symbol: p.symbol, size: Number(p.positionAmt), entry: Number(p.entryPrice), unrealized: Number(p.unrealizedProfit),
+        leverage: Number(p.leverage), notional: Number(p.notional), margin: Number(p.initialMargin), side: Number(p.positionAmt) > 0 ? 'long' : 'short',
+        mark: r ? Number(r.markPrice) : undefined, liquidation: r && Number(r.liquidationPrice) > 0 ? Number(r.liquidationPrice) : undefined,
+        marginType: r?.marginType,
+      }
+    })
+    const balance = Number(a.totalMarginBalance ?? 0)
+    // Binance's margin ratio: liquidation starts at 100%.
+    futuresReadable = true
+    futures = { walletUsd: Number(a.totalWalletBalance ?? 0), unrealizedUsd: Number(a.totalUnrealizedProfit ?? 0), marginUsd: balance, marginRatio: balance > 0 ? Number(a.totalMaintMargin ?? 0) / balance : null, positions }
+  })
+  const at = new Date(now).toISOString()
+  await ctx.emit({ source: 'binance', externalId: `balances:${at.slice(0, 13)}`, at: new Date(now), body: { type: 'balances', at, totalUsd, assets, futures } })
+  cursor.assets = held.map(([a]) => a)
+
+  if (!cursor.scanned) await scanSpot(ex, markets, ctx, cursor)
+  await syncTrades(ex, markets, ctx, cursor, held.map(([a]) => priceable(a)))
+  await optional(ctx, 'P2P', () => syncP2P(ex, ctx, cursor, now))
+  await optional(ctx, 'Convert', () => syncConvert(ex, ctx, cursor, now))
+  await optional(ctx, 'Deposits and withdrawals', () => syncFlows(ex, ctx, cursor, now, prices))
+  if (futuresReadable) await optional(ctx, 'Futures income', () => syncFutures(ex, ctx, cursor, now, prices))
+  await optional(ctx, 'Binance Pay', () => syncPay(ex, ctx, cursor, now, prices))
+  await optional(ctx, 'Rewards', () => syncRewards(ex, ctx, cursor, now, prices))
+  await optional(ctx, 'Card and UPI orders', () => syncFiat(ex, ctx, cursor, now))
+  await optional(ctx, 'Small balance conversions', () => syncDust(ex, ctx, cursor, now, prices))
+  ctx.setCursor(cursor)
 }
 
 async function optional(ctx: ConnectorCtx, what: string, fn: () => Promise<void>) {
@@ -146,7 +233,10 @@ function priceBook(ex: Client, markets: Record<string, unknown>) {
     let p: number | null = null
     try {
       if (markets[`${a}/USDT`]) p = (await ex.fetchOHLCV(`${a}/USDT`, '1d', day, 1))[0]?.[4] ?? null
-    } catch { /* delisted or no history: left unvalued */ }
+    } catch (e) {
+      if (e instanceof ccxt.NetworkError) throw e // not cached as "no price": a value stored once stays wrong; the next sync tries again
+      /* delisted or no history: left unvalued */
+    }
     cache.set(key, p)
     return p
   }
@@ -172,18 +262,27 @@ async function scanSpot(ex: Client, markets: Record<string, unknown>, ctx: Conne
   let found = 0
   for (const symbol of pairs) {
     try {
-      let fromId = 0
-      for (;;) {
-        const page = (await ex.fetchMyTrades(symbol, undefined, 1000, { fromId })) as Trade[]
-        for (const t of page) await emitTrade(ctx, cursor, symbol, t)
-        if (page.length) found += page.length
-        if (page.length < 1000) break
-        fromId = Number(page.at(-1)!.id) + 1
-      }
-    } catch { /* delisted pair */ }
+      found += await tradesFromId(ex, symbol, 0, (t) => emitTrade(ctx, cursor, symbol, t))
+    } catch (e) {
+      // A pair Binance refuses (delisted) is skipped. Anything that may pass (rate limit, outage, key) stops the
+      // scan: marking it done would leave that pair's trades out for good.
+      if (e instanceof ccxt.NetworkError || e instanceof ccxt.AuthenticationError || e instanceof ccxt.PermissionDenied || keyProblem(e)) throw e
+    }
   }
   ctx.log(`binance: ${found} spot trades across ${Object.keys(cursor.symbols ?? {}).length} pairs`)
   cursor.scanned = true
+}
+
+/** Every trade of a pair from a trade id on, 1000 at a time. */
+async function tradesFromId(ex: Client, symbol: string, fromId: number, each: (t: Trade) => Promise<void>) {
+  let n = 0
+  for (;;) {
+    const page = (await ex.fetchMyTrades(symbol, undefined, 1000, { fromId })) as Trade[]
+    for (const t of page) await each(t)
+    n += page.length
+    if (page.length < 1000) return n
+    fromId = Number(page.at(-1)!.id) + 1
+  }
 }
 
 async function syncTrades(ex: Client, markets: Record<string, unknown>, ctx: ConnectorCtx, cursor: Cursor, heldAssets: string[]) {
@@ -197,11 +296,19 @@ async function syncTrades(ex: Client, markets: Record<string, unknown>, ctx: Con
   for (const symbol of candidates) {
     if (!markets[symbol]) continue
     const last = cursor.symbols?.[symbol]
-    // With a start time ccxt pages forward; without one Binance returns the latest 1000.
-    const trades = (last
-      ? await ex.fetchMyTrades(symbol, last + 1, undefined, { paginate: true })
-      : await ex.fetchMyTrades(symbol, undefined, 1000)) as Trade[]
-    for (const t of trades) await emitTrade(ctx, cursor, symbol, t)
+    const each = (t: Trade) => emitTrade(ctx, cursor, symbol, t)
+    if (!last) { await tradesFromId(ex, symbol, 0, each); continue } // never seen: the whole history, not just the latest 1000
+    // From the newest trade already read (it comes again; repeats are dropped by id, and a second fill in the same
+    // millisecond isn't skipped). Forward, 1000 at a time, so a long gap leaves no hole.
+    let from = last
+    for (;;) {
+      const page = (await ex.fetchMyTrades(symbol, from, 1000)) as Trade[]
+      for (const t of page) await each(t)
+      const newest = page.at(-1)?.timestamp
+      if (page.length < 1000 || newest == null) break
+      if (newest <= from) { await tradesFromId(ex, symbol, Number(page.at(-1)!.id) + 1, each); break } // 1000 fills in one millisecond
+      from = newest
+    }
   }
 }
 
@@ -210,13 +317,14 @@ type P2POrder = { orderNumber: string; orderStatus: string; createTime: number; 
 async function syncP2P(ex: Client, ctx: ConnectorCtx, cursor: Cursor, now: number) {
   // The first time from the start of P2P, then 2 days back each time (orders complete after they're created).
   // The endpoint wants windows of at most 30 days.
-  const from = cursor.p2pFull ? Math.max((cursor.p2pFrom ?? now) - 2 * DAY, now - 365 * DAY) : Date.parse('2020-06-01')
+  const from = cursor.p2pFull ? Math.max((cursor.p2pFrom ?? now) - 2 * DAY, now - 365 * DAY) : Date.parse('2020-06-10')
   for (let start = from; start < now; start += 30 * DAY) {
     const end = Math.min(now, start + 30 * DAY)
     for (const tradeType of ['BUY', 'SELL']) {
       for (let page = 1; page <= 20; page++) {
-        const r = (await ex.sapiGetC2cOrderMatchListUserOrderHistory({ tradeType, startTimestamp: start, endTimestamp: end, page, rows: 100 })) as { data?: P2POrder[] }
-        const rows = r.data ?? []
+        // Windows older than Binance keeps are refused; those are skipped, not the whole read.
+        const r = await window(() => ex.sapiGetC2cOrderMatchListUserOrderHistory({ tradeType, startTimestamp: start, endTimestamp: end, page, rows: 100 })) as { data?: P2POrder[] } | null
+        const rows = r?.data ?? []
         for (const o of rows.filter((x) => x.orderStatus === 'COMPLETED')) {
           await ctx.emit({ source: 'binance', externalId: `p2p:${o.orderNumber}`, at: new Date(Number(o.createTime)), body: { type: 'p2p', ...o } })
         }
@@ -233,12 +341,10 @@ async function syncConvert(ex: Client, ctx: ConnectorCtx, cursor: Cursor, now: n
   const from = cursor.convertFull ? Math.max((cursor.convertFrom ?? now) - DAY, now - 365 * DAY) : Date.parse('2021-01-01')
   for (let start = from; start < now; start += 30 * DAY) {
     const end = Math.min(now, start + 30 * DAY)
-    try {
-      const r = (await ex.sapiGetConvertTradeFlow({ startTime: start, endTime: end, limit: 1000 })) as { list?: { orderId: string | number; orderStatus: string; createTime: number }[] }
-      for (const o of (r.list ?? []).filter((x) => x.orderStatus === 'SUCCESS')) {
-        await ctx.emit({ source: 'binance', externalId: `convert:${o.orderId}`, at: new Date(Number(o.createTime)), body: { type: 'convert', ...o } })
-      }
-    } catch { /* windows older than Binance keeps */ }
+    const rows = await windowRows(start, end, 1000, async (a, b) => ((await window(() => ex.sapiGetConvertTradeFlow({ startTime: a, endTime: b, limit: 1000 }))) as { list?: { orderId: string | number; orderStatus: string; createTime: number }[] } | null)?.list ?? null)
+    for (const o of rows.filter((x) => x.orderStatus === 'SUCCESS')) {
+      await ctx.emit({ source: 'binance', externalId: `convert:${o.orderId}`, at: new Date(Number(o.createTime)), body: { type: 'convert', ...o } })
+    }
   }
   cursor.convertFrom = now
   cursor.convertFull = true
@@ -251,7 +357,7 @@ async function syncFlows(ex: Client, ctx: ConnectorCtx, cursor: Cursor, now: num
   const from = cursor.flowsFrom ? cursor.flowsFrom - 3 * DAY : START
   for (let start = from; start < now; start += 89 * DAY) {
     const end = Math.min(now, start + 89 * DAY)
-    const deps = (await ex.sapiGetCapitalDepositHisrec({ startTime: start, endTime: end, limit: 1000 })) as Record<string, string | number>[]
+    const deps = await windowRows(start, end, 1000, async (a, b) => (await ex.sapiGetCapitalDepositHisrec({ startTime: a, endTime: b, limit: 1000 })) as Record<string, string | number>[])
     for (const d of deps.filter((x) => Number(x.status) === 1 || Number(x.status) === 6)) {
       const at = Number(d.insertTime)
       const p = await price(String(d.coin), at)
@@ -260,7 +366,7 @@ async function syncFlows(ex: Client, ctx: ConnectorCtx, cursor: Cursor, now: num
         body: { type: 'deposit', coin: d.coin, amount: Number(d.amount), network: d.network, at, usd: p == null ? null : p * Number(d.amount) },
       })
     }
-    const wds = (await ex.sapiGetCapitalWithdrawHistory({ startTime: start, endTime: end, limit: 1000 })) as Record<string, string | number>[]
+    const wds = await windowRows(start, end, 1000, async (a, b) => (await ex.sapiGetCapitalWithdrawHistory({ startTime: a, endTime: b, limit: 1000 })) as Record<string, string | number>[])
     for (const w of wds.filter((x) => Number(x.status) === 6)) {
       const at = Date.parse(`${String(w.completeTime ?? w.applyTime).replace(' ', 'T')}Z`)
       const amount = Number(w.amount) + Number(w.transactionFee ?? 0) // what left the account, fee included
@@ -293,10 +399,18 @@ async function emitIncome(ctx: ConnectorCtx, price: Price, r: Income) {
 async function syncFutures(ex: Client, ctx: ConnectorCtx, cursor: Cursor, now: number, price: Price) {
   if (!cursor.futuresFull) {
     // ponytail: three yearly files (Binance limits how many downloads you can ask for); older accounts need more.
-    for (let y = 3; y >= 1; y--) {
-      const rows = await downloadIncome(ex, now - y * 365 * DAY, now - (y - 1) * 365 * DAY - 1)
+    for (let y = 3 - (cursor.futuresYears ?? 0); y >= 1; y--) {
+      let rows: Income[] = []
+      try { rows = await downloadIncome(ex, now - y * 365 * DAY, now - (y - 1) * 365 * DAY - 1) } catch (e) {
+        // Each file counts against Binance's monthly download quota, so a file that keeps failing is given up on
+        // after three runs (an account younger than that has nothing to give). Outages and key problems just wait.
+        if (e instanceof ccxt.NetworkError || keyProblem(e) || (cursor.futuresTries = (cursor.futuresTries ?? 0) + 1) < 3) throw e
+        ctx.log(`binance: no futures file for year ${4 - y} of 3 (${e instanceof Error ? e.message : e})`)
+      }
       for (const r of rows) await emitIncome(ctx, price, r)
       ctx.log(`binance: ${rows.length} older futures entries from year ${4 - y} of 3`)
+      cursor.futuresYears = 4 - y
+      cursor.futuresTries = 0
     }
     cursor.futuresFull = true
     cursor.futuresFrom = now - 30 * DAY // the newest days come from the API below
@@ -321,7 +435,9 @@ async function downloadIncome(ex: Client, start: number, end: number): Promise<I
     await new Promise((res) => setTimeout(res, 5000))
     const s = (await ex.fapiPrivateGetIncomeAsynId({ downloadId })) as { status: string; url?: string }
     if (s.status !== 'completed' || !s.url) continue
-    const zip = Buffer.from(await (await fetch(s.url, { signal: AbortSignal.timeout(60_000) })).arrayBuffer())
+    const file = await fetch(s.url, { signal: AbortSignal.timeout(60_000) })
+    if (!file.ok) throw new Error(`Binance futures file HTTP ${file.status}`)
+    const zip = Buffer.from(await file.arrayBuffer())
     return parseIncomeCsv(unzipFirst(zip).toString('utf8'))
   }
   throw new Error('Binance took too long to prepare the futures history file')
@@ -356,9 +472,14 @@ async function syncPay(ex: Client, ctx: ConnectorCtx, cursor: Cursor, now: numbe
   const oldest = cursor.payFrom ? cursor.payFrom - 3 * DAY : now - 2 * 365 * DAY
   for (let end = now; end > oldest; end -= 89 * DAY) {
     const start = Math.max(oldest, end - 89 * DAY)
-    let r: { data?: Record<string, string | number>[] }
-    try { r = (await ex.sapiGetPayTransactions({ startTime: start, endTime: end, limit: 100 })) as typeof r } catch { break } // older than Binance keeps
-    for (const t of r.data ?? []) {
+    let refused = false
+    const rows = await windowRows(start, end, 100, async (a, b) => {
+      const r = await window(() => ex.sapiGetPayTransactions({ startTime: a, endTime: b, limit: 100 })) as { data?: Record<string, string | number>[] } | null
+      if (!r) refused = true
+      return r?.data ?? null
+    })
+    if (refused) break // older than Binance keeps
+    for (const t of rows) {
       const at = Number(t.transactionTime)
       const amount = Number(t.amount)
       const p = await price(String(t.currency), at)
@@ -378,8 +499,8 @@ async function syncPay(ex: Client, ctx: ConnectorCtx, cursor: Cursor, now: numbe
 async function syncRewards(ex: Client, ctx: ConnectorCtx, cursor: Cursor, now: number, price: Price) {
   for (let start = cursor.rewardsFrom ? cursor.rewardsFrom - 3 * DAY : START; start < now; start += 90 * DAY) {
     const end = Math.min(now, start + 90 * DAY)
-    const r = (await ex.sapiGetAssetAssetDividend({ startTime: start, endTime: end, limit: 500 })) as { rows?: Record<string, string | number>[] }
-    for (const d of r.rows ?? []) {
+    const rows = await windowRows(start, end, 500, async (a, b) => ((await ex.sapiGetAssetAssetDividend({ startTime: a, endTime: b, limit: 500 })) as { rows?: Record<string, string | number>[] }).rows ?? [])
+    for (const d of rows) {
       const at = Number(d.divTime)
       const amount = Number(d.amount)
       const p = await price(String(d.asset), at)

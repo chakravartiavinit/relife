@@ -51,7 +51,7 @@ export async function POST(req: Request) {
   const user = await getUser() // loads saved keys, including ACTIVITY_TOKEN
   const token = env('ACTIVITY_TOKEN')
   if (!token) return Response.json({ error: 'Laptop activity is not connected. Set a token on the Connectors page.' }, { status: 503 })
-  if (!authorized(req, token)) return Response.json({ error: 'unauthorized' }, { status: 401 })
+  if (!authorized(req, token)) return Response.json({ error: 'unauthorized: the token doesn’t match the one on Connectors → Laptop activity' }, { status: 401 })
   const parsed = body.safeParse(await req.json().catch(() => null))
   if (!parsed.success) return Response.json({ error: 'bad request', issues: parsed.error.issues.slice(0, 3) }, { status: 400 })
   const days = await recordSegments(user, parsed.data.segments)
