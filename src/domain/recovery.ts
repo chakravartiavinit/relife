@@ -29,6 +29,8 @@ export type RecoveryPayload = {
   preview: RecoveryPreview | null
   choice: RecoveryChoice | null
   questId: string | null
+  /** Set when late imports cleared every miss: the pause ends and any saved choice stays as history. */
+  liftedAt?: string
 }
 
 export type RecoveryView = {

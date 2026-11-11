@@ -39,12 +39,17 @@ test('PostgreSQL recovery transactions remain stable, local, and idempotent', { 
   const { coachStats } = await import('@/domain/coach')
   const { chooseRecovery, getRecovery, insertCoachQuests, prepareRecovery, recoveryPaused } = await import('./recovery')
   const { systemTick } = await import('./system')
+  const { delivered } = await import('./outbox')
+  // systemTick may notify; a configured bot would message a real chat.
+  assert.equal((await import('./notify')).telegramConfigured(), false, 'run without Telegram keys')
 
   const run = `recovery-integration:${crypto.randomUUID()}`
   const userIds: string[] = []
   const cleanup = async () => {
     for (const userId of userIds.reverse()) {
       await db.delete(schema.notifications).where(eq(schema.notifications.userId, userId))
+      await db.delete(schema.xpEvents).where(eq(schema.xpEvents.userId, userId))
+      await db.delete(schema.chests).where(eq(schema.chests.userId, userId))
       await db.delete(schema.insights).where(eq(schema.insights.userId, userId))
       await db.delete(schema.systemQuests).where(eq(schema.systemQuests.userId, userId))
       await db.delete(schema.entries).where(eq(schema.entries.userId, userId))
@@ -226,6 +231,82 @@ test('PostgreSQL recovery transactions remain stable, local, and idempotent', { 
       op: 'gte', agg: 'sum', target: 1, rank: 'E', xp: 20, title: 'Blocked', reason: run, status: 'active', ref: `${run}:blocked`,
     }])
     assert.equal(blocked.length, 0, 'recovery pause blocks same-day normal insertion')
+
+    // A late import meets yesterday's target after the user chose rest: the miss clears, the pause lifts, the
+    // choice stays as history, and the reward is paid once.
+    const late = await createEligibleFixture('late')
+    const [unknownLate] = await addQuest(late.user.id, `${run}:late:unknown`, {
+      statId: `tracker:${run}:late:commits`, statName: 'Practice commits', kind: 'emergency', status: 'unverified', progress: null, target: 1,
+    })
+    const [stillShort] = await addQuest(late.user.id, `${run}:late:short`, {
+      statId: `tracker:${run}:late:commits`, statName: 'Practice commits', kind: 'emergency', status: 'unverified', progress: null, target: 9,
+    })
+    assert.equal((await chooseRecovery(late.user, { insightId: late.prepared.id, version: late.prepared.version, choice: 'rest' }, now)).status, 'accepted')
+    await db.update(schema.entries).set({ value: 4 }).where(and(eq(schema.entries.userId, late.user.id), eq(schema.entries.trackerId, late.commits.id), eq(schema.entries.localDate, yesterday)))
+    await systemTick(late.user, now)
+    const quest = (id: string) => db.select().from(schema.systemQuests).where(eq(schema.systemQuests.id, id)).then((rows) => rows[0])
+    const lateParent = await quest(late.parent.id)
+    assert.equal(lateParent.status, 'cleared', 'late evidence clears the recorded miss')
+    assert.equal(lateParent.progress, 4)
+    assert.equal((await quest(unknownLate.id)).status, 'cleared', 'late evidence clears an unknown result')
+    assert.equal((await quest(stillShort.id)).status, 'unverified', 'late partial evidence never creates a new miss')
+    assert.equal(await recoveryPaused(late.user, today), false, 'the pause lifts once every miss clears')
+    assert.equal(await getRecovery(late.user, now), null, 'Today no longer shows the decision')
+    const [lateInsight] = await db.select().from(schema.insights).where(eq(schema.insights.id, late.prepared.id))
+    assert.equal(lateInsight.payload.recovery?.choice, 'rest', 'the saved choice stays as history')
+    assert.ok(lateInsight.payload.recovery?.liftedAt)
+    assert.equal(lateInsight.status, 'done')
+    assert.equal((await chooseRecovery(late.user, { insightId: late.prepared.id, version: late.prepared.version, choice: 'smaller' }, now)).status, 'already_chosen')
+    await systemTick(late.user, now)
+    const paid = await db.select().from(schema.xpEvents).where(and(eq(schema.xpEvents.userId, late.user.id), eq(schema.xpEvents.ref, `sq:${late.parent.id}`)))
+    assert.equal(paid.length, 1, 'a late clear pays its XP once')
+    assert.equal(await prepareRecovery(late.user, now, late.signals, coachStats(late.signals, today)), null, 'a lifted pause is not lifted again')
+
+    // An open decision closes without a choice when late evidence clears every miss.
+    const open = await createEligibleFixture('late-open')
+    await db.update(schema.entries).set({ value: 4 }).where(and(eq(schema.entries.userId, open.user.id), eq(schema.entries.trackerId, open.commits.id), eq(schema.entries.localDate, yesterday)))
+    await systemTick(open.user, now)
+    const [openInsight] = await db.select().from(schema.insights).where(eq(schema.insights.id, open.prepared.id))
+    assert.equal(openInsight.status, 'done')
+    assert.equal(openInsight.payload.recovery?.choice, null)
+    assert.equal((await chooseRecovery(open.user, { insightId: open.prepared.id, version: open.prepared.version, choice: 'rest' }, now)).status, 'stale', 'a lifted decision accepts no new choice')
+
+    // The lift message goes out only when the pause message reached Telegram (a stored message id).
+    const pauseRef = `insight:${open.prepared.id}`
+    await db.insert(schema.notifications).values({ userId: open.user.id, category: 'system', text: run, ref: pauseRef, status: 'done' })
+    assert.equal(await delivered(open.user.id, pauseRef), false, 'a dropped or failed pause message does not count')
+    await db.insert(schema.notifications).values({ userId: open.user.id, category: 'system', text: run, ref: pauseRef, status: 'done', sends: 1, messageId: 1 })
+    assert.equal(await delivered(open.user.id, pauseRef), true, 'a sent pause message counts after the outbox marks it done')
+    assert.equal(await delivered(late.user.id, pauseRef), false, 'delivery is scoped to the user')
+
+    // An accepted smaller step stays active when late evidence clears its parent; the pause still lifts.
+    const kept = await createEligibleFixture('late-smaller')
+    const keptChoice = await chooseRecovery(kept.user, { insightId: kept.prepared.id, version: kept.prepared.version, choice: 'smaller' }, now)
+    assert.equal(keptChoice.status, 'accepted')
+    await db.update(schema.entries).set({ value: 4 }).where(and(eq(schema.entries.userId, kept.user.id), eq(schema.entries.trackerId, kept.commits.id), eq(schema.entries.localDate, yesterday)))
+    await systemTick(kept.user, now)
+    assert.equal((await quest(kept.parent.id)).status, 'cleared')
+    const [keptQuest] = await db.select().from(schema.systemQuests).where(and(eq(schema.systemQuests.userId, kept.user.id), eq(schema.systemQuests.kind, 'recovery')))
+    assert.equal(keptQuest.status, 'active', 'the chosen smaller step stays an active commitment')
+    const [keptInsight] = await db.select().from(schema.insights).where(eq(schema.insights.id, kept.prepared.id))
+    assert.equal(keptInsight.status, 'accepted')
+    assert.equal(keptInsight.payload.recovery?.choice, 'smaller')
+    assert.equal(await recoveryPaused(kept.user, today), false)
+
+    // One of two misses clears late: the pause stays and the open decision lists only the remaining miss.
+    const partial = await createEligibleFixture('late-partial')
+    const [other] = await addQuest(partial.user.id, `${run}:late-partial:other`, { statId: `${run}:no-data`, statName: 'No later data' })
+    await systemTick(partial.user, now)
+    const before = await getRecovery(partial.user, now)
+    assert.deepEqual(before?.missed.map((q) => q.id).sort(), [partial.parent.id, other.id].sort())
+    await db.update(schema.entries).set({ value: 4 }).where(and(eq(schema.entries.userId, partial.user.id), eq(schema.entries.trackerId, partial.commits.id), eq(schema.entries.localDate, yesterday)))
+    await systemTick(partial.user, now)
+    assert.equal((await quest(partial.parent.id)).status, 'cleared')
+    assert.equal((await quest(other.id)).status, 'failed', 'a miss without new evidence stays a miss')
+    assert.equal(await recoveryPaused(partial.user, today), true, 'the pause stays while any recorded miss remains')
+    const after = await getRecovery(partial.user, now)
+    assert.deepEqual(after?.missed.map((q) => q.id), [other.id])
+    assert.ok(after && before && after.version > before.version, 'the open decision gets a new version')
   } finally {
     try {
       await cleanup()

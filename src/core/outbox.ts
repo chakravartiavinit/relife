@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, inArray, lte, sql } from 'drizzle-orm'
+import { and, asc, eq, gte, inArray, isNotNull, lte, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { delivery, minutesLeftInQuiet, quietHours, repeatStep, type NotifyCategory } from '@/domain/notify'
 import { deleteMessage, sendMessage, telegramConfigured, type Button } from './notify'
@@ -20,6 +20,13 @@ export async function notify(user: User, category: NotifyCategory, msg: { text: 
     ref: msg.once ? `once:${msg.ref ?? ''}` : msg.ref ?? null,
   })
   await flushOutbox(user)
+}
+
+/** Did a message about `ref` reach Telegram? Only a successful send stores a message id; dropped rows have none. */
+export async function delivered(userId: string, ref: string) {
+  const N = schema.notifications
+  const [row] = await db.select({ id: N.id }).from(N).where(and(eq(N.userId, userId), eq(N.ref, ref), isNotNull(N.messageId))).limit(1)
+  return !!row
 }
 
 /** A button on this message was tapped: stop repeating it. */

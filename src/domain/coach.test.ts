@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { addDays } from '@/core/time'
-import { canCoach, coachStats, questCandidates, questProgress, selectQuests, spendingSpike, type QuestHistory } from './coach'
+import { canCoach, coachStats, lateClear, questCandidates, questProgress, selectQuests, spendingSpike, type QuestHistory } from './coach'
 import type { Signal } from './patterns'
 
 const today = '2026-11-11'
@@ -142,4 +142,19 @@ test('averaged increases wait for the complete quest window', () => {
   assert.equal(questProgress(q, s, addDays(today, 2)).status, 'cleared')
   s.days.delete(q.toDate)
   assert.deepEqual(questProgress(q, s, addDays(today, 2)), { value: null, status: 'unverified' })
+})
+
+test('late evidence only upgrades a judged quest to cleared', () => {
+  const yesterday = addDays(today, -1)
+  const q = { fromDate: yesterday, toDate: yesterday, agg: 'sum' as const, op: 'gte' as const, target: 8000 }
+  const steps = (v?: number) => signal({ days: new Map(v == null ? [] : [[yesterday, v]]) })
+  assert.deepEqual(lateClear({ ...q, status: 'failed' }, steps(9000), today), { value: 9000, status: 'cleared' }, 'a late import clears a recorded miss')
+  assert.deepEqual(lateClear({ ...q, status: 'unverified' }, steps(8000), today), { value: 8000, status: 'cleared' }, 'a late import clears an unknown result')
+  assert.equal(lateClear({ ...q, status: 'failed' }, steps(7000), today), null, 'a still-short total stays a miss')
+  assert.equal(lateClear({ ...q, status: 'unverified' }, steps(100), today), null, 'late partial data never creates a new miss')
+  assert.equal(lateClear({ ...q, status: 'cleared' }, steps(9000), today), null)
+  assert.equal(lateClear({ ...q, status: 'cancelled' }, steps(9000), today), null, 'retired quests stay retired')
+  const limit = { ...q, op: 'lte' as const, target: 500 }
+  assert.equal(lateClear({ ...limit, status: 'unverified' }, steps(900), today), null, 'an over-limit late total never becomes a miss')
+  assert.deepEqual(lateClear({ ...limit, status: 'unverified' }, steps(400), today), { value: 400, status: 'cleared' })
 })
