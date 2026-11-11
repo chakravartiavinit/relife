@@ -1,0 +1,112 @@
+{
+  "note": "Fixture: one WHOOP day, with recovery from the night that ended on it.",
+  "event": {
+    "source": "whoop",
+    "externalId": "2026-11-06:abc",
+    "at": "2026-11-07T10:00:00.000Z",
+    "body": {
+      "date": "2026-11-06",
+      "recovery": 66,
+      "hrv": 71,
+      "restingHr": 52,
+      "sleepHours": 6.9,
+      "sleepScore": 88,
+      "strain": 12.4
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "tracker": "sleep.hours",
+      "date": "2026-11-06",
+      "value": 6.9,
+      "source": "whoop",
+      "verified": true,
+      "defaults": {
+        "name": "Sleep",
+        "category": "health",
+        "unit": "h",
+        "target": 7.5,
+        "aggregate": "last",
+        "direction": "up"
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "sleep.score",
+      "date": "2026-11-06",
+      "value": 88,
+      "source": "whoop",
+      "verified": true,
+      "defaults": {
+        "name": "Sleep score",
+        "category": "health",
+        "kind": "number",
+        "aggregate": "last",
+        "direction": "up",
+        "target": 85
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "hrv",
+      "date": "2026-11-06",
+      "value": 71,
+      "source": "whoop",
+      "verified": true,
+      "defaults": {
+        "name": "HRV",
+        "category": "health",
+        "unit": "ms",
+        "aggregate": "last",
+        "direction": "up"
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "resting.hr",
+      "date": "2026-11-06",
+      "value": 52,
+      "source": "whoop",
+      "verified": true,
+      "defaults": {
+        "name": "Resting heart rate",
+        "category": "health",
+        "unit": "bpm",
+        "aggregate": "last",
+        "direction": "down"
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "whoop.recovery",
+      "date": "2026-11-06",
+      "value": 66,
+      "source": "whoop",
+      "verified": true,
+      "defaults": {
+        "name": "WHOOP recovery",
+        "category": "health",
+        "kind": "number",
+        "unit": "%",
+        "aggregate": "last",
+        "direction": "up",
+        "target": 67
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "whoop.strain",
+      "date": "2026-11-06",
+      "value": 12.4,
+      "source": "whoop",
+      "verified": true,
+      "defaults": {
+        "name": "WHOOP strain",
+        "category": "health",
+        "kind": "number",
+        "aggregate": "last"
+      }
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "note": "Fixture: one Google Calendar day. Meeting count goes in meta; focus time earns XP.",
+  "event": {
+    "source": "google-calendar",
+    "externalId": "2026-11-06:abc",
+    "at": "2026-11-07T10:00:00.000Z",
+    "body": {
+      "date": "2026-11-06",
+      "meetings": 3,
+      "meetingMinutes": 120,
+      "focusMinutes": 90
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "tracker": "meetings.minutes",
+      "date": "2026-11-06",
+      "value": 120,
+      "source": "google-calendar",
+      "verified": true,
+      "meta": {
+        "meetings": 3
+      },
+      "defaults": {
+        "name": "Meetings",
+        "category": "mind",
+        "kind": "duration",
+        "unit": "min"
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "focus.minutes",
+      "date": "2026-11-06",
+      "value": 90,
+      "source": "google-calendar",
+      "verified": true,
+      "defaults": {
+        "name": "Focus time",
+        "category": "mind",
+        "kind": "duration",
+        "unit": "min",
+        "direction": "up",
+        "target": 60
+      }
+    }
+  ]
+}

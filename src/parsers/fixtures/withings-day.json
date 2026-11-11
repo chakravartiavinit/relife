@@ -1,0 +1,94 @@
+{
+  "note": "Fixture: one Withings day with a weigh-in, sleep and steps.",
+  "event": {
+    "source": "withings",
+    "externalId": "2026-11-06:abc",
+    "at": "2026-11-07T10:00:00.000Z",
+    "body": {
+      "date": "2026-11-06",
+      "weight": 72.4,
+      "fat": 18.1,
+      "sleepHours": 7.1,
+      "sleepScore": 76,
+      "steps": 6400
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "tracker": "sleep.hours",
+      "date": "2026-11-06",
+      "value": 7.1,
+      "source": "withings",
+      "verified": true,
+      "defaults": {
+        "name": "Sleep",
+        "category": "health",
+        "unit": "h",
+        "target": 7.5,
+        "aggregate": "last",
+        "direction": "up"
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "sleep.score",
+      "date": "2026-11-06",
+      "value": 76,
+      "source": "withings",
+      "verified": true,
+      "defaults": {
+        "name": "Sleep score",
+        "category": "health",
+        "kind": "number",
+        "aggregate": "last",
+        "direction": "up",
+        "target": 85
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "weight",
+      "date": "2026-11-06",
+      "value": 72.4,
+      "source": "withings",
+      "verified": true,
+      "defaults": {
+        "name": "Weight",
+        "category": "health",
+        "unit": "kg",
+        "aggregate": "last",
+        "direction": "down"
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "body.fat",
+      "date": "2026-11-06",
+      "value": 18.1,
+      "source": "withings",
+      "verified": true,
+      "defaults": {
+        "name": "Body fat",
+        "category": "health",
+        "unit": "%",
+        "aggregate": "last",
+        "direction": "down"
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "withings.steps",
+      "date": "2026-11-06",
+      "value": 6400,
+      "source": "withings",
+      "verified": true,
+      "defaults": {
+        "name": "Withings steps",
+        "category": "health",
+        "direction": "up",
+        "target": 8000
+      }
+    }
+  ]
+}

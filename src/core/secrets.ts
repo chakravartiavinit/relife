@@ -1,7 +1,7 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { and, asc, eq, sql } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { MANAGED_ENV, integration } from './integrations'
 import { setKeys } from './env'
@@ -90,6 +90,7 @@ export async function connect(userId: string, id: string, input: Record<string, 
   const [row] = await db.select().from(schema.connections)
     .where(and(eq(schema.connections.userId, userId), eq(schema.connections.connectorId, id)))
   const values: Record<string, string> = row ? stored(row) : {}
+  const clientId = spec.oauth ? values[spec.oauth.clientIdEnv] : undefined
   for (const f of spec.fields) {
     let v = typeof input[f.env] === 'string' ? (input[f.env] as string).trim() : ''
     if (!v) continue
@@ -98,6 +99,8 @@ export async function connect(userId: string, id: string, input: Record<string, 
     if (f.env === 'TELEGRAM_ALLOWED_CHAT_ID' && !/^-?\d+$/.test(v)) return { ok: false, error: 'Chat ID is a number, like 123456789.' }
     values[f.env] = v
   }
+  // Tokens from one app don't work with another: a new client ID means signing in again.
+  if (spec.oauth && clientId && values[spec.oauth.clientIdEnv] !== clientId) delete values[OAUTH_KEY]
   const missing = spec.fields.find((f) => !f.optional && !values[f.env] && !FROM_ENV[f.env])
   if (missing) return { ok: false, error: `Add your ${/^[A-Z][A-Z]/.test(missing.label) ? missing.label : missing.label[0].toLowerCase() + missing.label.slice(1)}.` }
 
@@ -114,8 +117,34 @@ export async function connect(userId: string, id: string, input: Record<string, 
 /** Disconnect and forget saved keys. Sync progress (cursor) is kept so reconnecting doesn't re-import. */
 export async function disconnect(userId: string, id: string) {
   await db.update(schema.connections)
-    // A token a connector keeps in its cursor (Strava's rotated refresh token) is a key too: forget it.
-    .set({ enabled: false, status: 'disabled', secretsEncrypted: null, lastError: null, cursor: sql`${schema.connections.cursor} - 'token' - 'seed'` })
+    .set({ enabled: false, status: 'disabled', secretsEncrypted: null, lastError: null })
     .where(and(eq(schema.connections.userId, userId), eq(schema.connections.connectorId, id)))
   await applySecrets(userId)
+}
+
+// ------------------------------------------------------------------------------------------- OAuth tokens
+
+/** Saved next to the connection's keys, so Disconnect forgets them too. Never loaded into env(). */
+const OAUTH_KEY = '__oauth'
+
+export type OAuthTokens = { access: string; refresh?: string; expiresAt?: number }
+
+export async function oauthTokens(userId: string, id: string): Promise<OAuthTokens | null> {
+  const [row] = await db.select().from(schema.connections)
+    .where(and(eq(schema.connections.userId, userId), eq(schema.connections.connectorId, id)))
+  const raw = row ? stored(row)[OAUTH_KEY] : undefined
+  return raw ? (JSON.parse(raw) as OAuthTokens) : null
+}
+
+export async function saveOAuthTokens(userId: string, id: string, tokens: OAuthTokens) {
+  const [row] = await db.select().from(schema.connections)
+    .where(and(eq(schema.connections.userId, userId), eq(schema.connections.connectorId, id)))
+  if (!row) throw new Error('Connect it first.')
+  const values = { ...stored(row), [OAUTH_KEY]: JSON.stringify(tokens) }
+  await db.update(schema.connections).set({ secretsEncrypted: encrypt(values), updatedAt: new Date() }).where(eq(schema.connections.id, row.id))
+}
+
+/** Which connections have signed in, for the Connectors page. */
+export function signedIn(saved: Map<string, Record<string, string>>, id: string) {
+  return !!saved.get(id)?.[OAUTH_KEY]
 }

@@ -1,11 +1,11 @@
 'use client'
 
 import { useActionState, useEffect, useId, useState, useTransition } from 'react'
-import { Bot, ChevronRight, CircleAlert, CircleCheck, Cpu, ExternalLink, HeartPulse, KeyRound, Lock, Cable, RefreshCw, ShoppingBag, Wallet } from 'lucide-react'
+import { Bot, Check, ChevronRight, CircleAlert, CircleCheck, Copy, Cpu, ExternalLink, HeartPulse, KeyRound, Lock, LogIn, Cable, RefreshCw, ShoppingBag, Wallet } from 'lucide-react'
 import type { Category } from '@/db/schema'
 import type { SetupField } from '@/core/types'
 import { connectIntegration, disconnectIntegration, openAppLogin, syncNow } from '@/app/actions'
-import { Button } from './button'
+import { Button, buttonClass } from './button'
 import { Field, Input } from './form'
 import { FormError } from './forms/dialog'
 import { CenterMorphModal, CenterMorphModalContent, CenterMorphModalTrigger } from '@/ui/beui/motion/center-morph-modal'
@@ -37,6 +37,8 @@ export type ConnectorItem = {
   connected: boolean
   /** Connects by logging in to the app in a Chrome window (shopping apps). */
   login?: boolean
+  /** Connects by signing in with the service (OAuth): you register an app once, then sign in. */
+  oauth?: { signedIn: boolean; redirectUri: string; setupUrl: string; httpsOnly?: boolean }
   /** Data sources get a Sync now button once connected. */
   sync?: boolean
   fields: FieldView[]
@@ -68,6 +70,7 @@ const GROUPS: { key: string; title: string; hint: string; icon: typeof Cable; ma
  * managing, so the page itself stays a calm launcher: logo, name, one status line.
  */
 export function ConnectorMarket({ items, worker }: { items: ConnectorItem[]; worker: { alive: boolean; ago: string } }) {
+  useSignInResult(items)
   const connected = items.filter((i) => i.connected)
   const attention = connected.filter((i) => ['error', 'setup', 'waiting'].includes(i.status))
   let n = 0 // running index for the staggered entrance
@@ -125,6 +128,23 @@ export function ConnectorMarket({ items, worker }: { items: ConnectorItem[]; wor
       })}
     </div>
   )
+}
+
+/** Back from a sign-in (/api/oauth/<id>/callback sends ?oauth=<id>[&error=…]): say how it went, then tidy the URL. */
+function useSignInResult(items: ConnectorItem[]) {
+  const toast = useToast()
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search)
+    const id = q.get('oauth')
+    if (!id) return
+    const c = items.find((i) => i.id === id)
+    const name = c?.name ?? id
+    const icon = c ? <Logo id={c.id} category={c.category} size="xs" /> : undefined
+    const error = q.get('error')
+    if (error) toast(`Couldn’t sign in with ${name}`, 'bad', { icon, description: error })
+    else toast(`Signed in with ${name}`, 'good', { icon, description: 'Its first sync starts within a minute' })
+    window.history.replaceState(null, '', window.location.pathname)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps -- once, on arrival
 }
 
 function Pill({ children, color, title }: { children: React.ReactNode; color?: string; title?: string }) {
@@ -226,7 +246,7 @@ function ConnectorDialog({ c, trigger }: { c: ConnectorItem; trigger: React.Reac
           {!c.connected ? (
             <ul aria-label="What it brings in" className="-mt-2 flex flex-wrap gap-1.5">
               {c.provides.map((p) => <li key={p} className="inline-flex h-7 items-center rounded-full px-2.5 text-[12.5px] text-ink-2 shadow-[inset_0_0_0_1px_var(--hairline)]">{p}</li>)}
-              <li className="inline-flex h-7 items-center gap-1 px-1 text-[12.5px] text-ink-3"><KeyRound className="size-3.5" strokeWidth={1.5} aria-hidden />{c.login ? 'Log in with your account' : secrets.length ? `Needs ${secrets.map((f) => lowerFirst(f.label)).join(' and ')}` : 'No key needed'}</li>
+              <li className="inline-flex h-7 items-center gap-1 px-1 text-[12.5px] text-ink-3"><KeyRound className="size-3.5" strokeWidth={1.5} aria-hidden />{c.login ? 'Log in with your account' : c.oauth ? `Sign in with ${c.name}` : secrets.length ? `Needs ${secrets.map((f) => lowerFirst(f.label)).join(' and ')}` : 'No key needed'}</li>
             </ul>
           ) : (
             <div className="flex flex-col gap-3 rounded-[16px] bg-surface-2/60 p-4 shadow-[inset_0_0_0_1px_var(--hairline)]">
@@ -279,6 +299,56 @@ function LoginStep({ c }: { c: ConnectorItem }) {
   )
 }
 
+/**
+ * Sign-in connectors: you make a free app with the service once (ReLife runs on your machine, so there's no
+ * shared app), register the address it sends you back to, paste its ID and secret, then sign in.
+ */
+function SignInStep({ c }: { c: ConnectorItem }) {
+  const o = c.oauth!
+  const [copied, setCopied] = useState(false)
+  const ready = c.connected && !c.missingEnv.length
+  return (
+    <div className="flex flex-col gap-3 rounded-md bg-surface-2/60 p-4 shadow-[inset_0_0_0_1px_var(--hairline)]">
+      {ready ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <a href={`/api/oauth/${c.id}/start`} className={buttonClass({ variant: o.signedIn ? 'secondary' : 'accent' })}>
+            <LogIn className="size-4" strokeWidth={2} aria-hidden />{o.signedIn ? 'Sign in again' : `Sign in with ${c.name}`}
+          </a>
+          <span role="status" className="inline-flex items-center gap-1.5 text-[12.5px]" style={{ color: o.signedIn ? 'var(--good)' : 'var(--warn)' }}>
+            {o.signedIn ? <><CircleCheck className="size-3.5" strokeWidth={2} aria-hidden />Signed in</> : 'Not signed in yet'}
+          </span>
+        </div>
+      ) : null}
+      <ol className="flex list-decimal flex-col gap-1 ps-4 text-[13.5px] text-ink-2">
+        <li>
+          Create an app at{' '}
+          <a href={o.setupUrl} target="_blank" rel="noreferrer" className="font-medium text-pill-ink underline-offset-2 hover:underline">{new URL(o.setupUrl).host}</a>.
+        </li>
+        <li className="flex flex-col gap-1.5">
+          <span>Add this redirect address to it:</span>
+          <span className="flex items-center gap-1.5">
+            <code className="min-w-0 flex-1 truncate rounded-sm bg-surface px-2 py-1.5 font-mono text-[12px] text-ink shadow-[inset_0_0_0_1px_var(--hairline)]" title={o.redirectUri}>{o.redirectUri}</code>
+            <Button
+              size="icon-sm"
+              aria-label={copied ? 'Copied' : 'Copy redirect address'}
+              onClick={() => navigator.clipboard?.writeText(o.redirectUri).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500) })}
+            >
+              {copied ? <Check className="size-4 text-good" strokeWidth={2} /> : <Copy className="size-4" strokeWidth={1.5} />}
+            </Button>
+          </span>
+        </li>
+        <li>Paste its client ID and secret below, then press {c.connected ? 'Save' : 'Connect'} to sign in.</li>
+      </ol>
+      {o.httpsOnly && o.redirectUri.startsWith('http:') ? (
+        <p className="flex items-start gap-2 text-[12.5px] text-warn">
+          <CircleAlert className="mt-0.5 size-3.5 shrink-0" strokeWidth={2} aria-hidden />
+          {c.name} only accepts https addresses. Open ReLife over https (an HTTPS tunnel such as Tailscale Serve) and connect from there.
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
 function ConnectForm({ c, onDone }: { c: ConnectorItem; onDone: () => void }) {
   const [state, action, pending] = useActionState(connectIntegration.bind(null, c.id), null)
   const [leaving, startLeave] = useTransition()
@@ -287,6 +357,12 @@ function ConnectForm({ c, onDone }: { c: ConnectorItem; onDone: () => void }) {
   useEffect(() => {
     if (!state?.ok) return
     const icon = <Logo id={c.id} category={c.category} size="xs" />
+    // A new or changed app needs a sign-in before anything syncs: go straight there.
+    if (c.oauth && (!c.connected || !c.oauth.signedIn)) {
+      toast(`Opening ${c.name} sign-in…`, 'neutral', { icon })
+      window.location.assign(`/api/oauth/${c.id}/start`)
+      return
+    }
     if (c.connected) toast(`${c.name} settings saved`, 'good', { icon })
     else toast(`${c.name} connected`, 'good', { icon, description: c.sync ? 'Its first sync starts within a minute' : undefined })
     onDone()
@@ -295,6 +371,7 @@ function ConnectForm({ c, onDone }: { c: ConnectorItem; onDone: () => void }) {
   return (
     <form action={action} className="flex flex-col gap-4">
       {c.login ? <LoginStep c={c} /> : null}
+      {c.oauth ? <SignInStep c={c} /> : null}
       {c.fields.length ? c.fields.map((f) => (
         <Field
           key={f.env}

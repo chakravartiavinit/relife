@@ -101,6 +101,33 @@ export type SetupField = {
   hint?: string
 }
 
+/**
+ * Sign in with the service instead of pasting a token (OAuth 2.0 authorization code). ReLife runs on your
+ * own machine, so you make a free app with the service once and paste its client ID and secret; the
+ * Connect dialog shows the redirect address to register. Tokens are kept encrypted and refreshed by
+ * src/core/oauth.ts.
+ */
+export type OAuthSpec = {
+  authorizeUrl: string
+  tokenUrl: string
+  scopes: string[]
+  /** How scopes are joined in the authorize URL. Default ' '. */
+  scopeSeparator?: string
+  /** The fields holding the app's client ID and secret. */
+  clientIdEnv: string
+  clientSecretEnv: string
+  /** Optional field with a pasted refresh token, used until you sign in (for setups without a browser). */
+  refreshTokenEnv?: string
+  /** Extra authorize parameters, e.g. Google's access_type=offline. */
+  authParams?: Record<string, string>
+  /** Extra token request parameters, e.g. Withings' action=requesttoken. */
+  tokenParams?: Record<string, string>
+  /** Where to create the app, shown in the Connect dialog. */
+  setupUrl: string
+  /** The service only accepts https redirect addresses (WHOOP): open ReLife over https to sign in. */
+  httpsOnly?: boolean
+}
+
 export type Connector = {
   id: string
   name: string
@@ -115,6 +142,8 @@ export type Connector = {
   env: string[]
   /** Connects by logging in to the app in a browser window instead of pasting a key (shopping apps). */
   login?: { url: string }
+  /** Connects by signing in with the service (OAuth). */
+  oauth?: OAuthSpec
   everyMinutes: number
   sync(ctx: ConnectorCtx): Promise<void>
 }

@@ -26,6 +26,8 @@ export async function runConnector(connectorId: string): Promise<{ ok: boolean; 
   const [conn] = await db.select().from(schema.connections)
     .where(and(eq(schema.connections.userId, user.id), eq(schema.connections.connectorId, c.id)))
   if (!conn?.enabled) return { ok: false, events: 0, error: `${c.name} isn’t connected` }
+  // Not signed in yet: wait quietly, like a missing key, instead of piling up failures.
+  if (c.oauth && !(await (await import('@/core/oauth')).canAuthorize(user, c))) return { ok: false, events: 0, error: `Sign in with ${c.name} to finish connecting` }
 
   const [run] = await db.insert(schema.syncRuns).values({ connectorId: c.id }).returning()
   let cursor = conn.cursor
@@ -74,6 +76,7 @@ export async function connectorStatus() {
     env: c.env,
     everyMinutes: c.everyMinutes,
     login: c.login,
+    oauth: c.oauth,
     // Mock mode shows seeded connection states (connected, failing) instead of "key missing".
     missingEnv: isMock ? [] : missingEnv(c),
     fields: c.fields,

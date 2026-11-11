@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { connection } from 'next/server'
+import { headers } from 'next/headers'
 import { Suspense } from 'react'
 import { desc, eq } from 'drizzle-orm'
 import { db, isMock, schema } from '@/db'
@@ -9,7 +10,8 @@ import { connectorStatus } from '@/worker/sync'
 import { KEY_ENV, modelId, type Task } from '@/ai/models'
 import { PageHeader, Skeleton } from '@/ui/components/card'
 import { ConnectorMarket, type ConnectorItem, type FieldView } from '@/ui/components/connector-market'
-import { envDefault, savedFields } from '@/core/secrets'
+import { envDefault, savedFields, signedIn } from '@/core/secrets'
+import { callbackPath } from '@/core/oauth'
 import { integration } from '@/core/integrations'
 import type { SetupField } from '@/core/types'
 import { env } from '@/core/env'
@@ -76,6 +78,9 @@ async function Connectors() {
     db.select().from(schema.connections).where(eq(schema.connections.userId, user.id)),
     db.select().from(schema.jobs),
   ])
+  // The address the service sends you back to: the one this page was opened on (127.0.0.1:3030 by default).
+  const h = await headers()
+  const origin = `${h.get('x-forwarded-proto') ?? 'http'}://${h.get('x-forwarded-host') ?? h.get('host') ?? '127.0.0.1:3030'}`
   const workerAlive = heartbeat && Date.now() - heartbeat.at.getTime() < 3 * 60_000
   const isConnected = (id: string) => !!rows.find((r) => r.connectorId === id)?.enabled
   const view = (id: string, fields: SetupField[]): FieldView[] => fields.map((f) => {
@@ -89,12 +94,16 @@ async function Connectors() {
     // The worker's sync job for this connector (src/jobs): running right now, or when it runs next.
     const job = jobs.find((j) => j.id === `sync:${c.id}`)
     const syncing = !!job?.lockedUntil && job.lockedUntil > new Date()
+    // Signed in, or a pasted refresh token (Strava) stands in until you do.
+    const authed = !c.oauth || isMock || signedIn(saved, c.id) || !!(c.oauth.refreshTokenEnv && env(c.oauth.refreshTokenEnv))
+    const signIn = connected && !c.missingEnv.length && !authed
     return {
       id: c.id, name: c.name, category: c.category, description: c.description, provides: c.provides,
       section: c.login ? 'shopping' : c.env.length ? 'keys' : 'built-in', login: !!c.login, connected, sync: true, fields: view(c.id, c.fields),
       missingEnv: connected ? c.missingEnv : [],
-      status: !connected ? 'off' : c.missingEnv.length ? 'setup' : conn?.status === 'error' ? 'error' : conn?.lastSyncAt ? 'ok' : 'waiting',
-      statusLabel: connected && !c.missingEnv.length && !conn?.lastSyncAt && conn?.status !== 'error' ? (syncing ? 'First sync running…' : 'First sync starting…') : undefined,
+      oauth: c.oauth ? { signedIn: authed, redirectUri: `${origin}${callbackPath(c.id)}`, setupUrl: c.oauth.setupUrl, httpsOnly: c.oauth.httpsOnly } : undefined,
+      status: !connected ? 'off' : c.missingEnv.length ? 'setup' : signIn ? 'waiting' : conn?.status === 'error' ? 'error' : conn?.lastSyncAt ? 'ok' : 'waiting',
+      statusLabel: signIn ? `Sign in with ${c.name} to finish` : connected && !c.missingEnv.length && !conn?.lastSyncAt && conn?.status !== 'error' ? (syncing ? 'First sync running…' : 'First sync starting…') : undefined,
       detail: syncing ? `${every(c.everyMinutes)} · syncing now…` : `${every(c.everyMinutes)} · synced ${ago(conn?.lastSyncAt)} · next ${inTime(job?.requestedAt ? new Date() : job?.nextRunAt)}`,
       error: conn?.lastError,
     }

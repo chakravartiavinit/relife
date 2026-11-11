@@ -7,6 +7,10 @@ import { lastfm } from './lastfm'
 import { monkeytype } from './monkeytype'
 import { steam } from './steam'
 import { strava } from './strava'
+import { oura } from './oura'
+import { whoop } from './whoop'
+import { withings } from './withings'
+import { googleCalendar } from './google-calendar'
 import { todoist } from './todoist'
 import { wakatime } from './wakatime'
 import { laptop } from './laptop'
@@ -20,5 +24,5 @@ import { feedConnectors } from './feeds'
 // One file per source. A connector whose env vars are missing is skipped (see docs/CONNECTORS.md).
 export const connectors: Connector[] = [
   icloudInbox, laptop, fx, github, codeforces, codechef, atcoder, leetcode, lichess, chesscom, binance,
-  strava, wakatime, monkeytype, duolingo, todoist, lastfm, steam, ...byokConnectors, ...feedConnectors, ...shopConnectors,
+  strava, oura, whoop, withings, googleCalendar, wakatime, monkeytype, duolingo, todoist, lastfm, steam, ...byokConnectors, ...feedConnectors, ...shopConnectors,
 ]

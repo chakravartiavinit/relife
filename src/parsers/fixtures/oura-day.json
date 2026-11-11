@@ -1,0 +1,111 @@
+{
+  "note": "Fixture: one Oura day. Sleep, HRV and resting heart rate share trackers with other wearables; steps stay per device.",
+  "event": {
+    "source": "oura",
+    "externalId": "2026-11-06:abc",
+    "at": "2026-11-07T10:00:00.000Z",
+    "body": {
+      "date": "2026-11-06",
+      "sleepHours": 7.4,
+      "sleepScore": 82,
+      "readiness": 79,
+      "hrv": 48,
+      "restingHr": 54,
+      "steps": 9120
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "tracker": "sleep.hours",
+      "date": "2026-11-06",
+      "value": 7.4,
+      "source": "oura",
+      "verified": true,
+      "defaults": {
+        "name": "Sleep",
+        "category": "health",
+        "unit": "h",
+        "target": 7.5,
+        "aggregate": "last",
+        "direction": "up"
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "sleep.score",
+      "date": "2026-11-06",
+      "value": 82,
+      "source": "oura",
+      "verified": true,
+      "defaults": {
+        "name": "Sleep score",
+        "category": "health",
+        "kind": "number",
+        "aggregate": "last",
+        "direction": "up",
+        "target": 85
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "hrv",
+      "date": "2026-11-06",
+      "value": 48,
+      "source": "oura",
+      "verified": true,
+      "defaults": {
+        "name": "HRV",
+        "category": "health",
+        "unit": "ms",
+        "aggregate": "last",
+        "direction": "up"
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "resting.hr",
+      "date": "2026-11-06",
+      "value": 54,
+      "source": "oura",
+      "verified": true,
+      "defaults": {
+        "name": "Resting heart rate",
+        "category": "health",
+        "unit": "bpm",
+        "aggregate": "last",
+        "direction": "down"
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "oura.readiness",
+      "date": "2026-11-06",
+      "value": 79,
+      "source": "oura",
+      "verified": true,
+      "defaults": {
+        "name": "Oura readiness",
+        "category": "health",
+        "kind": "number",
+        "aggregate": "last",
+        "direction": "up",
+        "target": 85
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "oura.steps",
+      "date": "2026-11-06",
+      "value": 9120,
+      "source": "oura",
+      "verified": true,
+      "defaults": {
+        "name": "Oura steps",
+        "category": "health",
+        "direction": "up",
+        "target": 8000
+      }
+    }
+  ]
+}

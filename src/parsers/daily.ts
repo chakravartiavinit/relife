@@ -6,6 +6,10 @@ import type { LastfmDay } from '@/connectors/lastfm'
 import type { SteamDay } from '@/connectors/steam'
 import type { DuolingoDay } from '@/connectors/duolingo'
 import type { TypingDay } from '@/connectors/monkeytype'
+import type { OuraDay } from '@/connectors/oura'
+import type { WhoopDay } from '@/connectors/whoop'
+import type { WithingsDay } from '@/connectors/withings'
+import type { CalendarDay } from '@/connectors/google-calendar'
 import { asObj } from './util'
 
 // One-summary-per-day sources (src/connectors/daily.ts). Each day becomes tracker entries; the latest sync
@@ -14,7 +18,51 @@ import { asObj } from './util'
 
 type Entry = { tracker: string; value: number | undefined; defaults: TrackerDefaults; meta?: Record<string, unknown> }
 
+// Shared by the wearables, so a quest on sleep or HRV works whichever device you wear. Same defaults as the
+// iPhone Health trackers (src/parsers/shortcuts.ts). Steps stay per device (oura.steps…): two devices
+// would double them in one tracker; core/xp.ts takes the highest.
+const SLEEP: TrackerDefaults = { name: 'Sleep', category: 'health', unit: 'h', target: 7.5, aggregate: 'last', direction: 'up' }
+const SLEEP_SCORE: TrackerDefaults = { name: 'Sleep score', category: 'health', kind: 'number', aggregate: 'last', direction: 'up', target: 85 }
+const HRV: TrackerDefaults = { name: 'HRV', category: 'health', unit: 'ms', aggregate: 'last', direction: 'up' }
+const RESTING_HR: TrackerDefaults = { name: 'Resting heart rate', category: 'health', unit: 'bpm', aggregate: 'last', direction: 'down' }
+const steps = (tracker: string, name: string, v?: number): Entry => ({ tracker, value: v, defaults: { name, category: 'health', direction: 'up', target: 8000 } })
+const body = (d: { sleepHours?: number; sleepScore?: number; hrv?: number; restingHr?: number }): Entry[] => [
+  { tracker: 'sleep.hours', value: d.sleepHours, defaults: SLEEP },
+  { tracker: 'sleep.score', value: d.sleepScore, defaults: SLEEP_SCORE },
+  { tracker: 'hrv', value: d.hrv, defaults: HRV },
+  { tracker: 'resting.hr', value: d.restingHr, defaults: RESTING_HR },
+]
+
 const DAYS: Record<string, (b: Record<string, unknown>) => Entry[]> = {
+  oura: (b) => {
+    const d = b as OuraDay
+    return [...body(d), { tracker: 'oura.readiness', value: d.readiness, defaults: { name: 'Oura readiness', category: 'health', kind: 'number', aggregate: 'last', direction: 'up', target: 85 } }, steps('oura.steps', 'Oura steps', d.steps)]
+  },
+  whoop: (b) => {
+    const d = b as WhoopDay
+    return [
+      ...body(d),
+      { tracker: 'whoop.recovery', value: d.recovery, defaults: { name: 'WHOOP recovery', category: 'health', kind: 'number', unit: '%', aggregate: 'last', direction: 'up', target: 67 } },
+      { tracker: 'whoop.strain', value: d.strain, defaults: { name: 'WHOOP strain', category: 'health', kind: 'number', aggregate: 'last' } },
+    ]
+  },
+  withings: (b) => {
+    const d = b as WithingsDay
+    return [
+      ...body(d),
+      { tracker: 'weight', value: d.weight, defaults: { name: 'Weight', category: 'health', unit: 'kg', aggregate: 'last', direction: 'down' } },
+      { tracker: 'body.fat', value: d.fat, defaults: { name: 'Body fat', category: 'health', unit: '%', aggregate: 'last', direction: 'down' } },
+      steps('withings.steps', 'Withings steps', d.steps),
+    ]
+  },
+  'google-calendar': (b) => {
+    const d = b as CalendarDay
+    return [
+      // Meetings aren't good or bad by themselves, so no direction; Patterns still links them to sleep or mood.
+      { tracker: 'meetings.minutes', value: d.meetingMinutes, meta: { meetings: d.meetings }, defaults: { name: 'Meetings', category: 'mind', kind: 'duration', unit: 'min' } },
+      { tracker: 'focus.minutes', value: d.focusMinutes, defaults: { name: 'Focus time', category: 'mind', kind: 'duration', unit: 'min', direction: 'up', target: 60 } },
+    ]
+  },
   wakatime: (b) => {
     const d = b as WakaDay
     return [{ tracker: 'coding.minutes', value: d.minutes, meta: { language: d.language, project: d.project }, defaults: { name: 'Coding time', category: 'skills', kind: 'duration', unit: 'min', direction: 'up', target: 60 } }]
