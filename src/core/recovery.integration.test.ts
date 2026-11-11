@@ -28,7 +28,7 @@ test('PostgreSQL recovery transactions remain stable, local, and idempotent', { 
   // This guard executes before the dynamic imports below, so a normal suite never loads src/db.
   assertLocalMockBase()
 
-  const { db, databaseUrl, schema } = await import('@/db')
+  const { db, databaseUrl, schema, sql } = await import('@/db')
   const effective = new URL(databaseUrl)
   assert.ok(['127.0.0.1', 'localhost', '::1'].includes(effective.hostname))
   assert.equal(effective.port, '5442')
@@ -38,6 +38,7 @@ test('PostgreSQL recovery transactions remain stable, local, and idempotent', { 
   const { loadSignals } = await import('./patterns')
   const { coachStats } = await import('@/domain/coach')
   const { chooseRecovery, getRecovery, insertCoachQuests, prepareRecovery, recoveryPaused } = await import('./recovery')
+  const { systemTick } = await import('./system')
 
   const run = `recovery-integration:${crypto.randomUUID()}`
   const userIds: string[] = []
@@ -151,6 +152,8 @@ test('PostgreSQL recovery transactions remain stable, local, and idempotent', { 
     assert.equal(second.version, 1, 'JSONB round-trip does not spuriously change preview version')
     const repeated = await prepareRecovery(primary, now, signals, stats)
     assert.equal(repeated?.version, 1, 'repeated prepare keeps the JSONB preview version stable')
+    await systemTick(primary, now)
+    assert.equal((await getRecovery(primary, now))?.version, 1, 'a repeated system tick keeps the persisted abstention/preview stable')
     assert.equal(await recoveryPaused(primary, today), true)
     assert.equal(await recoveryPaused(primary, addDays(today, 1)), false, 'recovery pause expires on the next local date')
 
@@ -224,6 +227,11 @@ test('PostgreSQL recovery transactions remain stable, local, and idempotent', { 
     }])
     assert.equal(blocked.length, 0, 'recovery pause blocks same-day normal insertion')
   } finally {
-    await cleanup()
+    try {
+      await cleanup()
+    } finally {
+      // This client exists only in the opt-in test process. Closing it lets node:test exit cleanly.
+      await sql.end()
+    }
   }
 })
