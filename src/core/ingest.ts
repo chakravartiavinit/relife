@@ -74,7 +74,8 @@ export async function persist(user: User, rec: Rec, rawEventId?: string) {
         verified: rec.verified ?? rec.source !== 'manual', note: rec.note, meta: rec.meta ?? {},
       }).onConflictDoUpdate({
         target: [schema.entries.trackerId, schema.entries.localDate, schema.entries.source],
-        set: { value, note: rec.note, meta: rec.meta ?? {}, updatedAt: new Date() },
+        // Only a changed value counts as newer: re-parsing a day mustn't make one device's sleep win over another's.
+        set: { value, note: rec.note, meta: rec.meta ?? {}, updatedAt: sql`case when ${schema.entries.value} is distinct from excluded.value then now() else ${schema.entries.updatedAt} end` },
       })
       return
     }

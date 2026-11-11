@@ -13,7 +13,15 @@ import type { User } from './user'
 // only rescores today and yesterday (and back-fills once when there is no XP yet).
 
 const BALANCE_XP = 50
-const TRACKERS = ['sleep.hours', 'steps', 'mood', 'meditation', 'github.commits', 'github.prs', 'learning.minutes', 'people.contacts', 'cp.solved']
+/** Steps from the phone and each wearable (one tracker per device, so they don't add up). */
+const STEPS = ['steps', 'oura.steps', 'withings.steps']
+const TRACKERS = [
+  'sleep.hours', 'steps', 'mood', 'meditation', 'github.commits', 'github.prs', 'learning.minutes', 'people.contacts', 'cp.solved',
+  'exercise.minutes', 'tasks.done', 'coding.minutes', 'duolingo.xp', 'typing.minutes', 'focus.minutes',
+  'tracked.minutes', 'productive.minutes', 'highlights.made', 'anki.cards', 'books.read', 'hevy.minutes', 'oura.steps', 'withings.steps',
+]
+/** Hobby trackers that are time spent, not practice (Last.fm, Steam): shown on Hobbies, no hobby XP. */
+const PASSIVE = new Set(['listening', 'playtime'])
 
 function median(xs: number[]) {
   if (!xs.length) return 0
@@ -38,8 +46,20 @@ export async function scoreRange(user: User, from: string, to: string, now = new
     trackerDays(user, from, to, { category: 'hobbies' }),
   ])
   // Practice minutes only: chess.games, ratings and other hobby stats aren't time.
-  const hobbyMin = (d: string) => hobbies.filter((h) => h.tracker.unit === 'min').reduce((s, h) => s + (h.days.get(d) ?? 0), 0)
+  const hobbyMin = (d: string) => hobbies.filter((h) => h.tracker.unit === 'min' && !PASSIVE.has(h.tracker.slug)).reduce((s, h) => s + (h.days.get(d) ?? 0), 0)
   const t = (slug: string) => trackers.find((x) => x.tracker.slug === slug)
+  // The highest step count of the day across devices.
+  const bestSteps = (d: string) => {
+    const best = STEPS.map((s) => ({ v: t(s)?.days.get(d), verified: t(s)?.verified })).filter((x) => x.v != null).sort((a, b) => b.v! - a.v!)[0]
+    return { steps: best?.v, stepsVerified: best?.verified }
+  }
+  // Synced entries only, per day: a number typed into a synced tracker doesn't skip the manual cap.
+  const synced = (slug: string, d: string) => t(slug)?.verifiedDays.get(d)
+  // Hevy can post its workouts to Strava as well, so take the larger rather than adding them.
+  const workoutMin = (d: string) => {
+    const xs = [synced('exercise.minutes', d), synced('hevy.minutes', d)].filter((v) => v != null)
+    return xs.length ? Math.max(...xs) : undefined
+  }
   const spendByDay = new Map<string, number>()
   for (const x of txns) if (isSpend(x)) spendByDay.set(x.localDate, (spendByDay.get(x.localDate) ?? 0) - x.base)
 
@@ -63,13 +83,25 @@ export async function scoreRange(user: User, from: string, to: string, now = new
     const awards = scoreDay({
       plan,
       sleepHours: t('sleep.hours')?.days.get(d), sleepVerified: t('sleep.hours')?.verified,
-      steps: t('steps')?.days.get(d), stepsVerified: t('steps')?.verified,
+      ...bestSteps(d),
       moodLogged: t('mood')?.days.has(d),
       meditationMin: t('meditation')?.days.get(d),
       commits: t('github.commits')?.days.get(d),
       prs: t('github.prs')?.days.get(d),
       learningMin: t('learning.minutes')?.days.get(d),
       solved: t('cp.solved')?.days.get(d),
+      // Connector measures: only synced values count, so typed-in numbers can't skip the manual cap.
+      workoutMin: workoutMin(d),
+      tasksDone: synced('tasks.done', d),
+      codingMin: synced('coding.minutes', d),
+      languageXp: synced('duolingo.xp', d),
+      typingMin: synced('typing.minutes', d),
+      focusMin: synced('focus.minutes', d),
+      trackedMin: synced('tracked.minutes', d),
+      productiveMin: synced('productive.minutes', d),
+      highlights: synced('highlights.made', d),
+      ankiCards: synced('anki.cards', d),
+      booksRead: synced('books.read', d),
       frugal: prior.filter((v) => v > 0).length >= 7 && spent < usual ? true : undefined,
       catchUps: t('people.contacts')?.days.get(d),
       hobbyMin: hobbyMin(d),

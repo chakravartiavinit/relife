@@ -37,3 +37,17 @@ test('typed-in data earns half and is capped; streak adds a bonus', () => {
   assert.equal(streakMultiplier(30), 1.5)
   assert.deepEqual(streaky.map((a) => [a.source, a.amount]), [['plan', 100], ['streak', 50]])
 })
+
+test('synced practice from the newer connectors pays standard XP at its threshold', () => {
+  const base = { plan: [], streak: 0 }
+  assert.deepEqual(scoreDay({ ...base, focusMin: 59, trackedMin: 59, productiveMin: 239, highlights: 2, ankiCards: 19, booksRead: 0 }), [])
+  const got = scoreDay({ ...base, trackedMin: 60, productiveMin: 240, highlights: 3, ankiCards: 20 })
+  // Tracked and productive time are one deep-work award, so the same hour doesn't pay twice.
+  assert.deepEqual(got.map((a) => a.source).sort(), ['flashcards', 'highlights', 'tracked'])
+  assert.ok(got.every((a) => a.verified))
+  assert.deepEqual(scoreDay({ ...base, codingMin: 60, trackedMin: 60 }).map((a) => a.source), ['codetime'])
+  assert.deepEqual(scoreDay({ ...base, productiveMin: 240 }).map((a) => a.source), ['productive'])
+  // Focus blocks and shelf changes are claims, not measurements: half XP, unverified.
+  const claims = scoreDay({ ...base, focusMin: 60, booksRead: 1 })
+  assert.deepEqual(claims.map((a) => [a.source, a.amount, a.verified]), [['focus', 5, false], ['book', 13, false]])
+})

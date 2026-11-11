@@ -1,0 +1,33 @@
+{
+  "note": "Fixture: a Todoist day.",
+  "event": {
+    "source": "todoist",
+    "externalId": "2026-11-06:abc",
+    "at": "2026-11-07T10:00:00.000Z",
+    "body": {
+      "date": "2026-11-06",
+      "done": 7,
+      "topProject": "Work"
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "tracker": "tasks.done",
+      "date": "2026-11-06",
+      "value": 7,
+      "source": "todoist",
+      "verified": true,
+      "meta": {
+        "project": "Work"
+      },
+      "defaults": {
+        "name": "Tasks done",
+        "category": "mind",
+        "kind": "number",
+        "direction": "up",
+        "target": 5
+      }
+    }
+  ]
+}

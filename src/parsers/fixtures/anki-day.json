@@ -1,0 +1,46 @@
+{
+  "note": "Fixture: an Anki day with cards and study minutes.",
+  "event": {
+    "source": "anki",
+    "externalId": "2026-11-06:abc",
+    "at": "2026-11-07T10:00:00.000Z",
+    "body": {
+      "date": "2026-11-06",
+      "cards": 85,
+      "minutes": 22
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "tracker": "anki.cards",
+      "date": "2026-11-06",
+      "value": 85,
+      "source": "anki",
+      "verified": true,
+      "defaults": {
+        "name": "Anki cards",
+        "category": "skills",
+        "kind": "number",
+        "unit": "cards",
+        "direction": "up",
+        "target": 20
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "anki.minutes",
+      "date": "2026-11-06",
+      "value": 22,
+      "source": "anki",
+      "verified": true,
+      "defaults": {
+        "name": "Anki study time",
+        "category": "skills",
+        "kind": "duration",
+        "unit": "min",
+        "direction": "up"
+      }
+    }
+  ]
+}

@@ -21,6 +21,8 @@ export async function trackerDays(user: User, from: string, to: string, opts: { 
     sum: sql<string>`sum(${schema.entries.value})`,
     last: sql<string>`(array_agg(${schema.entries.value} order by ${schema.entries.updatedAt} desc))[1]`,
     verified: sql<boolean>`bool_or(${schema.entries.verified})`,
+    verifiedSum: sql<string | null>`sum(${schema.entries.value}) filter (where ${schema.entries.verified})`,
+    verifiedLast: sql<string | null>`(array_agg(${schema.entries.value} order by ${schema.entries.updatedAt} desc) filter (where ${schema.entries.verified}))[1]`,
   }).from(schema.entries).where(and(
     inArray(schema.entries.trackerId, trackers.map((t) => t.id)),
     gte(schema.entries.localDate, from),
@@ -29,13 +31,17 @@ export async function trackerDays(user: User, from: string, to: string, opts: { 
 
   return trackers.map((t) => {
     const days = new Map<string, number>()
+    /** The same, from synced (verified) entries only: typed-in values left out. */
+    const verifiedDays = new Map<string, number>()
     let verified = false
     for (const r of rows) {
       if (r.trackerId !== t.id) continue
       days.set(r.date, Number(t.aggregate === 'last' ? r.last : r.sum))
+      const v = t.aggregate === 'last' ? r.verifiedLast : r.verifiedSum
+      if (v != null) verifiedDays.set(r.date, Number(v))
       verified ||= r.verified
     }
-    return { tracker: t, days, verified }
+    return { tracker: t, days, verifiedDays, verified }
   })
 }
 

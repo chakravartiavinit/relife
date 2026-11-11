@@ -43,7 +43,7 @@ async function Health() {
   ])
   const waterGoal = goals.find((s) => (s.meta as ScheduleMeta).trackerSlug && s.target)
   const waterSlug = waterGoal ? (waterGoal.meta as ScheduleMeta).trackerSlug! : 'water'
-  const data = await trackerDays(user, from, today, { slugs: ['sleep.hours', 'steps', 'weight', waterSlug] })
+  const data = await trackerDays(user, from, today, { slugs: ['sleep.hours', 'steps', 'weight', 'exercise.minutes', waterSlug] })
   const get = (slug: string) => data.find((d) => d.tracker.slug === slug)
   const avg7 = (slug: string) => average(fillDays(get(slug)?.days ?? new Map(), addDays(today, -6), today).map((p) => p.value))
   const sleep = avg7('sleep.hours')
@@ -75,6 +75,9 @@ async function Health() {
             ? { title: 'No water logged yet', description: `Tap the quick-add button on Today, or type “${waterSlug} 250” in ⌘K.` }
             : { title: 'No water goal', description: 'Add a routine with a daily target, like 3,000 ml, then tap +250 ml through the day.' }}
         />
+        {get('exercise.minutes')?.days.size ? (
+          <MetricCard title="Active minutes" data={get('exercise.minutes')} from={from} to={today} color={color} chart="bars" decimals={0} target={get('exercise.minutes')?.tracker.target ?? 30} empty={{ title: '', description: '' }} />
+        ) : null}
         {get('weight')?.days.size ? (
           <MetricCard title="Weight" data={get('weight')} from={from} to={today} color={color} chart="area" empty={{ title: '', description: '' }} />
         ) : null}

@@ -39,7 +39,8 @@ const connectorJobs: Job[] = connectors.map((c) => ({
   schedule: { everyMinutes: c.everyMinutes },
   backoff: true,
   timeoutMinutes: 60, // a first sync can be long (Binance checks every spot pair once)
-  enabled: () => connected(c.id, c.env),
+  // OAuth connectors also wait until you've signed in.
+  enabled: async () => (await connected(c.id, c.env)) && (!c.oauth || (await import('@/core/oauth')).canAuthorize(await getUser(), c)),
   on: [`connector.connected:${c.id}`],
   run: async () => {
     const { runConnector } = await import('@/worker/sync')

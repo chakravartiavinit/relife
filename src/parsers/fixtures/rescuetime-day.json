@@ -1,0 +1,68 @@
+{
+  "note": "Fixture: one RescueTime day. Productive and distracting minutes come from the daily summary feed hours.",
+  "event": {
+    "source": "rescuetime",
+    "externalId": "2026-11-06:abc",
+    "at": "2026-11-07T10:00:00.000Z",
+    "body": {
+      "date": "2026-11-06",
+      "pulse": 72,
+      "productiveMin": 255,
+      "distractingMin": 66,
+      "loggedMin": 450
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "tracker": "productivity.pulse",
+      "date": "2026-11-06",
+      "value": 72,
+      "source": "rescuetime",
+      "verified": true,
+      "meta": {
+        "loggedMin": 450
+      },
+      "defaults": {
+        "name": "Productivity pulse",
+        "category": "mind",
+        "kind": "number",
+        "aggregate": "last",
+        "direction": "up",
+        "target": 70
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "productive.minutes",
+      "date": "2026-11-06",
+      "value": 255,
+      "source": "rescuetime",
+      "verified": true,
+      "defaults": {
+        "name": "Productive time",
+        "category": "mind",
+        "kind": "duration",
+        "unit": "min",
+        "direction": "up",
+        "target": 240
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "distracting.minutes",
+      "date": "2026-11-06",
+      "value": 66,
+      "source": "rescuetime",
+      "verified": true,
+      "defaults": {
+        "name": "Distracting time",
+        "category": "mind",
+        "kind": "duration",
+        "unit": "min",
+        "direction": "down",
+        "target": 60
+      }
+    }
+  ]
+}

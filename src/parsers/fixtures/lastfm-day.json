@@ -1,0 +1,46 @@
+{
+  "note": "Fixture: a Last.fm day.",
+  "event": {
+    "source": "lastfm",
+    "externalId": "2026-11-06:abc",
+    "at": "2026-11-07T10:00:00.000Z",
+    "body": {
+      "date": "2026-11-06",
+      "tracks": 24,
+      "minutes": 84,
+      "topArtist": "Prateek Kuhad"
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "tracker": "listening",
+      "date": "2026-11-06",
+      "value": 84,
+      "source": "lastfm",
+      "verified": true,
+      "meta": {
+        "artist": "Prateek Kuhad"
+      },
+      "defaults": {
+        "name": "Music listening",
+        "category": "hobbies",
+        "kind": "duration",
+        "unit": "min"
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "listening.songs",
+      "date": "2026-11-06",
+      "value": 24,
+      "source": "lastfm",
+      "verified": true,
+      "defaults": {
+        "name": "Songs played",
+        "category": "hobbies",
+        "kind": "number"
+      }
+    }
+  ]
+}

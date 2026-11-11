@@ -1,0 +1,33 @@
+{
+  "note": "Fixture: Duolingo's first sync: XP today unknown, so only the streak is stored.",
+  "event": {
+    "source": "duolingo",
+    "externalId": "2026-11-06:abc",
+    "at": "2026-11-07T10:00:00.000Z",
+    "body": {
+      "date": "2026-11-06",
+      "streak": 41,
+      "course": "Spanish",
+      "practised": true
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "tracker": "duolingo.streak",
+      "date": "2026-11-06",
+      "value": 41,
+      "source": "duolingo",
+      "verified": true,
+      "meta": {
+        "practised": true
+      },
+      "defaults": {
+        "name": "Duolingo streak",
+        "category": "skills",
+        "kind": "number",
+        "aggregate": "last"
+      }
+    }
+  ]
+}

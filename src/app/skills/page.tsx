@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Activity, GitCommitHorizontal, GraduationCap, Laptop, Cable, MonitorSmartphone, Terminal } from 'lucide-react'
+import { Activity, Code, GitCommitHorizontal, GraduationCap, Keyboard, Languages, Laptop, Cable, MonitorSmartphone, Terminal } from 'lucide-react'
 import { AreaHeader } from '@/ui/components/area-header'
 import Link from 'next/link'
 import { connection } from 'next/server'
@@ -82,16 +82,26 @@ async function Skills() {
     { key: 'coding', label: 'Coding', icon: GitCommitHorizontal, color: 'var(--cat-mind)', unit: 'contributions', days: coding, total: `${formatNumber(sumLast(coding, LOG_DAYS))} contributions` },
     { key: 'problems', label: 'Problems', icon: Terminal, color: 'var(--cat-hobbies)', unit: 'solved', days: solved, total: `${formatNumber(sumLast(solved, LOG_DAYS))} solved` },
   ]
+  // Rows from connectors that only some people use (WakaTime, Duolingo, Monkeytype): shown once they have data.
+  const codeMin = byslug('coding.minutes'), langXp = byslug('duolingo.xp'), typeMin = byslug('typing.minutes')
+  if (codeMin.size) streams.push({ key: 'codetime', label: 'Coding time', icon: Code, color: 'var(--cat-mind)', unit: 'min', days: codeMin, total: hm(sumLast(codeMin, LOG_DAYS)) })
+  if (langXp.size) streams.push({ key: 'language', label: 'Languages', icon: Languages, color: 'var(--cat-relationships)', unit: 'XP', days: langXp, total: `${formatNumber(sumLast(langXp, LOG_DAYS))} XP` })
+  if (typeMin.size) streams.push({ key: 'typing', label: 'Typing', icon: Keyboard, color: 'var(--cat-wealth)', unit: 'min', days: typeMin, total: hm(sumLast(typeMin, LOG_DAYS)) })
   const practised = new Set(streams.flatMap((st) => [...st.days].filter(([, v]) => v > 0).map(([d]) => d)))
   const streak = streaks([...practised], today)
   const practisedDays28 = [...practised].filter((d) => d >= addDays(today, -27)).length
+  const wpm = [...byslug('typing.wpm')].sort(([a], [b]) => a.localeCompare(b)).at(-1)?.[1]
   const rating = (site: string) => cpSites.find((c) => c.name.toLowerCase() === site.toLowerCase())
   const sources = [
     { name: 'GitHub', logo: 'GitHub', connected: !!env('GITHUB_TOKEN') || commits.size > 0, value: formatNumber(sumLast(coding, 28)), change: undefined as number | undefined, sub: 'contributions, 28 days' },
-    ...(['Codeforces', 'CodeChef', 'AtCoder'] as const).map((site) => {
+    ...(['Codeforces', 'CodeChef', 'AtCoder', 'LeetCode'] as const).map((site) => {
       const r = rating(site)
-      return { name: `${site} rating`, logo: site, connected: !!r || !!env(`${site.toUpperCase()}_HANDLE`), value: r ? formatNumber(r.value) : '–', change: r?.change, sub: '' }
+      const key = site === 'LeetCode' ? 'LEETCODE_USERNAME' : `${site.toUpperCase()}_HANDLE`
+      return { name: `${site} rating`, logo: site, connected: !!r || !!env(key), value: r ? formatNumber(r.value) : '–', change: r?.change, sub: '' }
     }),
+    { name: 'WakaTime', logo: 'WakaTime', connected: !!env('WAKATIME_API_KEY') || codeMin.size > 0, value: hm(sumLast(codeMin, 7)), change: undefined, sub: 'coding, 7 days' },
+    { name: 'Duolingo', logo: 'Duolingo', connected: !!env('DUOLINGO_USERNAME') || langXp.size > 0, value: formatNumber(sumLast(langXp, 7)), change: undefined, sub: 'XP, 7 days' },
+    { name: 'Monkeytype', logo: 'Monkeytype', connected: !!env('MONKEYTYPE_APE_KEY') || typeMin.size > 0, value: wpm == null ? '–' : formatNumber(wpm, 0), change: undefined, sub: 'wpm, latest' },
     { name: 'Laptop activity', logo: '', connected: !!env('ACTIVITY_TOKEN'), value: hm(sumLast(learningMin, 7) + sumLast(workMin, 7)), change: undefined, sub: 'learning + deep work, 7 days' },
   ]
   return (

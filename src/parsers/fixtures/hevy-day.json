@@ -1,0 +1,70 @@
+{
+  "note": "Fixture: one Hevy day. exercise.minutes shares a tracker with Strava; source hevy keeps them apart.",
+  "event": {
+    "source": "hevy",
+    "externalId": "2026-11-06:abc",
+    "at": "2026-11-07T10:00:00.000Z",
+    "body": {
+      "date": "2026-11-06",
+      "workouts": 1,
+      "minutes": 62,
+      "volumeKg": 8450,
+      "exercises": 6
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "tracker": "hevy.minutes",
+      "date": "2026-11-06",
+      "value": 62,
+      "source": "hevy",
+      "verified": true,
+      "meta": {
+        "workouts": 1
+      },
+      "defaults": {
+        "name": "Gym minutes",
+        "category": "health",
+        "kind": "duration",
+        "unit": "min",
+        "direction": "up",
+        "target": 30
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "hevy.workouts",
+      "date": "2026-11-06",
+      "value": 1,
+      "source": "hevy",
+      "verified": true,
+      "meta": {
+        "exercises": 6
+      },
+      "defaults": {
+        "name": "Gym workouts",
+        "category": "health",
+        "kind": "number",
+        "direction": "up",
+        "target": 1
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "hevy.volume",
+      "date": "2026-11-06",
+      "value": 8450,
+      "source": "hevy",
+      "verified": true,
+      "defaults": {
+        "name": "Weight lifted",
+        "category": "health",
+        "kind": "number",
+        "unit": "kg",
+        "direction": "up",
+        "target": 5000
+      }
+    }
+  ]
+}

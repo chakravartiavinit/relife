@@ -1,0 +1,29 @@
+{
+  "note": "Fixture: Codewars days count as solved problems; honor is only on today.",
+  "event": {
+    "source": "codewars",
+    "externalId": "2026-11-06:abc",
+    "at": "2026-11-07T10:00:00.000Z",
+    "body": {
+      "date": "2026-11-06",
+      "solved": 2
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "tracker": "cp.solved",
+      "date": "2026-11-06",
+      "value": 2,
+      "source": "codewars",
+      "verified": true,
+      "defaults": {
+        "name": "Problems solved",
+        "category": "skills",
+        "kind": "number",
+        "direction": "up",
+        "target": 1
+      }
+    }
+  ]
+}

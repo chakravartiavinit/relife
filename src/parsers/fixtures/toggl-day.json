@@ -1,0 +1,36 @@
+{
+  "note": "Fixture: one Toggl Track day.",
+  "event": {
+    "source": "toggl",
+    "externalId": "2026-11-06:abc",
+    "at": "2026-11-07T10:00:00.000Z",
+    "body": {
+      "date": "2026-11-06",
+      "minutes": 275,
+      "entries": 6,
+      "topProject": "Thesis"
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "tracker": "tracked.minutes",
+      "date": "2026-11-06",
+      "value": 275,
+      "source": "toggl",
+      "verified": true,
+      "meta": {
+        "project": "Thesis",
+        "entries": 6
+      },
+      "defaults": {
+        "name": "Tracked time",
+        "category": "skills",
+        "kind": "duration",
+        "unit": "min",
+        "direction": "up",
+        "target": 120
+      }
+    }
+  ]
+}

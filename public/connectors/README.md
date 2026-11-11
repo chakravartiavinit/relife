@@ -1,6 +1,10 @@
 Brand logos for the Connectors page. Trademarks belong to their owners and are shown only to identify each service.
 
 - github, binance, gmail, icloud, telegram: Simple Icons (CC0), coloured with each brand's hex.
+- leetcode, strava, wakatime, monkeytype, duolingo, todoist, lastfm, steam: Simple Icons (CC0), coloured with each brand's hex.
+- googlecalendar, toggl (Toggl Track), rescuetime, hevy, codewars, letterboxd, anki: Simple Icons (CC0), coloured with each brand's hex.
+- openlibrary: the site's own icon, via Google's favicon service.
+- Oura, WHOOP, Withings and Readwise have no Simple Icons glyph, so their tiles use the area icon.
 - openai, anthropic, gemini, openrouter, ollama: Lobe Icons (MIT).
 - swiggy, zomato: Simple Icons (CC0), brand colour.
 - amazon: Wikimedia Commons, Amazon_icon.svg.

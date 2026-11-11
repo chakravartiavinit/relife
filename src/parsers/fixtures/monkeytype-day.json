@@ -1,0 +1,56 @@
+{
+  "note": "Fixture: a Monkeytype day.",
+  "event": {
+    "source": "monkeytype",
+    "externalId": "2026-11-06:abc",
+    "at": "2026-11-07T10:00:00.000Z",
+    "body": {
+      "date": "2026-11-06",
+      "tests": 6,
+      "minutes": 4,
+      "wpm": 72.3,
+      "best": 81.5,
+      "accuracy": 96.1
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "tracker": "typing.minutes",
+      "date": "2026-11-06",
+      "value": 4,
+      "source": "monkeytype",
+      "verified": true,
+      "meta": {
+        "tests": 6
+      },
+      "defaults": {
+        "name": "Typing practice",
+        "category": "skills",
+        "kind": "duration",
+        "unit": "min"
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "typing.wpm",
+      "date": "2026-11-06",
+      "value": 72.3,
+      "source": "monkeytype",
+      "verified": true,
+      "meta": {
+        "best": 81.5,
+        "accuracy": 96.1
+      },
+      "defaults": {
+        "name": "Typing speed",
+        "category": "skills",
+        "kind": "number",
+        "unit": "wpm",
+        "aggregate": "last",
+        "direction": "up",
+        "target": 80
+      }
+    }
+  ]
+}

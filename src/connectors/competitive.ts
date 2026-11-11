@@ -9,10 +9,10 @@ import { addDays, localDate, wallToUtc } from '@/core/time'
 // First sync backfills about 90 days; later ones the last few days.
 
 export type CpDay = {
-  platform: 'codeforces' | 'atcoder' | 'codechef'
+  platform: 'codeforces' | 'atcoder' | 'codechef' | 'leetcode'
   date: string
-  /** Distinct problems accepted that day (first accepted in the synced window). */
-  solved: number
+  /** Distinct problems accepted that day (first accepted in the synced window). Unknown (LeetCode, older days) = left out. */
+  solved?: number
   submissions: number
   /** Contest rating after the day's last rated contest, or today's current rating. */
   rating?: number
@@ -46,7 +46,7 @@ export function cpDays(platform: CpDay['platform'], input: {
   }
   for (const at of firstAc.values()) {
     const date = localDate(new Date(at), tz)
-    if (date >= from) day(date).solved++
+    if (date >= from) { const d = day(date); d.solved = (d.solved ?? 0) + 1 }
   }
   for (const r of [...input.ratings].sort((a, b) => a.at - b.at)) {
     const date = localDate(new Date(r.at), tz)
@@ -211,5 +211,84 @@ export const codechef: Connector = {
     await emitDays(ctx, days.values())
     ctx.setCursor({ backfilled: true })
     ctx.log(`${subs.length} submissions, ${days.size} days`)
+  },
+}
+
+// --------------------------------------------------------------------------------------------- LeetCode
+
+type LcData = {
+  matchedUser: { userCalendar: { submissionCalendar: string } } | null
+  recentAcSubmissionList: { titleSlug: string; timestamp: string }[] | null
+  userContestRanking: { rating: number } | null
+  userContestRankingHistory: { attended: boolean; rating: number; contest: { startTime: number } }[] | null
+}
+
+const LC_QUERY = `query($u: String!) {
+  matchedUser(username: $u) { userCalendar { submissionCalendar } }
+  recentAcSubmissionList(username: $u, limit: 20) { titleSlug timestamp }
+  userContestRanking(username: $u) { rating }
+  userContestRankingHistory(username: $u) { attended rating contest { startTime } }
+}`
+
+/**
+ * Pure: LeetCode's public data into days. Exported for tests.
+ * Submissions per day come from the profile calendar (LeetCode counts days in UTC). Problems solved come
+ * from the last 20 accepted submissions, the only ones LeetCode shows; when the list is full its oldest day
+ * may be cut off, so that day and older ones carry no solved count rather than a wrong one.
+ */
+export function leetcodeDays(d: LcData, tz: string, from: string, today: string) {
+  const days = new Map<string, CpDay>()
+  const day = (date: string) => days.get(date) ?? days.set(date, { platform: 'leetcode', date, submissions: 0, contests: 0 }).get(date)!
+  const calendar = JSON.parse(d.matchedUser?.userCalendar.submissionCalendar || '{}') as Record<string, number>
+  for (const [ts, n] of Object.entries(calendar)) {
+    const date = new Date(Number(ts) * 1000).toISOString().slice(0, 10)
+    if (date >= from && date <= today) day(date).submissions = n
+  }
+  const acs = d.recentAcSubmissionList ?? []
+  const first = new Map<string, number>()
+  for (const a of acs) { const t = Number(a.timestamp) * 1000; if (!first.has(a.titleSlug) || t < first.get(a.titleSlug)!) first.set(a.titleSlug, t) }
+  const oldest = acs.map((a) => localDate(new Date(Number(a.timestamp) * 1000), tz)).sort()[0]
+  const covered = (date: string) => date >= from && (acs.length < 20 || date > oldest)
+  for (const d of days.values()) if (covered(d.date)) d.solved = 0
+  for (const t of first.values()) {
+    const date = localDate(new Date(t), tz)
+    if (covered(date)) { const x = day(date); x.solved = (x.solved ?? 0) + 1 }
+  }
+  for (const r of (d.userContestRankingHistory ?? []).filter((h) => h.attended).sort((a, b) => a.contest.startTime - b.contest.startTime)) {
+    const date = localDate(new Date(r.contest.startTime * 1000), tz)
+    if (date < from) continue
+    const x = day(date)
+    x.rating = Math.round(r.rating)
+    x.contests++
+  }
+  const current = d.userContestRanking?.rating
+  if (current && !days.get(today)?.rating) day(today).rating = Math.round(current)
+  return days
+}
+
+export const leetcode: Connector = {
+  id: 'leetcode',
+  name: 'LeetCode',
+  category: 'skills',
+  description: 'Problems you solve, submissions and contest rating from your public LeetCode profile.',
+  provides: ['Problems solved', 'Submissions', 'Rating'],
+  fields: [{ env: 'LEETCODE_USERNAME', label: 'LeetCode username', placeholder: 'lee215', hint: 'Your public username, from leetcode.com/u/<name>. No key or login needed.' }],
+  env: ['LEETCODE_USERNAME'],
+  everyMinutes: 60,
+  async sync(ctx) {
+    const { tz, today, from } = window(ctx)
+    const res = await fetch('https://leetcode.com/graphql', {
+      method: 'POST',
+      headers: { ...UA, 'Content-Type': 'application/json', Referer: 'https://leetcode.com' },
+      body: JSON.stringify({ query: LC_QUERY, variables: { u: env('LEETCODE_USERNAME')!.trim() } }),
+    })
+    if (res.status === 429) throw new Error('Rate limited. It will try again next hour.')
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const j = (await res.json()) as { data?: LcData; errors?: { message: string }[] }
+    if (!j.data?.matchedUser) throw new Error(j.errors?.some((e) => /does not exist/i.test(e.message)) ? 'Username not found. Check the spelling.' : `LeetCode: ${j.errors?.[0]?.message ?? 'no data'}`)
+    const days = leetcodeDays(j.data, tz, from, today)
+    await emitDays(ctx, days.values())
+    ctx.setCursor({ backfilled: true })
+    ctx.log(`${days.size} days`)
   },
 }

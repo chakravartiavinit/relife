@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { connection } from 'next/server'
+import { headers } from 'next/headers'
 import { Suspense } from 'react'
 import { desc, eq } from 'drizzle-orm'
 import { db, isMock, schema } from '@/db'
@@ -9,7 +10,8 @@ import { connectorStatus } from '@/worker/sync'
 import { KEY_ENV, modelId, type Task } from '@/ai/models'
 import { PageHeader, Skeleton } from '@/ui/components/card'
 import { ConnectorMarket, type ConnectorItem, type FieldView } from '@/ui/components/connector-market'
-import { envDefault, savedFields } from '@/core/secrets'
+import { envDefault, savedFields, signedIn } from '@/core/secrets'
+import { callbackPath, requestOrigin } from '@/core/oauth'
 import { integration } from '@/core/integrations'
 import type { SetupField } from '@/core/types'
 import { env } from '@/core/env'
@@ -22,12 +24,18 @@ export default function ConnectorsPage() {
       <PageHeader
         eyebrow="System"
         title="Connectors"
-        description="Data sources, Telegram and AI models. You bring the keys: they’re encrypted in your local database, and nothing syncs until you connect it."
+        description="Apps and devices that feed ReLife, sorted by what they track, plus Telegram and AI models. You bring the keys: they’re encrypted in your local database, and nothing syncs until you connect it."
       />
       <Suspense fallback={
-        <div className="flex flex-col gap-10">
+        <div className="flex flex-col gap-6">
           <Skeleton className="h-8 w-72 rounded-full" />
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 9 }, (_, i) => <Skeleton key={i} className="h-[76px] rounded-[18px]" />)}</div>
+          <div className="grid gap-6 lg:grid-cols-[200px_minmax(0,1fr)] xl:gap-10">
+            <div className="hidden flex-col gap-1 lg:flex">{Array.from({ length: 8 }, (_, i) => <Skeleton key={i} className="h-9" />)}</div>
+            <div className="flex flex-col gap-8">
+              <Skeleton className="h-10 w-full max-w-sm" />
+              <div className="@container"><div className="grid gap-3 @xl:grid-cols-2 @3xl:grid-cols-3">{Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-[150px] rounded-[18px]" />)}</div></div>
+            </div>
+          </div>
         </div>
       }>
         <Connectors />
@@ -76,6 +84,9 @@ async function Connectors() {
     db.select().from(schema.connections).where(eq(schema.connections.userId, user.id)),
     db.select().from(schema.jobs),
   ])
+  // The address the service sends you back to: the one this page was opened on (127.0.0.1:3030 by default).
+  const h = await headers()
+  const origin = requestOrigin(h)
   const workerAlive = heartbeat && Date.now() - heartbeat.at.getTime() < 3 * 60_000
   const isConnected = (id: string) => !!rows.find((r) => r.connectorId === id)?.enabled
   const view = (id: string, fields: SetupField[]): FieldView[] => fields.map((f) => {
@@ -89,12 +100,16 @@ async function Connectors() {
     // The worker's sync job for this connector (src/jobs): running right now, or when it runs next.
     const job = jobs.find((j) => j.id === `sync:${c.id}`)
     const syncing = !!job?.lockedUntil && job.lockedUntil > new Date()
+    // Signed in, or a pasted refresh token (Strava) stands in until you do.
+    const authed = !c.oauth || isMock || signedIn(saved, c.id) || !!(c.oauth.refreshTokenEnv && env(c.oauth.refreshTokenEnv))
+    const signIn = connected && !c.missingEnv.length && !authed
     return {
       id: c.id, name: c.name, category: c.category, description: c.description, provides: c.provides,
       section: c.login ? 'shopping' : c.env.length ? 'keys' : 'built-in', login: !!c.login, connected, sync: true, fields: view(c.id, c.fields),
       missingEnv: connected ? c.missingEnv : [],
-      status: !connected ? 'off' : c.missingEnv.length ? 'setup' : conn?.status === 'error' ? 'error' : conn?.lastSyncAt ? 'ok' : 'waiting',
-      statusLabel: connected && !c.missingEnv.length && !conn?.lastSyncAt && conn?.status !== 'error' ? (syncing ? 'First sync running…' : 'First sync starting…') : undefined,
+      oauth: c.oauth ? { signedIn: authed, redirectUri: `${origin}${callbackPath(c.id)}`, setupUrl: c.oauth.setupUrl, httpsOnly: c.oauth.httpsOnly } : undefined,
+      status: !connected ? 'off' : c.missingEnv.length ? 'setup' : signIn ? 'waiting' : conn?.status === 'error' ? 'error' : conn?.lastSyncAt ? 'ok' : 'waiting',
+      statusLabel: signIn ? `Sign in with ${c.name} to finish` : connected && !c.missingEnv.length && !conn?.lastSyncAt && conn?.status !== 'error' ? (syncing ? 'First sync running…' : 'First sync starting…') : undefined,
       detail: syncing ? `${every(c.everyMinutes)} · syncing now…` : `${every(c.everyMinutes)} · synced ${ago(conn?.lastSyncAt)} · next ${inTime(job?.requestedAt ? new Date() : job?.nextRunAt)}`,
       error: conn?.lastError,
     }

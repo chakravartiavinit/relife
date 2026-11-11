@@ -130,6 +130,10 @@ and stores them encrypted in your local database; values already in `.env` fill 
 | Zomato, Swiggy, Blinkit, Zepto, Flipkart, Amazon orders with items; MakeMyTrip bookings | Log in once in a Chrome window ReLife opens | [CONNECTORS.md](docs/CONNECTORS.md) |
 | GitHub commits, PRs and reviews | Fine-grained token | [CONNECTORS.md](docs/CONNECTORS.md#github) |
 | Codeforces, AtCoder, CodeChef, Lichess, Chess.com | Your public handle | Connectors page |
+| LeetCode problems and rating; Duolingo XP and streak | Your public username | Connectors page |
+| Strava workouts; Oura, WHOOP and Withings sleep, recovery and weight; Google Calendar meeting and focus time | Sign in with the service (your own free app) | [CONNECTORS.md](docs/CONNECTORS.md#signing-in-oauth) |
+| WakaTime coding time, Monkeytype typing, Todoist tasks, Toggl time, RescueTime productivity, Hevy gym workouts, Readwise highlights, Last.fm music, Steam gaming | A personal key from each service | [CONNECTORS.md](docs/CONNECTORS.md#personal-data-connectors) |
+| Codewars kata, Letterboxd films, Open Library books, Anki flashcards | Your public username, or the AnkiConnect add-on | [CONNECTORS.md](docs/CONNECTORS.md#personal-data-connectors) |
 | Laptop time per site and app, shows and courses you watch | The browser extension and a shared token | [extension/README.md](extension/README.md) |
 | Steps, sleep, Health data (iPhone) | iOS Shortcuts writing to an iCloud Drive file | [SHORTCUTS.md](docs/SHORTCUTS.md) |
 | Exchange rates | Nothing: connect FX | Connectors page |

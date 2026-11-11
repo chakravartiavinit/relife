@@ -1,0 +1,33 @@
+{
+  "note": "Fixture: one Readwise day.",
+  "event": {
+    "source": "readwise",
+    "externalId": "2026-11-06:abc",
+    "at": "2026-11-07T10:00:00.000Z",
+    "body": {
+      "date": "2026-11-06",
+      "highlights": 7,
+      "sources": 3
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "tracker": "highlights.made",
+      "date": "2026-11-06",
+      "value": 7,
+      "source": "readwise",
+      "verified": true,
+      "meta": {
+        "sources": 3
+      },
+      "defaults": {
+        "name": "Highlights",
+        "category": "mind",
+        "kind": "number",
+        "direction": "up",
+        "target": 3
+      }
+    }
+  ]
+}

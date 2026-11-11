@@ -62,8 +62,9 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
 - **New data source:** one file in `src/connectors/<id>.ts` implementing `Connector`
   (`src/core/types.ts`), added to the array in `src/connectors/index.ts`. Declare `fields` (the
   Connect dialog inputs) and required `env` keys, emit raw events with stable `externalId`s, store
-  progress with `ctx.setCursor`. Give it a `description` and `provides` chips, and optionally a logo
-  in `public/connectors/` mapped in `src/ui/components/connector-market.tsx`. Document it in
+  progress with `ctx.setCursor`. Give it a `description` and `provides` chips, add its id to a category in
+  `GROUPS` (`src/ui/components/connector-market.tsx`; unlisted ones fall back to their life area), and
+  optionally a logo in `public/connectors/` mapped in `src/ui/components/app-logo.tsx`. Document it in
   `docs/CONNECTORS.md` and `.env.example`.
 - **New parser** (turns a connector's raw events into records): one file in `src/parsers/` added to
   `src/parsers/index.ts`, plus a fixture in `src/parsers/fixtures/` (`{ event, expected }`). `npm test` runs

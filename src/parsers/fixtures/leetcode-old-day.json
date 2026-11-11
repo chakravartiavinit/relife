@@ -1,0 +1,29 @@
+{
+  "note": "Fixture: an older LeetCode day beyond the last 20 accepted: submissions only, solved left alone.",
+  "event": {
+    "source": "leetcode",
+    "externalId": "2026-09-01:abc",
+    "at": "2026-11-07T10:00:00.000Z",
+    "body": {
+      "platform": "leetcode",
+      "date": "2026-09-01",
+      "submissions": 4,
+      "contests": 0
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "date": "2026-09-01",
+      "source": "leetcode",
+      "verified": true,
+      "tracker": "cp.submissions",
+      "value": 4,
+      "defaults": {
+        "name": "Submissions",
+        "category": "skills",
+        "kind": "number"
+      }
+    }
+  ]
+}
