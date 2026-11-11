@@ -56,6 +56,17 @@ Recovery decisions use the existing insights JSON payload. Creation, decisions a
 
 Active old penalties become `cancelled`, shown as Retired. Existing failed rows with null progress become unverified. Resolved history and earned XP remain. Recovery uses normal daily XP and never earns the all-daily-clear chest. Only successful active-to-cleared updates can award quest rewards. Today and Telegram remove penalty threats; choices live on Today.
 
+## Outcome goals and weekly reviews
+
+Outcome goals (`src/domain/goals.ts`, `src/core/goals.ts`, page `/goals`) close the loop: choose an outcome, record a baseline, link 1–3 existing routines or trackers, review, decide. At most 3 are active.
+
+- Code owns every number. A tracker baseline is the mean of recorded days in the 28 complete days before the start (at least 7); missing days are skipped, never zero. A check-in goal uses the user's own baseline. The measure and baseline are locked once the goal starts.
+- Status compares the period's outcome with baseline and target. Movement of at least 10% of the gap is toward (or away); less is flat. Too few records is "Not enough data", never a miss. Activity counts are flagged as weak outcome measures but allowed.
+- Reviews compare action adherence with outcome change and always say that moving together does not show cause. Each review needs an explicit Keep, Change, Pause or Finish; nothing changes without one, and an undecided review stays "No decision recorded".
+- The Sunday `ai:weekly-review` job runs without a model too. Without one it writes a rule-based "Goal check-in" only when a goal review is due. With one, the model adds an optional note and at most one proposal per goal (target, range, date or cadence). Proposals are dropped for sensitive goals or when they fail validation, and are applied only when the user saves the Change form. Decisions happen in the app, not through Telegram buttons.
+- AI drafts: "Suggest a draft" asks the plan model for one goal from the profile goals text, using only listed tracker slugs and routine IDs. Drafts never carry a baseline. `checkGoalDraft` rejects medical, body, weight, calorie and medication content, health outcomes other than steps, unknown references and out-of-range dates. A draft is a pending insight; only saving it in the Goals form starts a goal (generic accept, Insights and Telegram cannot).
+- Daily quests rank validated candidates linked to an active goal first (`prefer` in `questCandidates`/`selectQuests`). Linking only reorders: every check, the sensitive-measure exclusion, the 3-quest cap and the recovery pause still apply. Goals add no XP.
+
 ## Model and tool boundaries
 
 - Calls use bounded per-task profiles: chat 120s total/30s per step; parse 180s/90s; plan 120s/60s; site classification 45s/45s. Each profile bounds output tokens, with larger parse/plan budgets for structured output and reasoning. At most one SDK retry is allowed.

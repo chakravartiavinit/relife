@@ -651,3 +651,128 @@ export async function dataVersion() {
   )::text as v`)
   return r?.v ?? null
 }
+
+// ── Outcome goals (src/core/goals.ts) ────────────────────────────────────────────────────────────
+
+export type GoalFormState = { ok: boolean; error?: string; errors?: Partial<Record<string, string>>; id?: string } | null
+
+const goalError = (status: string) =>
+  status === 'stale' ? 'This goal changed in another window. Reload to see the latest version.'
+    : status === 'already_decided' ? 'This review already has a decision.'
+      : status === 'not_found' ? 'This goal is no longer available.' : 'Could not save. Try again.'
+
+/** Goals: create or edit an outcome goal. A recorded baseline is recomputed on the server. */
+export async function saveGoal(_prev: GoalFormState, form: FormData): Promise<GoalFormState> {
+  const { parseGoalForm } = await import('@/core/goal-form')
+  const parsed = parseGoalForm(form)
+  if (!parsed) return { ok: false, error: 'Some fields are invalid. Check the form and try again.' }
+  const { fields: f, actions } = parsed
+  const user = await getUser()
+  const { saveGoal: save } = await import('@/core/goals')
+  const today = localDate(new Date(), user.timezone)
+  try {
+    const result = await save(user, {
+      id: f.id, version: f.version, draftInsightId: f.draftInsightId,
+      title: f.title, reason: f.reason, area: f.area, measureKind: f.measureKind, trackerId: f.measureKind === 'tracker' ? f.trackerId ?? null : null,
+      measureName: f.measureName, unit: f.unit || null, direction: f.direction,
+      target: f.direction === 'range' ? null : f.target, rangeLow: f.direction === 'range' ? f.rangeLow : null, rangeHigh: f.direction === 'range' ? f.rangeHigh : null,
+      useRecorded: f.measureKind === 'tracker' && f.baselineMode === 'recorded',
+      baselineValue: f.baselineValue, baselineDate: f.baselineDate || today, baselineHow: f.baselineHow,
+      targetDate: f.targetDate, cadence: f.cadence, actions,
+    })
+    if (result.status === 'saved') { refresh(); return { ok: true, id: result.id } }
+    if (result.status === 'invalid') return { ok: false, errors: result.errors, error: result.errors.form }
+    return { ok: false, error: goalError(result.status) }
+  } catch {
+    return { ok: false, error: 'Could not save. Try again.' }
+  }
+}
+
+/** Goals: pause, resume or finish outside a review. */
+export async function setGoalStatusAction(input: unknown) {
+  const parsed = z.object({ goalId: z.string().uuid(), version: z.number().int().positive(), status: z.enum(['active', 'paused', 'finished']) }).safeParse(input)
+  if (!parsed.success) return { ok: false as const, error: 'This change is invalid. Reload and try again.' }
+  const { setGoalStatus } = await import('@/core/goals')
+  const result = await setGoalStatus(await getUser(), parsed.data)
+  refresh()
+  if (result.status === 'saved') return { ok: true as const }
+  return { ok: false as const, error: result.status === 'invalid' ? result.errors.form ?? 'Could not save.' : goalError(result.status) }
+}
+
+const goalChange = z.object({
+  title: z.string().trim().min(1).max(120), reason: z.string().trim().min(1).max(500),
+  target: z.number().finite().nullable(), rangeLow: z.number().finite().nullable(), rangeHigh: z.number().finite().nullable(),
+  targetDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), cadence: z.enum(['weekly', 'fortnightly', 'monthly']),
+  actions: z.array(z.object({ kind: z.enum(['schedule', 'tracker']), id: z.string().uuid() })).max(3),
+}).partial()
+
+/** Goals: record a Keep / Change / Pause / Finish decision on a review. */
+export async function decideGoalReviewAction(input: unknown) {
+  const parsed = z.object({
+    reviewId: z.string().uuid(), goalVersion: z.number().int().positive(),
+    decision: z.enum(['keep', 'change', 'pause', 'finish']), change: goalChange.optional(), note: z.string().max(280).optional(),
+  }).safeParse(input)
+  if (!parsed.success) return { ok: false as const, retry: false, error: 'This decision is invalid. Reload and try again.' }
+  try {
+    const { decideReview } = await import('@/core/goals')
+    const result = await decideReview(await getUser(), parsed.data)
+    refresh()
+    if (result.status === 'saved') return { ok: true as const }
+    if (result.status === 'invalid') return { ok: false as const, retry: false, error: Object.values(result.errors)[0] ?? 'Check the change and try again.', errors: result.errors }
+    return { ok: false as const, retry: false, error: goalError(result.status) }
+  } catch {
+    return { ok: false as const, retry: true, error: 'Could not save your decision. Retry to save it safely.' }
+  }
+}
+
+/** Goals: record a manual check-in value. */
+export async function recordGoalCheckInAction(input: unknown) {
+  const parsed = z.object({
+    goalId: z.string().uuid(), localDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), value: z.number().finite(), note: z.string().max(280).optional(),
+  }).safeParse(input)
+  if (!parsed.success) return { ok: false as const, error: 'Enter a number and a date.' }
+  const { recordCheckIn } = await import('@/core/goals')
+  let result
+  try {
+    result = await recordCheckIn(await getUser(), parsed.data)
+  } catch {
+    return { ok: false as const, error: 'Could not save the check-in. Try again.' }
+  }
+  refresh()
+  if (result.status === 'saved') return { ok: true as const }
+  return { ok: false as const, error: result.status === 'invalid' ? result.errors.form ?? 'Could not save.' : goalError(result.status) }
+}
+
+/** Goals: start a review for one goal now, instead of waiting for Sunday. */
+export async function reviewGoalNowAction(goalId: string) {
+  if (!z.string().uuid().safeParse(goalId).success) return { ok: false as const }
+  const { prepareGoalReviews } = await import('@/core/goals')
+  const rows = await prepareGoalReviews(await getUser(), new Date(), goalId)
+  refresh()
+  return { ok: rows.length > 0 }
+}
+
+/** Goals: ask the AI for one draft from the goals text in Settings. It stays pending until saved in the form. */
+export async function draftGoalAction() {
+  const { draftGoal } = await import('@/ai/jobs/goal-draft')
+  const result = await draftGoal(await getUser())
+  refresh()
+  const message = {
+    created: 'Draft ready. Review it before it becomes a goal.',
+    unavailable: 'Connect an AI model in Settings to get drafts.',
+    no_goals_text: 'Add your goals in Settings → Profile first.',
+    limit: 'You have 3 drafts waiting. Review or dismiss one first.',
+    unsafe: 'No safe draft from your goals text. Create one in the form.',
+    failed: 'The draft did not finish. Try again.',
+  }[result.status]
+  return { ok: result.status === 'created', status: result.status, message }
+}
+
+export async function dismissGoalDraftAction(insightId: string) {
+  if (!z.string().uuid().safeParse(insightId).success) return { ok: false as const }
+  const user = await getUser()
+  await db.update(schema.insights).set({ status: 'dismissed' })
+    .where(and(eq(schema.insights.id, insightId), eq(schema.insights.userId, user.id), eq(schema.insights.status, 'pending'), sql`${schema.insights.payload} ? 'goalDraft'`))
+  refresh()
+  return { ok: true as const }
+}

@@ -5,6 +5,10 @@ import { sql } from 'drizzle-orm'
 import type { NotifyCategory, NotifyPrefs } from '@/domain/notify'
 import type { Agg, Op, QuestStatus, Rank, SystemKind } from '@/domain/system'
 import type { RecoveryPayload } from '@/domain/recovery'
+import type {
+  GoalActionLink, GoalCadence, GoalDecision, GoalDirection, GoalDraft, GoalFields, GoalMeasureKind, GoalProposal,
+  GoalReviewPoint, GoalSnapshot, GoalStatus,
+} from '@/domain/goals'
 import type { ActivityKind, LibraryKind } from '@/domain/activity'
 
 const bytea = customType<{ data: Buffer }>({ dataType: () => 'bytea' })
@@ -30,7 +34,7 @@ export type Category = (typeof CATEGORIES)[number]
 /** Set in onboarding (/welcome) and Settings. The AI reads the whole object before every plan. */
 /** A weekly review in parts, so the app and Telegram can lay it out (src/ai/jobs/weekly-review.ts). */
 export type ReviewPoint = { area: Category; headline: string; detail: string }
-export type ReviewContent = { wins: ReviewPoint[]; watch: ReviewPoint[]; focus: string; plan: string }
+export type ReviewContent = { wins: ReviewPoint[]; watch: ReviewPoint[]; focus: string; plan: string; goals?: GoalReviewPoint[] }
 
 export type UserProfile = {
   goals?: string
@@ -329,7 +333,7 @@ export const insights = pgTable('insights', {
   title: text('title').notNull(),
   body: text('body').notNull(),
   // proposed actions the user can approve, e.g. [{ type: 'schedule', ... }]
-  payload: jsonb('payload').$type<{ actions?: ProposedAction[]; dedupeKey?: string; emoji?: string; meta?: string; recovery?: RecoveryPayload; review?: ReviewContent }>().notNull().default({}),
+  payload: jsonb('payload').$type<{ actions?: ProposedAction[]; dedupeKey?: string; emoji?: string; meta?: string; recovery?: RecoveryPayload; review?: ReviewContent; goalDraft?: GoalDraft }>().notNull().default({}),
   status: text('status').$type<'pending' | 'accepted' | 'dismissed' | 'done'>().notNull().default('pending'),
   sourceRunId: uuid('source_run_id'),
   ...stamps(),
@@ -348,6 +352,79 @@ export const plans = pgTable('plans', {
   insightId: uuid('insight_id').references(() => insights.id, { onDelete: 'set null' }),
   ...stamps(),
 })
+
+/**
+ * Outcome goals (src/domain/goals.ts): one outcome measure with a locked baseline, 1–3 linked actions and
+ * explicit review decisions. Separate from `plans`, which holds free-text plans from accepted insights.
+ */
+export const goals = pgTable('goals', {
+  id: id(),
+  userId: userId(),
+  title: text('title').notNull(),
+  reason: text('reason').notNull(),
+  area: text('area').$type<Category>().notNull(),
+  status: text('status').$type<GoalStatus>().notNull().default('active'),
+  measureKind: text('measure_kind').$type<GoalMeasureKind>().notNull(),
+  trackerId: uuid('tracker_id').references(() => trackers.id, { onDelete: 'set null' }),
+  /** Tracker name snapshot, or the check-in label. */
+  measureName: text('measure_name').notNull(),
+  unit: text('unit'),
+  direction: text('direction').$type<GoalDirection>().notNull(),
+  target: num('target'),
+  rangeLow: num('range_low'),
+  rangeHigh: num('range_high'),
+  baselineValue: num('baseline_value').notNull(),
+  baselineDate: date('baseline_date').notNull(),
+  baselineHow: text('baseline_how').notNull(),
+  baselineObservations: integer('baseline_observations'),
+  targetDate: date('target_date').notNull(),
+  cadence: text('cadence').$type<GoalCadence>().notNull().default('weekly'),
+  nextReviewOn: date('next_review_on').notNull(),
+  actions: jsonb('actions').$type<GoalActionLink[]>().notNull().default([]),
+  source: text('source').$type<'user' | 'ai_draft'>().notNull().default('user'),
+  insightId: uuid('insight_id').references(() => insights.id, { onDelete: 'set null' }),
+  /** Optimistic concurrency: every write checks and bumps it. */
+  version: integer('version').notNull().default(1),
+  pausedAt: timestamp('paused_at', { withTimezone: true }),
+  finishedAt: timestamp('finished_at', { withTimezone: true }),
+  meta: meta(),
+  ...stamps(),
+}, (t) => [index('goals_user_status').on(t.userId, t.status)])
+
+export const goalCheckIns = pgTable('goal_check_ins', {
+  id: id(),
+  userId: userId(),
+  goalId: uuid('goal_id').notNull().references(() => goals.id, { onDelete: 'cascade' }),
+  localDate: date('local_date').notNull(),
+  value: num('value').notNull(),
+  note: text('note'),
+  ...stamps(),
+}, (t) => [uniqueIndex('goal_check_ins_goal_date').on(t.goalId, t.localDate)])
+
+/** Every review and every edit outside a review: one row, unique per `ref`. */
+export const goalReviews = pgTable('goal_reviews', {
+  id: id(),
+  userId: userId(),
+  goalId: uuid('goal_id').notNull().references(() => goals.id, { onDelete: 'cascade' }),
+  /** "review:<goalId>:<date>" or "edit:<uuid>". */
+  ref: text('ref').notNull(),
+  kind: text('kind').$type<'review' | 'edit'>().notNull(),
+  reviewDate: date('review_date').notNull(),
+  snapshot: jsonb('snapshot').$type<GoalSnapshot>().notNull(),
+  /** An AI suggestion, never applied by itself. */
+  proposal: jsonb('proposal').$type<GoalProposal | null>(),
+  aiNote: text('ai_note'),
+  decision: text('decision').$type<GoalDecision | null>(),
+  decidedAt: timestamp('decided_at', { withTimezone: true }),
+  note: text('note'),
+  before: jsonb('before').$type<GoalFields | null>(),
+  after: jsonb('after').$type<GoalFields | null>(),
+  insightId: uuid('insight_id').references(() => insights.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('goal_reviews_user_ref').on(t.userId, t.ref),
+  index('goal_reviews_goal_date').on(t.goalId, t.reviewDate),
+])
 
 export const llmRuns = pgTable('llm_runs', {
   id: id(),

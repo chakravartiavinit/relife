@@ -35,6 +35,8 @@ export async function buildDigest(user: User, now = new Date()) {
       .from(schema.systemQuests).where(and(eq(schema.systemQuests.userId, user.id), gte(schema.systemQuests.fromDate, addDays(today, -14))))
       .orderBy(desc(schema.systemQuests.fromDate)).limit(50),
   ])
+  const { outcomeGoalsDigest } = await import('@/core/goals')
+  const outcome = await outcomeGoalsDigest(user, now)
 
   const trackerSummary = trackers.map(({ tracker: t, days }) => {
     const vals = (from: string) => [...days].filter(([d]) => d >= from).map(([, v]) => v)
@@ -84,6 +86,8 @@ export async function buildDigest(user: User, now = new Date()) {
     timezone: user.timezone,
     baseCurrency: user.baseCurrency,
     profile: user.profile,
+    // Outcome goals (src/domain/goals.ts): code-computed baselines and snapshots. Active goals only, at most 3.
+    outcomeGoals: { note: outcome.note, active: outcome.goals },
     quests: { recent: quests, interpretation: 'Completion records adherence only, not proof that a quest caused improvement. Null progress means unavailable measurements, not zero.' },
     trackers: trackerSummary,
     routines,

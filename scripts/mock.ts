@@ -112,6 +112,7 @@ async function main() {
     { slug: 'duolingo.streak', name: 'Duolingo streak', category: 'skills', aggregate: 'last' },
     { slug: 'listening', name: 'Music listening', category: 'hobbies', kind: 'duration', unit: 'min' },
     { slug: 'listening.songs', name: 'Songs played', category: 'hobbies' },
+    { slug: 'typing-wpm', name: 'Typing speed', category: 'skills', unit: 'wpm', aggregate: 'last' },
   ]
   const trackers = await db.insert(schema.trackers).values(trackerDefs.map((t) => ({ ...t, userId: uid }))).returning()
   const tid = Object.fromEntries(trackers.map((t) => [t.slug, t.id]))
@@ -166,6 +167,11 @@ async function main() {
     const songs = Math.max(0, Math.round(c.normal(weekend ? 35 : 22, 10)))
     entry('listening', d, Math.round(songs * 3.5), 'lastfm')
     entry('listening.songs', d, songs, 'lastfm')
+  })
+  // Typing speed for the outcome goal sample, on its own generator so the numbers above stay the same per seed.
+  const ty = rng(seed ^ 0x7a9e)
+  days.forEach((d, i) => {
+    if (ty.chance(0.85)) entry('typing-wpm', d, Math.round(ty.normal(52 + (i / DAYS) * 14, 3)), 'manual')
   })
   for (let i = 0; i < entries.length; i += 500) await db.insert(schema.entries).values(entries.slice(i, i + 500))
 
@@ -363,6 +369,50 @@ async function main() {
   const { backfillXp, totalXp } = await import('@/core/xp')
   await backfillXp(user, now, DAYS)
   const xp = await totalXp(user)
+
+  // Outcome goals (src/core/goals.ts): a tracker goal with a due review and a coach proposal, a check-in goal,
+  // and one pending AI draft, so every goal state shows in `npm run dev:mock`.
+  const sid = Object.fromEntries(schedules.map((s) => [s.name, s.id]))
+  const startedAt = ago(21)
+  const goalRows = await db.insert(schema.goals).values([
+    {
+      userId: uid, title: 'Type 70 words a minute', reason: 'Faster notes in meetings and less time on chat.', area: 'skills', measureKind: 'tracker',
+      trackerId: tid['typing-wpm'], measureName: 'Typing speed', unit: 'wpm', direction: 'increase', target: 70,
+      baselineValue: 60, baselineDate: addDays(today, -21), baselineHow: 'Average of 17 recorded days', baselineObservations: 17,
+      targetDate: addDays(today, 90), cadence: 'weekly', nextReviewOn: today,
+      actions: [{ kind: 'schedule', id: sid['Practice DSA'] }, { kind: 'tracker', id: tid['learning.minutes'] }], createdAt: startedAt,
+    },
+    {
+      userId: uid, title: 'Play Blackbird at 90 bpm', reason: 'I want to play it start to finish without stopping.', area: 'hobbies', measureKind: 'check_in',
+      measureName: 'Clean tempo', unit: 'bpm', direction: 'increase', target: 90,
+      baselineValue: 66, baselineDate: addDays(today, -21), baselineHow: 'Metronome, best of 3 run-throughs',
+      targetDate: addDays(today, 120), cadence: 'weekly', nextReviewOn: addDays(today, 7),
+      actions: [{ kind: 'tracker', id: tid['guitar'] }], createdAt: startedAt,
+    },
+  ]).returning()
+  await db.insert(schema.goalCheckIns).values([
+    { userId: uid, goalId: goalRows[1].id, localDate: addDays(today, -14), value: 70 },
+    { userId: uid, goalId: goalRows[1].id, localDate: addDays(today, -4), value: 74, note: 'Bridge still slips' },
+  ])
+  const { prepareGoalReviews } = await import('@/core/goals')
+  const { eq } = await import('drizzle-orm')
+  const [due] = await prepareGoalReviews(user, now, goalRows[0].id)
+  if (due) {
+    await db.update(schema.goalReviews).set({
+      aiNote: 'Practice landed on most due days and the typing average is above the baseline.',
+      proposal: { field: 'targetDate', value: addDays(today, 120), why: 'A month more keeps the weekly step modest.' },
+    }).where(eq(schema.goalReviews.id, due.review.id))
+  }
+  await db.insert(schema.insights).values({
+    userId: uid, kind: 'plan', status: 'pending', title: 'Goal draft: Solve medium DSA problems in 30 minutes', body: 'You said you want to get better at interviews.',
+    payload: {
+      dedupeKey: `goal-draft:${today}:mock`,
+      goalDraft: {
+        title: 'Solve medium DSA problems in 30 minutes', reason: 'You said you want to get better at interviews.', area: 'skills', measure: { checkIn: 'Time for one medium problem', unit: 'min', how: 'One timed problem on Sunday' },
+        direction: 'decrease', target: 30, targetDate: addDays(today, 60), cadence: 'weekly', actions: [{ kind: 'schedule', id: sid['Practice DSA'] }],
+      },
+    },
+  })
 
   console.log(`Mock data ready in "${dbName}" (seed ${seed}): ${entries.length} entries, ${checks.length} checks, ${txns.length} transactions, ${xp} XP.`)
   await sql.end()

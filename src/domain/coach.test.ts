@@ -158,3 +158,34 @@ test('late evidence only upgrades a judged quest to cleared', () => {
   assert.equal(lateClear({ ...limit, status: 'unverified' }, steps(900), today), null, 'an over-limit late total never becomes a miss')
   assert.deepEqual(lateClear({ ...limit, status: 'unverified' }, steps(400), today), { value: 400, status: 'cleared' })
 })
+
+test('goal-linked candidates rank first and survive the 24-candidate cut', () => {
+  const many = Array.from({ length: 30 }, (_, i) => signal({ id: `tracker:s${i}`, name: `Stat ${i}`, group: `s${i}` }, 60, 50 - i * 0.5))
+  const goal = 'tracker:s0' // the smallest slip: last without a preference
+  const plain = questCandidates(coachStats(many, today), [], 2, [], today)
+  assert.equal(plain.length, 24)
+  assert.ok(!plain.some((c) => c.statId === goal))
+  const preferred = questCandidates(coachStats(many, today), [], 2, [], today, today, new Set([goal]))
+  assert.equal(preferred[0].statId, goal)
+  assert.equal(preferred.length, 24)
+})
+
+test('prefer never adds a candidate a safeguard excluded, and no preference changes nothing', () => {
+  const sleep = signal({ id: 'tracker:sleep', name: 'Sleep hours', group: 'sleep' })
+  const practice = signal()
+  const got = questCandidates(coachStats([sleep, practice], today), [], 2, [], today, today, new Set(['tracker:sleep']))
+  assert.deepEqual(got.map((c) => c.statId), ['tracker:practice'])
+  const stats = coachStats([practice, signal({ id: 'tracker:other', name: 'Other', group: 'o' }, 60, 40)], today)
+  assert.deepEqual(questCandidates(stats, [], 2, [], today, today, new Set()), questCandidates(stats, [], 2, [], today))
+})
+
+test('selectQuests keeps preferred picks within the cap and trims other picks first', () => {
+  const pool = [1, 2, 3, 4].map((i) => signal({ id: `tracker:p${i}`, name: `P${i}`, group: `p${i}` }, 60, 40 + i))
+  const cs = questCandidates(coachStats(pool, today), [], 2, [], today)
+  const ids = cs.map((c) => c.statId)
+  const goal = ids.at(-1)!
+  const chosen = selectQuests(cs, ids, [], today, 3, new Set([goal]))
+  assert.equal(chosen.length, 3)
+  assert.equal(chosen[0].statId, goal)
+  assert.equal(selectQuests(cs, ids, [history(), history(), history()], today, 3, new Set([goal])).length, 0)
+})

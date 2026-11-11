@@ -20,7 +20,7 @@ export type ScheduleAdherence = {
 /** Adherence for many schedules in two queries (checks + goal trackers), no N+1. */
 export async function loadAdherence(
   user: User,
-  opts: { category?: Category; kinds?: Schedule['kind'][]; includeInactive?: boolean } = {},
+  opts: { category?: Category; kinds?: Schedule['kind'][]; includeInactive?: boolean; ids?: string[] } = {},
   windowDays = 60,
   stripDays = 14,
   now = new Date(),
@@ -30,6 +30,7 @@ export async function loadAdherence(
     opts.includeInactive ? undefined : eq(schema.schedules.active, true),
     opts.category ? eq(schema.schedules.category, opts.category) : undefined,
     opts.kinds ? inArray(schema.schedules.kind, opts.kinds) : undefined,
+    opts.ids ? inArray(schema.schedules.id, opts.ids.length ? opts.ids : ['00000000-0000-0000-0000-000000000000']) : undefined,
   )).orderBy(schema.schedules.name)
   if (!list.length) return []
 

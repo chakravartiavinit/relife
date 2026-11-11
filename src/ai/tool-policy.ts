@@ -2,7 +2,7 @@ import { addDays, daysBetween } from '@/core/time'
 
 export const MAX_HISTORY_DAYS = 90
 const nonMedicineScheduleKinds = ['routine', 'subscription', 'bill', 'renewal'] as const
-const medicationOrDose = /\b(?:medicine|medications?|meds?|prescriptions?|pills?|tablets?|capsules?|dosages?|doses?|vitamins?|supplements?|melatonin|insulin|syrup)(?=\b|\d)|\b\d+(?:\.\d+)?\s*(?:mg|mcg|µg|iu)\b|^\s*(?:mg|mcg|µg|iu)\s*$/i
+export const medicationOrDose = /\b(?:medicine|medications?|meds?|prescriptions?|pills?|tablets?|capsules?|dosages?|doses?|vitamins?|supplements?|melatonin|insulin|syrup)(?=\b|\d)|\b\d+(?:\.\d+)?\s*(?:mg|mcg|µg|iu)\b|^\s*(?:mg|mcg|µg|iu)\s*$/i
 
 /** True only for an actual Gregorian calendar date, not merely a YYYY-MM-DD-shaped string. */
 export function isLocalDate(value: string) {

@@ -78,7 +78,7 @@ const PERSONA = [
 ].join(' ')
 
 /** Ask the AI for today's daily quests. Returns null when no model is connected or it fails. */
-async function aiDailies(user: User, candidates: QuestCandidate[], signals: Signal[], history: SystemQuest[], today: string, label = 'system.daily-quests') {
+async function aiDailies(user: User, candidates: QuestCandidate[], signals: Signal[], history: SystemQuest[], today: string, label = 'system.daily-quests', prefer: ReadonlySet<string> = new Set()) {
   const { aiEnabled, model } = await import('@/ai/models')
   if (!aiEnabled('plan')) return null
   const { generate } = await import('@/ai/run')
@@ -98,8 +98,8 @@ async function aiDailies(user: User, candidates: QuestCandidate[], signals: Sign
         wantsToImprove: { stats: user.profile.improve ?? [], inTheirWords: user.profile.goals || undefined },
         constraints: user.profile.constraints,
         today,
-        task: 'Select only from the validated candidates. Do not invent targets or actions. Prioritize goals, then recovery where performance slipped, while preserving what works. Spread effort across areas, at most one spending habit. Return an empty list when constraints, overload or uncertainty make every candidate unsuitable. Never infer a purchase was unplanned. Recent quest completion measures adherence, not causal benefit.',
-        candidates: candidates.map((c) => ({ statId: c.statId, name: c.stat.name, area: c.stat.area, intent: c.intent, op: c.op, target: c.target, unit: c.stat.unit, evidence: c.stat })),
+        task: 'Select only from the validated candidates. Do not invent targets or actions. Prioritize goals, then recovery where performance slipped, while preserving what works. Spread effort across areas, at most one spending habit. Return an empty list when constraints, overload or uncertainty make every candidate unsuitable. Never infer a purchase was unplanned. Recent quest completion measures adherence, not causal benefit. Prefer goalLinked candidates when suitable; an empty list is still allowed.',
+        candidates: candidates.map((c) => ({ statId: c.statId, goalLinked: prefer.has(c.statId), name: c.stat.name, area: c.stat.area, intent: c.intent, op: c.op, target: c.target, unit: c.stat.unit, evidence: c.stat })),
         patterns: { movesTogether: links, thisWeek: changes },
         recentQuests: history.slice(0, 12).map((q) => ({ date: q.fromDate, statId: q.statId, title: q.title, status: q.status, target: q.target, progress: q.progress, baseline: q.baseline })),
         // Where laptop time went this week, so quests can trade entertainment time for learning.
@@ -135,15 +135,24 @@ async function ensureDailies(user: User, today: string, signals: Signal[], stats
   const history = await recentHistory(user, today)
   if (history.filter((q) => q.status === 'active' && q.fromDate <= today && q.toDate >= today).length >= 3) return
   const d = difficulty(history.filter((q) => q.kind === 'daily' && (q.status === 'cleared' || q.status === 'failed')).map((q) => q.status as 'cleared' | 'failed'))
-  const candidates = questCandidates(stats, user.profile.improve ?? [], d, history, today)
+  // Goal-linked actions rank first, after every existing check; linking never adds a candidate.
+  const goalOf = await (await import('./goals')).activeGoalStatIds(user)
+  const prefer = new Set(goalOf.keys())
+  const candidates = questCandidates(stats, user.profile.improve ?? [], d, history, today, today, prefer)
   if (!candidates.length) return
-  const selected = await aiDailies(user, candidates, signals, history, today)
+  const selected = await aiDailies(user, candidates, signals, history, today, undefined, prefer)
   if (selected?.length === 0) {
     await addInsight(user, { kind: 'nudge', status: 'done', title: 'No additional quests today', body: 'The coach selected no additional quest from the available evidence. Existing commitments remain unchanged.', payload: { dedupeKey: decisionKey } })
     return
   }
-  const chosen = selectQuests(candidates, selected ?? candidates.map((c) => c.statId), history, today)
-  const drafts = chosen.map((c) => ({ spec: c, title: '', reason: `${c.intent === 'recovery' ? 'A smaller recovery step' : 'A modest growth step'}. Last 7 complete days: ${fmt(c.stat.recent!, c.stat.unit)}/day (${c.stat.recentDays} recorded); earlier baseline: ${fmt(c.stat.usual!, c.stat.unit)}/day (${c.stat.baselineDays} recorded).` }))
+  const chosen = selectQuests(candidates, selected ?? candidates.map((c) => c.statId), history, today, 3, prefer)
+  const drafts = chosen.map((c) => {
+    const goal = goalOf.get(c.statId)
+    const suffix = goal ? ` Supports your goal: ${goal.slice(0, 120)}.` : ''
+    const base = `${c.intent === 'recovery' ? 'A smaller recovery step' : 'A modest growth step'}. Last 7 complete days: ${fmt(c.stat.recent!, c.stat.unit)}/day (${c.stat.recentDays} recorded); earlier baseline: ${fmt(c.stat.usual!, c.stat.unit)}/day (${c.stat.baselineDays} recorded).`
+    // Keep the goal link visible within the 240-character reason limit.
+    return { spec: c, title: '', reason: base.slice(0, 240 - suffix.length) + suffix }
+  })
   const rows = toRows(user, 'daily', drafts, stats, Math.min(d, 3), today, (s) => `daily:${today}:${s.id}`)
   if (!rows.length) {
     await addInsight(user, { kind: 'nudge', status: 'done', title: 'No additional quests today', body: 'No selected quest passed the final policy checks. Existing commitments remain unchanged.', payload: { dedupeKey: decisionKey } })

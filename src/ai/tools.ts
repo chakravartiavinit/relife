@@ -98,9 +98,10 @@ export function dataTools(user: User) {
       )).orderBy(desc(schema.learningItems.updatedAt)).limit(MAX_RESULTS),
     }),
     goals: tool({
-      description: 'The user’s stated goals and selected areas for improvement.' + untrustedText,
+      description: 'The user’s stated goals, selected areas for improvement, and active outcome goals with code-computed baselines and snapshots.' + untrustedText,
       inputSchema: z.object({}),
       execute: async () => ({
+        outcomeGoals: await (await import('@/core/goals')).outcomeGoalsDigest(user),
         goals: user.profile.goals?.slice(0, 1_000) ?? null,
         focus: user.profile.focus ?? null,
         improve: user.profile.improve?.slice(0, MAX_RESULTS) ?? [],
