@@ -4,19 +4,17 @@ import { localDate } from '@/core/time'
 import { dayMap, emitDays, fetchJson, fillDays, syncWindow } from './daily'
 
 // Todoist: tasks you complete each day. Task names stay in Todoist; only the count per day (and the
-// project that got the most done) is kept. First sync backfills 90 days, later ones the last 3.
+// project that got the most done) is kept. First sync backfills 84 days, later ones the last 3.
 
 export type TodoistDay = { date: string; done: number; topProject?: string }
 
 type Completed = { items: { completed_at: string; project_id?: string }[]; next_cursor?: string | null }
 
 /** Pure: completion times into days in the user's time zone. Exported for tests. */
-export function todoistDays(items: Completed['items'], tz: string, from: string, projects: Map<string, string> = new Map()) {
+export function todoistDays(items: Completed['items'], tz: string, projects: Map<string, string> = new Map()) {
   const { days, day } = dayMap<TodoistDay & { byProject: Map<string, number> }>((date) => ({ date, done: 0, byProject: new Map() }))
   for (const t of items) {
-    const date = localDate(new Date(t.completed_at), tz)
-    if (date < from) continue
-    const d = day(date)
+    const d = day(localDate(new Date(t.completed_at), tz))
     d.done++
     if (t.project_id) d.byProject.set(t.project_id, (d.byProject.get(t.project_id) ?? 0) + 1)
   }
@@ -36,12 +34,12 @@ export const todoist: Connector = {
   env: ['TODOIST_API_TOKEN'],
   everyMinutes: 60,
   async sync(ctx) {
-    const { tz, today, from, backfilled } = syncWindow(ctx, 90)
+    // Todoist allows at most 3 months per request: 84 days plus a day of slack either side stays under it.
+    const { tz, today, from, backfilled } = syncWindow(ctx, 84)
     const headers = { Authorization: `Bearer ${env('TODOIST_API_TOKEN')!.trim()}` }
     const api = 'https://api.todoist.com/api/v1'
-    // Todoist allows at most 3 months per request; a day of slack either side covers any time zone.
     const since = new Date(Date.parse(`${from}T00:00:00Z`) - 86_400_000).toISOString()
-    const until = new Date(Date.parse(`${today}T00:00:00Z`) + 2 * 86_400_000).toISOString()
+    const until = new Date(Date.parse(`${today}T00:00:00Z`) + 86_400_000).toISOString()
     const items: Completed['items'] = []
     let cursor: string | null | undefined
     for (let page = 0; page < 20; page++) {
@@ -56,9 +54,9 @@ export const todoist: Connector = {
       const p = await fetchJson<{ results: { id: string; name: string }[] }>(`${api}/projects?limit=200`, { headers })
       for (const x of p.results) projects.set(x.id, x.name)
     } catch { /* project names are a nicety */ }
-    const days = fillDays(todoistDays(items, tz, from, projects), from, today, (date) => ({ date, done: 0 }), backfilled)
-    const n = await emitDays(ctx, 'todoist', days)
+    const days = fillDays(todoistDays(items, tz, projects), from, today, (date) => ({ date, done: 0 }), backfilled)
+    await emitDays(ctx, 'todoist', days)
     ctx.setCursor({ backfilled: true })
-    ctx.log(`${items.length} tasks on ${n} days`)
+    ctx.log(`${items.length} tasks on ${days.length} days`)
   },
 }

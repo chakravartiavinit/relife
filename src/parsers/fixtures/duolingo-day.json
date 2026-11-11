@@ -8,8 +8,8 @@
       "date": "2026-11-07",
       "xp": 45,
       "streak": 42,
-      "practised": true,
-      "course": "Spanish"
+      "course": "Spanish",
+      "practised": true
     }
   },
   "expected": [
@@ -38,6 +38,9 @@
       "value": 42,
       "source": "duolingo",
       "verified": true,
+      "meta": {
+        "practised": true
+      },
       "defaults": {
         "name": "Duolingo streak",
         "category": "skills",

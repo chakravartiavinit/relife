@@ -1,12 +1,12 @@
-import { and, eq, gte } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { schema } from '@/db'
-import { addDays, localDate } from '@/core/time'
+import { localDate } from '@/core/time'
 import type { Alert, Rule } from '@/core/types'
 
 /** Pure: the alert for a Duolingo streak that ends tonight, or null. Exported for tests. */
-export function streakAlert(streak: number | undefined, xpToday: number | undefined): Alert | null {
-  // xpToday is undefined until a full day of syncs exists, so a new connection never warns by mistake.
-  if (!streak || streak < 3 || xpToday == null || xpToday > 0) return null
+export function streakAlert(streak: number | undefined, practised: boolean | undefined): Alert | null {
+  // practised is unknown (undefined) when nothing synced today, so a stopped worker never warns by mistake.
+  if (!streak || streak < 3 || practised !== false) return null
   return {
     key: 'streak-at-risk:duolingo',
     title: `${streak}-day Duolingo streak ends tonight`,
@@ -15,7 +15,7 @@ export function streakAlert(streak: number | undefined, xpToday: number | undefi
     emoji: '🔥',
     meta: 'Skills · Today',
     action: 'Do one short lesson before midnight.',
-    data: [`Streak: ${streak} days`, 'XP today: 0'],
+    data: [`Streak: ${streak} days`, 'Lessons today: none yet'],
   }
 }
 
@@ -25,16 +25,11 @@ export const streakAtRisk: Rule = {
   every: '0 20 * * *',
   async check({ user, db, now }) {
     const today = localDate(now, user.timezone)
-    const trackers = await db.select().from(schema.trackers)
-      .where(and(eq(schema.trackers.userId, user.id), eq(schema.trackers.slug, 'duolingo.streak')))
-    if (!trackers.length) return []
-    const rows = await db.select({ slug: schema.trackers.slug, d: schema.entries.localDate, v: schema.entries.value })
+    // Today's streak entry carries Duolingo's own "practised today" flag (src/parsers/daily.ts).
+    const [row] = await db.select({ v: schema.entries.value, meta: schema.entries.meta })
       .from(schema.entries).innerJoin(schema.trackers, eq(schema.trackers.id, schema.entries.trackerId))
-      .where(and(eq(schema.entries.userId, user.id), gte(schema.entries.localDate, addDays(today, -1))))
-    const val = (slug: string, d: string) => rows.find((r) => r.slug === slug && r.d === d)?.v
-    // Today's streak still counts yesterday's lessons; take the latest number we have.
-    const streak = val('duolingo.streak', today) ?? val('duolingo.streak', addDays(today, -1))
-    const alert = streakAlert(streak, val('duolingo.xp', today))
+      .where(and(eq(schema.entries.userId, user.id), eq(schema.trackers.slug, 'duolingo.streak'), eq(schema.entries.localDate, today)))
+    const alert = streakAlert(row?.v, (row?.meta as { practised?: boolean } | undefined)?.practised)
     return alert ? [alert] : []
   },
 }

@@ -7,8 +7,8 @@
     "body": {
       "date": "2026-11-06",
       "streak": 41,
-      "practised": true,
-      "course": "Spanish"
+      "course": "Spanish",
+      "practised": true
     }
   },
   "expected": [
@@ -19,6 +19,9 @@
       "value": 41,
       "source": "duolingo",
       "verified": true,
+      "meta": {
+        "practised": true
+      },
       "defaults": {
         "name": "Duolingo streak",
         "category": "skills",

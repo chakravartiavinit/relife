@@ -90,11 +90,7 @@ async function Skills() {
   const practised = new Set(streams.flatMap((st) => [...st.days].filter(([, v]) => v > 0).map(([d]) => d)))
   const streak = streaks([...practised], today)
   const practisedDays28 = [...practised].filter((d) => d >= addDays(today, -27)).length
-  const typingSpeed = () => {
-    const wpm = skillTrackers.find((t) => t.tracker.slug === 'typing.wpm')?.days
-    const last = wpm ? [...wpm].sort((a, b) => a[0].localeCompare(b[0])).at(-1)?.[1] : undefined
-    return last == null ? '–' : formatNumber(last, 0)
-  }
+  const wpm = [...byslug('typing.wpm')].sort(([a], [b]) => a.localeCompare(b)).at(-1)?.[1]
   const rating = (site: string) => cpSites.find((c) => c.name.toLowerCase() === site.toLowerCase())
   const sources = [
     { name: 'GitHub', logo: 'GitHub', connected: !!env('GITHUB_TOKEN') || commits.size > 0, value: formatNumber(sumLast(coding, 28)), change: undefined as number | undefined, sub: 'contributions, 28 days' },
@@ -105,7 +101,7 @@ async function Skills() {
     }),
     { name: 'WakaTime', logo: 'WakaTime', connected: !!env('WAKATIME_API_KEY') || codeMin.size > 0, value: hm(sumLast(codeMin, 7)), change: undefined, sub: 'coding, 7 days' },
     { name: 'Duolingo', logo: 'Duolingo', connected: !!env('DUOLINGO_USERNAME') || langXp.size > 0, value: formatNumber(sumLast(langXp, 7)), change: undefined, sub: 'XP, 7 days' },
-    { name: 'Monkeytype', logo: 'Monkeytype', connected: !!env('MONKEYTYPE_APE_KEY') || typeMin.size > 0, value: typingSpeed(), change: undefined, sub: 'wpm, latest' },
+    { name: 'Monkeytype', logo: 'Monkeytype', connected: !!env('MONKEYTYPE_APE_KEY') || typeMin.size > 0, value: wpm == null ? '–' : formatNumber(wpm, 0), change: undefined, sub: 'wpm, latest' },
     { name: 'Laptop activity', logo: '', connected: !!env('ACTIVITY_TOKEN'), value: hm(sumLast(learningMin, 7) + sumLast(workMin, 7)), change: undefined, sub: 'learning + deep work, 7 days' },
   ]
   return (

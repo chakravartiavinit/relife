@@ -151,10 +151,10 @@ checks off quests from them. Synced days earn full XP (`src/domain/xp.ts`). Pars
 | Monkeytype | Skills | `typing.minutes`, `typing.wpm` | 5 minutes of typing |
 | Duolingo | Skills | `duolingo.xp`, `duolingo.streak` | Any lesson |
 | Todoist | Mind | `tasks.done` | 3 tasks done |
-| Last.fm | Hobbies | `music`, `music.songs` | None: time spent, not practice |
-| Steam | Hobbies | `gaming` | None: time spent, not practice |
+| Last.fm | Hobbies | `listening`, `listening.songs` | None: time spent, not practice |
+| Steam | Hobbies | `playtime` | None: time spent, not practice |
 
-Two alerts use them: **Duolingo streak ends tonight** (20:00, when there's no XP yet today) and **4 days without a
+Two alerts use them: **Duolingo streak ends tonight** (20:00, when Duolingo says today's lesson isn't done) and **4 days without a
 workout** (18:00, once a week, only for people who usually work out 2 or more days a week).
 
 ### Strava
@@ -169,7 +169,7 @@ Strava has no personal keys, so make a small API app once:
    `curl -s -X POST https://www.strava.com/oauth/token -d client_id=<ID> -d client_secret=<SECRET> -d code=<CODE> -d grant_type=authorization_code`
 4. Paste the `refresh_token` from the reply, with the client ID and secret, into Connectors → Strava.
 
-Strava swaps the refresh token from time to time; ReLife keeps the newest one encrypted in the sync cursor. If
+Strava swaps the refresh token from time to time; ReLife keeps the newest one encrypted in the sync cursor (Disconnect forgets it). If
 you paste a different token later, that one is used. Days follow the local time Strava records for each
 activity. The first sync backfills 90 days, later ones the last 7. Active minutes are moving time, every sport.
 
@@ -188,14 +188,17 @@ minutes typed, average and best speed and accuracy. The first sync backfills 90 
 ### Duolingo
 
 Your public username, nothing else. Duolingo's public profile gives the total XP and the streak, not XP per day,
-so ReLife compares the total between syncs: XP per day starts on the day you connect, the streak right away.
+so ReLife adds up the gain between syncs: XP per day starts on the day you connect, the streak right away.
+XP earned late at night, after the last sync of the day, still goes to that day: Duolingo says which day the
+streak was last extended.
 Duolingo has no official API; this reads the same address its web app does, and the sync shows an error if it
 changes.
 
 ### Todoist
 
 Settings → Integrations → Developer → **API token**. Only the number of completed tasks per day (and the name of
-the project with the most) is stored, never task names. The first sync backfills 90 days.
+the project with the most) is stored, never task names. The first sync backfills 84 days (Todoist allows 3 months
+a request).
 
 ### Last.fm
 
@@ -207,8 +210,9 @@ username. Minutes are estimated at 3.5 per song. The first sync backfills 60 day
 
 Get a key at [steamcommunity.com/dev/apikey](https://steamcommunity.com/dev/apikey) (domain: `localhost`) and paste
 your profile link or 17-digit Steam ID. In Steam → Edit Profile → Privacy, set **Game details** to Public.
-Steam only reports lifetime playtime per game, so ReLife compares it between syncs: there's no history before you
-connect, and playtime appears when a game session ends.
+Steam only reports lifetime playtime per game, so ReLife adds up each game's gain between syncs: there's no
+history before you connect, and playtime appears when a game session ends (a session that ends after the day's
+last sync counts on the next day).
 
 ## Binance
 
@@ -293,6 +297,6 @@ logged in as you. Personal use only, and not an official integration.
 3. Write a parser in `src/parsers/` that matches its `source`, add it to `src/parsers/index.ts`
    (before `llmFallback`), and add a fixture in `src/parsers/fixtures/`. A source that sends one summary per day
    can use the helpers in `src/connectors/daily.ts` and add an entry to `DAYS` in `src/parsers/daily.ts` instead.
-   A service that only reports a lifetime total (XP, playtime) can turn it into a daily amount with
+   A service that only reports a lifetime total (like Duolingo XP) can turn it into a daily amount with
    `todayFromTotal` from `src/domain/running-total.ts`.
 4. Document its env vars here and in `.env.example`.

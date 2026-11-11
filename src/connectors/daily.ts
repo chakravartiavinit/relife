@@ -15,13 +15,10 @@ export function syncWindow(ctx: ConnectorCtx, backfillDays: number, recentDays =
 /** One raw event per day. The id includes the numbers, so a day is parsed again only when it changes. */
 export async function emitDays(ctx: ConnectorCtx, source: string, days: Iterable<{ date: string }>) {
   const now = new Date()
-  let n = 0
   for (const d of days) {
     const hash = createHash('sha256').update(JSON.stringify(d)).digest('hex').slice(0, 12)
     await ctx.emit({ source, externalId: `${d.date}:${hash}`, at: now, body: d })
-    n++
   }
-  return n
 }
 
 /** fetch + JSON with errors a person can act on, shown on the Connectors page. */

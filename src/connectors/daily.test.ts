@@ -34,8 +34,7 @@ test('todoistDays counts completions per local day and names the busiest project
     { completed_at: '2026-11-06T19:00:00Z', project_id: 'a' }, // 00:30 on the 7th in India
     { completed_at: '2026-11-07T05:00:00Z', project_id: 'b' },
     { completed_at: '2026-11-07T06:00:00Z', project_id: 'b' },
-    { completed_at: '2026-10-01T06:00:00Z', project_id: 'b' }, // before the window
-  ], TZ, '2026-11-01', new Map([['b', 'Work']]))
+  ], TZ, new Map([['b', 'Work']]))
   assert.deepEqual(days, [{ date: '2026-11-07', done: 3, topProject: 'Work' }])
 })
 
@@ -79,4 +78,12 @@ test('leetcodeDays: submissions from the calendar, solved only on days the last 
   assert.equal(days.get('2026-11-07')?.solved, 16)
   assert.deepEqual([days.get('2026-11-01')?.rating, days.get('2026-11-01')?.contests], [1801, 1])
   assert.equal(days.get('2026-11-07')?.rating, 1835)
+})
+
+test('xpDay puts XP on yesterday when Duolingo says the streak was last extended yesterday', async () => {
+  const { xpDay } = await import('./duolingo')
+  assert.equal(xpDay('2026-11-11', '2026-11-10'), '2026-11-10')
+  assert.equal(xpDay('2026-11-11', '2026-11-11'), '2026-11-11')
+  assert.equal(xpDay('2026-11-11', undefined), '2026-11-11')
+  assert.equal(xpDay('2026-11-11', '2026-11-01'), '2026-11-11') // streak broken: new XP is today's
 })

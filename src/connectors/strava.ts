@@ -91,8 +91,8 @@ export const strava: Connector = {
       if (list.length < 200) break
     }
     const days = fillDays(stravaDays(activities).values(), from, today, blank, backfilled)
-    const n = await emitDays(ctx, 'strava', days)
+    await emitDays(ctx, 'strava', days)
     ctx.setCursor({ backfilled: true, seed, token } satisfies Cursor)
-    ctx.log(`${activities.length} activities on ${n} days${backfilled ? '' : ' (backfill)'}`)
+    ctx.log(`${activities.length} activities on ${days.length} days${backfilled ? '' : ' (backfill)'}`)
   },
 }

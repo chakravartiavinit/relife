@@ -1,17 +1,23 @@
-// Some services only give a lifetime total (Duolingo XP, Steam playtime, LeetCode problems solved).
-// Today's amount is the total now minus the total when today started; the cursor remembers both.
+// Some services only give a lifetime total, like Duolingo XP. Each sync adds the gain since the last one
+// to a day; the cursor keeps the last total and the last few days, so a late gain can still go to the
+// day it happened on (the caller picks the day).
 
-export type TotalCursor = { day: string; base: number; last: number }
+export type TotalCursor = { last: number; days: Record<string, number> }
+
+const KEEP = 3
 
 /**
- * Today's amount from a running total. Returns null on the very first sync: what happened earlier
- * today is unknown, so nothing is recorded rather than a false zero. A total that goes down (a refund,
- * a hidden game) restarts the count from the new total instead of going negative.
+ * Adds the gain since the last sync to `day` and makes sure `today` has a value (0 when nothing happened).
+ * Returns null days on the very first sync: what happened before is unknown, so nothing is recorded rather
+ * than a false zero. A total that goes down (a reset) restarts from the new total instead of going negative.
  */
-export function todayFromTotal(prev: TotalCursor | null | undefined, total: number, today: string): { value: number | null; cursor: TotalCursor } {
-  if (!prev || !Number.isFinite(prev.last)) return { value: null, cursor: { day: today, base: total, last: total } }
-  // A new day starts from the last total seen yesterday.
-  const start = prev.day === today ? prev.base : prev.last
-  const base = total < start ? total : start
-  return { value: total - base, cursor: { day: today, base, last: total } }
+export function addGain(prev: TotalCursor | null | undefined, total: number, day: string, today: string): TotalCursor & { known: boolean } {
+  if (!prev || !Number.isFinite(prev.last) || !prev.days) return { last: total, days: {}, known: false }
+  const days = { ...prev.days }
+  const gain = Math.max(0, total - prev.last)
+  if (gain) days[day] = (days[day] ?? 0) + gain
+  days[today] ??= 0
+  // Only the last few days can still change.
+  const kept = Object.fromEntries(Object.entries(days).sort(([a], [b]) => b.localeCompare(a)).slice(0, KEEP))
+  return { last: total, days: kept, known: true }
 }

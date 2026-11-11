@@ -1,7 +1,7 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { and, asc, eq } from 'drizzle-orm'
+import { and, asc, eq, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { MANAGED_ENV, integration } from './integrations'
 import { setKeys } from './env'
@@ -114,7 +114,8 @@ export async function connect(userId: string, id: string, input: Record<string, 
 /** Disconnect and forget saved keys. Sync progress (cursor) is kept so reconnecting doesn't re-import. */
 export async function disconnect(userId: string, id: string) {
   await db.update(schema.connections)
-    .set({ enabled: false, status: 'disabled', secretsEncrypted: null, lastError: null })
+    // A token a connector keeps in its cursor (Strava's rotated refresh token) is a key too: forget it.
+    .set({ enabled: false, status: 'disabled', secretsEncrypted: null, lastError: null, cursor: sql`${schema.connections.cursor} - 'token' - 'seed'` })
     .where(and(eq(schema.connections.userId, userId), eq(schema.connections.connectorId, id)))
   await applySecrets(userId)
 }

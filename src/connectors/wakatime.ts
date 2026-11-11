@@ -37,8 +37,8 @@ export const wakatime: Connector = {
       language: top(s.languages),
       project: top(s.projects),
     }))
-    const n = await emitDays(ctx, 'wakatime', days)
+    await emitDays(ctx, 'wakatime', days)
     ctx.setCursor({ backfilled: true })
-    ctx.log(`${n} days`)
+    ctx.log(`${days.length} days`)
   },
 }

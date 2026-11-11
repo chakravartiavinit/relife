@@ -13,7 +13,7 @@
   "expected": [
     {
       "kind": "entry",
-      "tracker": "gaming",
+      "tracker": "playtime",
       "date": "2026-11-06",
       "value": 95,
       "source": "steam",
@@ -22,7 +22,7 @@
         "game": "Hades II"
       },
       "defaults": {
-        "name": "Gaming",
+        "name": "Steam playtime",
         "category": "hobbies",
         "kind": "duration",
         "unit": "min"

@@ -1,22 +1,21 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { todayFromTotal } from './running-total'
+import { addGain } from './running-total'
 
-test('todayFromTotal counts from the start of the day', () => {
-  // First sync: today's amount is unknown.
-  const first = todayFromTotal(null, 1000, '2026-11-10')
-  assert.equal(first.value, null)
-  // Later the same day: everything since the first sync.
-  const later = todayFromTotal(first.cursor, 1040, '2026-11-10')
-  assert.equal(later.value, 40)
-  // Next day: starts from the last total seen yesterday.
-  const next = todayFromTotal(later.cursor, 1055, '2026-11-11')
-  assert.deepEqual(next, { value: 15, cursor: { day: '2026-11-11', base: 1040, last: 1055 } })
-  // Same day again: base stays.
-  assert.equal(todayFromTotal(next.cursor, 1100, '2026-11-11').value, 60)
+test('addGain records nothing on the first sync, then adds each gain to its day', () => {
+  const first = addGain(null, 1000, '2026-11-10', '2026-11-10')
+  assert.deepEqual(first, { last: 1000, days: {}, known: false })
+  const later = addGain(first, 1040, '2026-11-10', '2026-11-10')
+  assert.deepEqual(later.days, { '2026-11-10': 40 })
+  // Next morning, a lesson done late last night still goes to yesterday; today starts at 0.
+  const late = addGain(later, 1060, '2026-11-10', '2026-11-11')
+  assert.deepEqual(late.days, { '2026-11-10': 60, '2026-11-11': 0 })
+  const today = addGain(late, 1075, '2026-11-11', '2026-11-11')
+  assert.deepEqual(today.days, { '2026-11-10': 60, '2026-11-11': 15 })
 })
 
-test('todayFromTotal never goes negative when the total drops', () => {
-  const r = todayFromTotal({ day: '2026-11-11', base: 500, last: 520 }, 300, '2026-11-11')
-  assert.deepEqual(r, { value: 0, cursor: { day: '2026-11-11', base: 300, last: 300 } })
+test('addGain never goes negative and keeps only the last 3 days', () => {
+  const prev = { last: 520, days: { '2026-11-08': 5, '2026-11-09': 5, '2026-11-10': 5, '2026-11-11': 20 } }
+  const r = addGain(prev, 300, '2026-11-11', '2026-11-11')
+  assert.deepEqual(r, { last: 300, days: { '2026-11-11': 20, '2026-11-10': 5, '2026-11-09': 5 }, known: true })
 })

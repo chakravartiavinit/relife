@@ -110,8 +110,8 @@ async function main() {
     { slug: 'coding.minutes', name: 'Coding time', category: 'skills', kind: 'duration', unit: 'min', target: 60 },
     { slug: 'duolingo.xp', name: 'Duolingo XP', category: 'skills', target: 30 },
     { slug: 'duolingo.streak', name: 'Duolingo streak', category: 'skills', aggregate: 'last' },
-    { slug: 'music', name: 'Music', category: 'hobbies', kind: 'duration', unit: 'min' },
-    { slug: 'music.songs', name: 'Songs played', category: 'hobbies' },
+    { slug: 'listening', name: 'Music listening', category: 'hobbies', kind: 'duration', unit: 'min' },
+    { slug: 'listening.songs', name: 'Songs played', category: 'hobbies' },
   ]
   const trackers = await db.insert(schema.trackers).values(trackerDefs.map((t) => ({ ...t, userId: uid }))).returning()
   const tid = Object.fromEntries(trackers.map((t) => [t.slug, t.id]))
@@ -164,8 +164,8 @@ async function main() {
     entry('duolingo.xp', d, xp, 'duolingo')
     entry('duolingo.streak', d, streak, 'duolingo')
     const songs = Math.max(0, Math.round(c.normal(weekend ? 35 : 22, 10)))
-    entry('music', d, Math.round(songs * 3.5), 'lastfm')
-    entry('music.songs', d, songs, 'lastfm')
+    entry('listening', d, Math.round(songs * 3.5), 'lastfm')
+    entry('listening.songs', d, songs, 'lastfm')
   })
   for (let i = 0; i < entries.length; i += 500) await db.insert(schema.entries).values(entries.slice(i, i + 500))
 

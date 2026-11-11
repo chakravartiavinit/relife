@@ -29,25 +29,26 @@ const DAYS: Record<string, (b: Record<string, unknown>) => Entry[]> = {
   },
   todoist: (b) => {
     const d = b as TodoistDay
-    return [{ tracker: 'tasks.done', value: d.done, meta: d.topProject ? { project: d.topProject } : undefined, defaults: { name: 'Tasks done', category: 'mind', kind: 'number', direction: 'up', target: 5 } }]
+    return [{ tracker: 'tasks.done', value: d.done, meta: { project: d.topProject }, defaults: { name: 'Tasks done', category: 'mind', kind: 'number', direction: 'up', target: 5 } }]
   },
   // Listening and gaming are time spent, not practice: no target, and they don't earn hobby XP (core/xp.ts).
   lastfm: (b) => {
     const d = b as LastfmDay
     return [
-      { tracker: 'music', value: d.minutes, meta: d.topArtist ? { artist: d.topArtist } : undefined, defaults: { name: 'Music', category: 'hobbies', kind: 'duration', unit: 'min' } },
-      { tracker: 'music.songs', value: d.tracks, defaults: { name: 'Songs played', category: 'hobbies', kind: 'number' } },
+      // Own slugs, so a "music" practice tracker someone already logs stays practice.
+      { tracker: 'listening', value: d.minutes, meta: { artist: d.topArtist }, defaults: { name: 'Music listening', category: 'hobbies', kind: 'duration', unit: 'min' } },
+      { tracker: 'listening.songs', value: d.tracks, defaults: { name: 'Songs played', category: 'hobbies', kind: 'number' } },
     ]
   },
   steam: (b) => {
     const d = b as SteamDay
-    return [{ tracker: 'gaming', value: d.minutes, meta: d.topGame ? { game: d.topGame } : undefined, defaults: { name: 'Gaming', category: 'hobbies', kind: 'duration', unit: 'min' } }]
+    return [{ tracker: 'playtime', value: d.minutes, meta: { game: d.topGame }, defaults: { name: 'Steam playtime', category: 'hobbies', kind: 'duration', unit: 'min' } }]
   },
   duolingo: (b) => {
     const d = b as DuolingoDay
     return [
-      { tracker: 'duolingo.xp', value: d.xp, meta: d.course ? { course: d.course } : undefined, defaults: { name: 'Duolingo XP', category: 'skills', kind: 'number', direction: 'up', target: 30 } },
-      { tracker: 'duolingo.streak', value: d.streak, defaults: { name: 'Duolingo streak', category: 'skills', kind: 'number', aggregate: 'last' } },
+      { tracker: 'duolingo.xp', value: d.xp, meta: { course: d.course }, defaults: { name: 'Duolingo XP', category: 'skills', kind: 'number', direction: 'up', target: 30 } },
+      { tracker: 'duolingo.streak', value: d.streak, meta: { practised: d.practised }, defaults: { name: 'Duolingo streak', category: 'skills', kind: 'number', aggregate: 'last' } },
     ]
   },
   monkeytype: (b) => {
@@ -55,7 +56,7 @@ const DAYS: Record<string, (b: Record<string, unknown>) => Entry[]> = {
     return [
       { tracker: 'typing.minutes', value: d.minutes, meta: { tests: d.tests }, defaults: { name: 'Typing practice', category: 'skills', kind: 'duration', unit: 'min' } },
       // The next ten is the first goal, so speed counts as "higher is better" for quests and patterns.
-      { tracker: 'typing.wpm', value: d.tests ? d.wpm : undefined, meta: { best: d.best, accuracy: d.accuracy }, defaults: { name: 'Typing speed', category: 'skills', kind: 'number', unit: 'wpm', aggregate: 'last', direction: 'up', target: Math.floor((d.wpm ?? 0) / 10) * 10 + 10 } },
+      { tracker: 'typing.wpm', value: d.wpm, meta: { best: d.best, accuracy: d.accuracy }, defaults: { name: 'Typing speed', category: 'skills', kind: 'number', unit: 'wpm', aggregate: 'last', direction: 'up', target: Math.floor((d.wpm ?? 0) / 10) * 10 + 10 } },
     ]
   },
 }
@@ -67,7 +68,7 @@ export const daily: Parser = {
     const b = asObj(e)
     const date = String(b.date ?? '')
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return []
-    return DAYS[e.source](b).filter((x) => x.value != null && Number.isFinite(x.value)).map((x): Rec => ({
+    return DAYS[e.source](b).filter((x) => Number.isFinite(x.value)).map((x): Rec => ({
       kind: 'entry', tracker: x.tracker, date, value: x.value!, source: e.source, verified: true,
       ...(x.meta && Object.values(x.meta).some((v) => v != null) ? { meta: x.meta } : {}), defaults: x.defaults,
     }))

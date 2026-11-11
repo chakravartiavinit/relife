@@ -59,8 +59,8 @@ export const lastfm: Connector = {
       if (page >= Number(r.recenttracks?.['@attr'].totalPages ?? 1)) break
     }
     const days = fillDays(lastfmDays(tracks, tz), from, today, (date) => ({ date, tracks: 0, minutes: 0 }), backfilled)
-    const n = await emitDays(ctx, 'lastfm', days)
+    await emitDays(ctx, 'lastfm', days)
     ctx.setCursor({ backfilled: true })
-    ctx.log(`${tracks.length} scrobbles on ${n} days`)
+    ctx.log(`${tracks.length} scrobbles on ${days.length} days`)
   },
 }

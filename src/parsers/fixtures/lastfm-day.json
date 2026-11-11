@@ -14,7 +14,7 @@
   "expected": [
     {
       "kind": "entry",
-      "tracker": "music",
+      "tracker": "listening",
       "date": "2026-11-06",
       "value": 84,
       "source": "lastfm",
@@ -23,7 +23,7 @@
         "artist": "Prateek Kuhad"
       },
       "defaults": {
-        "name": "Music",
+        "name": "Music listening",
         "category": "hobbies",
         "kind": "duration",
         "unit": "min"
@@ -31,7 +31,7 @@
     },
     {
       "kind": "entry",
-      "tracker": "music.songs",
+      "tracker": "listening.songs",
       "date": "2026-11-06",
       "value": 24,
       "source": "lastfm",

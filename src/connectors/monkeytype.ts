@@ -12,6 +12,14 @@ type Result = { wpm: number; acc: number; timestamp: number; testDuration: numbe
 
 const r1 = (n: number) => Math.round(n * 10) / 10
 
+// Monkeytype's own status codes for Ape keys.
+const APE_ERRORS: Record<string, string> = {
+  'HTTP 470': 'Monkeytype rejected the Ape key. Check it, or make a new one.',
+  'HTTP 471': 'The Ape key is switched off. Turn it on in Monkeytype → Account settings → Ape keys.',
+  'HTTP 472': 'That doesn’t look like an Ape key. Copy it again from Monkeytype.',
+  'HTTP 479': 'Rate limited by Monkeytype. It will try again on the next sync.',
+}
+
 /** Pure: results into days in the user's time zone. Exported for tests. */
 export function typingDays(results: Result[], tz: string) {
   const { days, day } = dayMap<TypingDay & { all: Result[] }>((date) => ({ date, tests: 0, minutes: 0, all: [] }))
@@ -38,12 +46,18 @@ export const monkeytype: Connector = {
   async sync(ctx) {
     const { tz, today, from, backfilled } = syncWindow(ctx, 90)
     const since = Date.parse(`${from}T00:00:00Z`) - 86_400_000 // a day early covers any time zone
-    const r = await fetchJson<{ data: Result[] }>(`https://api.monkeytype.com/results?onOrAfterTimestamp=${since}&limit=1000`, {
-      headers: { Authorization: `ApeKey ${env('MONKEYTYPE_APE_KEY')!.trim()}` },
-    })
-    const days = fillDays(typingDays(r.data, tz), from, today, (date) => ({ date, tests: 0, minutes: 0 }), backfilled)
-    const n = await emitDays(ctx, 'monkeytype', days)
+    const results: Result[] = []
+    // At most 1000 a call and 30 calls a day: a few pages cover even heavy typists' backfill.
+    for (let page = 0; page < (backfilled ? 1 : 5); page++) {
+      const r = await fetchJson<{ data: Result[] }>(`https://api.monkeytype.com/results?onOrAfterTimestamp=${since}&offset=${page * 1000}&limit=1000`, {
+        headers: { Authorization: `ApeKey ${env('MONKEYTYPE_APE_KEY')!.trim()}` },
+      }).catch((e: Error) => { throw new Error(APE_ERRORS[e.message] ?? e.message) })
+      results.push(...r.data)
+      if (r.data.length < 1000) break
+    }
+    const days = fillDays(typingDays(results, tz), from, today, (date) => ({ date, tests: 0, minutes: 0 }), backfilled)
+    await emitDays(ctx, 'monkeytype', days)
     ctx.setCursor({ backfilled: true })
-    ctx.log(`${r.data.length} tests on ${n} days`)
+    ctx.log(`${results.length} tests on ${days.length} days`)
   },
 }

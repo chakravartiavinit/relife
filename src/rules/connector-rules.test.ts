@@ -4,11 +4,11 @@ import { streakAlert } from './streak-at-risk'
 import { workoutGapAlert } from './workout-gap'
 import { addDays } from '@/core/time'
 
-test('streakAlert warns only for a real streak with no XP yet today', () => {
-  assert.equal(streakAlert(41, 0)?.title, '41-day Duolingo streak ends tonight')
-  assert.equal(streakAlert(41, 20), null) // already practised
-  assert.equal(streakAlert(41, undefined), null) // XP not counted yet (first day connected)
-  assert.equal(streakAlert(2, 0), null) // too short to matter
+test('streakAlert warns only for a real streak not yet extended today', () => {
+  assert.equal(streakAlert(41, false)?.title, '41-day Duolingo streak ends tonight')
+  assert.equal(streakAlert(41, true), null) // already practised
+  assert.equal(streakAlert(41, undefined), null) // nothing synced today: unknown
+  assert.equal(streakAlert(2, false), null) // too short to matter
 })
 
 test('workoutGapAlert fires after 4 synced empty days for someone who usually moves', () => {

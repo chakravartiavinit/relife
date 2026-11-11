@@ -1,17 +1,17 @@
 import type { Connector } from '@/core/types'
 import { env } from '@/core/env'
 import { localDate } from '@/core/time'
-import { todayFromTotal, type TotalCursor } from '@/domain/running-total'
 import { emitDays, fetchJson } from './daily'
 
-// Steam: minutes you play each day. Steam only reports lifetime playtime per game, so each sync compares
-// it with the last one (src/domain/running-total.ts): there's no history before you connect, and the
-// first day starts counting from the moment you connect. Playtime is added when a game session ends.
+// Steam: minutes you play each day. Steam only reports lifetime playtime per game, so each sync adds up
+// how much each game gained since the last one: there's no history before you connect, and the first
+// day starts counting from the moment you connect. Playtime is added when a game session ends.
 
 export type SteamDay = { date: string; minutes: number; topGame?: string }
 
 type Owned = { response: { games?: { appid: number; name?: string; playtime_forever: number }[] } }
-type Cursor = { total?: TotalCursor; games?: Record<string, number>; today?: Record<string, number> }
+/** Lifetime minutes per game at the last sync, and minutes per game gained today. */
+type Cursor = { day?: string; games?: Record<string, number>; today?: Record<string, number>; profile?: { input: string; id: string } }
 
 async function steamId(key: string, input: string) {
   // A profile URL, a 17-digit ID, or the custom name from steamcommunity.com/id/<name>.
@@ -39,28 +39,30 @@ export const steam: Connector = {
   everyMinutes: 30,
   async sync(ctx) {
     const key = env('STEAM_API_KEY')!.trim()
-    const id = await steamId(key, env('STEAM_ID')!.trim())
+    const input = env('STEAM_ID')!.trim()
+    const cur = (ctx.cursor ?? {}) as Cursor
+    // Resolve a profile name once, not every sync.
+    const id = cur.profile?.input === input ? cur.profile.id : await steamId(key, input)
     const r = await fetchJson<Owned>(`https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?key=${encodeURIComponent(key)}&steamid=${id}&include_appinfo=1&include_played_free_games=1`)
     const games = r.response.games
     if (!games) throw new Error('Steam returned no games. Set Game details to Public in your Steam privacy settings.')
 
     const today = localDate(new Date(), ctx.user.timezone)
-    const cur = (ctx.cursor ?? {}) as Cursor
-    const total = games.reduce((s, g) => s + g.playtime_forever, 0)
-    const { value, cursor } = todayFromTotal(cur.total, total, today)
-    // Minutes per game today, to name the one played most.
     const now = Object.fromEntries(games.map((g) => [String(g.appid), g.playtime_forever]))
-    const perGame = cur.total?.day === today ? { ...cur.today } : {}
+    const perGame = cur.day === today ? { ...cur.today } : {}
     for (const [app, min] of Object.entries(now)) {
+      // A game new to the list (just bought) counts from now, not with its lifetime playtime.
       const gained = min - (cur.games?.[app] ?? min)
       if (gained > 0) perGame[app] = (perGame[app] ?? 0) + gained
     }
     const top = Object.entries(perGame).sort((a, b) => b[1] - a[1])[0]?.[0]
-    if (value != null) {
-      const day: SteamDay = { date: today, minutes: value, topGame: games.find((g) => String(g.appid) === top)?.name }
+    const minutes = Object.values(perGame).reduce((s, m) => s + m, 0)
+    // First sync: nothing to compare with yet, so today stays unknown rather than a false zero.
+    if (cur.games) {
+      const day: SteamDay = { date: today, minutes, topGame: games.find((g) => String(g.appid) === top)?.name }
       await emitDays(ctx, 'steam', [day])
     }
-    ctx.setCursor({ total: cursor, games: now, today: perGame } satisfies Cursor)
-    ctx.log(value == null ? `${games.length} games; counting starts now` : `${value} min today`)
+    ctx.setCursor({ day: today, games: now, today: perGame, profile: { input, id } } satisfies Cursor)
+    ctx.log(cur.games ? `${minutes} min today` : `${games.length} games; counting starts now`)
   },
 }
