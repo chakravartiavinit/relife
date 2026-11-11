@@ -19,7 +19,8 @@ export type RecoveryResult =
   | { status: 'accepted' | 'already_chosen'; view: RecoveryView }
   | { status: 'stale' | 'unavailable'; view: RecoveryView }
   | { status: 'not_found' }
-export type PreparedRecovery = RecoveryView & { created: boolean }
+/** `lifted`: late imports cleared every miss during this call, so the pause just ended. */
+export type PreparedRecovery = RecoveryView & { created: boolean; lifted?: true }
 
 const key = (day: string) => `system:recovery:${day}`
 const recoveryWhere = (userId: string, day: string) => and(
@@ -38,7 +39,8 @@ async function lockUser(tx: Tx, userId: string) {
 
 async function paused(tx: Tx, userId: string, today: string) {
   const [insight] = await tx.select({ payload: schema.insights.payload }).from(schema.insights).where(recoveryWhere(userId, today)).limit(1)
-  return payloadOf(insight?.payload ?? {})?.localDate === today
+  const payload = payloadOf(insight?.payload ?? {})
+  return payload?.localDate === today && !payload.liftedAt
 }
 
 function missedView(rows: (typeof Q.$inferSelect)[]) {
@@ -111,7 +113,15 @@ export async function prepareRecovery(user: User, now: Date, signals: Signal[], 
     ))
     const missed = await tx.select().from(Q).where(and(eq(Q.userId, user.id), eq(Q.kind, 'daily'), eq(Q.status, 'failed'), eq(Q.toDate, yesterday), sql`${Q.progress} is not null`))
     const [existing] = await tx.select().from(schema.insights).where(recoveryWhere(user.id, today)).limit(1)
-    if (!missed.length) return null
+    if (!missed.length) {
+      // Late imports cleared every recorded miss: end the pause, close an open decision, keep a saved choice.
+      const payload = existing && payloadOf(existing.payload)
+      if (!existing || !payload || payload.liftedAt) return null
+      const next: RecoveryPayload = { ...payload, liftedAt: now.toISOString() }
+      await tx.update(schema.insights).set({ status: existing.status === 'pending' ? 'done' : existing.status, payload: { ...existing.payload, recovery: next }, updatedAt: now })
+        .where(eq(schema.insights.id, existing.id))
+      return { ...recoveryView(existing.id, next, missedView(await storedMissedRows(tx, user.id, next))), created: false, lifted: true }
+    }
     const history = await recentHistory(tx, user.id, today)
     const preview = previewFor(missed, signals, stats, history, today, user)
     if (existing) {
@@ -138,7 +148,7 @@ export async function getRecovery(user: User, now = new Date()): Promise<Recover
   const today = localDate(now, user.timezone)
   const [insight] = await db.select().from(schema.insights).where(recoveryWhere(user.id, today)).limit(1)
   const payload = insight && payloadOf(insight.payload)
-  if (!insight || !payload || payload.localDate !== today) return null
+  if (!insight || !payload || payload.localDate !== today || payload.liftedAt) return null
   const rows = payload.missedIds.length
     ? await db.select().from(Q).where(and(eq(Q.userId, user.id), inArray(Q.id, payload.missedIds)))
     : []
@@ -164,7 +174,7 @@ export async function chooseRecovery(user: User, input: { insightId: string; ver
       recoveryView(insight.id, p, missedView(rows ?? await storedMissedRows(tx, user.id, p)))
     if (payload.localDate !== today) return { status: 'stale', view: await view(payload) }
     if (payload.choice) return { status: 'already_chosen', view: await view(payload) }
-    if (insight.status !== 'pending') return { status: 'stale', view: await view(payload) }
+    if (insight.status !== 'pending' || payload.liftedAt) return { status: 'stale', view: await view(payload) }
     if (input.version !== payload.version) return { status: 'stale', view: await view(payload) }
     if (input.choice !== 'smaller') {
       const next = { ...payload, choice: input.choice }

@@ -113,7 +113,8 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
   (Settings → The System, `profile.improve`) and what's slipping, and words it. `src/domain/system.ts` (tested)
   keeps it fair: targets are clamped near the usual, ranks E–S come from how often past days met the target,
   quests you'd clear anyway are skipped, difficulty follows your clear rate, connector data clears quests, a
-  recorded missed daily pauses new quests the next day and offers explicit recovery choices (smaller step, rest, priorities),
+  recorded missed daily pauses new quests the next day and offers explicit recovery choices (smaller step, rest, priorities);
+  late imports recheck yesterday all day, so a miss the data now meets clears and lifts the pause (never the reverse),
   and sharp bad changes can offer a modest corrective quest. Unknown measurements are not failures.
   It also reads spending habits from order items (impulse categories and items bought on many days, like a soft
   drink; `habitSignals` in `src/domain/basket.ts`): at most one habit quest a day, only when that habit is above

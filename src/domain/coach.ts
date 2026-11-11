@@ -1,6 +1,6 @@
 import { addDays } from '@/core/time'
 import type { Signal } from './patterns'
-import { balanceHabits, fairTarget, hitRate, judge, stretch, windowValue, type Agg, type QuestSpec, type Stat } from './system'
+import { balanceHabits, fairTarget, hitRate, judge, stretch, windowValue, type Agg, type QuestSpec, type QuestStatus, type Stat } from './system'
 
 /** Complete-day observations only. These counts describe records, not connector coverage. */
 export type CoachStat = Stat & {
@@ -96,6 +96,16 @@ export function questProgress(q: { fromDate: string; toDate: string; agg: Agg; o
     }
   }
   return { value, status: judge({ ...q, to: q.toDate }, value, today) }
+}
+
+/**
+ * Late evidence for a quest already judged: a recorded miss or an unknown result that the data now meets becomes
+ * cleared. Nothing is downgraded, so a late import never creates a new miss or a new recovery pause.
+ */
+export function lateClear(q: Parameters<typeof questProgress>[0] & { status: QuestStatus }, signal: Signal | undefined, today: string) {
+  if (q.status !== 'failed' && q.status !== 'unverified') return null
+  const next = questProgress(q, signal, today)
+  return next.status === 'cleared' ? next : null
 }
 
 /** A same-day spending spike asks for context; it must never automatically prescribe deprivation. */

@@ -46,9 +46,11 @@ Completion describes adherence, not proof that a quest improved an outcome. The 
 
 ## Recovery choices replace penalties
 
-A recorded missed daily quest creates one recovery decision on the next local day. New daily/corrective issuance stays paused until midnight, regardless of the chosen response. Existing commitments remain. Users choose an exact previewed smaller step, rest, or a priorities review. No choice means no new recovery quest.
+A recorded missed daily quest creates one recovery decision on the next local day. New daily/corrective issuance stays paused until midnight, regardless of the chosen response, unless late evidence clears every miss (below). Existing commitments remain. Users choose an exact previewed smaller step, rest, or a priorities review. No choice means no new recovery quest.
 
 A smaller step must pass evidence, safety, load, overlap and already-satisfied checks, and be strictly easier than its parent after rounding. Increases start today; reductions start tomorrow. Approval revalidates the preview and version. A changed preview requires another explicit approval; it never silently substitutes a target.
+
+Late imports: quests are still judged on the first tick after local midnight, but every tick of the next local day rechecks yesterday's `failed` and `unverified` quests against fresh data. A quest the data now meets becomes `cleared` and earns its XP once. Late data only upgrades: it never creates a new miss or a new pause. When late data clears every recorded miss, the pause lifts (`recovery.liftedAt`) and dailies can be issued on the next tick. An open decision closes without a choice; a saved choice stays as history; an accepted smaller step stays active and can still clear. Late clears are silent, except for one `system` message when the pause message was already sent. A queued pause message is dropped because the decision is no longer pending.
 
 Recovery decisions use the existing insights JSON payload. Creation, decisions and quest insertion lock the user row inside short transactions. Duplicate requests return the stored choice without another write. Rest/priorities do not require an eligible target or a model call. Generic insight accept/dismiss cannot bypass this flow.
 

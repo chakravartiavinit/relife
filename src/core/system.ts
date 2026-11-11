@@ -17,7 +17,7 @@ import { notify } from './outbox'
 import { loadSignals } from './patterns'
 import { basketLines } from './basket'
 import { habitSignals } from '@/domain/basket'
-import { canCoach, coachStats, questCandidates, questProgress, selectQuests, spendingSpike, type CoachStat, type QuestCandidate } from '@/domain/coach'
+import { canCoach, coachStats, lateClear, questCandidates, questProgress, selectQuests, spendingSpike, type CoachStat, type QuestCandidate } from '@/domain/coach'
 import { addInsight } from './insights'
 import { getRecovery, insertCoachQuests, prepareRecovery, recoveryPaused } from './recovery'
 import { screenTimeDigest } from './activity'
@@ -223,6 +223,31 @@ async function judgeAll(user: User, today: string, signals: Signal[]) {
     const [changed] = await db.update(Q).set({ progress: value, status, resolvedAt: status === 'active' ? null : new Date() }).where(and(eq(Q.id, q.id), eq(Q.userId, user.id), eq(Q.status, 'active'))).returning()
     if (changed?.status === 'cleared') cleared.push(changed)
   }
+  await reward(user, cleared, { today, boxDay: today, announce: true })
+}
+
+/**
+ * Late imports (steps, commits) can land after yesterday was judged. Recheck yesterday's misses and unknowns on
+ * every tick: a quest the data now meets becomes cleared. Nothing is downgraded, so this never starts a pause.
+ */
+async function recheckYesterday(user: User, today: string, signals: Signal[]) {
+  const yesterday = addDays(today, -1)
+  const judged = await db.select().from(Q).where(and(eq(Q.userId, user.id), eq(Q.toDate, yesterday), inArray(Q.status, ['failed', 'unverified']), ne(Q.kind, 'penalty')))
+  const cleared: SystemQuest[] = []
+  for (const q of judged) {
+    const next = lateClear(q, signals.find((s) => s.id === q.statId), today)
+    if (!next) continue
+    const [changed] = await db.update(Q).set({ progress: next.value, status: 'cleared', resolvedAt: new Date() })
+      .where(and(eq(Q.id, q.id), eq(Q.userId, user.id), eq(Q.status, q.status))).returning()
+    if (changed) cleared.push(changed)
+  }
+  // Silent unless it ends a pause the user saw (announceLift): Today shows the cleared quest either way.
+  await reward(user, cleared, { today, boxDay: yesterday, announce: false })
+  return cleared
+}
+
+/** Pay cleared quests once each (`sq:<id>`), then the day's reward box and any level-up. */
+async function reward(user: User, cleared: SystemQuest[], { today, boxDay, announce }: { today: string; boxDay: string; announce: boolean }) {
   if (cleared.length) {
     const before = levelFor(await totalXp(user)).level
     for (const q of cleared) {
@@ -232,10 +257,12 @@ async function judgeAll(user: User, today: string, signals: Signal[]) {
       }).onConflictDoNothing()
     }
     const total = cleared.reduce((a, q) => a + q.xp, 0)
-    await notify(user, 'system', {
-      text: [sysHead('✅', cleared.length === 1 ? 'Quest cleared' : `${cleared.length} quests cleared`, 'Rewards have been granted.'), '', blocks(cleared), '', `<b>Rewards</b> +${total} XP`].join('\n'),
-    })
-    await allClearBox(user, today)
+    if (announce) {
+      await notify(user, 'system', {
+        text: [sysHead('✅', cleared.length === 1 ? 'Quest cleared' : `${cleared.length} quests cleared`, 'Rewards have been granted.'), '', blocks(cleared), '', `<b>Rewards</b> +${total} XP`].join('\n'),
+      })
+    }
+    await allClearBox(user, boxDay)
     const after = levelFor(await totalXp(user)).level
     if (after > before) {
       const { celebrate } = await import('@/bot/ui')
@@ -244,6 +271,25 @@ async function judgeAll(user: User, today: string, signals: Signal[]) {
       await celebrate(user, { levelUp: { level: after, title: titleFor(after), from: before, newTitle: titleFor(after) !== titleFor(before) }, unlocked: [] })
     }
   }
+}
+
+/**
+ * Late data ended today's pause. Send one message only when the pause message already reached the user; a queued
+ * one is dropped by the outbox, because the decision is no longer pending.
+ */
+async function announceLift(user: User, insightId: string, late: SystemQuest[]) {
+  const N = schema.notifications
+  const [seen] = await db.select({ id: N.id }).from(N)
+    .where(and(eq(N.userId, user.id), eq(N.ref, `insight:${insightId}`), inArray(N.status, ['sent', 'answered']))).limit(1)
+  if (!seen) return
+  const total = late.reduce((a, q) => a + q.xp, 0)
+  await notify(user, 'system', {
+    text: [
+      sysHead('✅', 'Yesterday’s quest cleared', 'Late data showed it was met. New quests are no longer paused today.'),
+      ...(late.length ? ['', blocks(late), '', `<b>Rewards</b> +${total} XP`] : []),
+    ].join('\n'),
+    buttons: OPEN,
+  })
 }
 
 /** Clearing every daily quest of a day earns a reward box (a chest). */
@@ -266,7 +312,8 @@ let running: Promise<void> | null = null
 let lastEmergencyCheck = 0
 
 /**
- * Judge open quests, offer recovery after recorded misses, and issue eligible dailies unless paused.
+ * Judge open quests, recheck yesterday against late imports, offer recovery after recorded misses (or lift the
+ * pause once late data clears them), and issue eligible dailies unless paused.
  * Review significant changes at most once an hour.
  */
 export function systemTick(user: User, now = new Date()) {
@@ -280,10 +327,12 @@ export function systemTick(user: User, now = new Date()) {
       const signals = [...base, ...habits.filter((h) => h.offer)]
       const stats = coachStats(signals, today)
       await judgeAll(user, today, [...base, ...habits])
+      const late = await recheckYesterday(user, today, [...base, ...habits])
       const recovery = await prepareRecovery(user, now, [...base, ...habits], stats)
       if (recovery?.created) {
         await notify(user, 'system', { text: sysHead('', 'Choose what helps today', 'New quests are paused today. Open Today to choose a smaller step, rest, or review your priorities.'), ref: `insight:${recovery.id}`, buttons: OPEN })
       }
+      if (recovery?.lifted) await announceLift(user, recovery.id, late)
       if (!await recoveryPaused(user, today)) await ensureDailies(user, today, signals, stats)
       if (Date.now() - lastEmergencyCheck > 55 * 60_000) { lastEmergencyCheck = Date.now(); await emergencies(user, today, signals, stats) }
     } finally { running = null }

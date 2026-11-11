@@ -39,12 +39,16 @@ test('PostgreSQL recovery transactions remain stable, local, and idempotent', { 
   const { coachStats } = await import('@/domain/coach')
   const { chooseRecovery, getRecovery, insertCoachQuests, prepareRecovery, recoveryPaused } = await import('./recovery')
   const { systemTick } = await import('./system')
+  // systemTick may notify; a configured bot would message a real chat.
+  assert.equal((await import('./notify')).telegramConfigured(), false, 'run without Telegram keys')
 
   const run = `recovery-integration:${crypto.randomUUID()}`
   const userIds: string[] = []
   const cleanup = async () => {
     for (const userId of userIds.reverse()) {
       await db.delete(schema.notifications).where(eq(schema.notifications.userId, userId))
+      await db.delete(schema.xpEvents).where(eq(schema.xpEvents.userId, userId))
+      await db.delete(schema.chests).where(eq(schema.chests.userId, userId))
       await db.delete(schema.insights).where(eq(schema.insights.userId, userId))
       await db.delete(schema.systemQuests).where(eq(schema.systemQuests.userId, userId))
       await db.delete(schema.entries).where(eq(schema.entries.userId, userId))
@@ -226,6 +230,45 @@ test('PostgreSQL recovery transactions remain stable, local, and idempotent', { 
       op: 'gte', agg: 'sum', target: 1, rank: 'E', xp: 20, title: 'Blocked', reason: run, status: 'active', ref: `${run}:blocked`,
     }])
     assert.equal(blocked.length, 0, 'recovery pause blocks same-day normal insertion')
+
+    // A late import meets yesterday's target after the user chose rest: the miss clears, the pause lifts, the
+    // choice stays as history, and the reward is paid once.
+    const late = await createEligibleFixture('late')
+    const [unknownLate] = await addQuest(late.user.id, `${run}:late:unknown`, {
+      statId: `tracker:${run}:late:commits`, statName: 'Practice commits', kind: 'emergency', status: 'unverified', progress: null, target: 1,
+    })
+    const [stillShort] = await addQuest(late.user.id, `${run}:late:short`, {
+      statId: `tracker:${run}:late:commits`, statName: 'Practice commits', kind: 'emergency', status: 'unverified', progress: null, target: 9,
+    })
+    assert.equal((await chooseRecovery(late.user, { insightId: late.prepared.id, version: late.prepared.version, choice: 'rest' }, now)).status, 'accepted')
+    await db.update(schema.entries).set({ value: 4 }).where(and(eq(schema.entries.userId, late.user.id), eq(schema.entries.trackerId, late.commits.id), eq(schema.entries.localDate, yesterday)))
+    await systemTick(late.user, now)
+    const quest = (id: string) => db.select().from(schema.systemQuests).where(eq(schema.systemQuests.id, id)).then((rows) => rows[0])
+    const lateParent = await quest(late.parent.id)
+    assert.equal(lateParent.status, 'cleared', 'late evidence clears the recorded miss')
+    assert.equal(lateParent.progress, 4)
+    assert.equal((await quest(unknownLate.id)).status, 'cleared', 'late evidence clears an unknown result')
+    assert.equal((await quest(stillShort.id)).status, 'unverified', 'late partial evidence never creates a new miss')
+    assert.equal(await recoveryPaused(late.user, today), false, 'the pause lifts once every miss clears')
+    assert.equal(await getRecovery(late.user, now), null, 'Today no longer shows the decision')
+    const [lateInsight] = await db.select().from(schema.insights).where(eq(schema.insights.id, late.prepared.id))
+    assert.equal(lateInsight.payload.recovery?.choice, 'rest', 'the saved choice stays as history')
+    assert.ok(lateInsight.payload.recovery?.liftedAt)
+    assert.equal(lateInsight.status, 'done')
+    assert.equal((await chooseRecovery(late.user, { insightId: late.prepared.id, version: late.prepared.version, choice: 'smaller' }, now)).status, 'already_chosen')
+    await systemTick(late.user, now)
+    const paid = await db.select().from(schema.xpEvents).where(and(eq(schema.xpEvents.userId, late.user.id), eq(schema.xpEvents.ref, `sq:${late.parent.id}`)))
+    assert.equal(paid.length, 1, 'a late clear pays its XP once')
+    assert.equal(await prepareRecovery(late.user, now, late.signals, coachStats(late.signals, today)), null, 'a lifted pause is not lifted again')
+
+    // An open decision closes without a choice when late evidence clears every miss.
+    const open = await createEligibleFixture('late-open')
+    await db.update(schema.entries).set({ value: 4 }).where(and(eq(schema.entries.userId, open.user.id), eq(schema.entries.trackerId, open.commits.id), eq(schema.entries.localDate, yesterday)))
+    await systemTick(open.user, now)
+    const [openInsight] = await db.select().from(schema.insights).where(eq(schema.insights.id, open.prepared.id))
+    assert.equal(openInsight.status, 'done')
+    assert.equal(openInsight.payload.recovery?.choice, null)
+    assert.equal((await chooseRecovery(open.user, { insightId: open.prepared.id, version: open.prepared.version, choice: 'rest' }, now)).status, 'stale', 'a lifted decision accepts no new choice')
   } finally {
     try {
       await cleanup()
