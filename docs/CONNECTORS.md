@@ -367,6 +367,9 @@ Create a **read-only** key:
 
 1. Binance → Profile → **API Management** → Create API → System generated.
 2. Tick **only "Enable Reading"**. Leave trading, margin, futures, withdrawals and transfers off.
+   "Enable Reading" also reads futures. "Enable Futures" lets a key trade futures, so ReLife refuses it.
+   Open your futures account **before** you create the key: Binance refuses futures reads for a key made
+   before the futures account existed. If futures don't sync, create a new read-only key.
 3. Under IP access restrictions choose **Restrict access to trusted IPs only** and add your
    public IP (`curl ifconfig.me`). If your IP changes often, you can leave it unrestricted, but a
    read-only key is the minimum.
