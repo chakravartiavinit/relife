@@ -92,11 +92,21 @@ export function keyProblem(e: unknown): string | null {
 /** Binance serves nothing to some countries (HTTP 451); retrying never helps. */
 const blockedRegion = (e: unknown) => /restricted location|\b451\b/i.test(e instanceof Error ? e.message : String(e))
 
+/**
+ * Why futures can't be read, when spot could. "Enable Reading" covers futures reads, but Binance refuses (-2015)
+ * a key made before the futures account was opened. "Enable Futures" is a trading permission and never needed.
+ */
+export function futuresProblem(e: unknown): string | null {
+  return /"code":\s*-2015/.test(e instanceof Error ? e.message : String(e))
+    ? 'Binance refused futures reads for this key. Keys made before the futures account was opened can’t read futures. Create a new key with only “Enable Reading” ticked; don’t tick “Enable Futures”.'
+    : null
+}
+
 /** The permissions that make a key unsafe, as a sentence; null when the key is read-only. */
 export function readOnlyProblem(r: Record<string, unknown>): string | null {
   const risky = ['enableSpotAndMarginTrading', 'enableWithdrawals', 'enableInternalTransfer', 'permitsUniversalTransfer', 'enableMargin', 'enableFutures', 'enableVanillaOptions']
     .filter((k) => r[k] === true)
-  return risky.length ? `Binance key is not read-only (${risky.join(', ')}). Create a key with only "Enable Reading" ticked.` : null
+  return risky.length ? `Binance key is not read-only (${risky.join(', ')}). Create a key with only "Enable Reading" ticked; it reads futures too.` : null
 }
 
 /** Refuse keys that can move money. */
@@ -187,7 +197,10 @@ async function run(ctx: ConnectorCtx) {
   let futures: unknown = null
   let futuresReadable = false // no futures account or permission: don't ask for its income every sync
   await optional(ctx, 'Futures account', async () => {
-    const a = (await ex.fapiPrivateV2GetAccount()) as { totalWalletBalance?: string; totalUnrealizedProfit?: string; totalMarginBalance?: string; totalMaintMargin?: string; positions?: Record<string, string>[] }
+    const a = (await ex.fapiPrivateV2GetAccount().catch((e: unknown) => {
+      const problem = futuresProblem(e)
+      throw problem ? new Error(problem) : e
+    })) as { totalWalletBalance?: string; totalUnrealizedProfit?: string; totalMarginBalance?: string; totalMaintMargin?: string; positions?: Record<string, string>[] }
     // Mark and liquidation prices come from position risk. On cross margin the whole wallet backs a
     // position, so how close it is to liquidation can't be read from its own margin.
     const risk = (await ex.fapiPrivateV2GetPositionRisk()) as Record<string, string>[]

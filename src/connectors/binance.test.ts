@@ -25,7 +25,7 @@ test('unzipFirst reads a one-file deflated zip', () => {
 })
 
 import ccxt from 'ccxt'
-import { binance, keyProblem, readOnlyProblem, windowRows } from './binance'
+import { binance, futuresProblem, keyProblem, readOnlyProblem, windowRows } from './binance'
 
 /** Answers every Binance request with `reply` (a body, or an Error to throw); no network. */
 function fakeBinance(reply: (url: string) => unknown) {
@@ -68,4 +68,15 @@ test('windowRows splits a full window so nothing past the row limit is lost', as
   const read = async (a: number, b: number) => all.filter((r) => r.t >= a && r.t <= b).slice(0, 10)
   const rows = await windowRows(0, 249, 10, read)
   assert.equal(new Set(rows.map((r) => r.t)).size, 25)
+})
+
+test('futuresProblem advises a new read-only key, never Enable Futures', () => {
+  const advice = futuresProblem(new Error('binance {"code":-2015,"msg":"Invalid API-key, IP, or permissions for action."}'))!
+  assert.match(advice, /new key with only “Enable Reading”/)
+  assert.match(advice, /don’t tick “Enable Futures”/)
+  assert.equal(futuresProblem(new Error('socket hang up')), null)
+})
+
+test('readOnlyProblem still refuses a key with futures trading', () => {
+  assert.match(readOnlyProblem({ enableReading: true, enableFutures: true })!, /enableFutures/)
 })
