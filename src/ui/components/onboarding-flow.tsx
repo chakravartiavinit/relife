@@ -98,13 +98,16 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
   // in the picker.) Questions show once this has run, so a restored draft never flashes the first step.
   const [device, setDevice] = useState<{ tz: string; cur: string | null } | null>(null)
   const [ready, setReady] = useState(false)
+  const base = JSON.stringify({ initial, fresh })
   useEffect(() => {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
     const region = new Intl.Locale(navigator.language).maximize().region
     setDevice({ tz, cur: region ? REGION_CURRENCY[region] ?? null : null })
-    let draft: { v: V; i: number } | null = null
+    // A draft only counts while the saved settings it started from are unchanged; otherwise it could
+    // put back values the user has since changed in Settings.
+    let draft: { v: V; i: number; base: string } | null = null
     try { draft = JSON.parse(sessionStorage.getItem(DRAFT) ?? 'null') } catch { /* a broken draft starts over */ }
-    if (draft?.v && typeof draft.i === 'number') {
+    if (draft?.v && typeof draft.i === 'number' && draft.base === base) {
       setV((s) => ({ ...s, ...draft.v }))
       setI(clamp(draft.i, 0, LAST))
     } else if (fresh && canonTz(tz)) {
@@ -112,10 +115,10 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
       setV((s) => (canonTz(s.timezone) === canonTz(tz) ? s : { ...s, timezone: tz }))
     }
     setReady(true)
-  }, [fresh])
+  }, [fresh, base])
   useEffect(() => {
-    if (ready && !done) sessionStorage.setItem(DRAFT, JSON.stringify({ v, i }))
-  }, [ready, done, v, i])
+    if (ready && !done) sessionStorage.setItem(DRAFT, JSON.stringify({ v, i, base }))
+  }, [ready, done, v, i, base])
 
   const set: Set = (k, val) => { setV((s) => ({ ...s, [k]: val })); setError(null); setNudge(0) }
   const options = IMPROVE.filter((o) => v.areas.includes(o.area))

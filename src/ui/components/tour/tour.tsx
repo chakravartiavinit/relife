@@ -93,8 +93,9 @@ function useHeight(on: boolean, fallback: number) {
 /** Guided tour: a welcome card, then a spotlight and a step card per sidebar stop. Opens on `?tour` or `relife:tour`. */
 export function Tour() {
   const [{ step, dir }, setState] = useState<{ step: number | null; dir: number }>({ step: null, dir: 1 })
-  // Read from the page while the tour is open (the checklist stop comes and goes with the checklist).
-  const steps: TourStep[] = step === null ? TOUR_STEPS : available()
+  // The stops, fixed when the tour opens, so the count and the current stop never shift under the player
+  // (hiding the checklist mid-tour leaves its stop as a centred card).
+  const [steps, setSteps] = useState<TourStep[]>(TOUR_STEPS)
   const LAST = steps.length - 1
   const [pos, setPos] = useState<Pos | null>(null)
   const cardRef = useRef<HTMLDivElement>(null)
@@ -120,12 +121,25 @@ export function Tour() {
 
   // Open on `?tour` (read once, no useSearchParams so the layout needs no Suspense) or on `relife:tour`.
   // `?tour=setup` comes from setup, which has just said welcome: start at the first stop.
+  // On Today the stops are fixed once its content has streamed in (the checklist is part of it), waiting
+  // at most 3s.
   useEffect(() => {
+    let frame = 0
+    const start = (first: number) => {
+      const t0 = performance.now()
+      const ready = () => location.pathname !== '/' || document.getElementById('quest-log') || performance.now() - t0 > 3000
+      const tick = () => {
+        if (!ready()) { frame = requestAnimationFrame(tick); return }
+        setSteps(available())
+        setState({ step: first, dir: 1 })
+      }
+      tick()
+    }
     const q = new URLSearchParams(location.search).get('tour')
-    if (q !== null) setState({ step: q === 'setup' ? 1 : 0, dir: 1 })
-    const open = () => setState({ step: 0, dir: 1 })
+    if (q !== null) start(q === 'setup' ? 1 : 0)
+    const open = () => start(0)
     window.addEventListener('relife:tour', open)
-    return () => window.removeEventListener('relife:tour', open)
+    return () => { cancelAnimationFrame(frame); window.removeEventListener('relife:tour', open) }
   }, [])
 
   // Mark the page while the tour is up and say when it ends.
@@ -137,10 +151,14 @@ export function Tour() {
     return () => { delete document.documentElement.dataset.touring; setTimeout(() => window.dispatchEvent(new Event(TOUR_END))) }
   }, [open])
 
-  // Fetch every illustration picture while the welcome is up, so no card's art pops in late.
+  // A stop that isn't there (never expected, as the stops are fixed on open) ends the tour rather than
+  // leaving it open with nothing on screen.
+  useEffect(() => { if (inSteps && !current) close() })
+
+  // Fetch every illustration picture as the tour opens, so no card's art pops in late.
   useEffect(() => {
-    if (step === 0) for (const src of ILLO_ASSETS) new Image().src = src
-  }, [step])
+    if (open) for (const src of ILLO_ASSETS) new Image().src = src
+  }, [open])
 
   // Measure the anchor before paint so the card and ring land in place; re-measure on resize and scroll.
   useLayoutEffect(() => {
@@ -159,7 +177,7 @@ export function Tour() {
       window.removeEventListener('resize', remeasure)
       window.removeEventListener('scroll', remeasure, { capture: true })
     }
-  }, [inSteps, step]) // `steps` is read from the page for this step
+  }, [inSteps, step, steps])
 
   // Focus follows the step: the card on every stop, "Show me around" on the welcome.
   useEffect(() => {

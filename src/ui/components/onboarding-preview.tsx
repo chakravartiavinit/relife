@@ -132,7 +132,8 @@ export function SaveFile({ v, step, done, level, picks, routines, starters }: {
   // Keep the part being edited in view when the preview is taller than the window.
   const root = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    root.current?.querySelector('[data-now]')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    const still = matchMedia('(prefers-reduced-motion: reduce)').matches
+    root.current?.querySelector('[data-now]')?.scrollIntoView({ block: 'nearest', behavior: still ? 'auto' : 'smooth' })
   }, [step])
 
   return (
