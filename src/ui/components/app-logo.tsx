@@ -35,6 +35,14 @@ export const LOGO: Record<string, { src: string; fill?: boolean }> = {
   todoist: { src: '/connectors/todoist.svg' },
   lastfm: { src: '/connectors/lastfm.svg' },
   steam: { src: '/connectors/steam.svg' },
+  'google-calendar': { src: '/connectors/googlecalendar.svg' },
+  toggl: { src: '/connectors/toggl.svg' },
+  rescuetime: { src: '/connectors/rescuetime.svg' },
+  hevy: { src: '/connectors/hevy.svg' },
+  codewars: { src: '/connectors/codewars.svg' },
+  letterboxd: { src: '/connectors/letterboxd.svg' },
+  openlibrary: { src: '/connectors/openlibrary.png' },
+  anki: { src: '/connectors/anki.svg' },
 }
 const FALLBACK_ICON: Record<string, typeof Cable> = { fx: ArrowLeftRight, laptop: MonitorSmartphone, sms: MessageSquareText, ocr: ScanText, ingest: Zap }
 

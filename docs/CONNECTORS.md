@@ -16,15 +16,26 @@ events carry stable ids.
 | GitHub | `GITHUB_TOKEN`, `GITHUB_USER` (optional) | 30 min | Daily commits, PRs, reviews, issues |
 | Binance | `BINANCE_API_KEY`, `BINANCE_API_SECRET`, `BINANCE_QUOTES`, `BINANCE_SYMBOLS` (optional) | 15 min | Balances, spot and futures, P2P orders, Convert, transfers, rewards |
 | Laptop activity | `ACTIVITY_TOKEN` | live | Time per site and Mac app, shows and courses you watch |
-| Codeforces, AtCoder, CodeChef, LeetCode | your handle | 1 h | Problems solved, contest ratings |
+| Codeforces, AtCoder, CodeChef, LeetCode, Codewars | your handle | 1 h | Problems solved, contest ratings, Codewars honor |
 | Lichess, Chess.com | your username | 1 h | Games, ratings |
-| Strava | client ID, secret and refresh token | 1 h | Active minutes; running, cycling, walking and swimming distance |
+| Strava | sign in (your app's client ID and secret) | 1 h | Active minutes; running, cycling, walking and swimming distance |
+| Oura | sign in (your app's client ID and secret) | 1 h | Sleep, sleep score, readiness, HRV, resting heart rate, steps |
+| WHOOP | sign in (your app's client ID and secret; https only) | 1 h | Recovery, HRV, resting heart rate, sleep, strain |
+| Withings | sign in (your app's client ID and secret) | 1 h | Weight, body fat, sleep, steps |
+| Google Calendar | sign in (your OAuth client's ID and secret) | 1 h | Meeting minutes, Focus time minutes |
 | WakaTime | `WAKATIME_API_KEY` | 1 h | Coding time per day, top language and project |
 | Monkeytype | `MONKEYTYPE_APE_KEY` | 2 h | Typing speed, accuracy, practice minutes |
 | Duolingo | your username | 1 h | XP per day, streak |
 | Todoist | `TODOIST_API_TOKEN` | 1 h | Tasks completed per day |
 | Last.fm | `LASTFM_USERNAME`, `LASTFM_API_KEY` | 1 h | Songs and listening time per day, top artist |
 | Steam | `STEAM_API_KEY`, `STEAM_ID` | 30 min | Gaming minutes per day, top game |
+| Toggl Track | `TOGGL_API_TOKEN` | 1 h | Tracked time per day, top project |
+| RescueTime | `RESCUETIME_API_KEY` | 2 h | Productivity pulse, productive and distracting minutes |
+| Hevy | `HEVY_API_KEY` (needs Hevy Pro) | 1 h | Gym workouts, minutes, weight lifted |
+| Readwise | `READWISE_TOKEN` | 2 h | Highlights made per day |
+| Letterboxd | your username | 2 h | Films you log in your diary |
+| Open Library | your username | 2 h | Books you mark as read |
+| Anki | nothing (AnkiConnect add-on, Anki open) | 1 h | Cards reviewed, study minutes |
 | Swiggy, Zomato, Blinkit, Zepto | a Chrome login | 2 h | Orders with items |
 | Flipkart, Amazon India | a Chrome login | 6 h | Orders and returns |
 | MakeMyTrip | a Chrome login | 6 h | Flights, hotels, trains and buses you booked |
@@ -138,6 +149,25 @@ Both sync every hour. The first sync backfills about 90 days, later ones the las
 go into `chess.games`, `chess.wins`, `chess.rating-lichess` and `chess.rating-chesscom`, which show on the
 Chess card and can be picked in Settings → The System as something to improve.
 
+## Signing in (OAuth)
+
+Strava, Oura, WHOOP, Withings and Google Calendar connect by signing in with the service. ReLife runs on your own
+machine, so there is no shared ReLife app: you make a free app with the service once, and the Connect dialog walks you
+through it.
+
+1. Open the connector on **Connectors**. Follow the link to the service's developer page and create an app.
+2. Copy the **redirect address** the dialog shows (`http://127.0.0.1:3030/api/oauth/<id>/callback` by default) into
+   the app. It must match exactly, so open ReLife at the same address you registered (`127.0.0.1` and `localhost` are
+   different addresses).
+3. Paste the app's client ID and secret and press **Connect**. The service's sign-in page opens; approve it and you
+   come back to Connectors, where the first sync starts within a minute.
+
+The tokens are kept encrypted with the connection's keys and refreshed before they expire; services that rotate the
+refresh token (Strava, Oura, WHOOP, Withings) have the new one saved at once. Disconnect forgets them. A new client ID
+means signing in again. If a refresh is refused, the sync fails with "Sign in again on Connectors" and the dialog's
+**Sign in again** button fixes it. The sign-in flow is in `src/core/oauth.ts` and `src/app/api/oauth/`; a connector
+opts in with an `oauth` spec (`src/core/types.ts`).
+
 ## Personal data connectors
 
 Each turns one service into daily numbers. Like every tracker, they join Patterns (links such as "on days you
@@ -153,25 +183,78 @@ checks off quests from them. Synced days earn full XP (`src/domain/xp.ts`). Pars
 | Todoist | Mind | `tasks.done` | 3 tasks done |
 | Last.fm | Hobbies | `listening`, `listening.songs` | None: time spent, not practice |
 | Steam | Hobbies | `playtime` | None: time spent, not practice |
+| Oura | Health | `sleep.hours`, `sleep.score`, `hrv`, `resting.hr` (shared), `oura.readiness`, `oura.steps` | 7 hours of sleep, 8,000 steps |
+| WHOOP | Health | `sleep.hours`, `sleep.score`, `hrv`, `resting.hr` (shared), `whoop.recovery`, `whoop.strain` | 7 hours of sleep |
+| Withings | Health | `weight`, `body.fat`, `sleep.hours`, `sleep.score` (shared), `withings.steps` | 7 hours of sleep, 8,000 steps |
+| Google Calendar | Mind | `meetings.minutes`, `focus.minutes` | An hour of Focus time |
+| Toggl Track | Skills | `tracked.minutes` | An hour tracked |
+| RescueTime | Mind | `productivity.pulse`, `productive.minutes`, `distracting.minutes` | Four productive hours |
+| Hevy | Health | `exercise.minutes` (adds to Strava's), `hevy.workouts`, `hevy.volume` | 30 active minutes (shared with Strava) |
+| Readwise | Mind | `highlights.made` | 3 highlights |
+| Codewars | Skills | `cp.solved` (source `codewars`), `codewars.honor` | A problem solved |
+| Letterboxd | Hobbies | `films.watched` | None: time spent, not practice |
+| Open Library | Mind | `books.read` | A finished book |
+| Anki | Skills | `anki.cards`, `anki.minutes` | 20 cards reviewed |
+
+Sleep, sleep score, HRV and resting heart rate are shared trackers, so a quest on sleep works with whichever device you
+wear; each device's value is kept apart (by source) and the latest sync of a day is shown. Steps stay per device
+(`steps`, `oura.steps`, `withings.steps`) so two devices never add up; XP takes the highest of the day.
+
+Fitbit is not here: Google shut the Fitbit Web API down on 2 November 2026 and moved it to the Google Health API.
+Goodreads is not here either: it switched off its public shelf feeds in late October 2026, so Open Library stands in
+(import your Goodreads export at [openlibrary.org/account/import](https://openlibrary.org/account/import)).
 
 Two alerts use them: **Duolingo streak ends tonight** (20:00, when Duolingo says today's lesson isn't done) and **4 days without a
 workout** (18:00, once a week, only for people who usually work out 2 or more days a week).
 
 ### Strava
 
-Strava has no personal keys, so make a small API app once:
+Sign in (see [Signing in](#signing-in-oauth)). Create the app at [strava.com/settings/api](https://www.strava.com/settings/api)
+and set its **authorization callback domain** to `localhost` (Strava allows `127.0.0.1` too); Strava checks only the
+domain, not the whole address.
 
-1. Go to [strava.com/settings/api](https://www.strava.com/settings/api) and create an app. Any name works;
-   use `localhost` for the website and the authorization callback domain. Copy the **Client ID** and **Client Secret**.
-2. Open this address in your browser (put your client ID in), then press **Authorize**:
-   `https://www.strava.com/oauth/authorize?client_id=<ID>&response_type=code&redirect_uri=http://localhost&approval_prompt=force&scope=activity:read_all`
-3. The browser goes to a `localhost` page that doesn't load. Copy the `code=` value from its address bar, then run:
-   `curl -s -X POST https://www.strava.com/oauth/token -d client_id=<ID> -d client_secret=<SECRET> -d code=<CODE> -d grant_type=authorization_code`
-4. Paste the `refresh_token` from the reply, with the client ID and secret, into Connectors → Strava.
+No browser on this Mac? Paste a refresh token instead: open
+`https://www.strava.com/oauth/authorize?client_id=<ID>&response_type=code&redirect_uri=http://localhost&approval_prompt=force&scope=read,activity:read_all`,
+copy the `code=` from the page it lands on, trade it with
+`curl -s -X POST https://www.strava.com/oauth/token -d client_id=<ID> -d client_secret=<SECRET> -d code=<CODE> -d grant_type=authorization_code`
+and put its `refresh_token` in the optional field. It is used until you sign in.
 
-Strava swaps the refresh token from time to time; ReLife keeps the newest one encrypted in the sync cursor (Disconnect forgets it). If
-you paste a different token later, that one is used. Days follow the local time Strava records for each
-activity. The first sync backfills 90 days, later ones the last 7. Active minutes are moving time, every sport.
+Days follow the local time Strava records for each activity. The first sync backfills 90 days, later ones the last 7.
+Active minutes are moving time, every sport.
+
+### Oura
+
+Create an app at [cloud.ouraring.com/oauth/applications](https://cloud.ouraring.com/oauth/applications) with the redirect
+address from the dialog. Scopes asked: `daily`, `heartrate`, `personal`. Each day keeps the night's main sleep (naps
+don't count), the sleep and readiness scores, average HRV, lowest heart rate and steps. Oura fills a day once the ring
+syncs with its app in the morning. The first sync backfills 90 days, later ones the last 3.
+
+### WHOOP
+
+Create an app at [developer-dashboard.whoop.com](https://developer-dashboard.whoop.com) with the scopes `read:recovery`,
+`read:sleep`, `read:cycles` and `offline`. WHOOP accepts only **https** redirect addresses (or app schemes), so open
+ReLife over https before you connect, for example through Tailscale Serve or a Cloudflare Tunnel, and register that
+address; the dialog shows the right one and warns while you are on plain http. Only scored records count. A night
+belongs to the day it ends on, recovery to its night, and strain to the day its cycle starts. Naps are skipped.
+
+### Withings
+
+Create a **Public API integration** at [developer.withings.com](https://developer.withings.com/dashboard/) with the
+redirect address from the dialog (http on `localhost` or `127.0.0.1` is fine while the app is in development). Scopes
+asked: `user.metrics`, `user.activity`. Weight and body fat come from real weigh-ins only (not goals); the last weigh-in of
+the day wins. Sleep needs a Withings watch or sleep mat. The first sync backfills 90 days.
+
+### Google Calendar
+
+In [Google Cloud Console](https://console.cloud.google.com/apis/credentials): turn on the **Google Calendar API**, set up
+the OAuth consent screen (External, add yourself as a test user), then create an **OAuth client ID** of type *Web
+application* with the redirect address from the dialog. Google allows `http://localhost` addresses; if it refuses
+`127.0.0.1`, open ReLife at `http://localhost:3030` and use that address. Scope asked:
+`calendar.events.readonly`. Only your primary calendar is read, and only minutes are stored, never titles or guests.
+A **meeting** is a timed event with at least one other person that you didn't decline; **Focus time** is Google
+Calendar's own Focus time block. All-day events, out-of-office and working-location blocks are skipped, and one event
+counts for at most 12 hours. The first sync backfills 60 days, later ones the last 3. In testing mode Google expires the
+refresh token after 7 days; publish the app (no review is needed for your own account) to stay signed in.
 
 ### WakaTime
 
@@ -213,6 +296,56 @@ your profile link or 17-digit Steam ID. In Steam → Edit Profile → Privacy, s
 Steam only reports lifetime playtime per game, so ReLife adds up each game's gain between syncs: there's no
 history before you connect, and playtime appears when a game session ends (a session that ends after the day's
 last sync counts on the next day).
+
+### Toggl Track
+
+[track.toggl.com/profile](https://track.toggl.com/profile) → **API Token** (bottom of the page). Only minutes per day,
+the number of entries and the project with the most time are stored, never descriptions. A running timer counts once you
+stop it. The first sync backfills 90 days (the free plan may keep less), later ones the last 3.
+
+### RescueTime
+
+Create an API key at [rescuetime.com/anapi/manage](https://www.rescuetime.com/anapi/manage). ReLife reads the daily
+summary feed, which holds the last two weeks and never today, so the first sync backfills 14 days and a day appears the
+morning after. Productive minutes are *very productive + productive*; distracting are *distracting + very distracting*.
+A day with nothing logged has no pulse.
+
+### Hevy
+
+[hevy.com/settings?developer](https://hevy.com/settings?developer) (the API needs **Hevy Pro**). Each day keeps the
+number of workouts, minutes (end minus start) and volume (kg × reps, warm-up sets left out). Minutes also go into
+`exercise.minutes` with source `hevy`, so a gym session and a Strava run add up. First sync backfills 90 days.
+
+### Readwise
+
+[readwise.io/access_token](https://readwise.io/access_token). Counts highlights by the time you made them, with the number
+of different books or articles; highlight text is never stored. Highlights with no highlight time are skipped. 90-day
+backfill, later syncs the last 3.
+
+### Codewars
+
+Your public username, no key. A kata counts once, on the local day you first completed it, and adds to `cp.solved`
+(source `codewars`). Honor is the current total, set on today, since Codewars keeps no history. 90-day backfill.
+
+### Letterboxd
+
+Your public username or profile link. ReLife reads your diary from `letterboxd.com/<you>/rss/`, which holds only your
+latest 50 diary entries: the first sync takes whatever is there, and older films are never seen. Each day keeps the
+films watched, their titles and the average rating you gave. Lists and reviews without a watched date are skipped.
+
+### Open Library
+
+Your username (`openlibrary.org/people/<name>`), with the reading log set to public in Open Library's settings. Books
+count on the day you mark them **Already Read**, so a bulk import lands on one day. Coming from Goodreads? Export your
+library there and import it at [openlibrary.org/account/import](https://openlibrary.org/account/import). The first sync
+backfills 365 days.
+
+### Anki
+
+Install the **AnkiConnect** add-on in Anki (Tools → Add-ons → Get Add-ons → `2055492159`) and keep Anki open. No key is
+needed unless you set an `apiKey` in the add-on's config; the address defaults to `http://127.0.0.1:8765`. Cards come
+from Anki's own count per day (its day starts at the rollover hour, 4 am by default); minutes add up each review's answer
+time, which Anki caps at 60 seconds. When Anki is closed the sync says so, and the next one catches up. 90-day backfill.
 
 ## Binance
 
