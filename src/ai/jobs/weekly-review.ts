@@ -10,13 +10,13 @@ import type { User } from '@/core/user'
 import { aiEnabled, model } from '../models'
 import { generate } from '../run'
 import { COACH_SYSTEM, digestText } from '../context'
-import { allowedScheduleKinds, isSafeAiScheduleProposal } from '../tool-policy'
+import { isSafeAiScheduleProposal } from '../tool-policy'
 
 const action = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('schedule'),
     name: z.string().max(120),
-    kind: z.enum(allowedScheduleKinds()),
+    kind: z.string().max(40).describe('routine, subscription, bill, or renewal; unsupported kinds are discarded'),
     category: z.enum(CATEGORIES),
     rrule: z.string().describe('RRULE line without DTSTART, e.g. FREQ=DAILY;BYHOUR=7;BYMINUTE=0'),
     target: z.number().finite().optional(),

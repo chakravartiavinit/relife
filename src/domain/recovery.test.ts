@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { addDays } from '@/core/time'
 import { coachStats, type QuestHistory } from './coach'
-import { recoveryView, smallerRecoveryPreview } from './recovery'
+import { recoveryView, samePreview, smallerRecoveryPreview } from './recovery'
 import type { Signal } from './patterns'
 import { xpFor } from './system'
 
@@ -52,4 +52,13 @@ test('recovery view exposes only the UI decision contract', () => {
     id: 'insight', version: 2, localDate: today, missed: [{ id: 'parent', title: 'Practice', progress: 2, target: 6, unit: 'min' }],
     preview: null, choice: 'rest', questId: null,
   })
+})
+
+test('preview equality ignores JSONB key ordering but detects changed values', () => {
+  const preview = smallerRecoveryPreview(input(signal()))!
+  const reordered = Object.fromEntries(Object.entries(preview).reverse()) as typeof preview
+  assert.equal(samePreview(preview, reordered), true)
+  assert.equal(samePreview(preview, { ...reordered, target: preview.target + 1 }), false)
+  assert.equal(samePreview(preview, null), false)
+  assert.equal(samePreview(null, null), true)
 })

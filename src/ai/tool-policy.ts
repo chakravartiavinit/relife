@@ -2,7 +2,7 @@ import { addDays, daysBetween } from '@/core/time'
 
 export const MAX_HISTORY_DAYS = 90
 const nonMedicineScheduleKinds = ['routine', 'subscription', 'bill', 'renewal'] as const
-const medicationOrDose = /\b(?:medicine|medications?|meds?|prescriptions?|pills?|tablets?|capsules?|dosages?|doses?|vitamins?|supplements?|melatonin|insulin|syrup)(?=\b|\d)|\b\d+(?:\.\d+)?\s*(?:mg|mcg|µg|iu)\b/i
+const medicationOrDose = /\b(?:medicine|medications?|meds?|prescriptions?|pills?|tablets?|capsules?|dosages?|doses?|vitamins?|supplements?|melatonin|insulin|syrup)(?=\b|\d)|\b\d+(?:\.\d+)?\s*(?:mg|mcg|µg|iu)\b|^\s*(?:mg|mcg|µg|iu)\s*$/i
 
 /** True only for an actual Gregorian calendar date, not merely a YYYY-MM-DD-shaped string. */
 export function isLocalDate(value: string) {
@@ -30,7 +30,7 @@ export function allowedScheduleKinds() {
 
 /** AI schedule suggestions never create medicine reminders or encode medication/dosage in another kind. */
 export function isSafeAiScheduleProposal(kind: string, ...text: (string | undefined)[]) {
-  return kind !== 'medicine' && !text.some((value) => value != null && medicationOrDose.test(value))
+  return nonMedicineScheduleKinds.some((allowed) => allowed === kind) && !text.some((value) => value != null && medicationOrDose.test(value))
 }
 
 export function defaultMetricFrom(today: string) {

@@ -104,7 +104,7 @@ export async function prepareRecovery(user: User, now: Date, signals: Signal[], 
   return db.transaction(async (tx) => {
     await lockUser(tx, user.id)
     await tx.update(Q).set({ status: 'cancelled', resolvedAt: now }).where(and(eq(Q.userId, user.id), eq(Q.kind, 'penalty'), eq(Q.status, 'active')))
-    await tx.update(Q).set({ status: 'unverified', resolvedAt: now }).where(and(eq(Q.userId, user.id), eq(Q.status, 'failed'), sql`${Q.progress} is null`))
+    await tx.update(Q).set({ status: 'unverified' }).where(and(eq(Q.userId, user.id), eq(Q.status, 'failed'), sql`${Q.progress} is null`))
     await tx.update(schema.insights).set({ status: 'done' }).where(and(
       eq(schema.insights.userId, user.id), eq(schema.insights.status, 'pending'),
       sql`${schema.insights.payload}->'recovery'->>'localDate' < ${today}`,

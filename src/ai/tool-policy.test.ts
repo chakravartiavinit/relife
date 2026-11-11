@@ -22,4 +22,7 @@ test('AI schedule proposals reject medical kinds and known medication or dose te
   assert.equal(isSafeAiScheduleProposal('routine', 'Evening walk', '10 minutes'), true)
   assert.equal(isSafeAiScheduleProposal('routine', 'Drink water', '500 ml'), true)
   assert.equal(isSafeAiScheduleProposal('routine', 'Take insulin'), false)
+  for (const unit of ['mg', 'mcg', 'µg', 'IU']) assert.equal(isSafeAiScheduleProposal('routine', 'Take magnesium', unit), false)
+  assert.equal(isSafeAiScheduleProposal('routine', 'Drink water', 'ml'), true)
+  assert.equal(isSafeAiScheduleProposal('unknown', 'Evening walk'), false)
 })

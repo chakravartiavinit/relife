@@ -52,7 +52,7 @@ function useUntilMidnight(timeZone: string) {
   return left
 }
 
-/** The System's quests: daily ones set from your data, plus any penalty or emergency quest. */
+/** The System's daily, chosen recovery and corrective quests, with legacy history. */
 export function SystemQuests({ quests, difficulty, hasData, timezone, recovery }: { quests: SystemQuestItem[]; difficulty: number; hasData: boolean; timezone: string; recovery?: RecoveryView | null }) {
   const left = useUntilMidnight(timezone)
   const kinds = (['recovery', 'emergency', 'daily', 'penalty'] as const).filter((k) => quests.some((q) => q.kind === k))
@@ -71,7 +71,7 @@ export function SystemQuests({ quests, difficulty, hasData, timezone, recovery }
         </span>
       </div>
 
-      {recovery ? <RecoveryPanel recovery={recovery} /> : null}
+      {recovery ? <RecoveryPanel key={`${recovery.id}:${recovery.version}`} recovery={recovery} /> : null}
       {quests.length ? (
         <div className="flex flex-col gap-4">
           {kinds.map((k) => {

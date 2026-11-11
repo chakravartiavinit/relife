@@ -65,4 +65,5 @@ test('telemetry recognizes AI SDK-prefixed error names and safe provider metadat
   assert.equal(failedRun('task', 'model', 1, error('AI_JSONParseError'), timeout).error, 'invalid_output')
   assert.equal(failedRun('task', 'model', 1, error('AI_TypeValidationError'), timeout).error, 'invalid_output')
   assert.equal(failedRun('task', 'model', 1, error('AI_NoSuchModelError'), timeout).error, 'provider')
+  assert.equal(failedRun('task', 'model', 1, new DOMException('private timeout detail', 'TimeoutError'), timeout).error, 'timeout')
 })

@@ -82,6 +82,7 @@ function errorCategory(error: unknown, timeoutSignal: AbortSignal, callerSignal?
   if (callerSignal?.aborted || error instanceof DOMException && error.name === 'AbortError') return 'cancelled'
 
   const name = (error instanceof Error ? error.name : '').replace(/^AI_/, '')
+  if (name === 'TimeoutError') return 'timeout'
   if (/^(InvalidArgument|InvalidDataContent|InvalidMessageRole|MessageConversion|ToolChoiceViolation)Error$/.test(name)) return 'invalid_request'
   if (/^(InvalidToolInput|NoSuchTool|ToolCallRepair)Error$/.test(name)) return 'tool'
   if (/^(No(?:Output|Object|Content)Generated|JSONParse|TypeValidation|InvalidResponseData)Error$/.test(name)) return 'invalid_output'

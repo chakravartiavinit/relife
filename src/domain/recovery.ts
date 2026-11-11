@@ -84,5 +84,7 @@ export function recoveryView(id: string, payload: RecoveryPayload, missed: Recov
 }
 
 export function samePreview(a: RecoveryPreview | null, b: RecoveryPreview | null) {
-  return JSON.stringify(a) === JSON.stringify(b)
+  if (!a || !b) return a === b
+  return Object.keys(a).length === Object.keys(b).length
+    && Object.entries(a).every(([key, value]) => b[key as keyof RecoveryPreview] === value)
 }
