@@ -14,9 +14,11 @@ import { fx } from './fx'
 import { github } from './github'
 import { icloudInbox } from './icloud-inbox'
 import { shopConnectors } from './shop'
+import { byokConnectors } from './byok'
+import { feedConnectors } from './feeds'
 
 // One file per source. A connector whose env vars are missing is skipped (see docs/CONNECTORS.md).
 export const connectors: Connector[] = [
   icloudInbox, laptop, fx, github, codeforces, codechef, atcoder, leetcode, lichess, chesscom, binance,
-  strava, wakatime, monkeytype, duolingo, todoist, lastfm, steam, ...shopConnectors,
+  strava, wakatime, monkeytype, duolingo, todoist, lastfm, steam, ...byokConnectors, ...feedConnectors, ...shopConnectors,
 ]
