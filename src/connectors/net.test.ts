@@ -13,6 +13,9 @@ test('handleOf takes the username out of whatever was pasted', () => {
     ['https://www.codechef.com/users/gennady.korotkevich?tab=1', 'gennady.korotkevich'],
     ['https://github.com/octocat', 'octocat'],
     ['https://www.codewars.com/users/g964', 'g964'],
+    ['https://www.last.fm/user/rj/library?x=1', 'rj'],
+    ['steamcommunity.com/id/gaben/', 'gaben'],
+    ['https://letterboxd.com/dave/films/', 'dave'],
     ['gennady.korotkevich', 'gennady.korotkevich'], // a dotted name is not a link
   ]
   for (const [raw, name] of cases) assert.equal(handleOf(raw), name, raw)

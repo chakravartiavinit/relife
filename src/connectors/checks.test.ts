@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fetchJson, pastedName } from './daily'
+import { fetchJson } from './daily'
 import { wakatime } from './wakatime'
 import { todoist } from './todoist'
 import { toggl } from './toggl'
@@ -23,16 +23,6 @@ async function withFetch<T>(handler: Handler, run: () => Promise<T>) {
 }
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status })
 const keys = (m: Record<string, string>) => (k: string) => m[k]
-
-test('pastedName takes the name from a bare name, an @name or a profile link', () => {
-  assert.equal(pastedName(' @rj ', 'user'), 'rj')
-  assert.equal(pastedName('https://www.last.fm/user/rj/library?x=1', 'user'), 'rj')
-  assert.equal(pastedName('last.fm/user/rj', 'user'), 'rj')
-  assert.equal(pastedName('https://www.duolingo.com/profile/luis', 'profile'), 'luis')
-  assert.equal(pastedName('steamcommunity.com/id/gaben/', 'id'), 'gaben')
-  assert.equal(pastedName('https://letterboxd.com/dave/films/', 'letterboxd.com'), 'dave')
-  assert.equal(pastedName('openlibrary.org/people/mekBot', 'people'), 'mekBot')
-})
 
 test('fetchJson says "timed out" and "Network problem" so a check or sync treats them as try-again-later', async () => {
   await withFetch(() => { throw Object.assign(new Error('aborted'), { name: 'TimeoutError' }) },

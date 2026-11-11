@@ -1,7 +1,8 @@
 import type { Connector } from '@/core/types'
 import { env } from '@/core/env'
 import { localDate } from '@/core/time'
-import { emitDays, fetchJson, pastedName, rejectedAs } from './daily'
+import { emitDays, fetchJson, rejectedAs } from './daily'
+import { handleOf } from './net'
 
 // Steam: minutes you play each day. Steam only reports lifetime playtime per game, so each sync adds up
 // how much each game gained since the last one: there's no history before you connect, and the first
@@ -20,7 +21,7 @@ async function steamId(key: string, input: string) {
   // A profile URL, a 17-digit ID (they all start 7656), or the custom name from steamcommunity.com/id/<name>.
   const id = input.match(/(7656\d{13})/)?.[1]
   if (id) return id
-  const vanity = pastedName(input, 'id')
+  const vanity = handleOf(input)
   const r = await fetchJson<{ response: { success: number; steamid?: string } }>(
     `https://api.steampowered.com/ISteamUser/ResolveVanityURL/v1/?key=${encodeURIComponent(key)}&vanityurl=${encodeURIComponent(vanity)}`,
   ).catch(rejectedAs(REJECTED))

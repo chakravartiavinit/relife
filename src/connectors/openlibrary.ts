@@ -1,7 +1,8 @@
 import type { Connector } from '@/core/types'
 import { env } from '@/core/env'
 import { localDate } from '@/core/time'
-import { dayMap, emitDays, fetchJson, fillDays, pastedName, rejectedAs, syncWindow } from './daily'
+import { dayMap, emitDays, fetchJson, fillDays, rejectedAs, syncWindow } from './daily'
+import { handleOf, retryOnce } from './net'
 
 // Open Library: the books on your public "Already Read" shelf, each on the day you marked it read. No key.
 // This stands in for Goodreads, which switched off its public shelf feeds in late October 2026. You can
@@ -28,7 +29,7 @@ export function openLibraryDays(entries: Entry[], tz: string) {
 
 /** The username from a bare name or a profile link (openlibrary.org/people/mekBot). */
 export function openLibraryUser(input: string) {
-  const name = pastedName(input, 'people')
+  const name = handleOf(input)
   if (!/^[\w-]+$/.test(name)) throw new Error('That is not an Open Library username. Use the name in your profile link (openlibrary.org/people/<name>).')
   return name
 }
@@ -39,14 +40,7 @@ const PRIVATE = 'Your Open Library reading log is private. Make it public under 
 /** One page of the shelf (100 books). A private log answers 403, which fetchJson words as a rejected key. Open Library now and then answers a slow 500, so a 5xx is tried once more. */
 const shelf = async (user: string, page: number, limit?: number): Promise<Shelf> => {
   const url = `https://openlibrary.org/people/${user}/books/already-read.json?page=${page}${limit ? `&limit=${limit}` : ''}`
-  for (let attempt = 1; ; attempt++) {
-    try {
-      return await fetchJson<Shelf>(url, {}, NOT_FOUND).catch(rejectedAs(PRIVATE))
-    } catch (e) {
-      if (attempt >= 2 || !/^HTTP 5\d\d/.test((e as Error).message)) throw e
-      await new Promise((r) => setTimeout(r, 1500))
-    }
-  }
+  return retryOnce(() => fetchJson<Shelf>(url, {}, NOT_FOUND).catch(rejectedAs(PRIVATE)), /^HTTP 5\d\d/, 1500)
 }
 
 export const openlibrary: Connector = {

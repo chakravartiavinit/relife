@@ -1,7 +1,8 @@
 import type { Connector } from '@/core/types'
 import { env } from '@/core/env'
 import { localDate } from '@/core/time'
-import { dayMap, emitDays, fillDays, pastedName, request, syncWindow } from './daily'
+import { dayMap, emitDays, fillDays, request, syncWindow } from './daily'
+import { handleOf } from './net'
 
 // Last.fm: every song you scrobble from Spotify, Apple Music, YouTube Music and the rest. Each day becomes
 // tracks played, an estimate of minutes listened (Last.fm doesn't store song lengths in the feed) and the
@@ -42,7 +43,7 @@ function lastfmError(code: number, message?: string) {
 
 async function recent(get: (env: string) => string | undefined, extra: Record<string, string>) {
   const q = new URLSearchParams({
-    method: 'user.getrecenttracks', user: pastedName(get('LASTFM_USERNAME')!, 'user'), api_key: get('LASTFM_API_KEY')!.trim(), format: 'json', ...extra,
+    method: 'user.getrecenttracks', user: handleOf(get('LASTFM_USERNAME')), api_key: get('LASTFM_API_KEY')!.trim(), format: 'json', ...extra,
   })
   const res = await request(`https://ws.audioscrobbler.com/2.0/?${q}`)
   const body = await res.json().catch(() => null) as Recent | null

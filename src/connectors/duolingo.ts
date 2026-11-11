@@ -2,7 +2,8 @@ import type { Connector } from '@/core/types'
 import { env } from '@/core/env'
 import { addDays, localDate } from '@/core/time'
 import { addGain, type TotalCursor } from '@/domain/running-total'
-import { emitDays, fetchJson, pastedName, rejectedAs } from './daily'
+import { emitDays, fetchJson, rejectedAs } from './daily'
+import { handleOf } from './net'
 
 // Duolingo from your public username: no key. The public profile has your total XP and streak, not XP
 // per day, so each sync adds the gain since the last one (src/domain/running-total.ts). XP per day starts
@@ -35,7 +36,7 @@ export function xpDay(today: string, lastPractised: string | undefined) {
 const NOT_FOUND = 'Username not found. Use the name on your Duolingo profile (duolingo.com/profile/<name>), not your email.'
 
 async function profile(input: string) {
-  const name = encodeURIComponent(pastedName(input, 'profile'))
+  const name = encodeURIComponent(handleOf(input))
   const r = await fetchJson<Profile>(`https://www.duolingo.com/2017-06-30/users?username=${name}`) // a `fields` filter makes it return {}
     .catch(rejectedAs('Duolingo blocked this network (HTTP 403). It will try again on the next sync.'))
   const u = r.users?.[0]

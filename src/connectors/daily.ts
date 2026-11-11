@@ -52,13 +52,6 @@ export const rejectedAs = (advice: string, also?: RegExp) => (e: Error): never =
   throw new Error(e.message.includes('rejected') || also?.test(e.message) ? advice : e.message)
 }
 
-/** A pasted username: trims, drops a leading @, and takes the name from a profile link (`last.fm/user/rj/` with marker `user` → `rj`). */
-export function pastedName(input: string, marker: string) {
-  const parts = input.trim().replace(/^https?:\/\//i, '').split(/[?#]/)[0].split('/').filter(Boolean)
-  const i = parts.findIndex((p) => p === marker || p.endsWith(`.${marker}`))
-  return (i >= 0 ? parts[i + 1] ?? '' : parts.at(-1) ?? '').replace(/^@/, '')
-}
-
 /**
  * Adds empty days so a day with nothing done counts as zero, not as "no data". The first backfill
  * starts at the first day with data (before that you may not have used the service); later syncs

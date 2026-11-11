@@ -2,7 +2,8 @@ import { createHash } from 'node:crypto'
 import type { Connector, ConnectorCtx } from '@/core/types'
 import { env } from '@/core/env'
 import { addDays, localDate, wallToUtc } from '@/core/time'
-import { fetchT, handleOf } from './net'
+import { setTimeout as sleep } from 'node:timers/promises'
+import { fetchT, handleOf, retryOnce } from './net'
 
 // Competitive programming from public handles: no key, no login. Each sync rebuilds whole days
 // (problems solved, submissions, contest rating) and emits one raw event per day and site;
@@ -96,7 +97,7 @@ async function cfApi<T>(path: string, handle: string, retry = true): Promise<T> 
   if (j?.status === 'OK') return j.result as T
   const limited = res.status === 429 || res.status === 503 || /limit exceeded/i.test(j?.comment ?? '')
   if (limited && retry) {
-    await new Promise((r) => setTimeout(r, 2200))
+    await sleep(2200)
     return cfApi<T>(path, handle, false)
   }
   if (limited) throw new Error('Rate limited. It will try again next hour.')
@@ -216,15 +217,8 @@ export function codechefRows(html: string, now: Date) {
 /** The profile page, or an error when the handle doesn't exist (CodeChef redirects those to its home page). */
 async function codechefProfile(h: string, handle: string) {
   const url = `https://www.codechef.com/users/${h}`
-  const missing = notFound('CodeChef', handle)
-  try {
-    return await (await get(url, missing, true)).text()
-  } catch (e) {
-    // CodeChef throttles bursts: wait a moment and ask once more.
-    if (!/rate limit/i.test((e as Error).message)) throw e
-    await new Promise((r) => setTimeout(r, 3000))
-    return await (await get(url, missing, true)).text()
-  }
+  // CodeChef throttles bursts: wait a moment and ask once more.
+  return retryOnce(async () => (await get(url, notFound('CodeChef', handle), true)).text(), /rate limit/i, 3000)
 }
 
 export const codechef: Connector = {
@@ -251,7 +245,7 @@ export const codechef: Connector = {
     const now = new Date()
     const subs: ReturnType<typeof codechefRows> = []
     for (let page = 0; page < (backfilled ? 3 : 25); page++) {
-      if (page) await new Promise((r) => setTimeout(r, 500)) // gentle: CodeChef answers 429 to quick bursts
+      if (page) await sleep(500) // gentle: CodeChef answers 429 to quick bursts
       const j = (await (await get(`https://www.codechef.com/recent/user?page=${page}&user_handle=${h}`)).json()) as { max_page: number; content: string }
       const rows = codechefRows(j.content, now)
       subs.push(...rows)

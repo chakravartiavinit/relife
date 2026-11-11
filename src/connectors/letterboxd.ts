@@ -1,7 +1,8 @@
 import type { Connector } from '@/core/types'
 import { env } from '@/core/env'
 import { localDate } from '@/core/time'
-import { checkStatus, dayMap, emitDays, fillDays, pastedName, request } from './daily'
+import { checkStatus, dayMap, emitDays, fillDays, request } from './daily'
+import { handleOf } from './net'
 
 // Letterboxd: the films you log in your diary, from your public RSS feed (letterboxd.com/<you>/rss/). No key.
 // The feed holds only your latest 50 diary entries, so the first sync backfills whatever the feed has and
@@ -54,7 +55,7 @@ export function letterboxdDays(watches: Watch[]) {
 
 /** The username from a bare name or a profile link (letterboxd.com/dave/). */
 export function letterboxdUser(input: string) {
-  const name = pastedName(input, 'letterboxd.com')
+  const name = handleOf(input)
   if (!/^[\w-]+$/.test(name)) throw new Error('That is not a Letterboxd username. Use the name after letterboxd.com/ on your profile.')
   return name
 }
