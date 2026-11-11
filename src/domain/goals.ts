@@ -1,5 +1,5 @@
 import { addDays, daysBetween, formatDay } from '@/core/time'
-import { medicationOrDose } from '@/ai/tool-policy'
+import { isLocalDate, medicationOrDose } from '@/ai/tool-policy'
 import type { Category } from '@/db/schema'
 import { adherenceRate, type DayStatus } from './adherence'
 import { formatValue } from './patterns'
@@ -45,6 +45,8 @@ export type GoalLike = {
   title: string; measureKind: GoalMeasureKind; measureName: string; unit: string | null
   direction: GoalDirection; target: number | null; rangeLow: number | null; rangeHigh: number | null
   baselineValue: number; targetDate: string; cadence: GoalCadence
+  /** The review window never reaches before this date, so baseline days are not judged again. */
+  baselineDate?: string
 }
 
 export type ActionSnapshot = {
@@ -104,17 +106,25 @@ export function trackerBaseline(days: Map<string, number>, startDate: string) {
 export type OutcomeInput = { days?: Map<string, number>; checkIns?: { localDate: string; value: number }[] }
 
 /** The outcome for the review period ending the day before `reviewDate` (check-ins: up to `reviewDate`). */
-export function outcomeNow(goal: Pick<GoalLike, 'measureKind' | 'cadence'>, input: OutcomeInput, reviewDate: string) {
-  const windowDays = CADENCE_DAYS[goal.cadence]
-  const from = addDays(reviewDate, -windowDays)
+/** The review period: the cadence before `reviewDate`, cut so it never starts before the baseline date. */
+export function reviewWindow(goal: Pick<GoalLike, 'cadence' | 'baselineDate'>, reviewDate: string) {
+  const full = addDays(reviewDate, -CADENCE_DAYS[goal.cadence])
+  const from = goal.baselineDate && goal.baselineDate > full ? goal.baselineDate : full
+  const to = addDays(reviewDate, -1)
+  return { from, to, days: Math.max(0, daysBetween(from, to) + 1) }
+}
+
+export function outcomeNow(goal: Pick<GoalLike, 'measureKind' | 'cadence' | 'baselineDate'>, input: OutcomeInput, reviewDate: string) {
+  const w = reviewWindow(goal, reviewDate)
   if (goal.measureKind === 'check_in') {
-    const inWindow = (input.checkIns ?? []).filter((c) => c.localDate > from && c.localDate <= reviewDate && Number.isFinite(c.value))
+    // Check-ins count after the window start up to the review day; one on the baseline date is the baseline.
+    const inWindow = (input.checkIns ?? []).filter((c) => c.localDate > w.from && c.localDate <= reviewDate && Number.isFinite(c.value))
       .sort((a, b) => b.localDate.localeCompare(a.localDate))
     const latest = inWindow[0] ?? null
     return { value: latest?.value ?? null, observations: inWindow.length, needed: 1, latestCheckIn: latest }
   }
-  const xs = observed(input.days ?? new Map(), from, addDays(reviewDate, -1))
-  return { value: mean(xs), observations: xs.length, needed: minObservations(windowDays), latestCheckIn: null }
+  const xs = observed(input.days ?? new Map(), w.from, w.to)
+  return { value: mean(xs), observations: xs.length, needed: Math.max(1, minObservations(w.days)), latestCheckIn: null }
 }
 
 /** Distance from a value to the range; 0 inside it. */
@@ -184,8 +194,8 @@ export function goalSnapshot(
   goal: GoalLike, input: OutcomeInput, actions: { link: GoalActionLink; source: ActionSource | null }[],
   reviewDate: string, sensitive: boolean, now = new Date(),
 ): GoalSnapshot {
-  const days = CADENCE_DAYS[goal.cadence]
-  const window = { from: addDays(reviewDate, -days), to: addDays(reviewDate, -1), days }
+  const window = reviewWindow(goal, reviewDate)
+  const days = window.days
   const current = outcomeNow(goal, input, reviewDate)
   const { status, progressShare } = outcomeStatus(goal, current)
   const acts = actions.map((a) => actionAdherence(a.link, a.source, window))
@@ -267,7 +277,7 @@ export type GoalContext = {
 }
 export type GoalErrors = Partial<Record<keyof GoalInput | 'form', string>>
 
-const isDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(`${s}T00:00:00Z`))
+const isDate = isLocalDate
 
 export function validateGoal(g: GoalInput, ctx: GoalContext): GoalErrors {
   const e: GoalErrors = {}

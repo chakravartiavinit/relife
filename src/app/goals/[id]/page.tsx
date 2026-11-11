@@ -88,7 +88,7 @@ async function Detail({ params }: { params: PageProps<'/goals/[id]'>['params'] }
               ))}
             </ul>
           </Card>
-          <GoalHistory unit={g.unit} startedOn={g.createdAt.toISOString().slice(0, 10)} baseline={`Baseline ${value(g.baselineValue, g.unit)}, ${g.baselineHow}`} rows={data.history} />
+          <GoalHistory unit={g.unit} startedOn={g.startedOn} baseline={`Baseline ${value(g.baselineValue, g.unit)}, ${g.baselineHow}`} rows={data.history} />
         </aside>
       </div>
     </div>

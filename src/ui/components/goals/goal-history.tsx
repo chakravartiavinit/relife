@@ -1,7 +1,7 @@
 import { Check, CircleDashed, Flag, History, Pause, Pencil, Play } from 'lucide-react'
 import type { GoalDecision, GoalFields } from '@/domain/goals'
 import { Card, CardHeader } from '../card'
-import { day, value, weekday } from './format'
+import { CADENCE_LABEL, day, value, weekday } from './format'
 
 // Every decision and edit for one goal, newest first. Undecided older reviews read "No decision recorded".
 
@@ -20,9 +20,10 @@ function changes(b: GoalFields, a: GoalFields, unit: string | null) {
   if (b.title !== a.title) out.push(`title “${a.title}”`)
   const v = (x: number | null) => (x == null ? '—' : value(x, unit))
   if (b.target !== a.target) out.push(`target ${v(b.target)} → ${v(a.target)}`)
-  if (b.rangeLow !== a.rangeLow || b.rangeHigh !== a.rangeHigh) out.push(`range ${b.rangeLow}–${b.rangeHigh} → ${a.rangeLow}–${a.rangeHigh}`)
+  const range = (f: GoalFields) => (f.rangeLow == null || f.rangeHigh == null ? '—' : `${value(f.rangeLow, null)}–${value(f.rangeHigh, unit)}`)
+  if (b.rangeLow !== a.rangeLow || b.rangeHigh !== a.rangeHigh) out.push(`range ${range(b)} → ${range(a)}`)
   if (b.targetDate !== a.targetDate) out.push(`date ${day(b.targetDate)} → ${day(a.targetDate)}`)
-  if (b.cadence !== a.cadence) out.push(`review ${b.cadence} → ${a.cadence}`)
+  if (b.cadence !== a.cadence) out.push(`review ${CADENCE_LABEL[b.cadence].toLowerCase()} → ${CADENCE_LABEL[a.cadence].toLowerCase()}`)
   if (JSON.stringify(b.actions) !== JSON.stringify(a.actions)) out.push('linked actions')
   if (b.reason !== a.reason) out.push('reason')
   return out.join(', ') || 'No field changed'

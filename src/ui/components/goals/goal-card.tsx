@@ -27,11 +27,12 @@ export function useGoalActions(g: GoalViewData) {
   const [pending, start] = useTransition()
   const toast = useToast()
   const router = useRouter()
-  const set = (status: 'active' | 'paused' | 'finished') => start(async () => {
+  // One change at a time: a second tap while saving would only hit a stale version.
+  const set = (status: 'active' | 'paused' | 'finished') => !pending && start(async () => {
     const res = await setGoalStatusAction({ goalId: g.id, version: g.version, status })
     toast(res.ok ? { active: 'Goal resumed', paused: 'Goal paused', finished: 'Goal finished' }[status] : res.error, res.ok ? 'good' : 'bad')
   })
-  const reviewNow = () => start(async () => { await reviewGoalNowAction(g.id); router.push('/goals/review') })
+  const reviewNow = () => !pending && start(async () => { await reviewGoalNowAction(g.id); router.push('/goals/review') })
   return { pending, set, reviewNow }
 }
 
@@ -40,11 +41,10 @@ export function OutcomeGoalCard({ g, picker, today }: { g: GoalViewData; picker:
   const color = CATEGORY[g.area].color
   const o = g.snapshot?.outcome
   const move = movement(g)
-  const { set, reviewNow } = useGoalActions(g)
+  const { pending, set, reviewNow } = useGoalActions(g)
   const [editing, setEditing] = useState(false)
-  const outcomeArchived = g.measureKind === 'tracker' && !g.trackerId
   return (
-    <Card as="article" aria-labelledby={`goal-${g.id}`}>
+    <Card as="article" aria-labelledby={`goal-${g.id}`} aria-busy={pending || undefined}>
       <header className="mb-4 flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           <IconChip color={color}><Target strokeWidth={1.5} /></IconChip>
@@ -56,12 +56,12 @@ export function OutcomeGoalCard({ g, picker, today }: { g: GoalViewData; picker:
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <GoalStatusBadge g={g} />
+          {pending ? <span role="status" className="text-[12.5px] text-ink-3">Saving…</span> : <GoalStatusBadge g={g} />}
           <RowMenu label={g.title} items={[
             { label: 'Edit', icon: Pencil, onSelect: () => setEditing(true) },
             { label: 'Review now', icon: CalendarCheck, onSelect: reviewNow },
             { label: 'Pause', icon: Pause, onSelect: () => set('paused') },
-            { label: 'Finish', icon: Flag, onSelect: () => set('finished') },
+            { label: 'Finish', icon: Flag, onSelect: () => set('finished'), danger: true },
           ]} />
         </div>
       </header>
@@ -79,7 +79,7 @@ export function OutcomeGoalCard({ g, picker, today }: { g: GoalViewData; picker:
       </div>
 
       <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1.5 border-t border-divider pt-4 text-[12.5px] text-ink-3 tabular-nums">
-        {outcomeArchived ? <span className="text-ink-2">Tracker archived. Change the measure or finish the goal.</span> : null}
+        {g.trackerArchived ? <span className="text-ink-2">Tracker archived. Change the measure or finish the goal.</span> : null}
         <span className="flex items-center gap-1.5">
           {o?.status === 'not_enough_data' ? <CircleDashed className="size-3.5" strokeWidth={1.5} aria-hidden /> : <CalendarCheck className="size-3.5" strokeWidth={1.5} aria-hidden />}
           {coverageLine(g)}
@@ -158,7 +158,7 @@ export function GoalDraftCard({ insightId, draft, picker, today, activeCount }: 
         <dt className="text-ink-3">Baseline</dt><dd className="text-ink-2">You set it when you review the draft</dd>
       </dl>
       <div className="mt-4 flex flex-wrap gap-2">
-        <GoalFormButton variant="primary" mode={{ kind: 'draft', activeCount, insightId }} initial={initialFromDraft(draft, picker, today)} picker={picker} today={today} disabled={atCap}>Review draft</GoalFormButton>
+        <GoalFormButton variant="primary" mode={{ kind: 'draft', activeCount, insightId }} initial={initialFromDraft(draft, picker, today)} picker={picker} today={today} disabled={atCap} describedBy={atCap ? 'goal-cap-note' : undefined}>Review draft</GoalFormButton>
         <Button variant="ghost" disabled={pending} onClick={() => start(async () => { await dismissGoalDraftAction(insightId) })}>Dismiss</Button>
       </div>
     </Card>
@@ -181,7 +181,7 @@ export function PausedFinishedList({ goals, activeCount }: { goals: GoalViewData
 function PausedRow({ g, atCap }: { g: GoalViewData; atCap: boolean }) {
   const { pending, set } = useGoalActions(g)
   const cur = g.snapshot?.outcome.current
-  const when = g.status === 'paused' ? `Paused ${g.pausedAt ? day(g.pausedAt.toISOString().slice(0, 10)) : ''}` : `Finished ${g.finishedAt ? day(g.finishedAt.toISOString().slice(0, 10)) : ''}`
+  const when = g.status === 'paused' ? `Paused ${g.pausedOn ? day(g.pausedOn) : ''}` : `Finished ${g.finishedOn ? day(g.finishedOn) : ''}`
   return (
     <li className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
       <IconChip color={CATEGORY[g.area].color}><Target strokeWidth={1.5} /></IconChip>

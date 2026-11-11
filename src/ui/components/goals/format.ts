@@ -14,7 +14,9 @@ export type GoalViewData = {
   targetDate: string; cadence: 'weekly' | 'fortnightly' | 'monthly'; nextReviewOn: string
   actions: { kind: 'schedule' | 'tracker'; id: string }[]
   version: number; pausedAt: Date | null; finishedAt: Date | null
-  snapshot: GoalSnapshot | null; sensitive: boolean; actionNames: string[]
+  snapshot: GoalSnapshot | null; sensitive: boolean; actionNames: string[]; trackerArchived: boolean
+  /** Local days in the user's time zone. */
+  startedOn: string; pausedOn: string | null; finishedOn: string | null
 }
 
 export const STATUS_LABEL: Record<OutcomeStatus, string> = {
@@ -33,6 +35,7 @@ export const weekday = (d: string) => formatDay(d, { weekday: 'short', day: 'num
 
 export const value = formatValue
 export const target = targetText
+export const CADENCE_LABEL = { weekly: 'Weekly', fortnightly: 'Every 2 weeks', monthly: 'Every 4 weeks' } as const
 export const directionLabel = (d: GoalViewData['direction']) => ({ increase: 'Increase', decrease: 'Decrease', range: 'Stay in range' })[d]
 
 export function measureLine(g: GoalViewData) {

@@ -3,7 +3,7 @@ import { and, eq, isNull, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, schema } from '@/db'
 import { CATEGORIES } from '@/db/schema'
-import { addInsight } from '@/core/insights'
+import { lockUser } from '@/core/recovery'
 import { localDate } from '@/core/time'
 import type { User } from '@/core/user'
 import { CADENCES, DIRECTIONS, checkGoalDraft, goalIsSensitive, type GoalDraft } from '@/domain/goals'
@@ -39,15 +39,19 @@ const draftSchema = z.object({
   })).min(1).max(3),
 })
 
+async function pendingDrafts(userId: string, q: Pick<typeof db, 'select'> = db) {
+  const [{ n }] = await q.select({ n: sql<number>`count(*)::int` }).from(schema.insights)
+    .where(and(eq(schema.insights.userId, userId), eq(schema.insights.status, 'pending'), sql`${schema.insights.payload} ? 'goalDraft'`))
+  return n
+}
+
 export type DraftResult = { status: 'created'; id: string } | { status: 'unavailable' | 'no_goals_text' | 'limit' | 'unsafe' | 'failed' }
 
 export async function draftGoal(user: User, now = new Date()): Promise<DraftResult> {
   if (!aiEnabled('plan')) return { status: 'unavailable' }
   const goalsText = user.profile.goals?.trim()
   if (!goalsText) return { status: 'no_goals_text' }
-  const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(schema.insights)
-    .where(and(eq(schema.insights.userId, user.id), eq(schema.insights.status, 'pending'), sql`${schema.insights.payload} ? 'goalDraft'`))
-  if (n >= MAX_PENDING) return { status: 'limit' }
+  if (await pendingDrafts(user.id) >= MAX_PENDING) return { status: 'limit' }
   const today = localDate(now, user.timezone)
   const [trackers, routines] = await Promise.all([
     db.select({ id: schema.trackers.id, slug: schema.trackers.slug, name: schema.trackers.name, unit: schema.trackers.unit, category: schema.trackers.category, kind: schema.trackers.kind })
@@ -79,9 +83,15 @@ export async function draftGoal(user: User, now = new Date()): Promise<DraftResu
   const checked = checkGoalDraft(raw, { today, trackers: safeTrackers, routines: safeRoutines })
   if (!checked.ok) return { status: 'unsafe' }
   const draft: GoalDraft = checked.draft
-  const row = await addInsight(user, {
-    kind: 'plan', status: 'pending', title: `Goal draft: ${draft.title}`.slice(0, 140), body: draft.reason,
-    payload: { goalDraft: draft, dedupeKey: `goal-draft:${today}:${now.getTime()}` },
+  // Recount and insert under the user-row lock: two quick requests can't pass the limit together.
+  const row = await db.transaction(async (tx) => {
+    await lockUser(tx, user.id)
+    if (await pendingDrafts(user.id, tx) >= MAX_PENDING) return null
+    const [inserted] = await tx.insert(schema.insights).values({
+      userId: user.id, kind: 'plan', status: 'pending', title: `Goal draft: ${draft.title}`.slice(0, 140), body: draft.reason,
+      payload: { goalDraft: draft, dedupeKey: `goal-draft:${today}:${now.getTime()}` },
+    }).returning({ id: schema.insights.id })
+    return inserted
   })
   return row ? { status: 'created', id: row.id } : { status: 'limit' }
 }

@@ -19,7 +19,9 @@ import type { User } from './user'
 export type Goal = typeof schema.goals.$inferSelect
 export type GoalReview = typeof schema.goalReviews.$inferSelect
 export type GoalCheckIn = typeof schema.goalCheckIns.$inferSelect
-export type GoalView = Goal & { snapshot: GoalSnapshot | null; sensitive: boolean; actionNames: string[] }
+type SnapshotView = { snapshot: GoalSnapshot; sensitive: boolean; actionNames: string[]; trackerArchived: boolean }
+/** Dates are local days in the user's time zone, so the UI never shows a UTC day. */
+export type GoalView = Goal & Omit<SnapshotView, 'snapshot'> & { snapshot: GoalSnapshot | null; startedOn: string; pausedOn: string | null; finishedOn: string | null }
 
 const G = schema.goals, R = schema.goalReviews, C = schema.goalCheckIns
 
@@ -29,8 +31,8 @@ export const inputOf = (g: Goal, f: GoalFields = goalFields(g)): GoalInput => ({
 })
 
 /** Snapshots for several goals in a few queries (trackers, tracker days, checks, check-ins). */
-export async function snapshotsFor(user: User, list: Goal[], reviewDate: string, now = new Date()): Promise<Map<string, { snapshot: GoalSnapshot; sensitive: boolean; actionNames: string[] }>> {
-  const out = new Map<string, { snapshot: GoalSnapshot; sensitive: boolean; actionNames: string[] }>()
+export async function snapshotsFor(user: User, list: Goal[], reviewDate: string, now = new Date()): Promise<Map<string, SnapshotView>> {
+  const out = new Map<string, SnapshotView>()
   if (!list.length) return out
   const maxWindow = Math.max(...list.map((g) => CADENCE_DAYS[g.cadence]))
   const from = addDays(reviewDate, -maxWindow)
@@ -66,7 +68,8 @@ export async function snapshotsFor(user: User, list: Goal[], reviewDate: string,
     const snapshot = goalSnapshot(g, { days: g.trackerId ? daysOf(g.trackerId) : undefined, checkIns: checkIns.filter((c) => c.goalId === g.id) }, actions, reviewDate, sensitive, now)
     const actionNames = actions.map((a, i) => a.source?.name ?? schedules.find((s) => s.id === g.actions[i].id)?.name ?? 'Action no longer available')
     snapshot.actions = snapshot.actions.map((a, i) => (a.available ? a : { ...a, name: actionNames[i] }))
-    out.set(g.id, { snapshot, sensitive, actionNames })
+    // An archived or deleted outcome tracker is not returned by the tracker query above.
+    out.set(g.id, { snapshot, sensitive, actionNames, trackerArchived: g.measureKind === 'tracker' && !outcome })
   }
   return out
 }
@@ -107,12 +110,25 @@ async function viewsFor(user: User, list: Goal[], today: string, now: Date): Pro
   const last = finished.length
     ? await db.selectDistinctOn([R.goalId]).from(R).where(and(eq(R.userId, user.id), inArray(R.goalId, finished.map((g) => g.id)))).orderBy(R.goalId, desc(R.createdAt))
     : []
+  const local = (d: Date | null) => (d ? localDate(d, user.timezone) : null)
   return list.map((g) => {
+    const dates = { startedOn: local(g.createdAt)!, pausedOn: local(g.pausedAt), finishedOn: local(g.finishedAt) }
     const s = snaps.get(g.id)
-    if (s) return { ...g, ...s }
+    if (s) return { ...g, ...s, ...dates }
     const r = last.find((x) => x.goalId === g.id)
-    return { ...g, snapshot: r?.snapshot ?? null, sensitive: r?.snapshot.sensitive ?? goalIsSensitive(g.measureName, g.unit), actionNames: r?.snapshot.actions.map((a) => a.name) ?? [] }
+    return {
+      ...g, ...dates, snapshot: r?.snapshot ?? null, sensitive: r?.snapshot.sensitive ?? goalIsSensitive(g.measureName, g.unit),
+      actionNames: r?.snapshot.actions.map((a) => a.name) ?? [], trackerArchived: false,
+    }
   })
+}
+
+/** The newest review row per goal. A goal's review is due only when that newest row is undecided. */
+async function latestReviews(userId: string, goalIds?: string[]) {
+  if (goalIds && !goalIds.length) return []
+  return db.selectDistinctOn([R.goalId]).from(R)
+    .where(and(eq(R.userId, userId), eq(R.kind, 'review'), goalIds ? inArray(R.goalId, goalIds) : undefined))
+    .orderBy(R.goalId, desc(R.reviewDate), desc(R.createdAt))
 }
 
 /** Everything the Goals page shows. */
@@ -120,16 +136,21 @@ export async function loadGoalsPage(user: User, now = new Date()) {
   const today = localDate(now, user.timezone)
   const [list, reviews, drafts, picker] = await Promise.all([
     db.select().from(G).where(eq(G.userId, user.id)).orderBy(desc(G.updatedAt)),
-    db.select().from(R).where(and(eq(R.userId, user.id), eq(R.kind, 'review'), isNull(R.decision))).orderBy(desc(R.reviewDate)),
+    latestReviews(user.id),
     db.select().from(schema.insights).where(and(eq(schema.insights.userId, user.id), eq(schema.insights.status, 'pending'), sql`${schema.insights.payload} ? 'goalDraft'`)).orderBy(desc(schema.insights.createdAt)),
     goalPicker(user, today),
   ])
   const views = await viewsFor(user, list, today, now)
   const active = views.filter((g) => g.status === 'active')
-  // Only the newest undecided review of an active goal asks for a decision; older ones read "No decision recorded".
+  // Only the newest review of an active goal can ask for a decision; older undecided ones read "No decision recorded".
   const due = active.flatMap((g) => {
     const r = reviews.find((x) => x.goalId === g.id)
-    return r ? [{ review: r, goal: g }] : []
+    return r && !r.decision ? [{ review: r, goal: g }] : []
+  })
+  // Decided today: the review page keeps showing them in their saved state after the refresh.
+  const decidedToday = views.flatMap((g) => {
+    const r = reviews.find((x) => x.goalId === g.id)
+    return r?.decision && r.decidedAt && localDate(r.decidedAt, user.timezone) === today ? [{ review: r, goal: g }] : []
   })
   return {
     today,
@@ -137,6 +158,7 @@ export async function loadGoalsPage(user: User, now = new Date()) {
     paused: views.filter((g) => g.status === 'paused'),
     finished: views.filter((g) => g.status === 'finished'),
     due,
+    decidedToday,
     drafts,
     picker,
     activeCount: active.length,
@@ -155,8 +177,8 @@ export async function loadGoalDetail(user: User, id: string, now = new Date()) {
     goalPicker(user, today),
     activeGoalCount(user),
   ])
-  const latestUndecided = history.find((r) => r.kind === 'review' && !r.decision)
-  return { today, goal: view, history, checkIns, picker, activeCount, due: goal.status === 'active' ? latestUndecided ?? null : null }
+  const latest = history.filter((r) => r.kind === 'review').sort((a, b) => b.reviewDate.localeCompare(a.reviewDate))[0]
+  return { today, goal: view, history, checkIns, picker, activeCount, due: goal.status === 'active' && latest && !latest.decision ? latest : null }
 }
 
 async function activeGoalCount(user: User) {
@@ -169,11 +191,9 @@ export async function goalsSummary(user: User, now = new Date()) {
   const today = localDate(now, user.timezone)
   const list = await db.select().from(G).where(and(eq(G.userId, user.id), eq(G.status, 'active'))).orderBy(G.createdAt).limit(MAX_ACTIVE)
   if (!list.length) return []
-  const [snaps, open] = await Promise.all([
-    snapshotsFor(user, list, today, now),
-    db.select({ goalId: R.goalId }).from(R).where(and(eq(R.userId, user.id), inArray(R.goalId, list.map((g) => g.id)), eq(R.kind, 'review'), isNull(R.decision))),
-  ])
-  return list.map((g) => ({ ...g, ...snaps.get(g.id)!, reviewDue: g.nextReviewOn <= today || open.some((r) => r.goalId === g.id) }))
+  const [snaps, latest] = await Promise.all([snapshotsFor(user, list, today, now), latestReviews(user.id, list.map((g) => g.id))])
+  // Due only when a review row is waiting, so the link never opens an empty review page.
+  return list.map((g) => ({ ...g, ...snaps.get(g.id)!, reviewDue: latest.some((r) => r.goalId === g.id && !r.decision) }))
 }
 
 /**
@@ -220,6 +240,10 @@ async function linkables(tx: Tx, userId: string, lockedTrackerId: string | null 
   return { schedules, trackers: lockedTrackerId ? [...trackers, { id: lockedTrackerId }] : trackers }
 }
 
+/** Keep only the target fields that apply to the direction (a target, or a range). */
+const forDirection = (direction: Goal['direction'], f: GoalFields): GoalFields =>
+  direction === 'range' ? { ...f, target: null } : { ...f, rangeLow: null, rangeHigh: null }
+
 /** Create or edit a goal. A recorded baseline is always recomputed here; the client value is not trusted. */
 export async function saveGoal(user: User, input: SaveGoalInput, now = new Date()): Promise<GoalResult> {
   const today = localDate(now, user.timezone)
@@ -241,7 +265,7 @@ export async function saveGoal(user: User, input: SaveGoalInput, now = new Date(
     }
   }
   // An edit keeps the locked measure and baseline, whatever the form sent.
-  if (existing) g = inputOf(existing, goalFields(g))
+  if (existing) g = inputOf(existing, forDirection(existing.direction, goalFields(g)))
   const before = existing ? await computeSnapshot(user, existing, today, now) : null
 
   return db.transaction(async (tx) => {
@@ -254,7 +278,8 @@ export async function saveGoal(user: User, input: SaveGoalInput, now = new Date(
       tx.select({ n: sql<number>`count(*)::int` }).from(G).where(and(eq(G.userId, user.id), eq(G.status, 'active'), current ? sql`${G.id} <> ${current.id}` : undefined)),
     ])
     const errors = validateGoal(g, { today, activating: !current, activeCount: n, ...links })
-    if (current && errors.baselineDate) delete errors.baselineDate
+    // The measure and baseline are locked on edits: a past baseline date or a since-deleted tracker never blocks one.
+    if (current) { delete errors.baselineDate; delete errors.trackerId }
     if (Object.keys(errors).length) return { status: 'invalid' as const, errors }
 
     if (current) {
@@ -307,7 +332,10 @@ export async function setGoalStatus(user: User, input: { goalId: string; version
       status: input.status, version: current.version + 1, updatedAt: now,
       ...(input.status === 'paused' ? { pausedAt: now } : input.status === 'finished' ? { finishedAt: now } : { pausedAt: null, nextReviewOn: nextReviewOn(today, current.cadence) }),
     }).where(eq(G.id, current.id))
-    await tx.insert(R).values({ userId: user.id, goalId: current.id, ref: `edit:${randomUUID()}`, kind: 'edit', reviewDate: today, snapshot, decision, decidedAt: now })
+    // A pause or finish answers any open review, so an old review never comes back as due after a resume.
+    const open = input.status === 'active' ? [] : await tx.update(R).set({ decision, decidedAt: now, note: 'Decided outside the review' })
+      .where(and(eq(R.userId, user.id), eq(R.goalId, current.id), eq(R.kind, 'review'), isNull(R.decision))).returning({ id: R.id })
+    if (!open.length) await tx.insert(R).values({ userId: user.id, goalId: current.id, ref: `edit:${randomUUID()}`, kind: 'edit', reviewDate: today, snapshot, decision, decidedAt: now })
     return { status: 'saved' as const, id: current.id }
   })
 }
@@ -337,9 +365,10 @@ export async function decideReview(user: User, input: DecideInput, now = new Dat
     else if (input.decision === 'finish') set = { ...set, status: 'finished', finishedAt: now }
     else {
       before = goalFields(goal)
-      after = { ...before, ...input.change }
+      after = forDirection(goal.direction, { ...before, ...input.change })
       const errors = validateGoal(inputOf(goal, after), { today, activating: false, activeCount: 0, ...await linkables(tx, user.id, goal.trackerId) })
       delete errors.baselineDate
+      delete errors.trackerId
       if (Object.keys(errors).length) return { status: 'invalid' as const, errors }
       set = { ...set, ...after, nextReviewOn: nextReviewOn(today, after.cadence) }
     }

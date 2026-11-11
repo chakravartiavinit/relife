@@ -14,7 +14,7 @@ import { CATEGORY } from '@/ui/tokens'
 import { OnboardingCompact, onboardingSteps } from '@/ui/components/onboarding'
 import { Agenda, Goals, type AgendaRow, type GoalRow } from '@/ui/components/agenda'
 import { Card, CardHeader, KpiStrip, Skeleton } from '@/ui/components/card'
-import { GoalsSummarySkeleton, TodayGoals } from '@/ui/components/goals/goals-summary'
+import { TodayGoals } from '@/ui/components/goals/goals-summary'
 import { BrandLogo } from '@/ui/components/brand-logo'
 import { cn } from '@/ui/cn'
 import { loadBriefing, minutes, type Attention, type Briefing } from '@/core/today'
@@ -190,8 +190,9 @@ async function Today() {
         </div>
 
         <aside className="flex flex-col gap-6 [&>*:last-child]:flex-1" aria-label="Also today">
-          {/* Its own boundary: a slow goal query never holds up the quest log. Renders nothing without active goals. */}
-          <Suspense fallback={<GoalsSummarySkeleton />}>
+          {/* Its own boundary: a slow goal query never holds up the quest log. Renders nothing without active goals,
+              so it has no skeleton: most loads would show one and then collapse. */}
+          <Suspense fallback={null}>
             <TodayGoals />
           </Suspense>
           <Quests

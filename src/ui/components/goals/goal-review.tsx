@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { Check, Flag, Info, Pause, Pencil, Target } from 'lucide-react'
 import { decideGoalReviewAction, recordGoalCheckInAction } from '@/app/actions'
-import { GOAL_FOOTNOTE, applyProposal, goalFields, proposalText, type GoalProposal, type GoalSnapshot } from '@/domain/goals'
+import { GOAL_FOOTNOTE, applyProposal, goalFields, proposalText, type GoalDecision, type GoalProposal, type GoalSnapshot } from '@/domain/goals'
 import { CATEGORY } from '@/ui/tokens'
 import { cn } from '@/ui/cn'
 import { Button } from '../button'
@@ -20,6 +20,8 @@ import { day, target, value, weekday, type GoalViewData } from './format'
 export type ReviewData = {
   id: string; reviewDate: string; snapshot: GoalSnapshot; aiNote: string | null; proposal: GoalProposal | null
   lines: string[]; prompt: string
+  /** Set when the review was already decided; the card then opens in its saved state. */
+  decision: GoalDecision | null
 }
 
 const DECISIONS = [
@@ -35,7 +37,8 @@ export function GoalReviewCard({ g, review, picker, today }: { g: GoalViewData; 
   const s = review.snapshot
   const [pending, start] = useTransition()
   const [choice, setChoice] = useState<DecisionId | null>(null)
-  const [saved, setSaved] = useState<DecisionId | null>(null)
+  const [savedHere, setSaved] = useState<DecisionId | null>(null)
+  const saved = savedHere ?? review.decision
   const [error, setError] = useState<string | null>(null)
   const [changing, setChanging] = useState(false)
 
@@ -119,15 +122,17 @@ export function GoalReviewCard({ g, review, picker, today }: { g: GoalViewData; 
       <div className="mt-5 border-t border-divider pt-5">
         {saved ? (
           <div role="status" className="flex flex-wrap items-center gap-2 text-[13.5px] text-ink-2">
-            <Badge color="var(--good)">{DECISIONS.find((d) => d.id === saved)!.done}</Badge>
-            {saved === 'keep' ? 'Next review in one period.' : saved === 'pause' ? 'Paused. Resume it any time on Goals.' : 'Moved to finished.'}
+            <Badge color="var(--good)">{DECISIONS.find((d) => d.id === saved)?.done ?? 'Decided'}</Badge>
+            <span className="tabular-nums">
+              {saved === 'pause' ? 'Paused. Resume it any time on Goals.' : saved === 'finish' ? 'Moved to finished.' : `Next review ${weekday(g.nextReviewOn)}.`}
+            </span>
           </div>
         ) : (
           <>
             <p className="mb-3 text-[14px] font-semibold text-pretty text-ink">{review.prompt}</p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="group" aria-label={`Decision for ${g.title}`} aria-busy={pending || undefined}>
               {DECISIONS.map((d) => (
-                <Button key={d.id} size="lg" disabled={pending} onClick={() => decide(d.id)} aria-pressed={choice === d.id && pending ? true : undefined}>
+                <Button key={d.id} size="lg" disabled={pending} onClick={() => decide(d.id)}>
                   <d.icon className="size-4" strokeWidth={1.5} />{pending && choice === d.id ? 'Saving…' : d.label}
                 </Button>
               ))}

@@ -656,29 +656,6 @@ export async function dataVersion() {
 
 export type GoalFormState = { ok: boolean; error?: string; errors?: Partial<Record<string, string>>; id?: string } | null
 
-const optionalUuid = z.string().uuid().optional().or(z.literal('').transform(() => undefined))
-const optionalNum = z.preprocess((v) => (v === '' || v == null ? null : Number(v)), z.number().finite().nullable())
-const goalForm = z.object({
-  id: optionalUuid,
-  version: z.coerce.number().int().positive().optional().or(z.literal('').transform(() => undefined)),
-  draftInsightId: optionalUuid,
-  title: z.string().trim().max(120),
-  reason: z.string().trim().max(500),
-  area: z.enum(CATEGORIES),
-  measureKind: z.enum(['tracker', 'check_in']),
-  trackerId: optionalUuid,
-  measureName: z.string().trim().max(80).default(''),
-  unit: z.string().trim().max(20).default(''),
-  direction: z.enum(['increase', 'decrease', 'range']),
-  target: optionalNum, rangeLow: optionalNum, rangeHigh: optionalNum,
-  baselineMode: z.enum(['recorded', 'manual']).default('manual'),
-  baselineValue: optionalNum,
-  baselineDate: z.string().default(''),
-  baselineHow: z.string().trim().max(200).default(''),
-  targetDate: z.string().default(''),
-  cadence: z.enum(['weekly', 'fortnightly', 'monthly']),
-})
-
 const goalError = (status: string) =>
   status === 'stale' ? 'This goal changed in another window. Reload to see the latest version.'
     : status === 'already_decided' ? 'This review already has a decision.'
@@ -686,14 +663,10 @@ const goalError = (status: string) =>
 
 /** Goals: create or edit an outcome goal. A recorded baseline is recomputed on the server. */
 export async function saveGoal(_prev: GoalFormState, form: FormData): Promise<GoalFormState> {
-  const raw = Object.fromEntries([...form.entries()].filter(([k]) => k !== 'actions'))
-  const parsed = goalForm.safeParse(raw)
-  if (!parsed.success) return { ok: false, error: 'Some fields are invalid. Check the form and try again.' }
-  const f = parsed.data
-  const actions = form.getAll('actions').map(String).flatMap((v) => {
-    const [kind, id] = v.split(':')
-    return (kind === 'schedule' || kind === 'tracker') && z.string().uuid().safeParse(id).success ? [{ kind: kind as 'schedule' | 'tracker', id }] : []
-  })
+  const { parseGoalForm } = await import('@/core/goal-form')
+  const parsed = parseGoalForm(form)
+  if (!parsed) return { ok: false, error: 'Some fields are invalid. Check the form and try again.' }
+  const { fields: f, actions } = parsed
   const user = await getUser()
   const { saveGoal: save } = await import('@/core/goals')
   const today = localDate(new Date(), user.timezone)
@@ -759,7 +732,12 @@ export async function recordGoalCheckInAction(input: unknown) {
   }).safeParse(input)
   if (!parsed.success) return { ok: false as const, error: 'Enter a number and a date.' }
   const { recordCheckIn } = await import('@/core/goals')
-  const result = await recordCheckIn(await getUser(), parsed.data)
+  let result
+  try {
+    result = await recordCheckIn(await getUser(), parsed.data)
+  } catch {
+    return { ok: false as const, error: 'Could not save the check-in. Try again.' }
+  }
   refresh()
   if (result.status === 'saved') return { ok: true as const }
   return { ok: false as const, error: result.status === 'invalid' ? result.errors.form ?? 'Could not save.' : goalError(result.status) }

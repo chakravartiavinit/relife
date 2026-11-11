@@ -196,3 +196,21 @@ test('goalStatIds maps tracker actions and quantity routines of active goals onl
   ], schedules, trackers)
   assert.deepEqual([...m], [['tracker:typing-wpm', 'A'], ['tracker:water', 'A']])
 })
+
+test('the first review never judges days from before the baseline date', () => {
+  const days = series(10, () => 70)
+  const g = goal({ baselineDate: '2026-11-08' }) // started 3 days before the review
+  const now = outcomeNow(g, { days }, today)
+  assert.equal(now.observations, 3)
+  assert.equal(now.needed, 2, '3 of 7 scaled to a 3-day window')
+  const snap = goalSnapshot(g, { days }, [], today, false)
+  assert.deepEqual(snap.window, { from: '2026-11-08', to: '2026-11-10', days: 3 })
+  assert.equal(snap.outcome.days?.length, 3)
+  const ci = outcomeNow(goal({ measureKind: 'check_in', baselineDate: '2026-11-08' }), { checkIns: [{ localDate: '2026-11-08', value: 1 }] }, today)
+  assert.equal(ci.value, null, 'a check-in on the baseline date is the baseline')
+})
+
+test('impossible calendar dates are rejected', () => {
+  assert.ok(validateGoal(input({ targetDate: '2027-02-30' }), ctx).targetDate)
+  assert.ok(validateGoal(input({ baselineDate: '2026-02-30' }), ctx).baselineDate)
+})

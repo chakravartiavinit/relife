@@ -14,7 +14,7 @@ import { Badge } from '../card'
 import { Field, Input, Segmented, Select, Textarea } from '../form'
 import { useToast } from '../toast'
 import { Dialog, FormError } from '../forms/dialog'
-import { day, directionLabel, type GoalViewData } from './format'
+import { CADENCE_LABEL, day, directionLabel, type GoalViewData } from './format'
 
 // Create, edit, review-change and draft-approval form for an outcome goal. The server owns the baseline:
 // "use recorded" is recomputed there, and the measure and baseline are locked after a goal starts.
@@ -149,7 +149,9 @@ function GoalForm({ mode, initial, picker, today, onDone }: { mode: Mode; initia
         actions: form.getAll('actions').map(String).map((v) => { const [kind, id] = v.split(':'); return { kind: kind as 'schedule' | 'tracker', id } }),
       },
     })
-    return res.ok ? { ok: true } : { ok: false, error: res.error, errors: 'errors' in res ? res.errors : undefined }
+    if (res.ok) return { ok: true }
+    // Field errors show next to their field; only form-level ones go in the banner.
+    return 'errors' in res && res.errors ? { ok: false, errors: res.errors, error: res.errors.form } : { ok: false, error: res.error }
   }
   const [state, action, pending] = useActionState(submit, null)
   const [measureKind, setMeasureKind] = useState(initial.measureKind)
@@ -195,7 +197,14 @@ function GoalForm({ mode, initial, picker, today, onDone }: { mode: Mode; initia
 
   return (
     <form action={action} className="flex flex-col gap-6" noValidate>
-      {goal ? <><input type="hidden" name="id" value={goal.id} /><input type="hidden" name="version" value={goal.version} /></> : null}
+      {goal ? (
+        <>
+          <input type="hidden" name="id" value={goal.id} /><input type="hidden" name="version" value={goal.version} />
+          {/* The measure is locked on edits, but the action still validates these fields. */}
+          <input type="hidden" name="area" value={goal.area} /><input type="hidden" name="measureKind" value={goal.measureKind} />
+          <input type="hidden" name="direction" value={goal.direction} />
+        </>
+      ) : null}
       {mode.kind === 'draft' ? <input type="hidden" name="draftInsightId" value={mode.insightId} /> : null}
       {mode.kind === 'review' && mode.suggested ? <Notice>Suggested by the coach: {mode.suggested} Nothing changes until you save.</Notice> : null}
       {mode.kind === 'draft' ? <Notice>Suggested by the coach from your profile. Check every field. Nothing starts until you approve it.</Notice> : null}
@@ -222,14 +231,15 @@ function GoalForm({ mode, initial, picker, today, onDone }: { mode: Mode; initia
           <p className="text-[13.5px] text-ink-2">{goal!.measureKind === 'tracker' ? `${goal!.measureName} tracker` : `Check-in · ${goal!.measureName}`}{goal!.unit ? ` · ${goal!.unit}` : ''}</p>
         ) : (
           <>
-            <Segmented name="measureKind" aria-label="Measure source" value={measureKind} onValueChange={(v) => setMeasureKind(v as 'tracker' | 'check_in')} className="self-start"
+            <Segmented name="measureKind" aria-label="Measure source" value={measureKind} onValueChange={(v) => { setMeasureKind(v as 'tracker' | 'check_in'); setBaseline(v === 'tracker' ? recordedBaseline(tracker) : '') }} className="self-start"
               options={[
                 { value: 'tracker', label: <span className="flex items-center gap-1.5"><ChartLine className="size-3.5" strokeWidth={1.5} />From a tracker</span> },
                 { value: 'check_in', label: <span className="flex items-center gap-1.5"><ClipboardCheck className="size-3.5" strokeWidth={1.5} />Check-in</span> },
               ]} />
             {measureKind === 'tracker' ? (
               <Field label="Tracker" htmlFor={`${id}-tracker`}>
-                <Select id={`${id}-tracker`} name="trackerId" value={trackerId} onChange={(e) => pickTracker(e.target.value)}>
+                <Select id={`${id}-tracker`} name="trackerId" value={trackerId} onChange={(e) => pickTracker(e.target.value)}
+                  aria-invalid={!!errors.trackerId || undefined} aria-describedby={errors.trackerId ? `${id}-tracker-e` : undefined}>
                   <option value="">Choose a tracker</option>
                   {picker.trackers.map((t) => <option key={t.id} value={t.id} data-color={CATEGORY[t.category].color}>{t.name}{t.unit ? ` · ${t.unit}` : ''}</option>)}
                 </Select>
@@ -238,7 +248,7 @@ function GoalForm({ mode, initial, picker, today, onDone }: { mode: Mode; initia
             ) : (
               <div className="grid gap-4 sm:grid-cols-[1fr_140px]">
                 <Field label="What you check" htmlFor={`${id}-mname`}>
-                  <Input id={`${id}-mname`} name="measureName" maxLength={80} defaultValue={initial.measureName} placeholder="Clean tempo" aria-invalid={!!errors.measureName || undefined} />
+                  <Input id={`${id}-mname`} name="measureName" maxLength={80} defaultValue={initial.measureName} placeholder="Clean tempo" aria-invalid={!!errors.measureName || undefined} aria-describedby={errors.measureName ? `${id}-mname-e` : undefined} />
                   <FieldError id={`${id}-mname-e`} message={errors.measureName} />
                 </Field>
                 <Field label="Unit" htmlFor={`${id}-unit`}>
@@ -273,11 +283,12 @@ function GoalForm({ mode, initial, picker, today, onDone }: { mode: Mode; initia
                 </div>
               ) : (
                 <Field label="Baseline date" htmlFor={`${id}-bdate`}>
-                  <Input id={`${id}-bdate`} type="date" name="baselineDate" max={today} defaultValue={initial.baselineDate} aria-invalid={!!errors.baselineDate || undefined} />
+                  <Input id={`${id}-bdate`} type="date" name="baselineDate" max={today} defaultValue={initial.baselineDate} aria-invalid={!!errors.baselineDate || undefined} aria-describedby={errors.baselineDate ? `${id}-bdate-e` : undefined} />
+                  <FieldError id={`${id}-bdate-e`} message={errors.baselineDate} />
                 </Field>
               )}
             </div>
-            <FieldError id={`${id}-base-e`} message={errors.baselineValue ?? errors.baselineDate} />
+            <FieldError id={`${id}-base-e`} message={errors.baselineValue} />
             {measureKind === 'tracker' && tracker ? (
               <>
                 <ObservationStrip strip={tracker.strip} color={CATEGORY[tracker.category].color} from={addDays(today, -28)} to={addDays(today, -1)} />
@@ -292,7 +303,7 @@ function GoalForm({ mode, initial, picker, today, onDone }: { mode: Mode; initia
               <>
                 {measureKind === 'tracker' ? <input type="hidden" name="baselineDate" value={today} /> : null}
                 <Field label="How you measured it" htmlFor={`${id}-how`} hint="Say how you measure it, so every check-in is done the same way.">
-                  <Input id={`${id}-how`} name="baselineHow" maxLength={200} defaultValue={initial.baselineHow} placeholder="Metronome, best of 3 run-throughs" aria-invalid={!!errors.baselineHow || undefined} />
+                  <Input id={`${id}-how`} name="baselineHow" maxLength={200} defaultValue={initial.baselineHow} placeholder="Metronome, best of 3 run-throughs" aria-invalid={!!errors.baselineHow || undefined} aria-describedby={errors.baselineHow ? `${id}-how-e` : undefined} />
                   <FieldError id={`${id}-how-e`} message={errors.baselineHow} />
                 </Field>
               </>
@@ -309,35 +320,44 @@ function GoalForm({ mode, initial, picker, today, onDone }: { mode: Mode; initia
         <div className={cn('grid gap-4', direction === 'range' ? 'sm:grid-cols-3' : 'sm:grid-cols-2')}>
           {direction === 'range' ? (
             <>
-              <Field label="Low" htmlFor={`${id}-low`}><UnitInput id={`${id}-low`} name="rangeLow" unit={unit ?? initial.unit} defaultValue={initial.rangeLow} error={errors.rangeLow} /></Field>
-              <Field label="High" htmlFor={`${id}-high`}><UnitInput id={`${id}-high`} name="rangeHigh" unit={unit ?? initial.unit} defaultValue={initial.rangeHigh} error={errors.rangeLow} /></Field>
+              <Field label="Low" htmlFor={`${id}-low`}>
+                <UnitInput id={`${id}-low`} name="rangeLow" unit={unit ?? initial.unit} defaultValue={initial.rangeLow} error={errors.rangeLow} aria-describedby={errors.rangeLow ? `${id}-low-e` : undefined} />
+                <FieldError id={`${id}-low-e`} message={errors.rangeLow} />
+              </Field>
+              <Field label="High" htmlFor={`${id}-high`}>
+                <UnitInput id={`${id}-high`} name="rangeHigh" unit={unit ?? initial.unit} defaultValue={initial.rangeHigh} error={errors.rangeHigh} aria-describedby={errors.rangeHigh ? `${id}-high-e` : undefined} />
+                <FieldError id={`${id}-high-e`} message={errors.rangeHigh} />
+              </Field>
             </>
           ) : (
-            <Field label="Target" htmlFor={`${id}-target`}><UnitInput id={`${id}-target`} name="target" unit={unit ?? initial.unit} defaultValue={initial.target} error={errors.target} aria-describedby={errors.target ? `${id}-target-e` : undefined} /></Field>
+            <Field label="Target" htmlFor={`${id}-target`}>
+              <UnitInput id={`${id}-target`} name="target" unit={unit ?? initial.unit} defaultValue={initial.target} error={errors.target} aria-describedby={errors.target ? `${id}-target-e` : undefined} />
+              <FieldError id={`${id}-target-e`} message={errors.target} />
+            </Field>
           )}
           <Field label="By" htmlFor={`${id}-date`}>
-            <Input id={`${id}-date`} type="date" name="targetDate" min={addDays(today, 1)} defaultValue={initial.targetDate} aria-invalid={!!errors.targetDate || undefined} />
+            <Input id={`${id}-date`} type="date" name="targetDate" min={addDays(today, 1)} defaultValue={initial.targetDate} aria-invalid={!!errors.targetDate || undefined} aria-describedby={errors.targetDate ? `${id}-date-e` : undefined} />
+            <FieldError id={`${id}-date-e`} message={errors.targetDate} />
           </Field>
         </div>
-        <FieldError id={`${id}-target-e`} message={errors.target ?? errors.rangeLow ?? errors.targetDate} />
       </Section>
 
       <Section title="Why it matters">
         <Field label="Reason" htmlFor={`${id}-reason`}>
-          <Textarea id={`${id}-reason`} name="reason" maxLength={500} rows={2} defaultValue={initial.reason} placeholder="I want to keep up in meetings without looking down." aria-invalid={!!errors.reason || undefined} />
+          <Textarea id={`${id}-reason`} name="reason" maxLength={500} rows={2} defaultValue={initial.reason} placeholder="I want to keep up in meetings without looking down." aria-invalid={!!errors.reason || undefined} aria-describedby={errors.reason ? `${id}-reason-e` : undefined} />
           <FieldError id={`${id}-reason-e`} message={errors.reason} />
         </Field>
       </Section>
 
       <Section title="Linked actions" hint="1 to 3 routines or trackers you’ll do for this goal. Their quests come first in your dailies.">
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Linked actions">
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Linked actions" aria-describedby={errors.actions ? `${id}-actions-e` : undefined}>
           {actionOptions.map((o) => {
             const on = actions.includes(o.key)
             return (
               <label key={o.key} className="relative">
                 <input type="checkbox" name="actions" value={o.key} checked={on} disabled={o.measure || (!on && full)} className="peer sr-only"
                   onChange={() => setActions((a) => (on ? a.filter((x) => x !== o.key) : [...a, o.key]))} />
-                <span className="flex h-9 cursor-pointer items-center gap-1.5 rounded-md bg-surface-2 px-3 text-[13px] font-medium text-ink-2 transition-[background-color,color,box-shadow] duration-150 select-none peer-checked:bg-ink peer-checked:text-bg peer-disabled:cursor-not-allowed peer-disabled:opacity-50 peer-focus-visible:shadow-[0_0_0_2px_var(--pill)]">
+                <span className="flex h-10 cursor-pointer items-center gap-1.5 rounded-md bg-surface-2 px-3 text-[13px] font-medium text-ink-2 transition-[background-color,color,box-shadow] duration-150 select-none peer-checked:bg-ink peer-checked:text-bg peer-disabled:cursor-not-allowed peer-disabled:opacity-50 peer-focus-visible:shadow-[0_0_0_2px_var(--pill)]">
                   {on ? <Check className="size-3.5" strokeWidth={2} aria-hidden /> : null}
                   {o.label}{o.measure ? ' · measure' : ''}
                 </span>
@@ -352,7 +372,7 @@ function GoalForm({ mode, initial, picker, today, onDone }: { mode: Mode; initia
 
       <Section title="Review">
         <Segmented name="cadence" aria-label="Review cadence" defaultValue={initial.cadence} className="self-start"
-          options={[{ value: 'weekly', label: 'Weekly' }, { value: 'fortnightly', label: 'Every 2 weeks' }, { value: 'monthly', label: 'Every 4 weeks' }]} />
+          options={Object.entries(CADENCE_LABEL).map(([value, label]) => ({ value, label }))} />
         <p className="-mt-2 text-[12.5px] text-ink-3">Reviews land on a Sunday. You decide to keep, change, pause or finish.</p>
       </Section>
 
@@ -392,14 +412,14 @@ export function NewGoalButton({ today, picker, activeCount, autoOpen = false }: 
 }
 
 /** Opens the form for an existing goal (edit), a review change, or an AI draft. */
-export function GoalFormButton({ mode, initial, picker, today, children, variant = 'secondary', size = 'md', disabled, className }: {
+export function GoalFormButton({ mode, initial, picker, today, children, variant = 'secondary', size = 'md', disabled, className, describedBy }: {
   mode: Mode; initial: GoalFormInitial; picker: GoalPickerData; today: string; children: React.ReactNode
-  variant?: 'primary' | 'secondary' | 'ghost'; size?: 'sm' | 'md' | 'lg'; disabled?: boolean; className?: string
+  variant?: 'primary' | 'secondary' | 'ghost'; size?: 'sm' | 'md' | 'lg'; disabled?: boolean; className?: string; describedBy?: string
 }) {
   const [open, setOpen] = useState(false)
   return (
     <>
-      <Button variant={variant} size={size} onClick={() => setOpen(true)} disabled={disabled} className={className}>{children}</Button>
+      <Button variant={variant} size={size} onClick={() => setOpen(true)} disabled={disabled} className={className} aria-describedby={describedBy}>{children}</Button>
       <GoalDialog open={open} onClose={() => setOpen(false)} mode={mode} initial={initial} picker={picker} today={today} />
     </>
   )

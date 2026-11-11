@@ -4,7 +4,7 @@ import { CalendarCheck, ChevronRight, Target } from 'lucide-react'
 import { goalsSummary } from '@/core/goals'
 import { getUser } from '@/core/user'
 import { CATEGORY } from '@/ui/tokens'
-import { Card, CardHeader, Skeleton } from '../card'
+import { Card, CardHeader } from '../card'
 import { Capsule } from '../capsule'
 import { STATUS_LABEL, fill, target, value } from './format'
 
@@ -36,7 +36,7 @@ export async function TodayGoals() {
           const right = g.measureKind === 'check_in' && o.observations === 0 ? 'Check-in due' : o.status === 'not_enough_data' ? STATUS_LABEL.not_enough_data : g.measureKind === 'tracker' ? `${o.observations} of ${g.snapshot.window.days} days` : STATUS_LABEL[o.status]
           return (
             <li key={g.id} className="py-3 first:pt-0 last:pb-0">
-              <Link href={`/goals/${g.id}`} className="flex items-baseline justify-between gap-3">
+              <Link href={`/goals/${g.id}`} className="flex min-h-10 items-center justify-between gap-3">
                 <span className="min-w-0 truncate text-[13.5px] font-medium text-ink hover:underline">{g.title}</span>
                 <span className="shrink-0 text-[12px] text-ink-3 tabular-nums">{right}</span>
               </Link>
@@ -48,8 +48,4 @@ export async function TodayGoals() {
       </ul>
     </Card>
   )
-}
-
-export function GoalsSummarySkeleton() {
-  return <Skeleton className="h-[148px] rounded-lg" />
 }

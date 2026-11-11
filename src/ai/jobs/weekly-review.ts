@@ -74,7 +74,9 @@ function goalNotesSchema(due: DueGoal[]) {
 function safeProposal(d: DueGoal, p: GoalProposal | undefined, today: string): GoalProposal | null {
   if (!p || d.review.snapshot.sensitive || goalIsSensitive(d.goal.measureName, d.goal.unit, d.goal.title)) return null
   if (p.field === 'cadence' ? !(CADENCES as readonly string[]).includes(String(p.value)) : p.field === 'targetDate' ? typeof p.value !== 'string' : typeof p.value !== 'number') return null
-  if ((p.field === 'rangeLow' || p.field === 'rangeHigh') !== (d.goal.direction === 'range')) return null
+  // Target fields must match the direction; date and cadence proposals fit every goal.
+  if (p.field === 'target' && d.goal.direction === 'range') return null
+  if ((p.field === 'rangeLow' || p.field === 'rangeHigh') && d.goal.direction !== 'range') return null
   const g = d.goal
   const errors = validateGoal(inputOf(g, applyProposal(goalFields(g), p)), {
     today, activating: false, activeCount: 0,
@@ -86,12 +88,22 @@ function safeProposal(d: DueGoal, p: GoalProposal | undefined, today: string): G
 }
 
 /** Save the coach note and proposal, only while the review is undecided and has none yet. */
+/** Causal or blaming wording the coach note must never use; the template avoids it too. */
+const UNSAFE_NOTE = /\b(because|caused?|causing|led to|leads to|thanks to|due to|as a result|behind|failed|off track)\b/i
+
+/** No coach note for sensitive goals, and none that claims a cause. */
+function safeNote(d: DueGoal, text: string) {
+  if (d.review.snapshot.sensitive || goalIsSensitive(d.goal.measureName, d.goal.unit, d.goal.title)) return null
+  const note = text.trim().slice(0, 240)
+  return note && !UNSAFE_NOTE.test(note) ? note : null
+}
+
 async function saveCoachNotes(due: DueGoal[], notes: { goalId: string; note: string; proposal?: GoalProposal }[], today: string) {
   for (const n of notes) {
     const d = due.find((x) => x.goal.id === n.goalId)
     if (!d || d.review.aiNote || d.review.proposal) continue
     const proposal = safeProposal(d, n.proposal, today)
-    const note = n.note.trim().slice(0, 240) || null
+    const note = safeNote(d, n.note)
     await db.update(schema.goalReviews).set({ aiNote: note, proposal })
       .where(and(eq(schema.goalReviews.id, d.review.id), isNull(schema.goalReviews.decision), isNull(schema.goalReviews.proposal), isNull(schema.goalReviews.aiNote)))
     d.review = { ...d.review, aiNote: note, proposal }
@@ -114,7 +126,8 @@ export async function weeklyReview(user: User, now = new Date()) {
   const today = localDate(now, user.timezone)
   const due: DueGoal[] = await prepareGoalReviews(user, now)
   const dedupeKey = `review:${today}`
-  if (!aiEnabled('plan')) {
+  // The rule-based goal review: used without a model, and when the model call fails, so a due review is never lost.
+  const template = async () => {
     if (!due.length) return null
     const goals = goalPoints(due)
     const review: ReviewContent = { wins: [], watch: [], focus: '', plan: '', goals }
@@ -127,16 +140,25 @@ export async function weeklyReview(user: User, now = new Date()) {
     await notify(user, 'analysis', { text: reviewText({ title, ...review, actions: [] }), ref: `insight:${row.id}` })
     return row
   }
-  const out = due.length ? schema_.extend({ goalNotes: goalNotesSchema(due) }) : schema_
+  if (!aiEnabled('plan')) return template()
   const digest = await digestText(user, now)
-  const res = await generate('plan', 'job.weekly-review', {
-    model: model('plan'),
-    output: Output.object({ schema: out }),
-    system: `${COACH_SYSTEM}\nWrite this week's review. Wins and problems must cite numbers from the digest. Propose one change for next week, and only actions that directly implement it. Never suggest medicine or dosage changes; direct medicine reminders to the existing medicine form.${due.length ? '\nFor each due outcome goal, use only the goal snapshot numbers. Never say an action caused an outcome. Proposals are optional and the user decides.' : ''}`,
-    prompt: due.length ? `${digest}\n\nDue outcome goal reviews (snapshots computed by code):\n${mask(JSON.stringify(due.map((d) => ({ goalId: d.goal.id, title: d.goal.title, measure: d.goal.measureName, unit: d.goal.unit, direction: d.goal.direction, target: d.goal.target, range: [d.goal.rangeLow, d.goal.rangeHigh], targetDate: d.goal.targetDate, cadence: d.goal.cadence, sensitive: d.review.snapshot.sensitive, snapshot: d.review.snapshot }))))}` : digest,
-  })
+  // Sensitive goals are left out of the model's input: it may not comment on them or propose changes.
+  const forModel = due.filter((d) => !d.review.snapshot.sensitive)
+  const out = forModel.length ? schema_.extend({ goalNotes: goalNotesSchema(forModel) }) : schema_
+  let res
+  try {
+    res = await generate('plan', 'job.weekly-review', {
+      model: model('plan'),
+      output: Output.object({ schema: out }),
+      system: `${COACH_SYSTEM}\nWrite this week's review. Wins and problems must cite numbers from the digest. Propose one change for next week, and only actions that directly implement it. Never suggest medicine or dosage changes; direct medicine reminders to the existing medicine form.${forModel.length ? '\nFor each due outcome goal, use only the goal snapshot numbers. Never say an action caused an outcome. Proposals are optional and the user decides.' : ''}`,
+      prompt: forModel.length ? `${digest}\n\nDue outcome goal reviews (snapshots computed by code):\n${mask(JSON.stringify(forModel.map((d) => ({ goalId: d.goal.id, title: d.goal.title, measure: d.goal.measureName, unit: d.goal.unit, direction: d.goal.direction, target: d.goal.target, range: [d.goal.rangeLow, d.goal.rangeHigh], targetDate: d.goal.targetDate, cadence: d.goal.cadence, sensitive: d.review.snapshot.sensitive, snapshot: d.review.snapshot }))))}` : digest,
+    })
+  } catch (e) {
+    if (!due.length) throw e
+    return template()
+  }
   const r = res.output as (z.infer<typeof schema_> & { goalNotes?: { goalId: string; note: string; proposal?: GoalProposal }[] }) | undefined
-  if (!r) return null
+  if (!r) return template()
   if (due.length && r.goalNotes) await saveCoachNotes(due, r.goalNotes, today)
   const actions = r.actions.filter((action) => action.type !== 'schedule' || isSafeAiScheduleProposal(action.kind, action.name, action.unit))
   const review: ReviewContent = { wins: r.wins, watch: r.problems, focus: r.focus, plan: r.plan, ...(due.length ? { goals: goalPoints(due) } : {}) }

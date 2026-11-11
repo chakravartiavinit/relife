@@ -77,7 +77,7 @@ test('PostgreSQL outcome goals: cap, versions, ownership, reviews, check-ins and
   }
   const checkInGoal = (title: string, actions: { kind: 'schedule' | 'tracker'; id: string }[]) => ({
     title, reason: 'Integration', area: 'skills' as const, measureKind: 'check_in' as const, trackerId: null, measureName: 'Score', unit: 'pts',
-    direction: 'increase' as const, target: 80, rangeLow: null, rangeHigh: null, baselineValue: 50, baselineDate: today, baselineHow: 'Timed test',
+    direction: 'increase' as const, target: 80, rangeLow: null, rangeHigh: null, baselineValue: 50, baselineDate: addDays(today, -14), baselineHow: 'Timed test',
     targetDate: addDays(today, 60), cadence: 'weekly' as const, actions,
   })
 
@@ -125,6 +125,20 @@ test('PostgreSQL outcome goals: cap, versions, ownership, reviews, check-ins and
     assert.equal(decided.decision, 'change')
     assert.equal(decided.before?.target, 80)
     assert.equal(decided.after?.target, 90)
+
+    // 3b. Pausing outside the review records the decision on the open review, so it is no longer due.
+    const other = active[1]
+    await db.update(schema.goals).set({ nextReviewOn: today }).where(eq(schema.goals.id, other.id))
+    const [open] = await goals.prepareGoalReviews(owner, now, other.id)
+    assert.ok(open)
+    assert.equal((await goals.setGoalStatus(owner, { goalId: other.id, version: other.version, status: 'paused' }, now)).status, 'saved')
+    const [closed] = await db.select().from(schema.goalReviews).where(eq(schema.goalReviews.id, open.review.id))
+    assert.equal(closed.decision, 'pause')
+    const page = await goals.loadGoalsPage(owner, now)
+    assert.ok(!page.due.some((d) => d.goal.id === other.id), 'a paused goal has no review due')
+    assert.ok(page.decidedToday.some((d) => d.review.id === open.review.id), 'the decided review stays visible today')
+    const extra = await db.select().from(schema.goalReviews).where(and(eq(schema.goalReviews.goalId, other.id), eq(schema.goalReviews.kind, 'edit')))
+    assert.equal(extra.length, 0, 'no separate edit row when an open review took the decision')
 
     // 4. Goal drafts are never accepted by the generic insight path.
     const [draft] = await db.insert(schema.insights).values({

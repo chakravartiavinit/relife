@@ -25,7 +25,9 @@ async function Review() {
   await connection()
   const user = await getUser()
   const data = await loadGoalsPage(user)
-  const from = data.due.map((d) => d.review.snapshot.window.from).sort()[0]
+  // Reviews decided today stay on the page in their saved state, so a decision never makes its card vanish.
+  const cards = [...data.due, ...data.decidedToday]
+  const from = cards.map((d) => d.review.snapshot.window.from).sort()[0]
   return (
     <div>
       <PageHeader
@@ -34,13 +36,13 @@ async function Review() {
         description="For each goal, compare what you did with how the outcome moved. Then choose what happens next. Goals you don’t decide stay as they are."
         actions={<Link href="/goals" className={buttonClass({ variant: 'secondary' })}>All goals</Link>}
       />
-      {data.due.length ? (
+      {cards.length ? (
         <div className="flex max-w-[760px] flex-col gap-6">
-          {data.due.map(({ goal, review }) => {
+          {cards.map(({ goal, review }) => {
             const { lines, prompt } = reviewPoint(goal, review)
             return (
               <GoalReviewCard key={review.id} g={goal} picker={data.picker} today={data.today}
-                review={{ id: review.id, reviewDate: review.reviewDate, snapshot: review.snapshot, aiNote: review.aiNote, proposal: review.proposal, lines, prompt }} />
+                review={{ id: review.id, reviewDate: review.reviewDate, snapshot: review.snapshot, aiNote: review.aiNote, proposal: review.proposal, lines, prompt, decision: review.decision }} />
             )
           })}
         </div>

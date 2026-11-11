@@ -159,7 +159,7 @@ export default function UiGallery() {
           <OutcomeGoalCard g={checkInSample} picker={goalPicker} today={goalToday} />
           <OutcomeGoalCard g={{ ...goalSample, id: 'sample-sensitive', title: 'Sleep 7–8 hours a night', measureName: 'Sleep', unit: 'h', direction: 'range', target: null, rangeLow: 7, rangeHigh: 8, baselineValue: 7.4, sensitive: true, snapshot: snap({ ...goalSample, direction: 'range', target: null, rangeLow: 7, rangeHigh: 8, baselineValue: 7.4 }, 6.4, true) }} picker={goalPicker} today={goalToday} />
           <PausedFinishedList activeCount={2} goals={[
-            { ...goalSample, id: 'sample-paused', title: 'Run 5 km in under 30 minutes', status: 'paused', pausedAt: new Date('2026-11-02T08:00:00Z') },
+            { ...goalSample, id: 'sample-paused', title: 'Run 5 km in under 30 minutes', status: 'paused', pausedAt: new Date('2026-11-02T08:00:00Z'), pausedOn: '2026-11-02' },
             { ...goalSample, id: 'sample-finished', title: 'Read 20 pages a day', status: 'finished', finishedAt: new Date('2026-10-04T08:00:00Z'), snapshot: { ...goalSample.snapshot!, met: false } },
           ]} />
         </div>
@@ -167,7 +167,7 @@ export default function UiGallery() {
           <GoalReviewCard g={goalSample} picker={goalPicker} today={goalToday}
             review={{ id: 'sample-review', reviewDate: goalToday, snapshot: goalSample.snapshot!, aiNote: 'Practice landed on most due days.', proposal: { field: 'targetDate', value: '2027-03-12', why: 'A month more keeps the weekly step modest.' },
               lines: ['Actions: Practice DSA: done on 5 of 6 due days.', 'Outcome: 64 wpm (6 recordings) vs 60 wpm at baseline.', GOAL_FOOTNOTE],
-              prompt: 'You kept the actions and the outcome moved the right way. Keep for another period?' }} />
+              prompt: 'You kept the actions and the outcome moved the right way. Keep for another period?', decision: null }} />
         </div>
       </Section>
 
@@ -203,6 +203,7 @@ const goalBase = {
   measureName: 'Typing speed', unit: 'wpm', direction: 'increase' as const, target: 70, rangeLow: null, rangeHigh: null,
   baselineValue: 60, baselineDate: '2026-10-25', baselineHow: 'Average of 17 recorded days', baselineObservations: 17,
   targetDate: '2027-02-10', cadence: 'weekly' as const, nextReviewOn: goalToday, version: 1, pausedAt: null, finishedAt: null,
+  trackerArchived: false, startedOn: '2026-10-20', pausedOn: null, finishedOn: null,
 }
 function snap(g: Omit<GoalViewData, 'id' | 'snapshot' | 'sensitive' | 'actionNames' | 'actions' | 'title'> & { title?: string }, latest: number, sensitive = false) {
   const days = new Map(['2026-11-08', '2026-11-09', '2026-11-11', '2026-11-12', '2026-11-13', '2026-11-14'].map((d, i) => [d, latest - 2 + i * 0.6]))
