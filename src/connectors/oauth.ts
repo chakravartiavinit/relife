@@ -18,3 +18,17 @@ export async function token(ctx: ConnectorCtx, c: Connector) {
   if (legacy) try { fallback = decrypt(Buffer.from(legacy, 'base64')).t } catch { /* key changed: use the pasted one */ }
   return accessToken(ctx.user, c, fallback)
 }
+
+/**
+ * `.catch(apiError('Oura', ' …'))` on a `fetchJson` call: a rejected token becomes advice for this service (what to
+ * do on Connectors) instead of the generic "key was rejected". `extra` goes after the rejection.
+ */
+export const apiError = (name: string, extra = '') => (e: Error): never => {
+  throw new Error(/rejected/.test(e.message) ? `${name} rejected the sign-in.${extra} Sign in again on Connectors.` : e.message)
+}
+
+/** Connect-dialog check of the client ID and secret. Lazy for the same reason as `token`. */
+export async function checkApp(name: string, c: Connector, get: (env: string) => string | undefined) {
+  const { checkClient } = await import('@/core/oauth')
+  return checkClient(name, c.oauth!, get)
+}

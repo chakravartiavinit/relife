@@ -21,7 +21,7 @@ export async function GET(req: Request, ctx: RouteContext<'/api/oauth/[id]/start
     status: 303,
     headers: {
       Location: authorizeUrl(c.oauth, redirectUri, state),
-      'Set-Cookie': `relife_oauth=${cookie}; Path=/api/oauth; Max-Age=600; HttpOnly; SameSite=Lax`,
+      'Set-Cookie': `relife_oauth=${cookie}; Path=/api/oauth; Max-Age=600; HttpOnly; SameSite=Lax${origin.startsWith('https:') ? '; Secure' : ''}`,
     },
   })
 }

@@ -18,6 +18,8 @@ export type HevyWorkout = {
 
 type Page = { page: number; page_count: number; workouts: HevyWorkout[] }
 
+const HEVY_BAD_KEY = 'Hevy rejected the API key. Copy it from hevy.com/settings?developer; the API needs Hevy Pro.'
+
 const blank = (date: string): HevyDay => ({ date, workouts: 0, minutes: 0, volumeKg: 0, exercises: 0 })
 
 /** Pure: workouts into days in the user's time zone. Exported for tests. */
@@ -48,13 +50,18 @@ export const hevy: Connector = {
   fields: [{ env: 'HEVY_API_KEY', label: 'API key', secret: true, hint: 'hevy.com/settings?developer. The API is part of Hevy Pro.' }],
   env: ['HEVY_API_KEY'],
   everyMinutes: 60,
+  // user/info is the cheapest call; a wrong key is answered 401 "InvalidApiKey", checked live.
+  async check(get) {
+    await fetchJson('https://api.hevyapp.com/v1/user/info', { headers: { 'api-key': (get('HEVY_API_KEY') ?? '').trim() } }, 'Hevy has no account for this key.')
+      .catch((e: Error) => { throw new Error(e.message.includes('rejected') ? HEVY_BAD_KEY : e.message) })
+  },
   async sync(ctx) {
     const { tz, today, from, backfilled } = syncWindow(ctx, 90)
     const headers = { 'api-key': env('HEVY_API_KEY')!.trim() }
     const workouts: HevyWorkout[] = []
     for (let page = 1; page <= 60; page++) {
       const r = await fetchJson<Page>(`https://api.hevyapp.com/v1/workouts?page=${page}&pageSize=10`, { headers })
-        .catch((e: Error) => { throw new Error(e.message.includes('rejected') ? 'Hevy rejected the API key. Copy it from hevy.com/settings?developer; the API needs Hevy Pro.' : e.message) })
+        .catch((e: Error) => { throw new Error(e.message.includes('rejected') ? HEVY_BAD_KEY : e.message) })
       workouts.push(...(r.workouts ?? []))
       const oldest = r.workouts?.at(-1)
       if (!oldest || page >= (r.page_count ?? 1) || localDate(new Date(oldest.start_time), tz) < from) break

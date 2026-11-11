@@ -1,7 +1,10 @@
-import { test } from 'node:test'
+import { test, mock } from 'node:test'
 import assert from 'node:assert/strict'
 import { setKeys } from '@/core/env'
-import { authorizeUrl, readTokens } from '@/core/oauth'
+import { authorizeUrl, checkClient, isBadClient, readTokens } from '@/core/oauth'
+import { apiError } from './oauth'
+import { hevy, hevyDays } from './hevy'
+import type { ConnectorCtx } from '@/core/types'
 import { ouraDays } from './oura'
 import { whoopDays } from './whoop'
 import { withingsDays } from './withings'
@@ -97,4 +100,107 @@ test('calendarDays counts meetings with others, focus time, and skips all-day, d
     { start: { date: '2026-11-06' }, end: { date: '2026-11-07' }, attendees: two },
   ], TZ)
   assert.deepEqual(days, [{ date: '2026-11-06', meetings: 2, meetingMinutes: 90, focusMinutes: 90 }])
+})
+
+/** fetch answering from a list of canned replies; returns the calls it saw. */
+function fakeFetch(...replies: { status: number; body: unknown }[]) {
+  const calls: { url: string; init?: RequestInit }[] = []
+  mock.method(globalThis, 'fetch', async (url: string | URL, init?: RequestInit) => {
+    calls.push({ url: String(url), init })
+    const r = replies.shift() ?? { status: 500, body: {} }
+    return new Response(typeof r.body === 'string' ? r.body : JSON.stringify(r.body), { status: r.status })
+  })
+  return calls
+}
+
+test('isBadClient: invalid_client and Strava Application errors are a wrong ID or secret, a bad code is not', () => {
+  assert.equal(isBadClient(401, { error: 'invalid_client', error_description: 'The OAuth client was not found.' }), true) // Google, WHOOP
+  assert.equal(isBadClient(400, { status: 400, error: 'invalid_client', error_description: 'Invalid client_id.' }), true) // Oura
+  assert.equal(isBadClient(401, { message: 'Authorization Error', errors: [{ resource: 'Application', field: '', code: 'invalid' }] }), true) // Strava
+  assert.equal(isBadClient(400, { error: 'invalid_grant', error_description: 'Bad Request' }), false)
+  assert.equal(isBadClient(400, { message: 'Bad Request', errors: [{ resource: 'AuthorizationCode', field: 'code', code: 'invalid' }] }), false)
+  assert.equal(isBadClient(500, { error: 'invalid_client' }), false)
+  assert.equal(isBadClient(200, null), false)
+})
+
+test('checkClient sends the app with a made-up code and only a wrong client is an error', async () => {
+  const keys = (id: string | undefined, secret = 's') => (k: string) => (k === 'WHOOP_CLIENT_ID' ? id : k === 'WHOOP_CLIENT_SECRET' ? secret : undefined)
+  const whoop = (await import('./whoop')).whoop
+  try {
+    let calls = fakeFetch({ status: 401, body: { error: 'invalid_client' } })
+    await assert.rejects(checkClient('WHOOP', whoop.oauth!, keys(' id1 ')), /WHOOP doesn’t recognise this client ID and secret.*developer-dashboard\.whoop\.com/)
+    const sent = new URLSearchParams(String(calls[0].init?.body))
+    assert.equal(calls[0].url, 'https://api.prod.whoop.com/oauth/oauth2/token')
+    assert.deepEqual([sent.get('client_id'), sent.get('grant_type'), sent.get('code'), sent.get('scope')], ['id1', 'authorization_code', 'relife-check', 'offline'])
+    mock.restoreAll()
+    // Right client, made-up code: fine. Server trouble and odd replies: fine too (left for sign-in).
+    fakeFetch({ status: 400, body: { error: 'invalid_grant' } }); await checkClient('WHOOP', whoop.oauth!, keys('id'))
+    mock.restoreAll(); fakeFetch({ status: 503, body: 'oops' }); await checkClient('WHOOP', whoop.oauth!, keys('id'))
+    // Nothing typed yet: no request.
+    mock.restoreAll(); calls = fakeFetch(); await checkClient('WHOOP', whoop.oauth!, keys(undefined)); assert.equal(calls.length, 0)
+  } finally {
+    mock.restoreAll()
+  }
+})
+
+test('apiError turns a rejected token into advice for the service and passes other errors on', () => {
+  assert.throws(() => apiError('Oura', ' Needs a membership.')(new Error('The key was rejected. Check it')), /^Error: Oura rejected the sign-in\. Needs a membership\. Sign in again on Connectors\.$/)
+  assert.throws(() => apiError('Oura')(new Error('HTTP 500')), /^Error: HTTP 500$/)
+})
+
+test('hevy check reads user/info with the key; a wrong key is advice, a server error is left to isTransient', async () => {
+  try {
+    const calls = fakeFetch({ status: 200, body: { data: { name: 'x' } } })
+    await hevy.check!((k) => (k === 'HEVY_API_KEY' ? ' 11111111-1111-1111-1111-111111111111 ' : undefined))
+    assert.equal(calls[0].url, 'https://api.hevyapp.com/v1/user/info')
+    assert.equal((calls[0].init?.headers as Record<string, string>)['api-key'], '11111111-1111-1111-1111-111111111111')
+    mock.restoreAll(); fakeFetch({ status: 401, body: 'InvalidApiKey' })
+    await assert.rejects(hevy.check!(() => 'bad'), /Hevy rejected the API key.*needs Hevy Pro/)
+    mock.restoreAll(); fakeFetch({ status: 502, body: {} })
+    await assert.rejects(hevy.check!(() => 'k'), /HTTP 502/)
+  } finally {
+    mock.restoreAll()
+  }
+})
+
+test('hevy sync pages newest first, stops at the window and emits one stable event per day', async () => {
+  const day = (iso: string, kg: number) => ({ start_time: iso, end_time: new Date(Date.parse(iso) + 3_600_000).toISOString(), exercises: [{ sets: [{ type: 'normal', weight_kg: kg, reps: 10 }, { type: 'warmup', weight_kg: 20, reps: 10 }] }] })
+  const now = Date.now()
+  const iso = (daysAgo: number) => new Date(now - daysAgo * 86_400_000).toISOString()
+  setKeys(new Map([['HEVY_API_KEY', 'k']]))
+  const events: { externalId: string; body: unknown }[] = []
+  let cursor: unknown
+  const ctx = { user: { timezone: TZ }, cursor: null, setCursor: (c: unknown) => { cursor = c }, emit: async (e: { externalId: string; body: unknown }) => { events.push(e) }, log: () => {} } as unknown as ConnectorCtx
+  try {
+    const calls = fakeFetch(
+      { status: 200, body: { page: 1, page_count: 3, workouts: [day(iso(1), 100), day(iso(2), 80)] } },
+      { status: 200, body: { page: 2, page_count: 3, workouts: [day(iso(200), 50)] } }, // older than the 90-day window: stop
+    )
+    await hevy.sync(ctx)
+    assert.equal(calls.length, 2)
+    assert.match(calls[0].url, /workouts\?page=1&pageSize=10$/)
+    const first = events.filter((e) => (e.body as { workouts: number }).workouts > 0)
+    assert.equal(first.length, 2)
+    assert.equal((first[0].body as { volumeKg: number }).volumeKg > 0, true) // warm-up left out: 100 × 10
+    assert.deepEqual(cursor, { backfilled: true })
+    // Same data again: same ids, so ingest dedupes.
+    const ids = events.map((e) => e.externalId)
+    events.length = 0
+    mock.restoreAll()
+    fakeFetch(
+      { status: 200, body: { page: 1, page_count: 3, workouts: [day(iso(1), 100), day(iso(2), 80)] } },
+      { status: 200, body: { page: 2, page_count: 3, workouts: [day(iso(200), 50)] } },
+    )
+    await hevy.sync(ctx)
+    assert.deepEqual(events.map((e) => e.externalId), ids)
+    assert.equal(ids.length, new Set(ids).size)
+  } finally {
+    mock.restoreAll()
+    setKeys(new Map())
+  }
+})
+
+test('hevyDays keeps warm-ups out of the volume', () => {
+  assert.deepEqual(hevyDays([{ start_time: '2026-11-06T04:00:00Z', end_time: '2026-11-06T05:00:00Z', exercises: [{ sets: [{ type: 'warmup', weight_kg: 40, reps: 10 }, { type: 'normal', weight_kg: 60, reps: 5 }] }] }], TZ),
+    [{ date: '2026-11-06', workouts: 1, minutes: 60, volumeKg: 300, exercises: 1 }])
 })
