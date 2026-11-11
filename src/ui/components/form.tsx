@@ -29,14 +29,18 @@ export function Field({ label, hint, children, className, htmlFor }: {
 }
 
 /** Native radio group styled as a segmented control. Works without JS. */
-export function Segmented({ name, options, defaultValue, className }: {
+export function Segmented({ name, options, defaultValue, value, className, onValueChange, 'aria-label': ariaLabel }: {
   name: string; options: { value: string; label: React.ReactNode }[]; defaultValue?: string; className?: string
+  /** Controlled use, for filters that act at once instead of on submit: pass both. */
+  value?: string
+  onValueChange?: (value: string) => void
+  'aria-label'?: string
 }) {
   return (
-    <div role="radiogroup" className={cn('inline-flex rounded-md bg-surface-2 p-1', className)}>
+    <div role="radiogroup" aria-label={ariaLabel} className={cn('inline-flex rounded-md bg-surface-2 p-1', className)}>
       {options.map((o) => (
         <label key={o.value} className="relative">
-          <input type="radio" name={name} value={o.value} defaultChecked={o.value === defaultValue} className="peer sr-only" />
+          <input type="radio" name={name} value={o.value} {...(value === undefined ? { defaultChecked: o.value === defaultValue } : { checked: o.value === value, onChange: () => onValueChange?.(o.value) })} className="peer sr-only" />
           <span className="flex h-7 cursor-pointer items-center rounded-sm px-3 text-[13px] font-medium text-ink-2 transition-[background-color,color,box-shadow] duration-150 peer-checked:bg-surface peer-checked:text-ink peer-checked:shadow-1 peer-focus-visible:shadow-[0_0_0_2px_var(--pill)]">
             {o.label}
           </span>

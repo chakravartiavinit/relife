@@ -24,12 +24,18 @@ export default function ConnectorsPage() {
       <PageHeader
         eyebrow="System"
         title="Connectors"
-        description="Data sources, Telegram and AI models. You bring the keys: they’re encrypted in your local database, and nothing syncs until you connect it."
+        description="Apps and devices that feed ReLife, sorted by what they track, plus Telegram and AI models. You bring the keys: they’re encrypted in your local database, and nothing syncs until you connect it."
       />
       <Suspense fallback={
-        <div className="flex flex-col gap-10">
+        <div className="flex flex-col gap-6">
           <Skeleton className="h-8 w-72 rounded-full" />
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 9 }, (_, i) => <Skeleton key={i} className="h-[76px] rounded-[18px]" />)}</div>
+          <div className="grid gap-6 lg:grid-cols-[200px_minmax(0,1fr)] xl:gap-10">
+            <div className="hidden flex-col gap-1 lg:flex">{Array.from({ length: 8 }, (_, i) => <Skeleton key={i} className="h-9" />)}</div>
+            <div className="flex flex-col gap-8">
+              <Skeleton className="h-10 w-full max-w-sm" />
+              <div className="@container"><div className="grid gap-3 @xl:grid-cols-2 @3xl:grid-cols-3">{Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-[150px] rounded-[18px]" />)}</div></div>
+            </div>
+          </div>
         </div>
       }>
         <Connectors />
