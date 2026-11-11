@@ -2,14 +2,14 @@ import { randomUUID } from 'node:crypto'
 import { and, desc, eq, inArray, isNull, lte, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import {
-  BASELINE_DAYS, CADENCE_DAYS, MAX_ACTIVE, goalIsSensitive, goalSnapshot, goalStatIds, isActivityMeasure,
+  BASELINE_DAYS, CADENCE_DAYS, CAP_MESSAGE, MAX_ACTIVE, goalFields, goalIsSensitive, goalSnapshot, goalStatIds, isActivityMeasure,
   nextReviewOn, reviewLines, trackerBaseline, validateGoal,
-  type ActionSource, type GoalActionLink, type GoalCadence, type GoalDecision, type GoalErrors, type GoalFields,
+  type ActionSource, type GoalActionLink, type GoalDecision, type GoalErrors, type GoalFields,
   type GoalInput, type GoalSnapshot, type GoalStatus,
 } from '@/domain/goals'
 import { loadAdherence } from './adherence'
 import { trackerDays } from './metrics'
-import { lockUser } from './recovery'
+import { lockUser, type Tx } from './recovery'
 import { addDays, daysBetween, localDate } from './time'
 import type { User } from './user'
 
@@ -23,19 +23,10 @@ export type GoalView = Goal & { snapshot: GoalSnapshot | null; sensitive: boolea
 
 const G = schema.goals, R = schema.goalReviews, C = schema.goalCheckIns
 
-const fieldsOf = (g: Goal): GoalFields => ({
-  title: g.title, reason: g.reason, target: g.target, rangeLow: g.rangeLow, rangeHigh: g.rangeHigh,
-  targetDate: g.targetDate, cadence: g.cadence, actions: g.actions,
-})
-
-const inputOf = (g: Goal, f: GoalFields = fieldsOf(g)): GoalInput => ({
+export const inputOf = (g: Goal, f: GoalFields = goalFields(g)): GoalInput => ({
   ...f, area: g.area, measureKind: g.measureKind, trackerId: g.trackerId, measureName: g.measureName, unit: g.unit,
   direction: g.direction, baselineValue: g.baselineValue, baselineDate: g.baselineDate, baselineHow: g.baselineHow,
 })
-
-function isSensitiveGoal(g: Pick<Goal, 'measureName' | 'unit' | 'title'>, trackerSlug?: string) {
-  return goalIsSensitive(g.measureName, g.unit, trackerSlug)
-}
 
 /** Snapshots for several goals in a few queries (trackers, tracker days, checks, check-ins). */
 export async function snapshotsFor(user: User, list: Goal[], reviewDate: string, now = new Date()): Promise<Map<string, { snapshot: GoalSnapshot; sensitive: boolean; actionNames: string[] }>> {
@@ -71,7 +62,7 @@ export async function snapshotsFor(user: User, list: Goal[], reviewDate: string,
       return { link, source: { kind: 'schedule', name: a.schedule.name, statuses: a.days.filter((d) => d.date >= window.from && d.date <= window.to).map((d) => d.status) } }
     })
     const outcome = g.trackerId ? trackers.find((t) => t.id === g.trackerId) : undefined
-    const sensitive = isSensitiveGoal(g, outcome?.slug)
+    const sensitive = goalIsSensitive(g.measureName, g.unit, outcome?.slug)
     const snapshot = goalSnapshot(g, { days: g.trackerId ? daysOf(g.trackerId) : undefined, checkIns: checkIns.filter((c) => c.goalId === g.id) }, actions, reviewDate, sensitive, now)
     const actionNames = actions.map((a, i) => a.source?.name ?? schedules.find((s) => s.id === g.actions[i].id)?.name ?? 'Action no longer available')
     snapshot.actions = snapshot.actions.map((a, i) => (a.available ? a : { ...a, name: actionNames[i] }))
@@ -120,7 +111,7 @@ async function viewsFor(user: User, list: Goal[], today: string, now: Date): Pro
     const s = snaps.get(g.id)
     if (s) return { ...g, ...s }
     const r = last.find((x) => x.goalId === g.id)
-    return { ...g, snapshot: r?.snapshot ?? null, sensitive: r?.snapshot.sensitive ?? isSensitiveGoal(g), actionNames: r?.snapshot.actions.map((a) => a.name) ?? [] }
+    return { ...g, snapshot: r?.snapshot ?? null, sensitive: r?.snapshot.sensitive ?? goalIsSensitive(g.measureName, g.unit), actionNames: r?.snapshot.actions.map((a) => a.name) ?? [] }
   })
 }
 
@@ -134,20 +125,21 @@ export async function loadGoalsPage(user: User, now = new Date()) {
     goalPicker(user, today),
   ])
   const views = await viewsFor(user, list, today, now)
+  const active = views.filter((g) => g.status === 'active')
   // Only the newest undecided review of an active goal asks for a decision; older ones read "No decision recorded".
-  const due = views.filter((g) => g.status === 'active').flatMap((g) => {
+  const due = active.flatMap((g) => {
     const r = reviews.find((x) => x.goalId === g.id)
     return r ? [{ review: r, goal: g }] : []
   })
   return {
     today,
-    active: views.filter((g) => g.status === 'active'),
+    active,
     paused: views.filter((g) => g.status === 'paused'),
     finished: views.filter((g) => g.status === 'finished'),
     due,
     drafts,
     picker,
-    activeCount: views.filter((g) => g.status === 'active').length,
+    activeCount: active.length,
   }
 }
 
@@ -216,6 +208,18 @@ export type GoalResult =
 
 export type SaveGoalInput = GoalInput & { id?: string; version?: number; draftInsightId?: string; useRecorded?: boolean }
 
+/**
+ * Routines and trackers validateGoal may link. A locked outcome tracker may since be archived; an edit doesn't
+ * change it, so it still counts.
+ */
+async function linkables(tx: Tx, userId: string, lockedTrackerId: string | null | undefined) {
+  const [schedules, trackers] = await Promise.all([
+    tx.select({ id: schema.schedules.id, kind: schema.schedules.kind, active: schema.schedules.active }).from(schema.schedules).where(eq(schema.schedules.userId, userId)),
+    tx.select({ id: schema.trackers.id }).from(schema.trackers).where(and(eq(schema.trackers.userId, userId), isNull(schema.trackers.archivedAt))),
+  ])
+  return { schedules, trackers: lockedTrackerId ? [...trackers, { id: lockedTrackerId }] : trackers }
+}
+
 /** Create or edit a goal. A recorded baseline is always recomputed here; the client value is not trusted. */
 export async function saveGoal(user: User, input: SaveGoalInput, now = new Date()): Promise<GoalResult> {
   const today = localDate(now, user.timezone)
@@ -237,7 +241,7 @@ export async function saveGoal(user: User, input: SaveGoalInput, now = new Date(
     }
   }
   // An edit keeps the locked measure and baseline, whatever the form sent.
-  if (existing) g = inputOf(existing, { title: g.title, reason: g.reason, target: g.target, rangeLow: g.rangeLow, rangeHigh: g.rangeHigh, targetDate: g.targetDate, cadence: g.cadence, actions: g.actions })
+  if (existing) g = inputOf(existing, goalFields(g))
   const before = existing ? await computeSnapshot(user, existing, today, now) : null
 
   return db.transaction(async (tx) => {
@@ -245,23 +249,21 @@ export async function saveGoal(user: User, input: SaveGoalInput, now = new Date(
     const [current] = existing ? await tx.select().from(G).where(and(eq(G.id, existing.id), eq(G.userId, user.id))).for('update') : []
     if (existing && (!current || current.version !== input.version)) return { status: 'stale' as const }
     if (current?.status === 'finished') return { status: 'invalid' as const, errors: { form: 'Finished goals are read-only.' } }
-    const [schedules, trackers, [{ n }]] = await Promise.all([
-      tx.select({ id: schema.schedules.id, kind: schema.schedules.kind, active: schema.schedules.active }).from(schema.schedules).where(eq(schema.schedules.userId, user.id)),
-      tx.select({ id: schema.trackers.id }).from(schema.trackers).where(and(eq(schema.trackers.userId, user.id), isNull(schema.trackers.archivedAt))),
+    const [links, [{ n }]] = await Promise.all([
+      linkables(tx, user.id, current?.trackerId),
       tx.select({ n: sql<number>`count(*)::int` }).from(G).where(and(eq(G.userId, user.id), eq(G.status, 'active'), current ? sql`${G.id} <> ${current.id}` : undefined)),
     ])
-    // A locked tracker may since be archived; an edit doesn't change it, so don't block the edit on it.
-    const errors = validateGoal(g, { today, activating: !current, activeCount: n, schedules, trackers: current?.trackerId ? [...trackers, { id: current.trackerId }] : trackers })
+    const errors = validateGoal(g, { today, activating: !current, activeCount: n, ...links })
     if (current && errors.baselineDate) delete errors.baselineDate
     if (Object.keys(errors).length) return { status: 'invalid' as const, errors }
 
     if (current) {
-      const after: GoalFields = { title: g.title, reason: g.reason, target: g.target, rangeLow: g.rangeLow, rangeHigh: g.rangeHigh, targetDate: g.targetDate, cadence: g.cadence, actions: g.actions }
+      const after = goalFields(g)
       await tx.update(G).set({
         ...after, version: current.version + 1, updatedAt: now,
         nextReviewOn: after.cadence !== current.cadence ? nextReviewOn(today, after.cadence) : current.nextReviewOn,
       }).where(eq(G.id, current.id))
-      await tx.insert(R).values({ userId: user.id, goalId: current.id, ref: `edit:${randomUUID()}`, kind: 'edit', reviewDate: today, snapshot: before!.snapshot, before: fieldsOf(current), after, decision: 'change', decidedAt: now })
+      await tx.insert(R).values({ userId: user.id, goalId: current.id, ref: `edit:${randomUUID()}`, kind: 'edit', reviewDate: today, snapshot: before!.snapshot, before: goalFields(current), after, decision: 'change', decidedAt: now })
       return { status: 'saved' as const, id: current.id }
     }
 
@@ -298,7 +300,7 @@ export async function setGoalStatus(user: User, input: { goalId: string; version
     if (current.status === input.status) return { status: 'saved' as const, id: current.id }
     if (input.status === 'active') {
       const [{ n }] = await tx.select({ n: sql<number>`count(*)::int` }).from(G).where(and(eq(G.userId, user.id), eq(G.status, 'active')))
-      if (n >= MAX_ACTIVE) return { status: 'invalid' as const, errors: { form: `You have ${MAX_ACTIVE} active goals. Pause or finish one first.` } }
+      if (n >= MAX_ACTIVE) return { status: 'invalid' as const, errors: { form: CAP_MESSAGE } }
     }
     const decision: GoalDecision = input.status === 'active' ? 'resume' : input.status === 'paused' ? 'pause' : 'finish'
     await tx.update(G).set({
@@ -334,13 +336,9 @@ export async function decideReview(user: User, input: DecideInput, now = new Dat
     else if (input.decision === 'pause') set = { ...set, status: 'paused', pausedAt: now }
     else if (input.decision === 'finish') set = { ...set, status: 'finished', finishedAt: now }
     else {
-      before = fieldsOf(goal)
+      before = goalFields(goal)
       after = { ...before, ...input.change }
-      const [schedules, trackers] = await Promise.all([
-        tx.select({ id: schema.schedules.id, kind: schema.schedules.kind, active: schema.schedules.active }).from(schema.schedules).where(eq(schema.schedules.userId, user.id)),
-        tx.select({ id: schema.trackers.id }).from(schema.trackers).where(and(eq(schema.trackers.userId, user.id), isNull(schema.trackers.archivedAt))),
-      ])
-      const errors = validateGoal(inputOf(goal, after), { today, activating: false, activeCount: 0, schedules, trackers: goal.trackerId ? [...trackers, { id: goal.trackerId }] : trackers })
+      const errors = validateGoal(inputOf(goal, after), { today, activating: false, activeCount: 0, ...await linkables(tx, user.id, goal.trackerId) })
       delete errors.baselineDate
       if (Object.keys(errors).length) return { status: 'invalid' as const, errors }
       set = { ...set, ...after, nextReviewOn: nextReviewOn(today, after.cadence) }
@@ -397,5 +395,3 @@ export async function outcomeGoalsDigest(user: User, now = new Date()) {
     })),
   }
 }
-
-export const cadenceLabel = (c: GoalCadence) => ({ weekly: 'Weekly', fortnightly: 'Every 2 weeks', monthly: 'Every 4 weeks' })[c]

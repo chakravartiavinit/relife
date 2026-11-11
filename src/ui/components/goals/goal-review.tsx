@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { Check, Flag, Info, Pause, Pencil, Target } from 'lucide-react'
 import { decideGoalReviewAction, recordGoalCheckInAction } from '@/app/actions'
-import { GOAL_FOOTNOTE, applyProposal, proposalText, type GoalProposal, type GoalSnapshot } from '@/domain/goals'
+import { GOAL_FOOTNOTE, applyProposal, goalFields, proposalText, type GoalProposal, type GoalSnapshot } from '@/domain/goals'
 import { CATEGORY } from '@/ui/tokens'
 import { cn } from '@/ui/cn'
 import { Button } from '../button'
@@ -11,7 +11,7 @@ import { Badge, Card, IconChip, Stat } from '../card'
 import { Capsule } from '../capsule'
 import { Field, Input, Textarea } from '../form'
 import { GoalStatusBadge } from './goal-card'
-import { GoalDialog, initialFromGoal, type GoalPickerData } from './goal-form'
+import { GoalDialog, Notice, UnitInput, initialFromGoal, type GoalPickerData } from './goal-form'
 import { day, target, value, weekday, type GoalViewData } from './format'
 
 // One goal in the weekly review: what you did vs how the outcome moved, then an explicit decision.
@@ -49,7 +49,7 @@ export function GoalReviewCard({ g, review, picker, today }: { g: GoalViewData; 
     })
   }
 
-  const changeInitial = review.proposal ? { ...initialFromGoal(g), ...proposalInitial(g, review.proposal) } : initialFromGoal(g)
+  const changeInitial = initialFromGoal(review.proposal ? { ...g, ...applyProposal(goalFields(g), review.proposal) } : g)
   const missing = s.outcome.days?.filter((d) => d.value == null) ?? []
 
   return (
@@ -109,11 +109,11 @@ export function GoalReviewCard({ g, review, picker, today }: { g: GoalViewData; 
       </div>
 
       <div className="mt-5 flex flex-col gap-2">
-        {review.lines.filter((l) => l.startsWith('Not enough data')).map((l) => <Note key={l} tone="warn">{l}</Note>)}
-        {missing.length && s.outcome.status !== 'not_enough_data' ? <Note tone="warn">No data on {missing.length} day{missing.length === 1 ? '' : 's'}. The average uses the {s.outcome.observations} recorded days.</Note> : null}
-        {review.aiNote ? <Note><span className="font-medium text-ink">Coach note: </span>{review.aiNote}</Note> : null}
-        {review.proposal ? <Note><span className="font-medium text-ink">Suggested by the coach: </span>{proposalText(review.proposal, g.unit)}</Note> : null}
-        <Note>{GOAL_FOOTNOTE}</Note>
+        {review.lines.filter((l) => l.startsWith('Not enough data')).map((l) => <Notice key={l} tone="warn" icon={Info}>{l}</Notice>)}
+        {missing.length && s.outcome.status !== 'not_enough_data' ? <Notice tone="warn" icon={Info}>No data on {missing.length} day{missing.length === 1 ? '' : 's'}. The average uses the {s.outcome.observations} recorded days.</Notice> : null}
+        {review.aiNote ? <Notice><span className="font-medium text-ink">Coach note: </span>{review.aiNote}</Notice> : null}
+        {review.proposal ? <Notice><span className="font-medium text-ink">Suggested by the coach: </span>{proposalText(review.proposal, g.unit)}</Notice> : null}
+        <Notice>{GOAL_FOOTNOTE}</Notice>
       </div>
 
       <div className="mt-5 border-t border-divider pt-5">
@@ -143,21 +143,6 @@ export function GoalReviewCard({ g, review, picker, today }: { g: GoalViewData; 
   )
 }
 
-function proposalInitial(g: GoalViewData, p: GoalProposal) {
-  const f = applyProposal({ title: g.title, reason: g.reason, target: g.target, rangeLow: g.rangeLow, rangeHigh: g.rangeHigh, targetDate: g.targetDate, cadence: g.cadence, actions: g.actions }, p)
-  const str = (v: number | null) => (v == null ? '' : String(v))
-  return { target: str(f.target), rangeLow: str(f.rangeLow), rangeHigh: str(f.rangeHigh), targetDate: f.targetDate, cadence: f.cadence }
-}
-
-function Note({ tone = 'info', children }: { tone?: 'info' | 'warn'; children: React.ReactNode }) {
-  return (
-    <p className={cn('flex gap-2 rounded-md px-3 py-2 text-[13px] leading-relaxed text-ink-2', tone === 'warn' ? 'bg-warn/10' : 'bg-pill/7')}>
-      <Info aria-hidden className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} style={{ color: tone === 'warn' ? 'var(--warn)' : 'var(--pill)' }} />
-      <span>{children}</span>
-    </p>
-  )
-}
-
 /** Record a manual check-in. An empty week stays missing; it is never stored as zero. */
 export function CheckInPanel({ g, today, full = false }: { g: GoalViewData; today: string; full?: boolean }) {
   const [pending, start] = useTransition()
@@ -184,10 +169,7 @@ export function CheckInPanel({ g, today, full = false }: { g: GoalViewData; toda
       ) : null}
       <div className={cn('grid gap-3', full ? 'sm:grid-cols-2' : 'grid-cols-[1fr_auto]')}>
         <Field label={full ? g.measureName : <span className="sr-only">{g.measureName}</span>} htmlFor={`ci-${g.id}`}>
-          <div className="relative">
-            <Input id={`ci-${g.id}`} name="value" type="number" step="any" inputMode="decimal" required className={g.unit ? 'pr-12' : undefined} aria-invalid={!!error || undefined} />
-            {g.unit ? <span aria-hidden className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-[13px] text-ink-3">{g.unit}</span> : null}
-          </div>
+          <UnitInput id={`ci-${g.id}`} name="value" required unit={g.unit ?? undefined} aria-invalid={!!error || undefined} />
         </Field>
         {full ? (
           <Field label="Date" htmlFor={`cid-${g.id}`}><Input id={`cid-${g.id}`} name="date" type="date" max={today} defaultValue={today} /></Field>

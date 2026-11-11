@@ -24,6 +24,7 @@ export const CADENCE_DAYS: Record<GoalCadence, number> = { weekly: 7, fortnightl
 export const CADENCES = ['weekly', 'fortnightly', 'monthly'] as const
 export const DIRECTIONS = ['increase', 'decrease', 'range'] as const
 export const GOAL_FOOTNOTE = 'Actions and outcome moving together does not show that one caused the other.'
+export const CAP_MESSAGE = `You have ${MAX_ACTIVE} active goals. Pause or finish one first.`
 
 /** Editable after activation. The measure and baseline are locked. */
 export type GoalFields = {
@@ -31,6 +32,11 @@ export type GoalFields = {
   target: number | null; rangeLow: number | null; rangeHigh: number | null
   targetDate: string; cadence: GoalCadence; actions: GoalActionLink[]
 }
+/** The editable fields of a goal (or anything shaped like one). */
+export const goalFields = (g: GoalFields): GoalFields => ({
+  title: g.title, reason: g.reason, target: g.target, rangeLow: g.rangeLow, rangeHigh: g.rangeHigh,
+  targetDate: g.targetDate, cadence: g.cadence, actions: g.actions,
+})
 export type GoalProposalField = 'target' | 'rangeLow' | 'rangeHigh' | 'targetDate' | 'cadence'
 export type GoalProposal = { field: GoalProposalField; value: number | string; why: string }
 
@@ -83,10 +89,6 @@ const observed = (days: Map<string, number>, from: string, to: string) =>
 
 /** Records needed in a window before an outcome is judged: 3 of 7, 6 of 14, 12 of 28. */
 export const minObservations = (windowDays: number) => Math.ceil((3 / 7) * windowDays)
-
-export function formatGoalValue(v: number, unit?: string | null) {
-  return formatValue(v, unit)
-}
 
 /** Mean of recorded days in the 28 complete days before `startDate`. Missing days are skipped, never zero. */
 export function trackerBaseline(days: Map<string, number>, startDate: string) {
@@ -203,8 +205,8 @@ export function goalSnapshot(
 }
 
 export function targetText(goal: Pick<GoalLike, 'direction' | 'target' | 'rangeLow' | 'rangeHigh' | 'unit'>) {
-  if (goal.direction === 'range') return `${formatGoalValue(goal.rangeLow ?? 0)}–${formatGoalValue(goal.rangeHigh ?? 0, goal.unit)}`
-  return `${goal.direction === 'increase' ? '' : '≤ '}${formatGoalValue(goal.target ?? 0, goal.unit)}`
+  if (goal.direction === 'range') return `${formatValue(goal.rangeLow ?? 0)}–${formatValue(goal.rangeHigh ?? 0, goal.unit)}`
+  return `${goal.direction === 'increase' ? '' : '≤ '}${formatValue(goal.target ?? 0, goal.unit)}`
 }
 
 function actionLine(a: ActionSnapshot) {
@@ -237,9 +239,9 @@ export function reviewLines(goal: GoalLike, s: GoalSnapshot): { lines: string[];
   const by = formatDay(goal.targetDate, { day: 'numeric', month: 'short', year: 'numeric' })
   const outcome = o.status === 'not_enough_data'
     ? goal.measureKind === 'check_in' && o.observations === 0
-      ? `Outcome: no check-in for this period. Baseline ${formatGoalValue(o.baseline, goal.unit)}. Target ${targetText(goal)} by ${by}.`
-      : `Not enough data: ${plural(o.observations)}, ${o.needed} needed. Baseline ${formatGoalValue(o.baseline, goal.unit)}.`
-    : `Outcome: ${formatGoalValue(o.current!, goal.unit)} (${plural(o.observations)}) vs ${formatGoalValue(o.baseline, goal.unit)} at baseline. Target ${targetText(goal)} by ${by}.`
+      ? `Outcome: no check-in for this period. Baseline ${formatValue(o.baseline, goal.unit)}. Target ${targetText(goal)} by ${by}.`
+      : `Not enough data: ${plural(o.observations)}, ${o.needed} needed. Baseline ${formatValue(o.baseline, goal.unit)}.`
+    : `Outcome: ${formatValue(o.current!, goal.unit)} (${plural(o.observations)}) vs ${formatValue(o.baseline, goal.unit)} at baseline. Target ${targetText(goal)} by ${by}.`
   return {
     lines: [...s.actions.map((a) => `Actions: ${actionLine(a)}`), outcome, GOAL_FOOTNOTE],
     prompt: reviewPrompt(s.adherence, o.status, goal.measureKind),
@@ -297,7 +299,7 @@ export function validateGoal(g: GoalInput, ctx: GoalContext): GoalErrors {
   else if (g.actions.some((a) => a.kind === 'schedule'
     ? !ctx.schedules.some((s) => s.id === a.id && s.active && s.kind === 'routine')
     : !ctx.trackers.some((t) => t.id === a.id))) e.actions = 'Link only active routines and current trackers.'
-  if (ctx.activating && ctx.activeCount >= MAX_ACTIVE) e.form = `You have ${MAX_ACTIVE} active goals. Pause or finish one first.`
+  if (ctx.activating && ctx.activeCount >= MAX_ACTIVE) e.form = CAP_MESSAGE
   return e
 }
 
@@ -410,9 +412,6 @@ export function applyProposal(f: GoalFields, p: GoalProposal): GoalFields {
 
 export function proposalText(p: GoalProposal, unit: string | null) {
   const label = { target: 'Target', rangeLow: 'Range low', rangeHigh: 'Range high', targetDate: 'Target date', cadence: 'Review cadence' }[p.field]
-  const value = typeof p.value === 'number' ? formatGoalValue(p.value, unit) : p.field === 'targetDate' ? formatDay(String(p.value), { day: 'numeric', month: 'short', year: 'numeric' }) : String(p.value)
+  const value = typeof p.value === 'number' ? formatValue(p.value, unit) : p.field === 'targetDate' ? formatDay(String(p.value), { day: 'numeric', month: 'short', year: 'numeric' }) : String(p.value)
   return `${label}: ${value}. ${p.why}`
 }
-
-/** Days between today and the target date, never negative. */
-export const daysLeft = (today: string, targetDate: string) => Math.max(0, daysBetween(today, targetDate))

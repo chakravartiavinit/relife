@@ -63,7 +63,7 @@ async function Goals({ searchParams }: { searchParams: PageProps<'/goals'>['sear
           )}
         </section>
 
-        {hasAside && (drafts.length || ai) ? (
+        {drafts.length || ai ? (
           <section aria-label="Drafts" className={cn('flex flex-col gap-4 lg:col-start-2', data.due.length ? 'lg:row-start-2' : 'lg:row-start-1')}>
             {drafts.map((d) => <GoalDraftCard key={d.id} insightId={d.id} draft={d.payload.goalDraft!} picker={data.picker} today={data.today} activeCount={data.activeCount} />)}
             {ai && drafts.length < 3 ? <SuggestDraftCard profileGoals={user.profile.goals?.slice(0, 160) ?? null} atCap={atCap} /> : null}

@@ -7,10 +7,10 @@ import { notify } from '@/core/outbox'
 import { fold, head } from '@/bot/ui'
 import { localDate } from '@/core/time'
 import type { User } from '@/core/user'
-import { prepareGoalReviews, reviewPoint, type Goal, type GoalReview } from '@/core/goals'
+import { inputOf, prepareGoalReviews, reviewPoint, type Goal, type GoalReview } from '@/core/goals'
 import { db, schema } from '@/db'
 import { and, eq, isNull } from 'drizzle-orm'
-import { CADENCES, goalIsSensitive, proposalText, validateGoal, applyProposal, type GoalProposal, type GoalReviewPoint } from '@/domain/goals'
+import { CADENCES, goalFields, goalIsSensitive, proposalText, validateGoal, applyProposal, type GoalProposal, type GoalReviewPoint } from '@/domain/goals'
 import { aiEnabled, model } from '../models'
 import { generate } from '../run'
 import { COACH_SYSTEM, digestText } from '../context'
@@ -76,8 +76,7 @@ function safeProposal(d: DueGoal, p: GoalProposal | undefined, today: string): G
   if (p.field === 'cadence' ? !(CADENCES as readonly string[]).includes(String(p.value)) : p.field === 'targetDate' ? typeof p.value !== 'string' : typeof p.value !== 'number') return null
   if ((p.field === 'rangeLow' || p.field === 'rangeHigh') !== (d.goal.direction === 'range')) return null
   const g = d.goal
-  const f = applyProposal({ title: g.title, reason: g.reason, target: g.target, rangeLow: g.rangeLow, rangeHigh: g.rangeHigh, targetDate: g.targetDate, cadence: g.cadence, actions: g.actions }, p)
-  const errors = validateGoal({ ...f, area: g.area, measureKind: g.measureKind, trackerId: g.trackerId, measureName: g.measureName, unit: g.unit, direction: g.direction, baselineValue: g.baselineValue, baselineDate: g.baselineDate, baselineHow: g.baselineHow }, {
+  const errors = validateGoal(inputOf(g, applyProposal(goalFields(g), p)), {
     today, activating: false, activeCount: 0,
     // Proposals never touch actions; treat the current links as valid here.
     schedules: g.actions.filter((a) => a.kind === 'schedule').map((a) => ({ id: a.id, kind: 'routine', active: true })),

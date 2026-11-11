@@ -61,7 +61,7 @@ async function Detail({ params }: { params: PageProps<'/goals/[id]'>['params'] }
             {g.measureKind === 'check_in' ? (
               <div className="mt-5">
                 <h3 className="mb-2 font-mono text-[11.5px] font-semibold tracking-[0.08em] text-ink-2 uppercase">Check-ins</h3>
-                <CheckInList rows={data.checkIns.map((c) => ({ id: c.id, localDate: c.localDate, value: c.value, note: c.note }))} unit={g.unit} />
+                <CheckInList rows={data.checkIns} unit={g.unit} />
               </div>
             ) : null}
           </Card>
@@ -88,8 +88,7 @@ async function Detail({ params }: { params: PageProps<'/goals/[id]'>['params'] }
               ))}
             </ul>
           </Card>
-          <GoalHistory unit={g.unit} startedOn={g.createdAt.toISOString().slice(0, 10)} baseline={`Baseline ${value(g.baselineValue, g.unit)}, ${g.baselineHow}`}
-            rows={data.history.map((r) => ({ id: r.id, kind: r.kind, reviewDate: r.reviewDate, decision: r.decision, note: r.note, before: r.before, after: r.after, snapshot: r.snapshot }))} />
+          <GoalHistory unit={g.unit} startedOn={g.createdAt.toISOString().slice(0, 10)} baseline={`Baseline ${value(g.baselineValue, g.unit)}, ${g.baselineHow}`} rows={data.history} />
         </aside>
       </div>
     </div>

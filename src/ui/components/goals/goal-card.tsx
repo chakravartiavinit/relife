@@ -5,7 +5,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { CalendarCheck, CalendarClock, CircleDashed, Flag, History, Pause, Pencil, Play, Repeat, Sparkles, ChartLine, Target } from 'lucide-react'
 import { dismissGoalDraftAction, draftGoalAction, reviewGoalNowAction, setGoalStatusAction } from '@/app/actions'
-import { MAX_ACTIVE, type GoalDraft } from '@/domain/goals'
+import { CAP_MESSAGE, MAX_ACTIVE, type GoalDraft } from '@/domain/goals'
 import { CATEGORY } from '@/ui/tokens'
 import { cn } from '@/ui/cn'
 import { Button, buttonClass } from '../button'
@@ -22,15 +22,17 @@ export function GoalStatusBadge({ g }: { g: Pick<GoalViewData, 'snapshot' | 'sen
   return <Badge color={statusColor(s, g.sensitive)}>{STATUS_LABEL[s]}</Badge>
 }
 
-/** Pause / resume / finish outside a review, with the server's answer shown in a toast. */
-function useStatusChange(g: GoalViewData) {
+/** Pause / resume / finish outside a review (the server's answer shown in a toast), and "Review now". */
+export function useGoalActions(g: GoalViewData) {
   const [pending, start] = useTransition()
   const toast = useToast()
+  const router = useRouter()
   const set = (status: 'active' | 'paused' | 'finished') => start(async () => {
     const res = await setGoalStatusAction({ goalId: g.id, version: g.version, status })
     toast(res.ok ? { active: 'Goal resumed', paused: 'Goal paused', finished: 'Goal finished' }[status] : res.error, res.ok ? 'good' : 'bad')
   })
-  return { pending, set }
+  const reviewNow = () => start(async () => { await reviewGoalNowAction(g.id); router.push('/goals/review') })
+  return { pending, set, reviewNow }
 }
 
 /** An active goal: baseline → now → target, progress, coverage, next review and linked actions. */
@@ -38,10 +40,8 @@ export function OutcomeGoalCard({ g, picker, today }: { g: GoalViewData; picker:
   const color = CATEGORY[g.area].color
   const o = g.snapshot?.outcome
   const move = movement(g)
-  const { set } = useStatusChange(g)
+  const { set, reviewNow } = useGoalActions(g)
   const [editing, setEditing] = useState(false)
-  const router = useRouter()
-  const [, start] = useTransition()
   const outcomeArchived = g.measureKind === 'tracker' && !g.trackerId
   return (
     <Card as="article" aria-labelledby={`goal-${g.id}`}>
@@ -59,7 +59,7 @@ export function OutcomeGoalCard({ g, picker, today }: { g: GoalViewData; picker:
           <GoalStatusBadge g={g} />
           <RowMenu label={g.title} items={[
             { label: 'Edit', icon: Pencil, onSelect: () => setEditing(true) },
-            { label: 'Review now', icon: CalendarCheck, onSelect: () => start(async () => { await reviewGoalNowAction(g.id); router.push('/goals/review') }) },
+            { label: 'Review now', icon: CalendarCheck, onSelect: reviewNow },
             { label: 'Pause', icon: Pause, onSelect: () => set('paused') },
             { label: 'Finish', icon: Flag, onSelect: () => set('finished') },
           ]} />
@@ -142,8 +142,10 @@ export function SuggestDraftCard({ profileGoals, atCap }: { profileGoals: string
 /** A pending AI draft: review it in the form (saving approves it) or dismiss it. */
 export function GoalDraftCard({ insightId, draft, picker, today, activeCount }: { insightId: string; draft: GoalDraft; picker: GoalPickerData; today: string; activeCount: number }) {
   const [pending, start] = useTransition()
-  const measure = 'tracker' in draft.measure ? picker.trackers.find((t) => t.slug === (draft.measure as { tracker: string }).tracker)?.name ?? 'Tracker' : `Check-in · ${(draft.measure as { checkIn: string }).checkIn}`
-  const unit = 'tracker' in draft.measure ? picker.trackers.find((t) => t.slug === (draft.measure as { tracker: string }).tracker)?.unit ?? null : (draft.measure as { unit?: string }).unit ?? null
+  const m = draft.measure
+  const tracker = 'tracker' in m ? picker.trackers.find((t) => t.slug === m.tracker) : undefined
+  const measure = 'tracker' in m ? tracker?.name ?? 'Tracker' : `Check-in · ${m.checkIn}`
+  const unit = 'tracker' in m ? tracker?.unit ?? null : m.unit ?? null
   const atCap = activeCount >= MAX_ACTIVE
   return (
     <Card>
@@ -177,7 +179,7 @@ export function PausedFinishedList({ goals, activeCount }: { goals: GoalViewData
 }
 
 function PausedRow({ g, atCap }: { g: GoalViewData; atCap: boolean }) {
-  const { pending, set } = useStatusChange(g)
+  const { pending, set } = useGoalActions(g)
   const cur = g.snapshot?.outcome.current
   const when = g.status === 'paused' ? `Paused ${g.pausedAt ? day(g.pausedAt.toISOString().slice(0, 10)) : ''}` : `Finished ${g.finishedAt ? day(g.finishedAt.toISOString().slice(0, 10)) : ''}`
   return (
@@ -198,6 +200,6 @@ function PausedRow({ g, atCap }: { g: GoalViewData; atCap: boolean }) {
 
 export function CapNote({ show }: { show: boolean }) {
   if (!show) return null
-  return <p id="goal-cap-note" className="rounded-md bg-pill/7 px-3 py-2 text-[13px] text-ink-2">You have {MAX_ACTIVE} active goals. Pause or finish one first.</p>
+  return <p id="goal-cap-note" className="rounded-md bg-pill/7 px-3 py-2 text-[13px] text-ink-2">{CAP_MESSAGE}</p>
 }
 

@@ -1,5 +1,6 @@
 import { formatDay } from '@/core/time'
-import { formatGoalValue, targetText, type GoalSnapshot, type OutcomeStatus } from '@/domain/goals'
+import { targetText, type GoalSnapshot, type OutcomeStatus } from '@/domain/goals'
+import { formatValue } from '@/domain/patterns'
 import type { Category } from '@/db/schema'
 
 // Display helpers shared by the outcome goal components. Pure and client-safe.
@@ -30,8 +31,8 @@ export const day = (d: string) => formatDay(d, { day: 'numeric', month: 'short' 
 export const dayYear = (d: string) => formatDay(d, { day: 'numeric', month: 'short', year: 'numeric' })
 export const weekday = (d: string) => formatDay(d, { weekday: 'short', day: 'numeric', month: 'short' })
 
-export const value = (v: number, unit: string | null) => formatGoalValue(v, unit)
-export const target = (g: Pick<GoalViewData, 'direction' | 'target' | 'rangeLow' | 'rangeHigh' | 'unit'>) => targetText(g)
+export const value = formatValue
+export const target = targetText
 export const directionLabel = (d: GoalViewData['direction']) => ({ increase: 'Increase', decrease: 'Decrease', range: 'Stay in range' })[d]
 
 export function measureLine(g: GoalViewData) {

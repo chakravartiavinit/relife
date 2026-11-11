@@ -2,8 +2,9 @@
 
 import { useActionState, useEffect, useId, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, ChartLine, ClipboardCheck, Info, Plus, Target, TriangleAlert } from 'lucide-react'
+import { Check, ChartLine, ClipboardCheck, Info, Plus, Target, TriangleAlert, type LucideIcon } from 'lucide-react'
 import { decideGoalReviewAction, saveGoal, type GoalFormState } from '@/app/actions'
+import { addDays } from '@/core/time'
 import { CATEGORIES, type Category } from '@/db/schema'
 import { MAX_ACTIONS, MAX_ACTIVE, type GoalDraft } from '@/domain/goals'
 import { CATEGORY } from '@/ui/tokens'
@@ -13,7 +14,7 @@ import { Badge } from '../card'
 import { Field, Input, Segmented, Select, Textarea } from '../form'
 import { useToast } from '../toast'
 import { Dialog, FormError } from '../forms/dialog'
-import { day, type GoalViewData } from './format'
+import { day, directionLabel, type GoalViewData } from './format'
 
 // Create, edit, review-change and draft-approval form for an outcome goal. The server owns the baseline:
 // "use recorded" is recomputed there, and the measure and baseline are locked after a goal starts.
@@ -46,6 +47,8 @@ const blank = (today: string): GoalFormInitial => ({
 })
 
 const str = (v: number | null | undefined) => (v == null ? '' : String(v))
+/** A tracker's recorded 28-day average, rounded for the baseline field, or '' without one. */
+const recordedBaseline = (t: PickerTracker | undefined) => (t?.baseline ? String(Math.round(t.baseline.value * 100) / 100) : '')
 
 export function initialFromGoal(g: GoalViewData): GoalFormInitial {
   return {
@@ -57,8 +60,9 @@ export function initialFromGoal(g: GoalViewData): GoalFormInitial {
 }
 
 export function initialFromDraft(d: GoalDraft, picker: GoalPickerData, today: string): GoalFormInitial {
-  const t = 'tracker' in d.measure ? picker.trackers.find((x) => x.slug === (d.measure as { tracker: string }).tracker) : undefined
-  const check = 'checkIn' in d.measure ? d.measure : null
+  const m = d.measure
+  const t = 'tracker' in m ? picker.trackers.find((x) => x.slug === m.tracker) : undefined
+  const check = 'checkIn' in m ? m : null
   return {
     ...blank(today), title: d.title, reason: d.reason, area: d.area,
     measureKind: t ? 'tracker' : 'check_in', trackerId: t?.id ?? null,
@@ -92,7 +96,7 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
   )
 }
 
-function UnitInput({ unit, error, ...props }: React.ComponentProps<'input'> & { unit?: string; error?: string }) {
+export function UnitInput({ unit, error, ...props }: React.ComponentProps<'input'> & { unit?: string; error?: string }) {
   return (
     <div className="relative">
       <Input type="number" step="any" inputMode="decimal" aria-invalid={!!error || undefined} className={cn(unit && 'pr-12', error && 'shadow-[0_0_0_1.5px_var(--bad)]')} {...props} />
@@ -121,8 +125,7 @@ export function ObservationStrip({ strip, color, from, to }: { strip: boolean[];
   )
 }
 
-function Notice({ tone = 'info', children }: { tone?: 'info' | 'warn'; children: React.ReactNode }) {
-  const Icon = tone === 'warn' ? TriangleAlert : Info
+export function Notice({ tone = 'info', icon: Icon = tone === 'warn' ? TriangleAlert : Info, children }: { tone?: 'info' | 'warn'; icon?: LucideIcon; children: React.ReactNode }) {
   return (
     <p className={cn('flex gap-2 rounded-md px-3 py-2 text-[13px] leading-relaxed text-ink-2', tone === 'warn' ? 'bg-warn/10' : 'bg-pill/7')}>
       <Icon aria-hidden className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} style={{ color: tone === 'warn' ? 'var(--warn)' : 'var(--pill)' }} />
@@ -155,11 +158,9 @@ function GoalForm({ mode, initial, picker, today, onDone }: { mode: Mode; initia
   const [area, setArea] = useState(initial.area)
   const [actions, setActions] = useState<string[]>(initial.actions)
   const tracker = picker.trackers.find((t) => t.id === trackerId)
-  const [baseline, setBaseline] = useState(() => {
-    const b = !locked && initial.measureKind === 'tracker' ? picker.trackers.find((t) => t.id === initial.trackerId)?.baseline : null
-    return initial.baselineValue || (b ? String(Math.round(b.value * 100) / 100) : '')
-  })
-  const suggested = !locked && measureKind === 'tracker' && tracker?.baseline ? String(Math.round(tracker.baseline.value * 100) / 100) : null
+  const [baseline, setBaseline] = useState(() =>
+    initial.baselineValue || (!locked && initial.measureKind === 'tracker' ? recordedBaseline(picker.trackers.find((t) => t.id === initial.trackerId)) : ''))
+  const suggested = !locked && measureKind === 'tracker' && tracker?.baseline ? recordedBaseline(tracker) : null
   const useRecorded = suggested != null && (baseline === '' || baseline === suggested)
   const toast = useToast()
   const router = useRouter()
@@ -178,7 +179,7 @@ function GoalForm({ mode, initial, picker, today, onDone }: { mode: Mode; initia
   const pickTracker = (v: string) => {
     setTrackerId(v)
     const t = picker.trackers.find((x) => x.id === v)
-    setBaseline(t?.baseline ? String(Math.round(t.baseline.value * 100) / 100) : '')
+    setBaseline(recordedBaseline(t))
     setActions((a) => a.filter((x) => x !== `tracker:${v}`))
     if (t) setArea(t.category)
   }
@@ -279,7 +280,7 @@ function GoalForm({ mode, initial, picker, today, onDone }: { mode: Mode; initia
             <FieldError id={`${id}-base-e`} message={errors.baselineValue ?? errors.baselineDate} />
             {measureKind === 'tracker' && tracker ? (
               <>
-                <ObservationStrip strip={tracker.strip} color={CATEGORY[tracker.category].color} from={addDaysLocal(today, -28)} to={addDaysLocal(today, -1)} />
+                <ObservationStrip strip={tracker.strip} color={CATEGORY[tracker.category].color} from={addDays(today, -28)} to={addDays(today, -1)} />
                 {tracker.baseline ? (
                   <p className="text-[12.5px] leading-relaxed text-ink-3">
                     {useRecorded ? `Auto-filled: the average of ${tracker.baseline.observations} days from your ${tracker.name} tracker in the 28 days before today. Missing days are left out. You can change it.` : 'You changed the recorded average, so this baseline is yours.'}
@@ -301,7 +302,7 @@ function GoalForm({ mode, initial, picker, today, onDone }: { mode: Mode; initia
       </Section>
 
       <Section title="Target">
-        {locked ? <p className="-mt-1 text-[13px] text-ink-3">{{ increase: 'Increase', decrease: 'Decrease', range: 'Stay in range' }[goal!.direction]}</p> : (
+        {locked ? <p className="-mt-1 text-[13px] text-ink-3">{directionLabel(goal!.direction)}</p> : (
           <Segmented name="direction" aria-label="Direction" value={direction} onValueChange={(v) => setDirection(v as GoalFormInitial['direction'])} className="self-start"
             options={[{ value: 'increase', label: 'Increase' }, { value: 'decrease', label: 'Decrease' }, { value: 'range', label: 'Stay in range' }]} />
         )}
@@ -315,7 +316,7 @@ function GoalForm({ mode, initial, picker, today, onDone }: { mode: Mode; initia
             <Field label="Target" htmlFor={`${id}-target`}><UnitInput id={`${id}-target`} name="target" unit={unit ?? initial.unit} defaultValue={initial.target} error={errors.target} aria-describedby={errors.target ? `${id}-target-e` : undefined} /></Field>
           )}
           <Field label="By" htmlFor={`${id}-date`}>
-            <Input id={`${id}-date`} type="date" name="targetDate" min={addDaysLocal(today, 1)} defaultValue={initial.targetDate} aria-invalid={!!errors.targetDate || undefined} />
+            <Input id={`${id}-date`} type="date" name="targetDate" min={addDays(today, 1)} defaultValue={initial.targetDate} aria-invalid={!!errors.targetDate || undefined} />
           </Field>
         </div>
         <FieldError id={`${id}-target-e`} message={errors.target ?? errors.rangeLow ?? errors.targetDate} />
@@ -371,12 +372,6 @@ function GoalForm({ mode, initial, picker, today, onDone }: { mode: Mode; initia
       </div>
     </form>
   )
-}
-
-function addDaysLocal(d: string, n: number) {
-  const x = new Date(`${d}T00:00:00Z`)
-  x.setUTCDate(x.getUTCDate() + n)
-  return x.toISOString().slice(0, 10)
 }
 
 /** "Create goal"; also opens itself for `/goals?new=1`. Disabled at the cap with the reason read out. */
