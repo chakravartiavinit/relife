@@ -224,7 +224,7 @@ export function dataLines(r: Row, fmt: (v: number, unit?: string | null) => stri
   return [
     ...(r.today ? [`Today so far ${fmt(r.today, r.unit)}`] : []),
     ...(r.yesterday != null ? [`Yesterday ${fmt(r.yesterday, r.unit)}${change(r.dayPct)}`] : []),
-    ...(r.last7 != null ? [`Last 7 days ${fmt(r.last7, r.unit)} a day${change(r.weekPct)}`] : []),
+    ...(r.last7 != null ? [`7-day average ${fmt(r.last7, r.unit)} a day${change(r.weekPct)}`] : []),
     ...(r.usual != null ? [`Usual ${fmt(r.usual, r.unit)} a day`] : []),
   ]
 }

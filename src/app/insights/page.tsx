@@ -3,29 +3,40 @@ import Link from 'next/link'
 import { buttonClass } from '@/ui/components/button'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
-import { and, desc, eq, ne } from 'drizzle-orm'
-import { BellDot, BellRing, CalendarRange, History, Inbox, Lightbulb, Repeat, Sparkles, Target } from 'lucide-react'
+import { and, count, desc, eq, ne } from 'drizzle-orm'
+import { BellDot, BellRing, CalendarRange, Cpu, History, Inbox, Lightbulb, Repeat, Target } from 'lucide-react'
 import { db, schema } from '@/db'
 import { getUser } from '@/core/user'
 import { aiEnabled, modelId } from '@/ai'
 import { describe } from '@/domain/recurrence'
+import { sentenceCase } from '@/domain/text'
 import { formatDay, localDate } from '@/core/time'
-import { Badge, Card, CardHeader, PageHeader, Skeleton } from '@/ui/components/card'
+import { Badge, Card, CardHeader, IconChip, PageHeader, Skeleton } from '@/ui/components/card'
 import { EmptyState } from '@/ui/components/empty'
 import { AskBox, InsightActions } from '@/ui/components/insight-ui'
 import { InsightBody } from '@/ui/components/insight-body'
 import { PatternsCard } from '@/ui/components/patterns-card'
 import { loadPatterns } from '@/core/patterns'
 import { CATEGORY } from '@/ui/tokens'
+import { cn } from '@/ui/cn'
 
 export const metadata: Metadata = { title: 'Insights' }
 
+/** Each kind of insight has its own icon and colour, so a long queue scans by shape before words. */
 const KIND = {
-  review: { label: 'Weekly review', icon: CalendarRange },
-  nudge: { label: 'Nudge', icon: Lightbulb },
-  plan: { label: 'Plan', icon: Target },
-  alert: { label: 'Alert', icon: BellRing },
+  alert: { label: 'Alert', plural: 'Alerts', icon: BellRing, color: 'var(--warn)' },
+  nudge: { label: 'Nudge', plural: 'Nudges', icon: Lightbulb, color: 'var(--pill)' },
+  review: { label: 'Weekly review', plural: 'Reviews', icon: CalendarRange, color: 'var(--cat-mind)' },
+  plan: { label: 'Plan', plural: 'Plans', icon: Target, color: 'var(--good)' },
 } as const
+type Kind = keyof typeof KIND
+const isKind = (v: unknown): v is Kind => typeof v === 'string' && v in KIND
+
+const STATUS: Record<string, { label: string; color?: string }> = {
+  accepted: { label: 'Accepted', color: 'var(--good)' },
+  done: { label: 'Done', color: 'var(--good)' },
+  dismissed: { label: 'Dismissed' },
+}
 
 export default function InsightsPage({ searchParams }: PageProps<'/insights'>) {
   return (
@@ -42,13 +53,18 @@ async function Insights({ searchParams }: { searchParams: PageProps<'/insights'>
   await connection()
   const sp = await searchParams
   const initial = typeof sp.ask === 'string' ? sp.ask : undefined
+  const show = isKind(sp.show) ? sp.show : null
   const user = await getUser()
-  const [pending, history, plans, patterns] = await Promise.all([
+  const mine = eq(schema.insights.userId, user.id)
+  const isPending = eq(schema.insights.status, 'pending')
+  const [pending, counts, history, plans, patterns] = await Promise.all([
     db.select().from(schema.insights)
-      .where(and(eq(schema.insights.userId, user.id), eq(schema.insights.status, 'pending')))
+      .where(and(mine, isPending, show ? eq(schema.insights.kind, show) : undefined))
       .orderBy(desc(schema.insights.createdAt)).limit(30),
+    db.select({ kind: schema.insights.kind, n: count() }).from(schema.insights)
+      .where(and(mine, isPending)).groupBy(schema.insights.kind),
     db.select().from(schema.insights)
-      .where(and(eq(schema.insights.userId, user.id), ne(schema.insights.status, 'pending')))
+      .where(and(mine, ne(schema.insights.status, 'pending')))
       .orderBy(desc(schema.insights.updatedAt)).limit(20),
     db.select().from(schema.plans)
       .where(and(eq(schema.plans.userId, user.id), eq(schema.plans.status, 'active')))
@@ -56,10 +72,17 @@ async function Insights({ searchParams }: { searchParams: PageProps<'/insights'>
     loadPatterns(user),
   ])
   const enabled = aiEnabled('chat')
+  const total = counts.reduce((s, c) => s + c.n, 0)
+  // Filters only for kinds that have something waiting, and only when there is more than one kind to tell apart.
+  const tabs = (Object.keys(KIND) as Kind[]).flatMap((k) => {
+    const n = counts.find((c) => c.kind === k)?.n ?? 0
+    return n ? [{ key: k as Kind | null, label: KIND[k].plural, n }] : []
+  })
+  const filters = tabs.length > 1 || show ? [{ key: null, label: 'All', n: total }, ...tabs] : []
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <div className="flex flex-col gap-6">
+    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="flex min-w-0 flex-col gap-6">
         <section aria-labelledby="ask-h">
           <h2 id="ask-h" className="sr-only">Ask your data</h2>
           {enabled ? <AskBox initial={initial} enabled /> : <ConnectCoach />}
@@ -67,53 +90,75 @@ async function Insights({ searchParams }: { searchParams: PageProps<'/insights'>
 
         <PatternsCard patterns={patterns} />
 
-        <Card>
-          <CardHeader title="Waiting for you" icon={<BellDot strokeWidth={2} />} color="var(--pill)" description={pending.length ? `${pending.length} to review` : undefined} />
+        <Card className="px-0 pb-2">
+          <CardHeader
+            title="Waiting for you" icon={<BellDot strokeWidth={2} />} color="var(--pill)" className="px-5"
+            description={total ? `${total} to review` : undefined}
+          />
+          {filters.length ? (
+            <nav aria-label="Show" className="flex gap-1 overflow-x-auto px-5 pb-3 [scrollbar-width:none]">
+              {filters.map((t) => (
+                <Link
+                  key={t.key ?? 'all'} href={t.key ? `/insights?show=${t.key}` : '/insights'} scroll={false}
+                  aria-current={t.key === show ? 'page' : undefined}
+                  className={cn(buttonClass({ variant: t.key === show ? 'primary' : 'ghost', size: 'sm' }), 'shrink-0')}
+                >
+                  {t.label}
+                  <span className={cn('tabular-nums', t.key === show ? 'opacity-70' : 'text-ink-3')}>{t.n}</span>
+                </Link>
+              ))}
+            </nav>
+          ) : null}
           {pending.length ? (
-            <ul className="flex flex-col divide-y divide-divider">
+            <ul className="flex flex-col divide-y divide-divider border-t border-divider">
               {pending.map((i) => {
                 const k = KIND[i.kind]
                 const actions = i.payload.actions ?? []
                 return (
-                  <li key={i.id} className="py-5 first:pt-0 last:pb-0">
-                    <div className="mb-2 flex items-center gap-2 text-[12px] text-ink-3">
-                      <k.icon className="size-3.5" strokeWidth={1.5} />
-                      <span className="font-medium">{k.label}</span>
-                      <span aria-hidden>·</span>
-                      <span>{formatDay(localDate(i.createdAt, user.timezone))}</span>
-                    </div>
-                    <h3 className="text-[16px] font-semibold tracking-[-0.01em] text-ink">{i.title}</h3>
-                    <div className="mt-3"><InsightBody body={i.body} review={i.payload.review} /></div>
-                    {actions.length ? (
-                      <ul className="mt-3 flex flex-col gap-2">
-                        {actions.map((a, n) => (
-                          <li key={n} className="flex items-center gap-2.5 rounded-md bg-surface-2 px-3 py-2 text-[13px]">
-                            <Repeat className="size-4 shrink-0" strokeWidth={1.5} style={{ color: CATEGORY[a.category].color }} />
-                            <span className="font-medium text-ink">{a.name}</span>
-                            <span className="truncate text-ink-3">
-                              {a.type === 'schedule' ? describe(a.rrule.includes('DTSTART') ? a.rrule : `DTSTART:20260101T000000\n${a.rrule.startsWith('RRULE:') ? a.rrule : `RRULE:${a.rrule}`}`) : `New tracker${a.unit ? ` · ${a.unit}` : ''}`}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
-                    <div className="mt-4">{i.payload.recovery ? <Link href="/" className={buttonClass({ variant: 'primary', size: 'lg' })}>Choose recovery on Today</Link> : i.payload.goalDraft ? <Link href="/goals" className={buttonClass({ variant: 'primary', size: 'lg' })}>Review on Goals</Link> : <InsightActions id={i.id} hasActions={actions.length > 0} />}</div>
+                  <li key={i.id} className="flex gap-3.5 px-5 py-5">
+                    <IconChip color={k.color} className="mt-px"><k.icon strokeWidth={2} /></IconChip>
+                    <article className="min-w-0 flex-1">
+                      <p className="flex flex-wrap items-center gap-x-1.5 text-[12px] leading-[18px] text-ink-3">
+                        <span className="font-medium text-ink-2">{k.label}</span>
+                        <span aria-hidden>·</span>
+                        <time dateTime={localDate(i.createdAt, user.timezone)}>{formatDay(localDate(i.createdAt, user.timezone))}</time>
+                        {i.payload.meta ? <><span aria-hidden>·</span><span>{i.payload.meta.split(' · ')[0]}</span></> : null}
+                      </p>
+                      <h3 className="mt-1 text-[15.5px] leading-snug font-semibold tracking-[-0.01em] text-ink text-pretty">{sentenceCase(i.title)}</h3>
+                      <div className="mt-2.5"><InsightBody body={i.body} review={i.payload.review} kind={i.kind} /></div>
+                      {actions.length ? (
+                        <ul className="mt-3 flex flex-col gap-2">
+                          {actions.map((a, n) => (
+                            <li key={n} className="flex items-center gap-2.5 rounded-md bg-surface-2 px-3 py-2 text-[13px]">
+                              <Repeat className="size-4 shrink-0" strokeWidth={1.5} style={{ color: CATEGORY[a.category].color }} />
+                              <span className="font-medium text-ink">{a.name}</span>
+                              <span className="truncate text-ink-3">
+                                {a.type === 'schedule' ? describe(a.rrule.includes('DTSTART') ? a.rrule : `DTSTART:20260101T000000\n${a.rrule.startsWith('RRULE:') ? a.rrule : `RRULE:${a.rrule}`}`) : `New tracker${a.unit ? ` · ${a.unit}` : ''}`}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                      <div className="mt-4">{i.payload.recovery ? <Link href="/" className={buttonClass({ variant: 'primary', size: 'sm' })}>Choose recovery on Today</Link> : i.payload.goalDraft ? <Link href="/goals" className={buttonClass({ variant: 'primary', size: 'sm' })}>Review on Goals</Link> : <InsightActions id={i.id} hasActions={actions.length > 0} />}</div>
+                    </article>
                   </li>
                 )
               })}
             </ul>
           ) : (
-            <EmptyState
-              title="All caught up" icon={Inbox} color={'var(--cat-mind)'}
-              description={enabled ? 'A nudge arrives each morning and a review every Sunday evening.' : 'Connect a model to get morning nudges and a Sunday review. Rule-based alerts work without one.'}
-            />
+            <div className="px-5 pb-3">
+              <EmptyState
+                title="All caught up" icon={Inbox} color={'var(--cat-mind)'}
+                description={enabled ? 'A nudge arrives each morning and a review every Sunday evening.' : 'Connect a model to get morning nudges and a Sunday review. Rule-based alerts work without one.'}
+              />
+            </div>
           )}
         </Card>
       </div>
 
-      <div className="flex flex-col gap-6">
+      <aside aria-label="Plans and history" className="flex flex-col gap-6">
         <Card>
-          <CardHeader title="Active plans" icon={<Target strokeWidth={2} />} color="var(--cat-mind)" />
+          <CardHeader title="Active plans" icon={<Target strokeWidth={2} />} color="var(--cat-mind)" description={plans.length ? `${plans.length} running` : undefined} />
           {plans.length ? (
             <ul className="flex flex-col gap-3">
               {plans.map((p) => (
@@ -124,29 +169,40 @@ async function Insights({ searchParams }: { searchParams: PageProps<'/insights'>
               ))}
             </ul>
           ) : (
-            <p className="text-[13px] text-ink-3">Approved plans show up here, and their steps become routines.</p>
+            <p className="text-[13px] leading-relaxed text-ink-3">Approved plans show up here, and their steps become routines.</p>
           )}
         </Card>
-        <Card>
-          <CardHeader title="History" icon={<History strokeWidth={2} />} color="var(--ink-3)" />
+        <Card className="pb-3">
+          <CardHeader title="History" icon={<History strokeWidth={2} />} color="var(--ink-3)" description={history.length ? 'What you did with past insights' : undefined} className="mb-2" />
           {history.length ? (
-            <ul className="flex flex-col gap-3">
-              {history.map((i) => (
-                <li key={i.id} className="flex items-start gap-2.5">
-                  <Sparkles className="mt-0.5 size-4 shrink-0 text-ink-3" strokeWidth={1.5} />
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm text-ink">{i.title}</div>
-                    <div className="mt-0.5"><Badge color={i.status === 'accepted' || i.status === 'done' ? 'var(--good)' : undefined}>{i.status}</Badge></div>
-                  </div>
-                </li>
-              ))}
+            <ul className="-mx-1 flex flex-col divide-y divide-divider">
+              {history.map((i) => {
+                const k = KIND[i.kind]
+                const s = STATUS[i.status] ?? { label: sentenceCase(i.status) }
+                return (
+                  <li key={i.id} className="flex items-center gap-3 px-1 py-2.5">
+                    <k.icon className="size-4 shrink-0 text-ink-3" strokeWidth={1.5} aria-label={k.label} />
+                    <div className="min-w-0 flex-1">
+                      <p className="line-clamp-2 text-[13.5px] leading-snug text-ink">{sentenceCase(i.title)}</p>
+                      <p className="text-[12px] text-ink-3">{formatDay(localDate(i.updatedAt, user.timezone))}</p>
+                    </div>
+                    <Badge color={s.color}>{s.label}</Badge>
+                  </li>
+                )
+              })}
             </ul>
           ) : (
-            <p className="text-[13px] text-ink-3">Nothing yet.</p>
+            <p className="pb-2 text-[13px] text-ink-3">Nothing yet.</p>
           )}
         </Card>
-        {modelId('chat') ? <p className="px-1 text-[12px] text-ink-3">Model: {modelId('chat')}</p> : null}
-      </div>
+        {modelId('chat') ? (
+          <p className="flex items-center gap-2 px-1 text-[12px] text-ink-3">
+            <Cpu className="size-3.5 shrink-0" strokeWidth={1.5} aria-hidden />
+            <span>Model</span>
+            <span className="truncate font-mono text-[11.5px] text-ink-2">{modelId('chat')}</span>
+          </p>
+        ) : null}
+      </aside>
     </div>
   )
 }
