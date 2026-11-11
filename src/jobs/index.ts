@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, lt } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { connectors } from '@/connectors'
 import { rules } from '@/rules'
@@ -83,6 +83,12 @@ export const JOBS: Job[] = [
   { id: 'retry-failed', schedule: { cron: '30 3 * * *' }, catchUpMinutes: 12 * 60, run: async () => {
     await db.update(schema.rawEvents).set({ status: 'new' }).where(eq(schema.rawEvents.status, 'failed'))
     await emit('raw.added')
+  } },
+
+  // Sync history is only shown as each connector's last few runs; the iCloud inbox alone adds 1,440 rows a day.
+  { id: 'prune-sync-runs', schedule: { cron: '45 3 * * *' }, catchUpMinutes: 12 * 60, run: async () => {
+    const { count } = await db.delete(schema.syncRuns).where(lt(schema.syncRuns.startedAt, new Date(Date.now() - 30 * 86_400_000)))
+    return count ? `removed ${count} sync runs older than 30 days` : undefined
   } },
 
   // XP and quests: from fresh data, at least every 5 minutes.
