@@ -16,8 +16,15 @@ events carry stable ids.
 | GitHub | `GITHUB_TOKEN`, `GITHUB_USER` (optional) | 30 min | Daily commits, PRs, reviews, issues |
 | Binance | `BINANCE_API_KEY`, `BINANCE_API_SECRET`, `BINANCE_QUOTES`, `BINANCE_SYMBOLS` (optional) | 15 min | Balances, spot and futures, P2P orders, Convert, transfers, rewards |
 | Laptop activity | `ACTIVITY_TOKEN` | live | Time per site and Mac app, shows and courses you watch |
-| Codeforces, AtCoder, CodeChef | your handle | 1 h | Problems solved, contest ratings |
+| Codeforces, AtCoder, CodeChef, LeetCode | your handle | 1 h | Problems solved, contest ratings |
 | Lichess, Chess.com | your username | 1 h | Games, ratings |
+| Strava | client ID, secret and refresh token | 1 h | Active minutes; running, cycling, walking and swimming distance |
+| WakaTime | `WAKATIME_API_KEY` | 1 h | Coding time per day, top language and project |
+| Monkeytype | `MONKEYTYPE_APE_KEY` | 2 h | Typing speed, accuracy, practice minutes |
+| Duolingo | your username | 1 h | XP per day, streak |
+| Todoist | `TODOIST_API_TOKEN` | 1 h | Tasks completed per day |
+| Last.fm | `LASTFM_USERNAME`, `LASTFM_API_KEY` | 1 h | Songs and listening time per day, top artist |
+| Steam | `STEAM_API_KEY`, `STEAM_ID` | 30 min | Gaming minutes per day, top game |
 | Swiggy, Zomato, Blinkit, Zepto | a Chrome login | 2 h | Orders with items |
 | Flipkart, Amazon India | a Chrome login | 6 h | Orders and returns |
 | MakeMyTrip | a Chrome login | 6 h | Flights, hotels, trains and buses you booked |
@@ -97,7 +104,7 @@ lesson plays, its series is added by itself (a show on an entertainment site, a 
 every episode is kept for good in `library_episodes`: its name, number, season, length, how far you got and the
 time spent. Library cards on Skills, Hobbies and Activity show the last one and open the full list.
 
-## Codeforces, CodeChef and AtCoder
+## Codeforces, CodeChef, AtCoder and LeetCode
 
 Your public handle is all they need: no key, no login. They feed the Skills area.
 
@@ -107,9 +114,12 @@ Your public handle is all they need: no key, no login. They feed the Skills area
 - **CodeChef** has no public API, so it reads your public profile (contest rating history) and the public
   "recent activity" pages (submissions, shown in India time). If CodeChef changes those pages the sync
   shows an error rather than wrong numbers.
+- **LeetCode** reads your public profile: submissions per day from the profile calendar (on LeetCode's UTC
+  day), contest rating history, and problems solved from your last 20 accepted submissions, the only ones
+  LeetCode shows. Days older than those 20 keep their submissions but get no solved count rather than a wrong one.
 
 A problem counts once, on the day you first got it accepted. Each site adds to `cp.solved` and
-`cp.submissions`; ratings go into `cp.rating-codeforces`, `cp.rating-codechef` and `cp.rating-atcoder`.
+`cp.submissions`; ratings go into `cp.rating-codeforces`, `cp.rating-codechef`, `cp.rating-atcoder` and `cp.rating-leetcode`.
 Solving a problem earns Skills XP (verified), the Skills page shows a Competitive programming card, and the
 System can set quests on problems solved or rating. Hourly; the first sync backfills about 90 days.
 
@@ -127,6 +137,78 @@ Both sync every hour. The first sync backfills about 90 days, later ones the las
 `chess` tracker (summed with anything you log by hand, like "chess 30"); games, wins and each site's rating
 go into `chess.games`, `chess.wins`, `chess.rating-lichess` and `chess.rating-chesscom`, which show on the
 Chess card and can be picked in Settings → The System as something to improve.
+
+## Personal data connectors
+
+Each turns one service into daily numbers. Like every tracker, they join Patterns (links such as "on days you
+run you sleep longer"), can be picked in Settings → The System as something to improve, and the System sets and
+checks off quests from them. Synced days earn full XP (`src/domain/xp.ts`). Parsing lives in `src/parsers/daily.ts`.
+
+| Connector | Area | Trackers | XP |
+|---|---|---|---|
+| Strava | Health | `exercise.minutes`, `run.km`, `ride.km`, `hike.km`, `swim.km` | 30 active minutes |
+| WakaTime | Skills | `coding.minutes` | An hour of coding |
+| Monkeytype | Skills | `typing.minutes`, `typing.wpm` | 5 minutes of typing |
+| Duolingo | Skills | `duolingo.xp`, `duolingo.streak` | Any lesson |
+| Todoist | Mind | `tasks.done` | 3 tasks done |
+| Last.fm | Hobbies | `music`, `music.songs` | None: time spent, not practice |
+| Steam | Hobbies | `gaming` | None: time spent, not practice |
+
+Two alerts use them: **Duolingo streak ends tonight** (20:00, when there's no XP yet today) and **4 days without a
+workout** (18:00, once a week, only for people who usually work out 2 or more days a week).
+
+### Strava
+
+Strava has no personal keys, so make a small API app once:
+
+1. Go to [strava.com/settings/api](https://www.strava.com/settings/api) and create an app. Any name works;
+   use `localhost` for the website and the authorization callback domain. Copy the **Client ID** and **Client Secret**.
+2. Open this address in your browser (put your client ID in), then press **Authorize**:
+   `https://www.strava.com/oauth/authorize?client_id=<ID>&response_type=code&redirect_uri=http://localhost&approval_prompt=force&scope=activity:read_all`
+3. The browser goes to a `localhost` page that doesn't load. Copy the `code=` value from its address bar, then run:
+   `curl -s -X POST https://www.strava.com/oauth/token -d client_id=<ID> -d client_secret=<SECRET> -d code=<CODE> -d grant_type=authorization_code`
+4. Paste the `refresh_token` from the reply, with the client ID and secret, into Connectors → Strava.
+
+Strava swaps the refresh token from time to time; ReLife keeps the newest one encrypted in the sync cursor. If
+you paste a different token later, that one is used. Days follow the local time Strava records for each
+activity. The first sync backfills 90 days, later ones the last 7. Active minutes are moving time, every sport.
+
+### WakaTime
+
+Copy the API key from [wakatime.com/settings/account](https://wakatime.com/settings/account). The free plan keeps
+14 days, so that is the backfill; later syncs refresh the last 3 days. The day's top language and project are
+kept with each day.
+
+### Monkeytype
+
+On monkeytype.com: Account settings → **Ape keys** → Generate, then switch the key on (new keys start off).
+Ape keys can read results only a few times a day, so it syncs every 2 hours. Each day keeps the number of tests,
+minutes typed, average and best speed and accuracy. The first sync backfills 90 days.
+
+### Duolingo
+
+Your public username, nothing else. Duolingo's public profile gives the total XP and the streak, not XP per day,
+so ReLife compares the total between syncs: XP per day starts on the day you connect, the streak right away.
+Duolingo has no official API; this reads the same address its web app does, and the sync shows an error if it
+changes.
+
+### Todoist
+
+Settings → Integrations → Developer → **API token**. Only the number of completed tasks per day (and the name of
+the project with the most) is stored, never task names. The first sync backfills 90 days.
+
+### Last.fm
+
+Turn on scrobbling in your music app first (Spotify: Settings → Social → Connect to Last.fm). Then create a free
+API account at [last.fm/api/account/create](https://www.last.fm/api/account/create) and paste the API key and your
+username. Minutes are estimated at 3.5 per song. The first sync backfills 60 days.
+
+### Steam
+
+Get a key at [steamcommunity.com/dev/apikey](https://steamcommunity.com/dev/apikey) (domain: `localhost`) and paste
+your profile link or 17-digit Steam ID. In Steam → Edit Profile → Privacy, set **Game details** to Public.
+Steam only reports lifetime playtime per game, so ReLife compares it between syncs: there's no history before you
+connect, and playtime appears when a game session ends.
 
 ## Binance
 
@@ -209,5 +291,8 @@ logged in as you. Personal use only, and not an official integration.
    save progress with `ctx.setCursor()`.
 2. Add it to the list in `src/connectors/index.ts`.
 3. Write a parser in `src/parsers/` that matches its `source`, add it to `src/parsers/index.ts`
-   (before `llmFallback`), and add a fixture in `src/parsers/fixtures/`.
+   (before `llmFallback`), and add a fixture in `src/parsers/fixtures/`. A source that sends one summary per day
+   can use the helpers in `src/connectors/daily.ts` and add an entry to `DAYS` in `src/parsers/daily.ts` instead.
+   A service that only reports a lifetime total (XP, playtime) can turn it into a daily amount with
+   `todayFromTotal` from `src/domain/running-total.ts`.
 4. Document its env vars here and in `.env.example`.

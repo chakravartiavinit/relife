@@ -1,0 +1,66 @@
+{
+  "note": "Fixture: a Strava day with a run and a ride; no walks or swims, so no trackers for them.",
+  "event": {
+    "source": "strava",
+    "externalId": "2026-11-06:abc",
+    "at": "2026-11-07T10:00:00.000Z",
+    "body": {
+      "date": "2026-11-06",
+      "activities": 2,
+      "minutes": 75,
+      "runKm": 5.21,
+      "rideKm": 12.4,
+      "walkKm": 0,
+      "swimKm": 0
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "tracker": "exercise.minutes",
+      "date": "2026-11-06",
+      "value": 75,
+      "source": "strava",
+      "verified": true,
+      "meta": {
+        "activities": 2
+      },
+      "defaults": {
+        "name": "Active minutes",
+        "category": "health",
+        "kind": "duration",
+        "unit": "min",
+        "direction": "up",
+        "target": 30
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "run.km",
+      "date": "2026-11-06",
+      "value": 5.21,
+      "source": "strava",
+      "verified": true,
+      "defaults": {
+        "name": "Running",
+        "category": "health",
+        "unit": "km",
+        "direction": "up"
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "ride.km",
+      "date": "2026-11-06",
+      "value": 12.4,
+      "source": "strava",
+      "verified": true,
+      "defaults": {
+        "name": "Cycling",
+        "category": "health",
+        "unit": "km",
+        "direction": "up"
+      }
+    }
+  ]
+}

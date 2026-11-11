@@ -86,8 +86,14 @@ export type DayInput = {
   meditationMin?: number
   commits?: number; prs?: number
   learningMin?: number
-  /** Competitive programming problems accepted (Codeforces, CodeChef, AtCoder). */
+  /** Competitive programming problems accepted (Codeforces, CodeChef, AtCoder, LeetCode). */
   solved?: number
+  /** Synced from connectors: Strava active minutes, Todoist tasks, WakaTime coding minutes, Duolingo XP, Monkeytype minutes. */
+  workoutMin?: number
+  tasksDone?: number
+  codingMin?: number
+  languageXp?: number
+  typingMin?: number
   /** Spent less than your usual (median) day. undefined when there's no spending history. */
   frugal?: boolean
   catchUps?: number
@@ -123,6 +129,11 @@ export function scoreDay(d: DayInput): XpAward[] {
   if ((d.prs ?? 0) >= 1) std('pr', 'skills', 20, true, 'Opened a pull request')
   if ((d.learningMin ?? 0) >= 30) std('learn', 'skills', 15, false, 'Learned for 30 minutes')
   if ((d.solved ?? 0) >= 1) std('solve', 'skills', 15, true, 'Solved a coding problem')
+  if ((d.workoutMin ?? 0) >= 30) std('workout', 'health', 15, true, 'Worked out for 30 minutes')
+  if ((d.tasksDone ?? 0) >= 3) std('tasks', 'mind', 10, true, 'Finished 3 tasks')
+  if ((d.codingMin ?? 0) >= 60) std('codetime', 'skills', 10, true, 'Coded for an hour')
+  if ((d.languageXp ?? 0) >= 1) std('language', 'skills', 10, true, 'Practised a language')
+  if ((d.typingMin ?? 0) >= 5) std('typing', 'skills', 5, true, 'Practised typing')
   if (d.frugal) std('frugal', 'wealth', 10, true, 'Spent less than a usual day')
   if ((d.catchUps ?? 0) >= 1) std('catchup', 'relationships', 15, false, 'Caught up with someone')
   if ((d.hobbyMin ?? 0) >= 20) std('hobby', 'hobbies', 20, false, 'Practised a hobby for 20 minutes')

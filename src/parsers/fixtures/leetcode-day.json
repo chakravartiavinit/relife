@@ -1,0 +1,62 @@
+{
+  "note": "Fixture: a LeetCode day with problems solved and a contest.",
+  "event": {
+    "source": "leetcode",
+    "externalId": "2026-11-06:abc",
+    "at": "2026-11-07T10:00:00.000Z",
+    "body": {
+      "platform": "leetcode",
+      "date": "2026-11-06",
+      "submissions": 9,
+      "contests": 1,
+      "solved": 3,
+      "rating": 1834
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "date": "2026-11-06",
+      "source": "leetcode",
+      "verified": true,
+      "tracker": "cp.solved",
+      "value": 3,
+      "defaults": {
+        "name": "Problems solved",
+        "category": "skills",
+        "kind": "number",
+        "direction": "up",
+        "target": 1
+      }
+    },
+    {
+      "kind": "entry",
+      "date": "2026-11-06",
+      "source": "leetcode",
+      "verified": true,
+      "tracker": "cp.submissions",
+      "value": 9,
+      "defaults": {
+        "name": "Submissions",
+        "category": "skills",
+        "kind": "number"
+      }
+    },
+    {
+      "kind": "entry",
+      "date": "2026-11-06",
+      "source": "leetcode",
+      "verified": true,
+      "tracker": "cp.rating-leetcode",
+      "value": 1834,
+      "defaults": {
+        "name": "LeetCode rating",
+        "category": "skills",
+        "kind": "number",
+        "aggregate": "last",
+        "direction": "up",
+        "target": 1900
+      }
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "note": "Fixture: a Steam day.",
+  "event": {
+    "source": "steam",
+    "externalId": "2026-11-06:abc",
+    "at": "2026-11-07T10:00:00.000Z",
+    "body": {
+      "date": "2026-11-06",
+      "minutes": 95,
+      "topGame": "Hades II"
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "tracker": "gaming",
+      "date": "2026-11-06",
+      "value": 95,
+      "source": "steam",
+      "verified": true,
+      "meta": {
+        "game": "Hades II"
+      },
+      "defaults": {
+        "name": "Gaming",
+        "category": "hobbies",
+        "kind": "duration",
+        "unit": "min"
+      }
+    }
+  ]
+}

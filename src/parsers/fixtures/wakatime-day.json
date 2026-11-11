@@ -1,0 +1,36 @@
+{
+  "note": "Fixture: one WakaTime day.",
+  "event": {
+    "source": "wakatime",
+    "externalId": "2026-11-06:abc",
+    "at": "2026-11-07T10:00:00.000Z",
+    "body": {
+      "date": "2026-11-06",
+      "minutes": 134,
+      "language": "TypeScript",
+      "project": "relife"
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "tracker": "coding.minutes",
+      "date": "2026-11-06",
+      "value": 134,
+      "source": "wakatime",
+      "verified": true,
+      "meta": {
+        "language": "TypeScript",
+        "project": "relife"
+      },
+      "defaults": {
+        "name": "Coding time",
+        "category": "skills",
+        "kind": "duration",
+        "unit": "min",
+        "direction": "up",
+        "target": 60
+      }
+    }
+  ]
+}

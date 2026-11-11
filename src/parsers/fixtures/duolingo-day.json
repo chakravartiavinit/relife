@@ -1,0 +1,49 @@
+{
+  "note": "Fixture: a Duolingo day.",
+  "event": {
+    "source": "duolingo",
+    "externalId": "2026-11-07:abc",
+    "at": "2026-11-07T18:00:00.000Z",
+    "body": {
+      "date": "2026-11-07",
+      "xp": 45,
+      "streak": 42,
+      "practised": true,
+      "course": "Spanish"
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "tracker": "duolingo.xp",
+      "date": "2026-11-07",
+      "value": 45,
+      "source": "duolingo",
+      "verified": true,
+      "meta": {
+        "course": "Spanish"
+      },
+      "defaults": {
+        "name": "Duolingo XP",
+        "category": "skills",
+        "kind": "number",
+        "direction": "up",
+        "target": 30
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "duolingo.streak",
+      "date": "2026-11-07",
+      "value": 42,
+      "source": "duolingo",
+      "verified": true,
+      "defaults": {
+        "name": "Duolingo streak",
+        "category": "skills",
+        "kind": "number",
+        "aggregate": "last"
+      }
+    }
+  ]
+}

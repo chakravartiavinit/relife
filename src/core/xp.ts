@@ -13,7 +13,12 @@ import type { User } from './user'
 // only rescores today and yesterday (and back-fills once when there is no XP yet).
 
 const BALANCE_XP = 50
-const TRACKERS = ['sleep.hours', 'steps', 'mood', 'meditation', 'github.commits', 'github.prs', 'learning.minutes', 'people.contacts', 'cp.solved']
+const TRACKERS = [
+  'sleep.hours', 'steps', 'mood', 'meditation', 'github.commits', 'github.prs', 'learning.minutes', 'people.contacts', 'cp.solved',
+  'exercise.minutes', 'tasks.done', 'coding.minutes', 'duolingo.xp', 'typing.minutes',
+]
+/** Hobby trackers that are time spent, not practice (Last.fm, Steam): shown on Hobbies, no hobby XP. */
+const PASSIVE = new Set(['music', 'gaming'])
 
 function median(xs: number[]) {
   if (!xs.length) return 0
@@ -38,7 +43,7 @@ export async function scoreRange(user: User, from: string, to: string, now = new
     trackerDays(user, from, to, { category: 'hobbies' }),
   ])
   // Practice minutes only: chess.games, ratings and other hobby stats aren't time.
-  const hobbyMin = (d: string) => hobbies.filter((h) => h.tracker.unit === 'min').reduce((s, h) => s + (h.days.get(d) ?? 0), 0)
+  const hobbyMin = (d: string) => hobbies.filter((h) => h.tracker.unit === 'min' && !PASSIVE.has(h.tracker.slug)).reduce((s, h) => s + (h.days.get(d) ?? 0), 0)
   const t = (slug: string) => trackers.find((x) => x.tracker.slug === slug)
   const spendByDay = new Map<string, number>()
   for (const x of txns) if (isSpend(x)) spendByDay.set(x.localDate, (spendByDay.get(x.localDate) ?? 0) - x.base)
@@ -70,6 +75,11 @@ export async function scoreRange(user: User, from: string, to: string, now = new
       prs: t('github.prs')?.days.get(d),
       learningMin: t('learning.minutes')?.days.get(d),
       solved: t('cp.solved')?.days.get(d),
+      workoutMin: t('exercise.minutes')?.days.get(d),
+      tasksDone: t('tasks.done')?.days.get(d),
+      codingMin: t('coding.minutes')?.days.get(d),
+      languageXp: t('duolingo.xp')?.days.get(d),
+      typingMin: t('typing.minutes')?.days.get(d),
       frugal: prior.filter((v) => v > 0).length >= 7 && spent < usual ? true : undefined,
       catchUps: t('people.contacts')?.days.get(d),
       hobbyMin: hobbyMin(d),
