@@ -32,9 +32,17 @@ function key() {
   const file = join(/* turbopackIgnore: true */ process.cwd(), 'data', 'secret.key')
   if (!existsSync(file)) {
     mkdirSync(join(/* turbopackIgnore: true */ process.cwd(), 'data'), { recursive: true })
-    writeFileSync(file, randomBytes(32).toString('base64'), { mode: 0o600, flag: 'wx' })
+    // The worker and the web app can both get here on first run: 'wx' lets one win, the other reads its key.
+    try {
+      writeFileSync(file, randomBytes(32).toString('base64'), { mode: 0o600, flag: 'wx' })
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e
+    }
   }
-  return (cachedKey = Buffer.from(readFileSync(file, 'utf8').trim(), 'base64'))
+  const k = Buffer.from(readFileSync(file, 'utf8').trim(), 'base64')
+  // Read too early (the other process hasn't written yet) or a damaged file: never encrypt with a short key.
+  if (k.length !== 32) throw new Error(`${file} must hold a 32-byte base64 key`)
+  return (cachedKey = k)
 }
 
 export function encrypt(values: Record<string, string>): Buffer {

@@ -238,7 +238,10 @@ export function startBot(): Bot | null {
 
   void registerProfile(bot)
 
-  void bot.start({ drop_pending_updates: false, onStart: (me) => console.log(`[bot] @${me.username} polling${env('TELEGRAM_ALLOWED_CHAT_ID') ? '' : ' (no chat ID yet: send /start to get it)'}`) })
+  // A wrong token (401) or a second poller (409) rejects here. Log it instead of crashing the worker,
+  // which would take the scheduler (and, under `npm run dev`, the web app) down with it.
+  bot.start({ drop_pending_updates: false, onStart: (me) => console.log(`[bot] @${me.username} polling${env('TELEGRAM_ALLOWED_CHAT_ID') ? '' : ' (no chat ID yet: send /start to get it)'}`) })
+    .catch((e) => console.error('[bot] stopped:', e instanceof Error ? e.message : e))
   return bot
 }
 

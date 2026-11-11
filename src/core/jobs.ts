@@ -117,7 +117,8 @@ async function releaseOrphans() {
  * The scheduler: every 15 seconds (and whenever a request arrives) start each job that's due, at most
  * CONCURRENCY at a time. Jobs run in the background, so a long sync never holds up the others.
  */
-export function startScheduler(jobs: Job[], tz: string, log = console.log) {
+/** `timeZone` is read on every tick, so a time zone changed in Settings applies without a restart. */
+export function startScheduler(jobs: Job[], timeZone: () => string, log = console.log) {
   const running = new Set<string>()
   let ticking = false
   let stopped = false
@@ -128,6 +129,7 @@ export function startScheduler(jobs: Job[], tz: string, log = console.log) {
       await releaseOrphans()
       const states = new Map((await db.select().from(schema.jobs)).map((s) => [s.id, s]))
       const now = new Date()
+      const tz = timeZone()
       for (const job of jobs) {
         if (running.size >= CONCURRENCY) break
         if (running.has(job.id)) continue
