@@ -1,0 +1,48 @@
+{
+  "note": "Fixture: a RescueTime day with nothing logged has no pulse.",
+  "event": {
+    "source": "rescuetime",
+    "externalId": "2026-11-07:abc",
+    "at": "2026-11-07T10:00:00.000Z",
+    "body": {
+      "date": "2026-11-07",
+      "productiveMin": 0,
+      "distractingMin": 0,
+      "loggedMin": 0
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "tracker": "productive.minutes",
+      "date": "2026-11-07",
+      "value": 0,
+      "source": "rescuetime",
+      "verified": true,
+      "defaults": {
+        "name": "Productive time",
+        "category": "mind",
+        "kind": "duration",
+        "unit": "min",
+        "direction": "up",
+        "target": 240
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "distracting.minutes",
+      "date": "2026-11-07",
+      "value": 0,
+      "source": "rescuetime",
+      "verified": true,
+      "defaults": {
+        "name": "Distracting time",
+        "category": "mind",
+        "kind": "duration",
+        "unit": "min",
+        "direction": "down",
+        "target": 60
+      }
+    }
+  ]
+}

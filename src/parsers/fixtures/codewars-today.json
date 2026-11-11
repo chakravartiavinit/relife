@@ -1,0 +1,46 @@
+{
+  "note": "Fixture: today carries the honor total, with the next hundred as its goal.",
+  "event": {
+    "source": "codewars",
+    "externalId": "2026-11-07:abc",
+    "at": "2026-11-07T10:00:00.000Z",
+    "body": {
+      "date": "2026-11-07",
+      "solved": 0,
+      "honor": 1234
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "tracker": "cp.solved",
+      "date": "2026-11-07",
+      "value": 0,
+      "source": "codewars",
+      "verified": true,
+      "defaults": {
+        "name": "Problems solved",
+        "category": "skills",
+        "kind": "number",
+        "direction": "up",
+        "target": 1
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "codewars.honor",
+      "date": "2026-11-07",
+      "value": 1234,
+      "source": "codewars",
+      "verified": true,
+      "defaults": {
+        "name": "Codewars honor",
+        "category": "skills",
+        "kind": "number",
+        "aggregate": "last",
+        "direction": "up",
+        "target": 1300
+      }
+    }
+  ]
+}
