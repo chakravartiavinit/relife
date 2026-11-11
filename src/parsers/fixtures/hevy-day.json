@@ -15,7 +15,7 @@
   "expected": [
     {
       "kind": "entry",
-      "tracker": "exercise.minutes",
+      "tracker": "hevy.minutes",
       "date": "2026-11-06",
       "value": 62,
       "source": "hevy",
@@ -24,7 +24,7 @@
         "workouts": 1
       },
       "defaults": {
-        "name": "Active minutes",
+        "name": "Gym minutes",
         "category": "health",
         "kind": "duration",
         "unit": "min",

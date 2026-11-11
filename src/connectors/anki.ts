@@ -17,15 +17,24 @@ type Review = number[]
 
 const NOT_OPEN = 'Open Anki with the AnkiConnect add-on (code 2055492159), then sync again.'
 
-/** Pure: Anki's per-day counts and review rows into days. Rows with type 4 (rescheduled by hand) aren't study. Exported for tests. */
-export function ankiDays(counts: [string, number][], reviews: Review[], tz: string, from: string): AnkiDay[] {
-  const minutes = new Map<string, number>()
+/**
+ * Pure: review rows into days. Only real answers count (types 0–3 with a button pressed): "set due date" and
+ * reschedule rows (types 4 and 5) can be thousands at once and aren't study. Without rows (`null`: reading them
+ * failed) Anki's own per-day counts stand in, without minutes. Exported for tests.
+ */
+export function ankiDays(counts: [string, number][], reviews: Review[] | null, tz: string, from: string): AnkiDay[] {
+  if (!reviews) return counts.filter(([date]) => date >= from).map(([date, cards]) => ({ date, cards }))
+  const days = new Map<string, { cards: number; ms: number }>()
   for (const r of reviews) {
-    if (r[8] === 4) continue
+    if (!(r[8] >= 0 && r[8] <= 3 && r[3] > 0)) continue
     const date = localDate(new Date(r[0]), tz)
-    minutes.set(date, (minutes.get(date) ?? 0) + (r[7] ?? 0) / 60_000)
+    if (date < from) continue
+    const d = days.get(date) ?? { cards: 0, ms: 0 }
+    d.cards++
+    d.ms += r[7] ?? 0
+    days.set(date, d)
   }
-  return counts.filter(([date]) => date >= from).map(([date, cards]) => ({ date, cards, minutes: minutes.has(date) ? Math.round(minutes.get(date)!) : undefined }))
+  return [...days].map(([date, d]) => ({ date, cards: d.cards, minutes: Math.round(d.ms / 60_000) }))
 }
 
 async function call<T>(url: string, key: string | undefined, action: string, params: object = {}) {
@@ -59,14 +68,15 @@ export const anki: Connector = {
     const url = env('ANKI_CONNECT_URL')?.trim() || 'http://127.0.0.1:8765'
     const key = env('ANKI_CONNECT_KEY')?.trim() || undefined
     const counts = await call<[string, number][]>(url, key, 'getNumCardsReviewedByDay')
-    // Minutes need the review rows: cardReviews reads one deck at a time (exact deck, not its subdecks).
-    // Start a day early so any time zone is covered. If this fails the cards still count, just without minutes.
+    // Review rows: cardReviews reads one deck at a time (exact deck, not its subdecks). Start a day early so any
+    // time zone is covered. If this fails, Anki's own counts stand in, without minutes.
     const startID = Date.parse(`${from}T00:00:00Z`) - 86_400_000
-    const reviews: Review[] = []
+    let reviews: Review[] | null = []
     try {
       for (const deck of await call<string[]>(url, key, 'deckNames')) reviews.push(...(await call<Review[]>(url, key, 'cardReviews', { deck, startID })))
     } catch (e) {
-      ctx.log(`no study minutes: ${(e as Error).message}`)
+      reviews = null
+      ctx.log(`no review rows, using Anki's counts: ${(e as Error).message}`)
     }
     const days = fillDays(ankiDays(counts, reviews, tz, from), from, today, (date) => ({ date, cards: 0 }), backfilled)
     await emitDays(ctx, 'anki', days)

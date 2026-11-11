@@ -130,8 +130,9 @@ const DAYS: Record<string, (b: Record<string, unknown>) => Entry[]> = {
   hevy: (b) => {
     const d = b as HevyDay
     return [
-      // The same tracker Strava fills; the source keeps them apart and they add up.
-      { tracker: 'exercise.minutes', value: d.minutes, meta: { workouts: d.workouts }, defaults: { name: 'Active minutes', category: 'health', kind: 'duration', unit: 'min', direction: 'up', target: 30 } },
+      // Its own tracker, not Strava's exercise.minutes: Hevy can post each workout to Strava too, so adding them
+      // would count a session twice. XP and the workout-gap alert take the larger of the two per day.
+      { tracker: 'hevy.minutes', value: d.minutes, meta: { workouts: d.workouts }, defaults: { name: 'Gym minutes', category: 'health', kind: 'duration', unit: 'min', direction: 'up', target: 30 } },
       { tracker: 'hevy.workouts', value: d.workouts, meta: { exercises: d.exercises }, defaults: { name: 'Gym workouts', category: 'health', kind: 'number', direction: 'up', target: 1 } },
       { tracker: 'hevy.volume', value: d.volumeKg, defaults: { name: 'Weight lifted', category: 'health', kind: 'number', unit: 'kg', direction: 'up', target: 5000 } },
     ]

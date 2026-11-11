@@ -18,7 +18,7 @@ const STEPS = ['steps', 'oura.steps', 'withings.steps']
 const TRACKERS = [
   'sleep.hours', 'steps', 'mood', 'meditation', 'github.commits', 'github.prs', 'learning.minutes', 'people.contacts', 'cp.solved',
   'exercise.minutes', 'tasks.done', 'coding.minutes', 'duolingo.xp', 'typing.minutes', 'focus.minutes',
-  'tracked.minutes', 'productive.minutes', 'highlights.made', 'anki.cards', 'books.read', ...STEPS,
+  'tracked.minutes', 'productive.minutes', 'highlights.made', 'anki.cards', 'books.read', 'hevy.minutes', 'oura.steps', 'withings.steps',
 ]
 /** Hobby trackers that are time spent, not practice (Last.fm, Steam): shown on Hobbies, no hobby XP. */
 const PASSIVE = new Set(['listening', 'playtime'])
@@ -53,7 +53,13 @@ export async function scoreRange(user: User, from: string, to: string, now = new
     const best = STEPS.map((s) => ({ v: t(s)?.days.get(d), verified: t(s)?.verified })).filter((x) => x.v != null).sort((a, b) => b.v! - a.v!)[0]
     return { steps: best?.v, stepsVerified: best?.verified }
   }
-  const synced = (slug: string, d: string) => (t(slug)?.verified ? t(slug)!.days.get(d) : undefined)
+  // Synced entries only, per day: a number typed into a synced tracker doesn't skip the manual cap.
+  const synced = (slug: string, d: string) => t(slug)?.verifiedDays.get(d)
+  // Hevy can post its workouts to Strava as well, so take the larger rather than adding them.
+  const workoutMin = (d: string) => {
+    const xs = [synced('exercise.minutes', d), synced('hevy.minutes', d)].filter((v) => v != null)
+    return xs.length ? Math.max(...xs) : undefined
+  }
   const spendByDay = new Map<string, number>()
   for (const x of txns) if (isSpend(x)) spendByDay.set(x.localDate, (spendByDay.get(x.localDate) ?? 0) - x.base)
 
@@ -85,7 +91,7 @@ export async function scoreRange(user: User, from: string, to: string, now = new
       learningMin: t('learning.minutes')?.days.get(d),
       solved: t('cp.solved')?.days.get(d),
       // Connector measures: only synced values count, so typed-in numbers can't skip the manual cap.
-      workoutMin: synced('exercise.minutes', d),
+      workoutMin: workoutMin(d),
       tasksDone: synced('tasks.done', d),
       codingMin: synced('coding.minutes', d),
       languageXp: synced('duolingo.xp', d),

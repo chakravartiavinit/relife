@@ -59,18 +59,18 @@ test('openLibraryDays puts a book on the local day it was marked read (logged in
   assert.throws(() => openLibraryUser('a b'), /not an Open Library username/)
 })
 
-test('ankiDays joins card counts with minutes from review rows and skips hand-rescheduled rows', () => {
+test('ankiDays counts answered reviews only and falls back to Anki counts without rows', () => {
   const at = (iso: string) => Date.parse(iso)
-  const days = ankiDays(
-    [['2026-11-08', 40], ['2026-11-07', 25], ['2026-10-01', 9]],
-    [
-      [at('2026-11-08T05:00:00Z'), 1, -1, 3, 4, -60, 2500, 6000, 0],
-      [at('2026-11-08T05:01:00Z'), 2, -1, 3, 4, -60, 2500, 54_000, 1],
-      [at('2026-11-08T05:02:00Z'), 3, -1, 0, 0, 0, 0, 600_000, 4], // rescheduled by hand: not study
-    ],
-    TZ, '2026-11-01',
-  )
-  assert.deepEqual(days, [{ date: '2026-11-08', cards: 40, minutes: 1 }, { date: '2026-11-07', cards: 25, minutes: undefined }])
+  const counts: [string, number][] = [['2026-11-08', 4000], ['2026-11-07', 25], ['2026-10-01', 9]]
+  const days = ankiDays(counts, [
+    [at('2026-11-08T05:00:00Z'), 1, -1, 3, 4, -60, 2500, 6000, 0],
+    [at('2026-11-08T05:01:00Z'), 2, -1, 3, 4, -60, 2500, 54_000, 1],
+    [at('2026-11-08T05:02:00Z'), 3, -1, 0, 0, 0, 0, 600_000, 4], // set due date: not study
+    [at('2026-11-08T05:03:00Z'), 4, -1, 0, 9, 4, 2500, 0, 5], // FSRS reschedule: not study
+    [at('2026-10-20T05:00:00Z'), 5, -1, 3, 4, -60, 2500, 6000, 1], // before the window
+  ], TZ, '2026-11-01')
+  assert.deepEqual(days, [{ date: '2026-11-08', cards: 2, minutes: 1 }])
+  assert.deepEqual(ankiDays(counts, null, TZ, '2026-11-01'), [{ date: '2026-11-08', cards: 4000 }, { date: '2026-11-07', cards: 25 }])
 })
 
 const ctx = (events: RawEvent[]) => ({
@@ -103,7 +103,7 @@ test('anki reads an AnkiConnect reply in its documented format', async () => {
     const events: RawEvent[] = []
     await anki.sync(ctx(events))
     assert.equal(events.at(-1)?.source, 'anki')
-    assert.deepEqual(events.at(-1)?.body, { date: today, cards: 30, minutes: 1 }) // 30 s rounds to 1 min
+    assert.deepEqual(events.at(-1)?.body, { date: today, cards: 2, minutes: 1 }) // two answers, 30 s rounds to 1 min
     assert.deepEqual(asked.filter((a) => a.action === 'cardReviews').map((a) => a.params.deck), ['Default', 'Spanish::Verbs'])
   } finally { globalThis.fetch = real }
 })

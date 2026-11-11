@@ -1,4 +1,4 @@
-import { and, eq, gte } from 'drizzle-orm'
+import { and, eq, gte, inArray } from 'drizzle-orm'
 import { schema } from '@/db'
 import { addDays, localDate } from '@/core/time'
 import type { Alert, Rule } from '@/core/types'
@@ -29,19 +29,26 @@ export function workoutGapAlert(days: Map<string, number>, today: string): Alert
   }
 }
 
-/** At 18:00, notice when workouts from Strava stop. Only active once Strava has synced. */
+/** At 18:00, notice when workouts from Strava or Hevy stop. Only active once one of them has synced. */
 export const workoutGap: Rule = {
   id: 'workout-gap',
   every: '0 18 * * *',
   async check({ user, db, now }) {
-    const [t] = await db.select().from(schema.trackers)
-      .where(and(eq(schema.trackers.userId, user.id), eq(schema.trackers.slug, 'exercise.minutes')))
-    if (!t) return []
+    const ts = await db.select().from(schema.trackers)
+      .where(and(eq(schema.trackers.userId, user.id), inArray(schema.trackers.slug, ['exercise.minutes', 'hevy.minutes'])))
+    if (!ts.length) return []
     const today = localDate(now, user.timezone)
     const rows = await db.select().from(schema.entries)
-      .where(and(eq(schema.entries.trackerId, t.id), gte(schema.entries.localDate, addDays(today, -(GAP + 28)))))
-    const days = new Map<string, number>()
-    for (const r of rows) days.set(r.localDate, (days.get(r.localDate) ?? 0) + r.value)
+      .where(and(inArray(schema.entries.trackerId, ts.map((t) => t.id)), gte(schema.entries.localDate, addDays(today, -(GAP + 28)))))
+    // Strava sources add up; Hevy may repeat a Strava workout, so it only counts where it's larger.
+    const sum = (slug: string) => {
+      const id = ts.find((t) => t.slug === slug)?.id
+      const m = new Map<string, number>()
+      for (const r of rows) if (r.trackerId === id) m.set(r.localDate, (m.get(r.localDate) ?? 0) + r.value)
+      return m
+    }
+    const days = sum('exercise.minutes')
+    for (const [d, v] of sum('hevy.minutes')) days.set(d, Math.max(v, days.get(d) ?? 0))
     const alert = workoutGapAlert(days, today)
     return alert ? [alert] : []
   },

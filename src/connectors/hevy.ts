@@ -6,7 +6,7 @@ import { dayMap, emitDays, fetchJson, fillDays, syncWindow } from './daily'
 // Hevy: strength workouts, per day: how many, how long and the weight lifted (kg × reps, warm-ups left out).
 // Needs Hevy Pro for the API key. Workouts come newest first, 10 a page; paging stops once a page is older than
 // the window. First sync backfills 90 days, later ones the last 3.
-// src/parsers/daily.ts turns each day into hevy.workouts and hevy.volume, plus exercise.minutes (source "hevy").
+// src/parsers/daily.ts turns each day into hevy.workouts and hevy.volume, and hevy.minutes.
 
 export type HevyDay = { date: string; workouts: number; minutes: number; volumeKg: number; exercises: number }
 
