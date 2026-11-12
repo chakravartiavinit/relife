@@ -2,7 +2,7 @@
 // payload crosses fetch() and the views read it as typed. Pre-formatted strings ("when", "ago") are in the
 // user's time zone, computed on the server so the client never guesses it.
 
-import type { Category, ProposedAction, ReviewContent } from '@/db/schema'
+import type { Category, ReviewContent } from '@/db/schema'
 import type { MetricSummary } from '@/domain/metric-peek'
 import type { RecoveryView } from '@/domain/recovery'
 import type { SyncTone } from '@/domain/shell'
