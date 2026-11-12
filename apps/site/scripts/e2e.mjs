@@ -34,6 +34,9 @@ const browser = await chromium.launch({ executablePath: process.env.CHROME ?? '/
 const ctxFor = (ip, extra = {}) => browser.newContext({ extraHTTPHeaders: { 'x-forwarded-for': ip }, viewport: { width: 1440, height: 900 }, ...extra })
 const shot = async (page, name, opts = {}) => { if (shots) await page.screenshot({ path: `${shots}/site-${name}.png`, ...opts }) }
 
+// The 2-minute per-email limit lives in two places: send attempts and the link's issue time.
+const liftEmailLimit = async () => { await sql`delete from waitlist_attempts where kind = 'send'`; await sql`update waitlist_signups set token_issued_at = now() - interval '5 minutes'` }
+
 async function join(page, email, { chips = false } = {}) {
   const form = page.locator('form.wl').first()
   await form.getByLabel('Email').fill(email)
@@ -90,6 +93,8 @@ try {
   await shot(a, 'form-chips', { clip: { x: 340, y: 360, width: 760, height: 420 } })
   await join(a, 'alice@example.com', { chips: true })
   await a.getByText('Check your inbox to confirm your spot.').first().waitFor()
+  assert.equal(await a.evaluate(() => document.activeElement?.tagName + ':' + document.activeElement?.textContent), 'H3:Check your inbox to confirm your spot.', 'focus moves to the done heading')
+  step('focus lands on the done heading after join')
   await shot(a, 'form-done', { clip: { x: 340, y: 360, width: 760, height: 280 } })
   const rowA = (await sql`select * from waitlist_signups where email = 'alice@example.com'`)[0]
   assert.equal(rowA.status, 'pending')
@@ -102,7 +107,7 @@ try {
   // Duplicate pending: same UI, and a second confirmation (new token) is sent after the 2-minute limit is lifted.
   const first = await mailLink('alice@example.com')
   assert.match(first.subject, /Confirm your spot/)
-  await sql`delete from waitlist_attempts where kind = 'send'`
+  await liftEmailLimit()
   const before = mailCount()
   await a.goto(BASE)
   await a.waitForLoadState('networkidle')
@@ -147,7 +152,7 @@ try {
   step('reload is idempotent')
 
   // Duplicate confirmed: "Here's your spot" mail instead of a confirmation.
-  await sql`delete from waitlist_attempts where kind = 'send'`
+  await liftEmailLimit()
   await sql`delete from waitlist_attempts where kind = 'submit'`
   const beforeDup = mailCount()
   await a.goto(BASE)
@@ -179,10 +184,11 @@ try {
   await bp.getByText(/You're #14/).waitFor()
   step("B joined through A's link and confirmed as #14")
   await aPending.reload()
-  await aPending.getByText(/You're #3/).waitFor()
+  await aPending.getByText(/You're #4/).waitFor()
   assert.ok(await aPending.getByText('Friends joined:').locator('b').first().isVisible())
   assert.equal((await sql`select referral_count from waitlist_signups where email = 'alice@example.com'`)[0].referral_count, 1)
-  step('A moved up 10 spots (#13 to #3) with 1 friend joined')
+  step('A moved up (#13 to #4: score 3 ties seq 3, which keeps the tie) with 1 friend joined')
+  assert.ok(await aPending.getByText('moves you up to').isVisible(), 'copy says "up to 10 places"')
   await shot(aPending, 'status-after-referral')
 
   // Confirming twice credits once.
@@ -190,7 +196,8 @@ try {
   assert.equal((await sql`select referral_count from waitlist_signups where email = 'alice@example.com'`)[0].referral_count, 1)
   step('second confirm does not credit again')
 
-  // Self-referral: same IP hash as the referrer, same day: no link.
+  // Self-referral: same IP hash as the referrer is refused however old the referrer's row is.
+  await sql`update waitlist_signups set created_at = now() - interval '3 days' where email = 'alice@example.com'`
   await sql`delete from waitlist_attempts where kind = 'submit'`
   const ctxSelf = await ctxFor('10.0.0.1')
   const s = await ctxSelf.newPage()
@@ -199,7 +206,55 @@ try {
   await join(s, 'alias@example.com')
   await s.getByText('Check your inbox to confirm your spot.').first().waitFor()
   assert.equal((await sql`select referred_by from waitlist_signups where email = 'alias@example.com'`)[0].referred_by, null)
-  step('self-referral from the same IP is ignored')
+  step('same-IP referral is ignored even three days after the referrer joined')
+
+  // Same mailbox under another alias (+tag) from another network: no credit.
+  const ctxAlias = await ctxFor('10.0.0.11')
+  const al = await ctxAlias.newPage()
+  await al.goto(`${BASE}/?ref=${refA}`)
+  await al.waitForLoadState('networkidle')
+  await join(al, 'alice+farm@example.com')
+  await al.getByText('Check your inbox to confirm your spot.').first().waitFor()
+  assert.equal((await sql`select referred_by from waitlist_signups where email = 'alice+farm@example.com'`)[0].referred_by, null)
+  step('a +tag alias of the referrer gets no referral link')
+
+  // Leave and rejoin must not pay twice: B leaves (A's credit goes), rejoins and confirms (credit back to 1, not 2).
+  await post(BASE, '/api/waitlist/leave', bobLink.token)
+  assert.equal((await sql`select referral_count from waitlist_signups where email = 'alice@example.com'`)[0].referral_count, 0)
+  await b.goto(`${BASE}/?ref=${refA}`)
+  await b.waitForLoadState('networkidle')
+  await join(b, 'bob@example.com')
+  await b.getByText('Check your inbox to confirm your spot.').first().waitFor()
+  const bobAgain = await mailLink('bob@example.com', mailCount() - 1)
+  await post(BASE, '/api/waitlist/confirm', bobAgain.token)
+  await post(BASE, '/api/waitlist/confirm', bobAgain.token)
+  assert.equal((await sql`select referral_count from waitlist_signups where email = 'alice@example.com'`)[0].referral_count, 1)
+  step('leave takes the referral credit back; rejoin and confirm credits once (1, not 2)')
+
+  // A re-submit by someone else can't re-attribute or re-tag another person's pending signup.
+  const ctxC1 = await ctxFor('10.0.2.1')
+  const c1 = await ctxC1.newPage()
+  await c1.goto(BASE)
+  await c1.waitForLoadState('networkidle')
+  await c1.locator('form.wl').first().getByLabel('Email').fill('carol@example.com')
+  await c1.waitForTimeout(500)
+  await c1.locator('form.wl').first().getByRole('button', { name: 'Mind', exact: true }).click()
+  await c1.locator('form.wl').first().getByRole('button', { name: 'Join the waitlist' }).click()
+  await c1.getByText('Check your inbox to confirm your spot.').first().waitFor()
+  await liftEmailLimit()
+  const ctxC2 = await ctxFor('10.0.2.2')
+  const c2 = await ctxC2.newPage()
+  await c2.goto(`${BASE}/?ref=${refA}`)
+  await c2.waitForLoadState('networkidle')
+  await c2.locator('form.wl').first().getByLabel('Email').fill('carol@example.com')
+  await c2.waitForTimeout(500)
+  await c2.locator('form.wl').first().getByRole('button', { name: 'Health', exact: true }).click()
+  await c2.locator('form.wl').first().getByRole('button', { name: 'Join the waitlist' }).click()
+  await c2.getByText('Check your inbox to confirm your spot.').first().waitFor()
+  const carol = (await sql`select referred_by, interests from waitlist_signups where email = 'carol@example.com'`)[0]
+  assert.equal(carol.referred_by, null)
+  assert.deepEqual(carol.interests, ['mind'])
+  step("re-submitting a pending address keeps its referrer and chips")
 
   // --- Rate limit per IP --------------------------------------------------------------------------------------
   const ctxR = await ctxFor('10.0.0.9')
@@ -230,6 +285,13 @@ try {
   await n.getByText(/You're #\d+/).waitFor()
   step('works without JavaScript: join, then Confirm my spot')
 
+  // --- Parallel submits of one new address (in-process, see race-check.ts) --------------------------------------
+  const { execFileSync: run } = await import('node:child_process')
+  const siteDir = new URL('..', import.meta.url).pathname
+  const raceOut = run('npx', ['--no-install', 'tsx', '--env-file=.env.local', 'scripts/race-check.ts'], { cwd: siteDir, env: { ...process.env, NODE_ENV: 'development' }, encoding: 'utf8' })
+  assert.match(raceOut, /race check passed/)
+  step('parallel submits of the same address send one email whose link is the stored one')
+
   // --- Export has only confirmed rows -------------------------------------------------------------------------
   const { execFileSync } = await import('node:child_process')
   const csv = execFileSync('npx', ['--no-install', 'tsx', '--env-file=.env.local', 'scripts/export.ts'], { cwd: new URL('..', import.meta.url).pathname, env: { ...process.env, NODE_ENV: 'development' }, encoding: 'utf8' })
@@ -246,6 +308,11 @@ try {
   await ap.goto(aliceUrl)
   await ap.getByText(/You're #/).waitFor()
   await ap.getByRole('button', { name: 'Leave the waitlist' }).click()
+  assert.equal(await ap.evaluate(() => document.activeElement?.textContent), 'Stay', 'focus moves into the leave dialog')
+  await ap.keyboard.press('Escape')
+  assert.equal(await ap.evaluate(() => document.activeElement?.textContent), 'Leave the waitlist', 'Escape closes it and focus returns')
+  await ap.getByRole('button', { name: 'Leave the waitlist' }).click()
+  step('leave dialog takes focus, Escape closes it and returns focus')
   await shot(ap, 'status-leave-confirm', { fullPage: false })
   await ap.getByRole('button', { name: 'Yes, leave' }).click()
   await ap.getByRole('heading', { name: "You've left the waitlist." }).waitFor()
@@ -259,7 +326,7 @@ try {
   if (shots) {
     const ctxM = await ctxFor('10.0.0.7', { viewport: { width: 390, height: 844 } })
     const m = await ctxM.newPage()
-    await m.goto(bobLink.url)
+    await m.goto(bobAgain.url)
     await m.getByText(/You're #/).waitFor()
     await shot(m, 'status-mobile')
   }

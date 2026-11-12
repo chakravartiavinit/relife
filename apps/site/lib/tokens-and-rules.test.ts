@@ -6,26 +6,26 @@ import { positionOf, scoreOf } from './position'
 import { EMAIL_LIMITS, IP_LIMITS, isLimited } from './rate-limit'
 import { joinSchema, readJoinForm } from './validation'
 
-test('position: join order, and each referral is worth 10 spots', () => {
+test('position: join order, and a referral moves you up to 10 places', () => {
   const rows = Array.from({ length: 30 }, (_, i) => ({ seq: i + 1, referralCount: 0 }))
   assert.equal(positionOf(rows[0], rows), 1)
   assert.equal(positionOf(rows[29], rows), 30)
-  rows[29].referralCount = 1 // seq 30 - 10 = score 20: exactly 10 places up, in front of seq 20
+  rows[29].referralCount = 1 // seq 30 - 10 = score 20, level with seq 20: the earlier seq keeps the tie
   assert.equal(scoreOf(rows[29]), 20)
-  assert.equal(positionOf(rows[29], rows), 20)
-  assert.equal(positionOf(rows[19], rows), 21) // seq 20 is pushed back one place
-  assert.equal(positionOf(rows[20], rows), 22)
+  assert.equal(positionOf(rows[29], rows), 21)
+  assert.equal(positionOf(rows[19], rows), 20)
+  rows[29].referralCount = 2 // score 10, level with seq 10
+  assert.equal(positionOf(rows[29], rows), 11)
+  rows[29].referralCount = 3 // score 0: clear of everyone
+  assert.equal(positionOf(rows[29], rows), 1)
 })
 
-test('position: a tie goes to more referrals, then the earlier seq', () => {
+test('position: ties go to the earlier seq', () => {
   const a = { seq: 20, referralCount: 0 }
   const b = { seq: 30, referralCount: 1 }
   assert.equal(scoreOf(a), scoreOf(b))
-  assert.equal(positionOf(b, [a, b]), 1) // the referrer wins the tie, so the 10-spot jump is exact
-  assert.equal(positionOf(a, [a, b]), 2)
-  const c = { seq: 5, referralCount: 0 }
-  const d = { seq: 9, referralCount: 0 }
-  assert.equal(positionOf(c, [c, d]), 1)
+  assert.equal(positionOf(a, [a, b]), 1)
+  assert.equal(positionOf(b, [a, b]), 2)
 })
 
 test('tokens: hash is stable, tokens are unique and url-safe, ref codes are 8 chars without 0/O/1/I', () => {
