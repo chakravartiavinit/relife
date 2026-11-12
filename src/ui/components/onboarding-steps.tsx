@@ -263,10 +263,15 @@ const SKELETON = (
   </ul>
 )
 
-export function StepRoutines({ v, set, mode, starters, existing, today, ai, picksSig }: {
-  v: V; set: Set; mode: 'ai' | 'starter'; starters: Template[]; existing: string[]; today: string; ai: Ai | null; picksSig: string
+export function StepRoutines({ v, set, mode, kind, building, setBuilding, starters, existing, today, ai, picksSig }: {
+  v: V; set: Set
+  /** What was asked for: the model's list when one is connected, else the starter list. */
+  mode: 'ai' | 'starter'
+  /** What is on screen: the model's list, or the starter list (asked for, or after the model failed). */
+  kind: 'ai' | 'starter'
+  building: boolean; setBuilding: (b: boolean) => void
+  starters: Template[]; existing: string[]; today: string; ai: Ai | null; picksSig: string
 }) {
-  const [building, setBuilding] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [all, setAll] = useState(false)
   const toggle = (id: string) => set('templates', v.templates.includes(id) ? v.templates.filter((x) => x !== id) : [...v.templates, id])
@@ -295,16 +300,16 @@ export function StepRoutines({ v, set, mode, starters, existing, today, ai, pick
   useEffect(() => {
     if (!ai) return
     if (mode === 'ai' && ai.ready && v.generatedFor !== picksSig) void build()
-    if (mode === 'starter' && !v.starterSeeded) {
+    if (kind === 'starter' && !v.starterSeeded) {
       set('starterSeeded', true)
       set('templates', [...v.templates, ...startersOn(starters, existing)])
     }
-  }, [ai, mode, picksSig]) // eslint-disable-line react-hooks/exhaustive-deps -- runs when the answer to "which list" changes, reads the rest as it is
+  }, [ai, mode, kind, picksSig]) // eslint-disable-line react-hooks/exhaustive-deps -- runs when the answer to "which list" changes, reads the rest as it is
 
-  const aiList = mode === 'ai' && v.generated.length > 0
+  const aiList = kind === 'ai' && v.generated.length > 0
   const ordered = [...starters].sort((a, b) => Number(!!b.suggested) - Number(!!a.suggested))
   const shown = all ? ordered : ordered.filter((t) => t.suggested || v.templates.includes(t.id))
-  const onCount = v.templates.filter((id) => (mode === 'ai') === id.startsWith('ai-')).length
+  const onCount = v.templates.filter((id) => (kind === 'ai') === id.startsWith('ai-')).length
 
   return (
     <>
@@ -336,7 +341,7 @@ export function StepRoutines({ v, set, mode, starters, existing, today, ai, pick
         {v.sleepHours <= inBed - 0.25 ? `${inBed}h in bed, so we’ll aim for ${v.sleepHours}h of sleep. Reminders stay quiet while you sleep.` : `${inBed}h in bed is tight for ${v.sleepHours}h of sleep.`}
       </motion.p>
 
-      <Group label={aiList || (mode === 'ai' && building) ? 'Suggested from your focus' : 'Start with these'} aside={`${onCount} on · edit any time in Plan`}>
+      <Group label={kind === 'ai' ? 'Suggested from your focus' : 'Start with these'} aside={`${onCount} on · edit any time in Plan`}>
         {!ai || building ? SKELETON : aiList ? (
           <>
             <ul className="divide-y divide-divider rounded-lg bg-surface shadow-1">
@@ -349,7 +354,7 @@ export function StepRoutines({ v, set, mode, starters, existing, today, ai, pick
           </>
         ) : (
           <>
-            {err || (mode === 'ai' && ai.ready) ? (
+            {mode === 'ai' ? (
               <p role="alert" className="mb-3 flex items-center justify-between gap-3 rounded-md bg-surface-2 px-3 py-2 text-caption text-ink-2">
                 <span className="min-w-0">{err ?? 'No suggestions came back, so here is the starter list.'}</span>
                 <button type="button" onClick={() => void build()} className={cn(LINK, 'shrink-0')}>Try again</button>

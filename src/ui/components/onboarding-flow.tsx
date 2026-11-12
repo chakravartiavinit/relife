@@ -82,11 +82,15 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
   const options = IMPROVE.filter((o) => v.areas.includes(o.area))
   const picks = v.improve.filter((id) => options.some((o) => o.id === id))
   const mode = v.routineMode ?? (ai?.ready ? 'ai' : 'starter')
-  // Each routine list keeps its own ticks; only the list on screen is created.
-  const routines = v.templates.filter((id) => (mode === 'ai') === id.startsWith('ai-'))
   const starters = v.areas.flatMap((c) => templates.filter((t) => t.area === c))
   // What the model's list was built from: changing areas or picks on an earlier step builds it again.
   const picksSig = JSON.stringify([v.areas, picks])
+  // If the model was asked and gave nothing (it failed or came back empty), the starter list stands in for it.
+  const [building, setBuilding] = useState(false)
+  const failed = mode === 'ai' && !!ai?.ready && !building && v.generatedFor === picksSig && !v.generated.length
+  const kind = mode === 'ai' && !!ai?.ready && !failed ? 'ai' : 'starter'
+  // Each routine list keeps its own ticks; only the list on screen is created.
+  const routines = v.templates.filter((id) => (kind === 'ai') === id.startsWith('ai-'))
 
   // The rows on Connect are chosen from how things stood on arrival and stay put while a source connects (its row
   // flips to a check in place); each row then reads the live state.
@@ -191,7 +195,7 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
                   {i === AT.you ? <StepYou v={v} set={set} suggested={device} timezones={timezones} currencies={currencies} nameError={!!error && !v.name.trim()} />
                     : i === AT.areas ? <StepAreas v={v} set={set} picks={picks} options={options} onRefuse={() => setNudge((n) => n + 1)} />
                     : i === AT.connect ? <StepConnect rows={rows} />
-                    : <StepRoutines v={v} set={set} mode={mode} starters={starters} existing={existing} today={today} ai={ai} picksSig={picksSig} />}
+                    : <StepRoutines v={v} set={set} mode={mode} kind={kind} building={building} setBuilding={setBuilding} starters={starters} existing={existing} today={today} ai={ai} picksSig={picksSig} />}
                 </motion.section>
               ) : null}
             </AnimatePresence>
