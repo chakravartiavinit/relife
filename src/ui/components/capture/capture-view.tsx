@@ -136,11 +136,11 @@ export function CaptureView({ layout, data, status, value, onValue, actions, onC
           <p className="mt-2 text-caption text-ink-3">Logs like “mood 4” or “spent 120 chai” save at once. Anything else goes to Ask.</p>
         </form>
       ) : (
-        <div className="flex items-center gap-4 border-t border-divider px-6 py-3 text-caption text-ink-3">
+        <div className="flex items-center gap-4 border-t border-divider px-6 py-3 text-caption whitespace-nowrap text-ink-3">
           <span className="flex items-center gap-1.5"><Kbd>↑</Kbd><Kbd>↓</Kbd>move</span>
           <span className="flex items-center gap-1.5"><Kbd>↵</Kbd>{q ? 'log' : 'do it'}</span>
           <span className="flex items-center gap-1.5"><Kbd>⌘↵</Kbd>ask instead</span>
-          <span className="ms-auto">Anything that is not a log becomes a question for your coach</span>
+          <span className="ms-auto min-w-0 truncate">Anything that is not a log becomes a question for your coach</span>
         </div>
       )}
     </Command>

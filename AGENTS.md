@@ -30,13 +30,21 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
   collapsible desktop `Sidebar` (240px, or a 72px icon rail; the choice is stored in `localStorage` `relife:sidebar`
   and put on `<html data-sidebar>` before paint by `sidebar-script.ts`, ⌘\ toggles it), the desktop `TopBar`
   (breadcrumb from `trail()`, Capture field, sync dot, Coach bell, level avatar), the phone `PhoneTopBar` and
-  `TabBar` (a raised `+` opens the command menu until Capture lands). Everything the shell shows besides the page
+  `TabBar` (a raised `+`; both open Capture). Everything the shell shows besides the page
   (Coach count, sync dot, level ring, area dots) comes from `loadShellStatus` in `src/core/shell.ts`: one SQL
   statement plus `xpLevel` and `buildDayPlan`, wrapped in React `cache`, read by each piece in its own Suspense
   island (`shell-status.tsx`). The needs-you rules (merchant grouping, nudges expire after 3 days) are in
   `src/domain/needs-you.ts`. The game look comes from three banners: `CharacterBanner`
   (`hud.tsx`, Today and Progress), `AreaHeader` (area pages) and `PageHeader` (everything else). Routine
   pictures come from `src/ui/routine-icons.ts`.
+- Capture (`src/ui/components/capture/`, mounted once in `layout.tsx`): ⌘K, the top-bar field (it also opens on the first key typed into it and carries that key over), the tab-bar `+` and the `relife:command` event (`openCapture()` in `capture-data.ts`)
+  all open it: a centred palette on a laptop, the `Sheet` at its half detent on a phone with the input at the bottom. Empty it
+  shows Due now (check-off), Quick log chips (water +250, usual manual logs), mood faces (until logged today), Spent and Go to; typed it
+  previews the quick-log grammar (`src/domain/quicklog.ts`), then Open and "Ask your coach" (⌘↵, `/coach?ask=`). Suggestions come from
+  `GET /api/capture` (`loadCapture` in `src/core/capture.ts`: `buildDayPlan` + `manualLogHistory` + the pure `rankCaptureSuggestions`
+  in `src/domain/capture.ts`) and are prefetched on hover/focus. Every result toasts with Undo: `quickLog` returns an undo token that
+  `undoQuickLog` validates and reverses; check-offs undo with `toggleCheck(…, null)`, goal steps with `addToGoal(id, -step)`.
+  `CaptureView` is presentational (`/dev/ui` draws it from fixtures); `capture.tsx` owns the actions.
 - Look ("ReLife capsule"): ink black, white and the logo's capsule blue, light-first. The signature shapes are
   `CapsuleIcon` (`capsule-icon.tsx`, the tilted pill from the logo, for areas and avatars), `SystemLabel` (mono
   area label in `card.tsx`) and the `.halftone` dot texture in header corners. No other decorative textures.

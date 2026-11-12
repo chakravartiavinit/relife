@@ -12,7 +12,7 @@ const MAX_ARBITRARY_TEXT_SIZES = 702
 // The shell (sidebar, top bar, tab bar and their status pieces) is fully on the scale.
 const SHELL = ['sidebar', 'top-bar', 'tab-bar', 'sync-dot', 'coach-bell', 'avatar-ring', 'shell-status'].map((f) => `src/ui/components/shell/${f}.tsx`)
 // Capture (phase 4) is fully on the scale too.
-const CAPTURE = ['capture.tsx', 'capture-view.tsx'].map((f) => `src/ui/components/capture/${f}`)
+const CAPTURE = ['capture.tsx', 'capture-view.tsx', 'capture-gallery.tsx'].map((f) => `src/ui/components/capture/${f}`)
 const CLEAN: string[] = ['src/ui/components/sheet.tsx', 'src/ui/components/segment-tabs.tsx', 'src/ui/components/peek/peek-link.tsx', ...SHELL, ...CAPTURE]
 
 const PATTERN = /text-\[\d+(?:\.\d+)?px\]/g
