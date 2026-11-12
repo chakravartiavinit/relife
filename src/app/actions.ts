@@ -553,13 +553,14 @@ export async function saveSystemFocus(ids: string[]) {
  * quiet hours and daily cap apply, exactly like the real ones). `sent` is false when those rules hold it back.
  */
 export async function sendTestMessage() {
+  // getUser() loads the saved keys first, so the Telegram check below reads the current ones.
+  const user = await getUser()
   const { telegramConfigured } = await import('@/core/notify')
   if (!telegramConfigured()) return { ok: false as const, error: 'Telegram isn’t connected yet. Connect it first.' }
-  const user = await getUser()
-  const { notify, delivered } = await import('@/core/outbox')
+  const { notify, outcome } = await import('@/core/outbox')
   const ref = `test:${crypto.randomUUID()}`
   await notify(user, 'events', { text: '⭐ Test message from ReLife\nIf you can read this, Progress messages reach you here.', ref })
-  return { ok: true as const, sent: await delivered(user.id, ref) }
+  return { ok: true as const, result: await outcome(user.id, ref) }
 }
 
 /** Settings → Notifications: quiet hours and per-category delivery. The worker reads it each minute. */

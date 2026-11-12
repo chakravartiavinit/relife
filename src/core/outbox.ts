@@ -32,6 +32,14 @@ export async function weeklyNotifications(user: User, now = new Date()) {
   return { sent: sum((r) => r.sent), held: sum((r) => !r.sent && r.status === 'queued'), skipped: sum((r) => !r.sent && r.status === 'skipped') }
 }
 
+/** What happened to the message about `ref`: reached Telegram, still waiting (quiet hours), or dropped (category off or the cap). */
+export async function outcome(userId: string, ref: string): Promise<'sent' | 'held' | 'dropped'> {
+  const N = schema.notifications
+  const [row] = await db.select({ status: N.status, messageId: N.messageId }).from(N).where(and(eq(N.userId, userId), eq(N.ref, ref))).limit(1)
+  if (row?.messageId) return 'sent'
+  return row?.status === 'queued' ? 'held' : 'dropped'
+}
+
 /** Did a message about `ref` reach Telegram? Only a successful send stores a message id; dropped rows have none. */
 export async function delivered(userId: string, ref: string) {
   const N = schema.notifications
@@ -83,10 +91,11 @@ export async function flushOutbox(user: User, now = new Date()) {
   const [dayStart] = localDayRange(localDate(now, user.timezone), user.timezone)
   const N = schema.notifications
 
-  // Messages sent today per category. Repeats don't count, so a repeating reminder doesn't use up the allowance.
+  // Messages sent today per category. Repeats don't count, so a repeating reminder doesn't use up the allowance,
+  // and neither do test messages from You › Notifications.
   const sentToday = new Map<NotifyCategory, number>()
   for (const r of await db.select({ c: N.category, n: sql<number>`count(*)::int` }).from(N)
-    .where(and(eq(N.userId, user.id), gte(N.createdAt, dayStart), gte(N.sends, 1))).groupBy(N.category)) sentToday.set(r.c, r.n)
+    .where(and(eq(N.userId, user.id), gte(N.createdAt, dayStart), gte(N.sends, 1), sql`coalesce(${N.ref}, '') not like 'test:%'`)).groupBy(N.category)) sentToday.set(r.c, r.n)
   const setStatus = (id: string, status: Row['status'], extra: Partial<Row> = {}) => db.update(N).set({ status, ...extra }).where(eq(N.id, id))
 
   const queued = await db.select().from(N)

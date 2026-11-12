@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useEffect, useId, useTransition } from 'react'
+import { useActionState, useEffect, useId, useState, useTransition } from 'react'
 import { ArrowUpRight, Check, CircleCheck, LogIn } from 'lucide-react'
 import { CATEGORY } from '../tokens'
 import { connectIntegration } from '@/app/actions'
@@ -118,10 +118,13 @@ function SourceRow({ c }: { c: ConnectorItem }) {
 
 /** Up to four unconnected sources for the user's areas. A username-only one carries its own field; the rest open the connect dialog. */
 export function SuggestedForYou({ items, areas, manage }: { items: ConnectorItem[]; areas?: string[]; manage: Manage }) {
-  const picks = items
+  // Picked once when the page opens: a source connected here stays in place to show its "Connected" line,
+  // instead of the refresh removing it before the success state can draw.
+  const [ids] = useState(() => items
     .filter((c) => !c.connected && isData(c) && c.category && (!areas?.length || areas.includes(c.category)))
     .sort((a, b) => Number(isInline(b)) - Number(isInline(a)) || a.name.localeCompare(b.name))
-    .slice(0, 4)
+    .slice(0, 4).map((c) => c.id))
+  const picks = ids.flatMap((id) => items.filter((c) => c.id === id))
   if (!picks.length) return null
   return (
     <section aria-labelledby="suggested" className="flex flex-col gap-3">
@@ -141,7 +144,9 @@ export function SuggestedForYou({ items, areas, manage }: { items: ConnectorItem
             </div>
             <p className="line-clamp-2 text-small text-ink-2">{c.description}</p>
             <ul aria-label="Adds" className="flex flex-wrap gap-1.5">{c.provides.slice(0, 3).map((p) => <li key={p} className="inline-flex h-6 items-center rounded-full px-2 text-caption text-ink-2 shadow-[inset_0_0_0_1px_var(--hairline)]">{p}</li>)}</ul>
-            <div className="mt-auto">{isInline(c) ? <InlineUsernameConnect c={c} /> : manage(c, <Button variant="secondary" className="w-full">Connect</Button>)}</div>
+            <div className="mt-auto">{isInline(c) ? <InlineUsernameConnect c={c} /> : c.connected
+              ? <p role="status" className="flex min-h-10 items-center gap-2 text-small font-medium text-good"><CircleCheck className="size-4" strokeWidth={2} aria-hidden />Connected</p>
+              : manage(c, <Button variant="secondary" className="w-full">Connect</Button>)}</div>
           </li>
         ))}
       </ul>

@@ -20,13 +20,26 @@ export type ReviewItem = { goal: GoalViewData; review: ReviewData }
  * goal's state: Deciding, Up next or what was decided. Each choice saves on its own; "Decide later" leaves a goal
  * as it is and moves on. Reviews decided today stay in the list in their saved state.
  */
-export function ReviewFlow({ items, picker, today }: { items: ReviewItem[]; picker: GoalPickerData; today: string }) {
-  const [index, setIndex] = useState(() => Math.max(0, items.findIndex((i) => !i.review.decision)))
+export function ReviewFlow({ items: fresh, picker, today }: { items: ReviewItem[]; picker: GoalPickerData; today: string }) {
+  // The server lists undecided reviews first, so a saved decision moves its card. Keep the order the flow opened
+  // with, and track the current goal by review id, so a refresh never skips a goal or jumps back to a decided one.
+  const [order] = useState(() => fresh.map((i) => i.review.id))
+  const items = [
+    ...order.flatMap((id) => fresh.filter((i) => i.review.id === id)),
+    ...fresh.filter((i) => !order.includes(i.review.id)),
+  ]
+  const [currentId, setCurrentId] = useState(() => (fresh.find((i) => !i.review.decision) ?? fresh[0]).review.id)
   const [saved, setSaved] = useState<Record<string, DecisionId>>({})
   const decisionOf = (i: ReviewItem) => saved[i.review.id] ?? i.review.decision
-  const current = items[Math.min(index, items.length - 1)]
+  const index = Math.max(0, items.findIndex((i) => i.review.id === currentId))
+  const current = items[index]
   const allDone = items.every((i) => decisionOf(i))
-  const next = () => setIndex((i) => Math.min(items.length - 1, i + 1))
+  const setIndex = (n: number) => setCurrentId(items[n].review.id)
+  // Next: the first undecided goal after this one, else the next in the list.
+  const next = () => {
+    const after = items.slice(index + 1).find((i) => !decisionOf(i)) ?? items[Math.min(items.length - 1, index + 1)]
+    setCurrentId(after.review.id)
+  }
   const stateOf = (i: ReviewItem, n: number) => {
     const d = decisionOf(i)
     return d ? DECISION_DONE[d] : n === index ? 'Deciding' : 'Up next'
