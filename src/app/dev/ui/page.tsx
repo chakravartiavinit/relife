@@ -17,6 +17,7 @@ import { IlloGallery } from '@/ui/components/tour/illos'
 import { ToastGallery } from '@/ui/components/toast'
 import { CaptureGallery } from '@/ui/components/capture/capture-gallery'
 import { PeekGallery } from '@/ui/components/peek/peek-gallery'
+import { AreaGallery } from '@/ui/components/area/area-gallery'
 import { InstalledBeuiGallery, PeekLinkDemo, SegmentTabsDemo, SheetDemo, ShellDemo, TypeScale } from '@/ui/components/gallery-foundations'
 import { RecoveryPanel, SystemQuests } from '@/ui/components/system-quests'
 import type { RecoveryView } from '@/domain/recovery'
@@ -160,6 +161,10 @@ export default function UiGallery() {
       <Section title="Peek views">
         {/* The metric view draws EvilCharts, which read the clock, so it renders per request too. */}
         <Suspense fallback={<Skeleton className="h-[420px]" />}><PeekSamples /></Suspense>
+      </Section>
+
+      <Section title="Area template and Life hub">
+        <Suspense fallback={<Skeleton className="h-[420px]" />}><AreaGallery /></Suspense>
       </Section>
 
       <Section title="Shell pieces">

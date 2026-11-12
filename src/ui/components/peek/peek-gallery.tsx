@@ -1,5 +1,6 @@
 'use client'
 
+import type { PeekData } from '@/core/peek/types'
 import { PEEK_FIXTURES } from '@/ui/fixtures/peek'
 import { PeekView, peekHeading } from './peek-view'
 import { Failed, Gone } from './peek-host'
@@ -30,8 +31,10 @@ function Frame({ title, children, heading }: { title: string; heading?: { title:
 
 const LABEL: Record<string, string> = {
   metric: 'Metric (Sleep)', routine: 'Routine (Water)', goal: 'Goal', txn: 'Payment', merchant: 'Merchant (3× the usual)', insight: 'Coach note',
-  connector: 'Connection', person: 'Person (overdue)', quest: 'Quest', sync: 'Sync status (one failing)', brief: 'Summary (not yet)',
+  connector: 'Connection', person: 'Person (overdue)', quest: 'Quest', sync: 'Sync status (one failing)', brief: 'Summary',
 }
+
+const NO_BRIEF: PeekData = { type: 'brief', scope: 'wealth', line: null, facts: [], source: null, model: null }
 
 export function PeekGallery() {
   return (
@@ -39,6 +42,7 @@ export function PeekGallery() {
       {Object.values(PEEK_FIXTURES).map((d) => (
         <Frame key={d.type} title={LABEL[d.type]} heading={peekHeading(d)}><PeekView data={d} /></Frame>
       ))}
+      <Frame title="Summary (none written yet)" heading={peekHeading(NO_BRIEF)}><PeekView data={NO_BRIEF} /></Frame>
       <Frame title="Loading"><PeekSkeleton /></Frame>
       <Frame title="404: the item is gone"><Gone onClose={() => {}} /></Frame>
       <Frame title="Could not load"><Failed onRetry={() => {}} /></Frame>

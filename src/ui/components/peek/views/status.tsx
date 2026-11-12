@@ -5,6 +5,9 @@ import { CircleAlert, CircleCheck, CircleDashed, RefreshCw, Sparkles } from 'luc
 import type { BriefPeek, SyncPeek } from '@/core/peek/types'
 import { buttonClass } from '../../button'
 import { Badge } from '../../card'
+import { parsePeek } from '@/domain/peek'
+import { CATEGORY } from '../../../tokens'
+import { PeekLink } from '../peek-link'
 import { PeekFooter, PeekIcon, PeekNote, PeekOpen, PeekRow, PeekSection } from '../peek-parts'
 
 const TONE = { good: 'var(--good)', warn: 'var(--warn)', bad: 'var(--bad)' } as const
@@ -53,19 +56,22 @@ export function SyncPeekView({ data: d }: { data: SyncPeek }) {
   )
 }
 
+/** `relationships` is People on screen; `today` and `time` are not areas. */
+const scopeName = (scope: string) => (scope === 'today' ? 'Today' : scope === 'time' ? 'Time' : (CATEGORY[scope as keyof typeof CATEGORY]?.label ?? scope))
+
 export function briefHeading(d: BriefPeek) {
-  return { title: 'Why this summary', description: d.scope, icon: <PeekIcon icon={Sparkles} /> }
+  return { title: `Why this summary`, description: scopeName(d.scope), icon: <PeekIcon icon={Sparkles} /> }
 }
 
-/** The numbers behind a one-line summary. Until the briefs job exists, it says so and offers Coach. */
+/** The numbers behind a one-line summary; a number that has its own Peek links to it. With no summary written yet it says so and offers Coach. */
 export function BriefPeekView({ data: d }: { data: BriefPeek }) {
   if (!d.line) {
     return (
       <div>
         <PeekNote icon={Sparkles} label="No summary yet">
-          ReLife has not written a summary for {d.scope} yet. When it does, this shows the sentence, the numbers it came from and whether rules or a model wrote it.
+          ReLife has not written a summary for {scopeName(d.scope)} yet. It writes one once there is data to describe, and shows the numbers it came from here.
         </PeekNote>
-        <div className="mt-5"><Link href={`/coach?ask=${encodeURIComponent(`How is my ${d.scope} going?`)}`} className={buttonClass({ variant: 'secondary' })}>Ask Coach instead</Link></div>
+        <div className="mt-5"><Link href={`/coach?ask=${encodeURIComponent(`How is my ${scopeName(d.scope).toLowerCase()} going?`)}`} className={buttonClass({ variant: 'secondary' })}>Ask Coach instead</Link></div>
       </div>
     )
   }
@@ -73,7 +79,14 @@ export function BriefPeekView({ data: d }: { data: BriefPeek }) {
     <div>
       <PeekNote icon={Sparkles} label="Summary">{d.line}</PeekNote>
       <PeekSection label="Built from">
-        {d.facts.map((f) => <PeekRow key={f.label} label={f.label}>{f.value}</PeekRow>)}
+        {d.facts.map((f) => {
+          const to = parsePeek(f.peek)
+          return (
+            <PeekRow key={f.label} label={f.label}>
+              {to ? <PeekLink to={to} className="rounded-xs font-medium text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-pill">{f.value}</PeekLink> : f.value}
+            </PeekRow>
+          )
+        })}
       </PeekSection>
       <div className="mt-3 flex items-center gap-2 text-caption text-ink-3">Written by <Badge>{d.source === 'ai' ? (d.model ?? 'a model') : 'rules'}</Badge></div>
       <PeekFooter><PeekOpen href={`/coach?ask=${encodeURIComponent(`Why: ${d.line}`)}`}>Ask about this</PeekOpen></PeekFooter>
