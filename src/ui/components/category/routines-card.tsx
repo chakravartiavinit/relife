@@ -11,6 +11,7 @@ import { EmptyState } from '../empty'
 import { buttonClass } from '../button'
 import { AdherenceStrip } from './adherence-strip'
 import { RoutineArt } from '../routine-art'
+import { PeekLink } from '../peek/peek-link'
 import { loadAdherence, type ScheduleAdherence } from '@/core/adherence'
 
 /** Routines (and medicines) of one category with 14-day adherence. Server component. */
@@ -51,7 +52,7 @@ export function AdherenceRow({ r, actions }: { r: ScheduleAdherence; actions?: R
       </span>
       <div className="min-w-0 flex-1 basis-40 sm:basis-56">
         <div className="flex items-center gap-2">
-          <span className={`truncate text-[15px] ${s.active ? 'text-ink' : 'text-ink-3'}`}>{s.name}</span>
+          <PeekLink to={{ type: 'routine', id: s.id }} className={`truncate rounded-xs text-body font-medium hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill ${s.active ? 'text-ink' : 'text-ink-3'}`}>{s.name}</PeekLink>
           {!s.active ? <Badge>Paused</Badge> : null}
           {r.refillSoon ? <Badge color="var(--warn)">Refill soon</Badge> : null}
         </div>
