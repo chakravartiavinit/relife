@@ -75,7 +75,7 @@ async function History({ searchParams }: { searchParams: PageProps<'/coach/histo
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-1">
                       <Badge color={status.color}>{status.label}</Badge>
-                      <PeekLink to={{ type: 'insight', id: d.id }} className="inline-flex h-8 items-center rounded-sm px-1 text-small font-medium text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">Why?</PeekLink>
+                      <PeekLink to={{ type: 'insight', id: d.id }} className="inline-flex min-h-10 items-center rounded-sm px-1 text-small font-medium text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">Why?</PeekLink>
                     </div>
                   </li>
                 )

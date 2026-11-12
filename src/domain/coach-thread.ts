@@ -1,6 +1,8 @@
 // The Ask conversation as data: what goes back to the model for a follow-up, what an answer was built from, how long
 // messages are kept. Pure: the table is in src/db/schema.ts, the reads and writes in src/core/coach-messages.ts.
 
+import { peekParam } from './peek'
+
 /** What a Coach answer was built from: a label for the chip and, when the number has one, the Peek that opens it. */
 export type CoachSource = { label: string; peek?: string }
 
@@ -78,13 +80,13 @@ export function sourcesFromSteps(steps: ToolStep[], limit = 6): CoachSource[] {
       if (r.toolName === 'get_metric') {
         const slug = text(input.slug)
         const row = Array.isArray(r.output) ? asRecord(r.output[0]) : {}
-        source = slug ? { label: join(text(row.name) ?? slug, range), peek: `metric:${slug}` } : { label: join('Trackers', range) }
+        source = slug ? { label: join(text(row.name) ?? slug, range), peek: peekParam({ type: 'metric', id: slug }) } : { label: join('Trackers', range) }
       } else if (r.toolName === 'spend_by') {
         const by = input.by === 'merchant' ? 'merchant' : 'category'
         const filter = text(input.filter)
         const groups = Array.isArray(asRecord(r.output).groups) ? (asRecord(r.output).groups as unknown[]) : []
         const found = by === 'merchant' && filter ? groups.map((g) => text(asRecord(g).merchant)).find((m) => m?.toLowerCase().includes(filter.toLowerCase())) : undefined
-        source = { label: join(found ?? (filter ? `Spending on ${filter}` : `Spending by ${by}`), range), peek: found ? `merchant:${found}` : undefined }
+        source = { label: join(found ?? (filter ? `Spending on ${filter}` : `Spending by ${by}`), range), peek: found ? peekParam({ type: 'merchant', id: found }) : undefined }
       } else if (LABEL[r.toolName]) {
         source = { label: join(LABEL[r.toolName], r.toolName === 'quest_history' || r.toolName === 'recent_trades' ? range : undefined) }
       }

@@ -28,7 +28,7 @@ export function ClearedToday({ items, timezone }: { items: ClearedItem[]; timezo
     <section aria-labelledby="cleared-h" className="px-5 pb-5">
       <div className="flex items-center justify-between">
         <h3 id="cleared-h" className="font-mono text-label uppercase text-ink-3">Cleared today</h3>
-        <Link href="/coach/history" className="inline-flex h-8 items-center text-small font-medium text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">All history</Link>
+        <Link href="/coach/history" className="inline-flex min-h-10 items-center text-small font-medium text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">All history</Link>
       </div>
       <ul className="mt-2 flex flex-col divide-y divide-divider border-t border-divider">
         {items.map((c) => {

@@ -62,6 +62,9 @@ async function writeQuickLog(user: User, q: QuickLog, now: Date, date: string, e
 export async function undoQuickLogWrite(user: User, u: QuickLogUndo) {
   if (u.kind === 'entry') {
     await persist(user, { kind: 'entry', tracker: u.slug, date: u.date, value: -u.value, source: 'manual', mode: 'add' })
+    // A day that is back to 0 was never logged: drop the row so it does not count as a logged day.
+    const [t] = await db.select({ id: schema.trackers.id }).from(schema.trackers).where(and(eq(schema.trackers.userId, user.id), eq(schema.trackers.slug, u.slug)))
+    if (t) await db.delete(schema.entries).where(and(eq(schema.entries.userId, user.id), eq(schema.entries.trackerId, t.id), eq(schema.entries.localDate, u.date), eq(schema.entries.source, 'manual'), eq(schema.entries.value, 0)))
   } else if (u.kind === 'set') {
     if (u.prev !== null) {
       await persist(user, { kind: 'entry', tracker: u.slug, date: u.date, value: u.prev, source: 'manual', mode: 'set' })

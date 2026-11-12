@@ -42,6 +42,8 @@ async function Coach({ searchParams }: { searchParams: PageProps<'/coach'>['sear
 
   return (
     <CoachPanes
+      // A new ?ask= (Capture's hand-off while Coach is already open) remounts the panes, so the prefill and pane follow the URL.
+      key={initial ?? ''}
       // ?ask= (Capture's ⌘↵ hand-off) forces the Ask pane on a phone, as does ?view=ask.
       initial={initial !== undefined || sp.view === 'ask' ? 'ask' : 'needs'}
       count={items.length}

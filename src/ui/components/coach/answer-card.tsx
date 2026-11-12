@@ -68,7 +68,7 @@ export function AnswerCard({ text, sources = [], error, onRetry, footer, classNa
         <SourceChips sources={sources} className="min-w-0" />
         <button
           type="button" aria-expanded={why} aria-controls={why ? whyId : undefined} onClick={() => setWhy((v) => !v)}
-          className="ml-auto inline-flex h-8 items-center gap-0.5 rounded-sm px-1.5 text-small font-medium text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill"
+          className="ml-auto inline-flex min-h-10 items-center gap-0.5 rounded-sm px-1.5 text-small font-medium text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill"
         >
           Why?<ChevronDown className={cn('size-3.5 transition-[rotate] duration-150 ease-out-quint', why && 'rotate-180')} strokeWidth={1.5} aria-hidden />
         </button>

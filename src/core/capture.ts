@@ -1,3 +1,4 @@
+import { aiEnabled } from '@/ai'
 import { and, desc, eq, gte, isNull, lt } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { bucketOf, rankCaptureSuggestions, type CapturePayload } from '@/domain/capture'
@@ -69,5 +70,6 @@ export async function loadCapture(user: User, now = new Date()): Promise<Capture
     trackers,
     moodToday: mood[0]?.days.get(plan.today) ?? null,
     spend,
+    ai: aiEnabled('chat'),
   }
 }

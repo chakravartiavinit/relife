@@ -262,7 +262,7 @@ export async function archiveTracker(id: string) {
 }
 
 /** What `undoRecategorize` needs to put a merchant back: the payments that were waiting, and whether a rule was written. */
-export type RecategorizeUndo = { ids: string[]; pattern: string | null }
+export type RecategorizeUndo = { ids: string[]; pattern: string | null; prevRule?: string | null }
 
 /**
  * Re-categorize a transaction and, with `remember`, write the rule for that merchant / UPI id and move its other
@@ -286,6 +286,9 @@ export async function recategorize(transactionId: string, category: string, reme
   await db.update(schema.transactions).set({ category })
     .where(and(eq(schema.transactions.id, transactionId), eq(schema.transactions.userId, user.id)))
   if (remember && pattern) {
+    const [prev] = await db.select({ category: schema.merchantRules.category }).from(schema.merchantRules)
+      .where(and(eq(schema.merchantRules.userId, user.id), eq(schema.merchantRules.pattern, pattern)))
+    undo.prevRule = prev?.category ?? null
     await db.insert(schema.merchantRules).values({ userId: user.id, pattern, merchant: before.merchant ?? pattern, category })
       .onConflictDoUpdate({ target: [schema.merchantRules.userId, schema.merchantRules.pattern], set: { category } })
     // Apply to other transactions from the same merchant.
@@ -296,11 +299,13 @@ export async function recategorize(transactionId: string, category: string, reme
   return undo
 }
 
-/** Undo a `recategorize`: the rule it wrote goes, and the payments that were waiting go back to waiting. */
+/** Undo a `recategorize`: the rule it wrote goes back to what it was (or goes), and the waiting payments wait again. */
 export async function undoRecategorize(undo: RecategorizeUndo) {
-  const parsed = z.object({ ids: z.array(z.string().uuid()).max(5000), pattern: z.string().max(200).nullable() }).parse(undo)
+  const parsed = z.object({ ids: z.array(z.string().uuid()).max(5000), pattern: z.string().max(200).nullable(), prevRule: z.string().max(60).nullable().optional() }).parse(undo)
   const user = await getUser()
-  if (parsed.pattern) await db.delete(schema.merchantRules).where(and(eq(schema.merchantRules.userId, user.id), eq(schema.merchantRules.pattern, parsed.pattern)))
+  const rule = and(eq(schema.merchantRules.userId, user.id), eq(schema.merchantRules.pattern, parsed.pattern ?? ''))
+  if (parsed.pattern && parsed.prevRule) await db.update(schema.merchantRules).set({ category: parsed.prevRule }).where(rule)
+  else if (parsed.pattern) await db.delete(schema.merchantRules).where(rule)
   if (parsed.ids.length) {
     await db.update(schema.transactions).set({ category: 'Uncategorized' })
       .where(and(eq(schema.transactions.userId, user.id), inArray(schema.transactions.id, parsed.ids)))
@@ -742,7 +747,8 @@ export async function dataVersion() {
     (select max(updated_at) from insights where user_id = ${user.id}),
     (select max(created_at) from system_quests where user_id = ${user.id}),
     (select max(created_at) from xp_events where user_id = ${user.id}),
-    (select max(updated_at) from briefs where user_id = ${user.id})
+    (select max(updated_at) from briefs where user_id = ${user.id}),
+    (select max(created_at) from coach_messages where user_id = ${user.id})
   )::text as v`)
   return r?.v ?? null
 }

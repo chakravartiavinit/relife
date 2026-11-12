@@ -98,4 +98,6 @@ export type CapturePayload = {
   moodToday: number | null
   /** Manual spends the user repeats, most often first: one tap logs the usual amount again. */
   spend: { note: string; amount: number; currency: string }[]
+  /** A chat model is connected. Without one, Ask rows point at Connections instead of Coach. */
+  ai: boolean
 }

@@ -47,7 +47,7 @@ const when = (at: string, c: RowCtx) => {
 /** "Why?" opens what the card was built from. */
 function Why({ id }: { id: string }) {
   return (
-    <PeekLink to={{ type: 'insight', id }} className="inline-flex h-8 items-center rounded-sm px-2 text-small font-medium text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">Why?</PeekLink>
+    <PeekLink to={{ type: 'insight', id }} className="inline-flex min-h-10 items-center rounded-sm px-2 text-small font-medium text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">Why?</PeekLink>
   )
 }
 
@@ -210,11 +210,12 @@ function CategoriseRow({ item, ctx }: { item: Extract<NeedsYouItem, { kind: 'cat
   const top = ctx.categories.slice(0, CHIPS)
   const more = ctx.categories.slice(CHIPS)
   const file = (category: string) => {
-    const saved: { undo?: Awaited<ReturnType<typeof recategorize>> } = {}
+    // Undo waits for the filing to land, so a fast Undo cannot run before there is anything to take back.
+    const saved: { done?: ReturnType<typeof recategorize> } = {}
     ctx.act(
       item.id, `${item.merchant} filed under ${category}${remember ? ' · remembered' : ''}`,
-      async () => { saved.undo = await recategorize(item.sampleTxnId, category, remember) },
-      async () => { if (saved.undo) await undoRecategorize(saved.undo) },
+      async () => { saved.done = recategorize(item.sampleTxnId, category, remember); await saved.done },
+      async () => { if (saved.done) await undoRecategorize(await saved.done) },
     )
   }
   return (

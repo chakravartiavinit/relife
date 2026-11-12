@@ -32,7 +32,15 @@ export function NeedsYouList({ items, timezone, today, categories, goal }: Pick<
 
   const undo = async (id: string, fn: () => Promise<unknown>) => {
     setResolved((m) => { const r = m.get(id); return r ? new Map(m).set(id, { ...r, undoing: true }) : m })
-    try { await fn(); changed(); drop(id) } catch { drop(id); toast.error('Couldn’t undo that', 'Refresh and try again.') }
+    try {
+      const res = await fn()
+      // restoreInsight answers { ok: false } after its 10-minute window: the item stays handled, so keep the row.
+      if (res && typeof res === 'object' && 'ok' in res && !res.ok) throw new Error('not restored')
+      changed(); drop(id)
+    } catch {
+      setResolved((m) => { const r = m.get(id); return r ? new Map(m).set(id, { ...r, undoing: false }) : m })
+      toast.error('Too late to undo', 'It stays handled. Find it in History.')
+    }
   }
 
   const ctx: RowCtx = {
