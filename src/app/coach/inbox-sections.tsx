@@ -55,7 +55,8 @@ async function Inbox() {
   const waiting = failed.filter((e) => groupOf(e.status, e.error, orphan(e)) === 'waiting')
   const skipped = [...ignored, ...failed.filter(orphan)].sort((a, b) => b.at.getTime() - a.at.getTime())
   const skippedCount = count('ignored') + failed.filter(orphan).length
-  const needs = unread.length + uncategorized.length
+  // Same rule as the shell badge: uncategorised payments count once per merchant (or UPI id).
+  const needs = unread.length + new Set(uncategorized.map((t) => t.upiId ?? t.merchant ?? t.id)).size
 
   return (
     <div className="flex flex-col gap-6">

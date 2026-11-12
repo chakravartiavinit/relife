@@ -51,7 +51,7 @@ function AreaLink({ href, label, blurb, color, icon }: { href: string; label: st
   return (
     <Link
       href={href}
-      className="group flex min-h-[88px] items-center gap-4 rounded-[20px] bg-surface p-4 shadow-1 transition-[box-shadow,transform] duration-150 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-2 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill"
+      className="group flex min-h-[88px] items-center gap-4 rounded-lg bg-surface p-4 shadow-1 transition-[box-shadow,transform] duration-150 ease-out-quint hover:shadow-2 active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill"
     >
       <CapsuleIcon size="sm" color={color} icon={icon} />
       <span className="min-w-0 flex-1">

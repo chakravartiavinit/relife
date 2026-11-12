@@ -31,7 +31,7 @@ export const loadShellStatus = cache(async (user: User): Promise<ShellStatus> =>
            and (kind <> 'nudge' or created_at > now() - make_interval(days => ${NUDGE_TTL_DAYS}))) as decisions,
         (select count(*)::int from raw_events where user_id = ${user.id} and status = 'failed'
            and (error is null or error not in (${waiting}))) as unread,
-        (select count(distinct coalesce(upi_id, merchant))::int from transactions
+        (select count(distinct coalesce(upi_id, merchant, id::text))::int from transactions
            where user_id = ${user.id} and category = 'Uncategorized') as merchants,
         (select at from heartbeats where name = 'worker') as heartbeat,
         (select coalesce(array_agg(connector_id order by connector_id), '{}') from connections

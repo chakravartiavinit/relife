@@ -217,7 +217,7 @@ function AreaLinksView({ areas, today, path }: { areas?: string[]; today?: Recor
         </div>
       </div>
       {/* Rail: the same destinations as dots under the Life icon, each a link (name on hover). */}
-      <div className="mb-1 hidden flex-col items-center gap-1 pt-1 rail:flex">
+      <div className="mb-1 hidden flex-col items-center pt-1 rail:flex">
         {kids.map((k) => (
           <Link
             key={k.href}
@@ -225,7 +225,7 @@ function AreaLinksView({ areas, today, path }: { areas?: string[]; today?: Recor
             title={k.label}
             aria-current={path === k.href ? 'page' : undefined}
             className={cn(
-              'relative grid h-6 w-10 place-items-center rounded-sm transition-[background-color] duration-150 ease-out-quint after:absolute after:inset-x-0 after:-inset-y-0.5 after:content-[""] focus-visible:outline-2 focus-visible:outline-pill',
+              'grid size-10 place-items-center rounded-md transition-[background-color] duration-150 ease-out-quint focus-visible:outline-2 focus-visible:outline-pill',
               isActive(path, k.href) ? 'bg-surface shadow-1' : 'hover:bg-surface-2',
             )}
           >

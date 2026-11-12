@@ -69,8 +69,8 @@ function* sources(dir: string): Generator<string> {
 }
 
 test('links in src/ do not point at old paths', () => {
-  // href="/goals", href: '/goals/x', href={`/trackers/${slug}`}, push('/habits?tab=trackers'), redirect('/inbox')
-  const link = /(?:href\s*[=:]\s*\{?\s*|\b(?:push|replace|redirect)\(\s*)(["'`])(\/[^"'`]*)\1/g
+  // href="/goals", href: '/goals/x', href={`/trackers/${slug}`}, push('/habits?tab=trackers'), redirect('/inbox'), new URL(`/connectors`)
+  const link = /(?:href\s*[=:]\s*\{?\s*|\b(?:push|replace|redirect)\(\s*|\bnew URL\(\s*)(["'`])(\/[^"'`]*)\1/g
   const hits: string[] = []
   for (const f of sources('src')) {
     for (const m of readFileSync(f, 'utf8').matchAll(link)) {

@@ -12,7 +12,7 @@ export async function GET(req: Request, ctx: RouteContext<'/api/oauth/[id]/start
   if (!c?.oauth) return new Response('Unknown connector', { status: 404 })
   await getUser() // loads saved keys
   const origin = requestOrigin(req.headers)
-  const back = (msg: string) => Response.redirect(new URL(`/connectors?oauth=${id}&error=${encodeURIComponent(msg)}`, origin), 303)
+  const back = (msg: string) => Response.redirect(new URL(`/you/connections?oauth=${id}&error=${encodeURIComponent(msg)}`, origin), 303)
   if (!env(c.oauth.clientIdEnv) || !env(c.oauth.clientSecretEnv)) return back('Add the client ID and secret, then press Connect.')
   const redirectUri = new URL(callbackPath(id), origin).toString()
   const state = randomBytes(16).toString('hex')
