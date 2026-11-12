@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logError } from '@/lib/log'
 import { leaveWaitlist } from '@/lib/waitlist'
 import { back, readToken } from '../_token'
 
@@ -10,7 +11,7 @@ export async function POST(req: Request) {
     if (isForm) return back(req, `/w/${encodeURIComponent(token)}?left=1`)
     return NextResponse.json({ left })
   } catch (e) {
-    console.error('leave failed', e)
+    logError('leave failed', e)
     return isForm ? back(req, `/w/${encodeURIComponent(token)}`) : NextResponse.json({ error: 'server' }, { status: 500 })
   }
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logError } from '@/lib/log'
 import { confirmToken } from '@/lib/waitlist'
 import { back, readToken } from '../_token'
 
@@ -10,7 +11,7 @@ export async function POST(req: Request) {
     if (isForm) return back(req, `/w/${encodeURIComponent(token)}`)
     return status ? NextResponse.json({ status: status.status, position: status.position }) : NextResponse.json({ error: 'not_found' }, { status: 404 })
   } catch (e) {
-    console.error('confirm failed', e)
+    logError('confirm failed', e)
     return isForm ? back(req, `/w/${encodeURIComponent(token)}`) : NextResponse.json({ error: 'server' }, { status: 500 })
   }
 }

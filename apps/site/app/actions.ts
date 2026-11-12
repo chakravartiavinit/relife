@@ -1,6 +1,7 @@
 'use server'
 
 import { headers } from 'next/headers'
+import { logError } from '@/lib/log'
 import { joinWaitlist } from '@/lib/waitlist'
 import { joinSchema, readJoinForm } from '@/lib/validation'
 
@@ -9,6 +10,10 @@ export type JoinState = {
   email?: string
 }
 
+// The client IP comes from x-forwarded-for / x-real-ip. That is only trustworthy on Vercel, which overwrites both
+// headers at its edge. Behind any other host or proxy these are client-controlled: a visitor could pick their own
+// IP and walk around the rate limits and the same-IP referral check. Set them from the real peer address before
+// moving the site off Vercel.
 async function clientIp() {
   const h = await headers()
   return h.get('x-forwarded-for')?.split(',')[0]?.trim() || h.get('x-real-ip') || 'unknown'
@@ -36,7 +41,7 @@ export async function joinAction(_prev: JoinState, fd: FormData): Promise<JoinSt
     const result = await joinWaitlist(parsed.data, ip)
     return result === 'sent' ? { status: 'done', email } : { status: result, email }
   } catch (e) {
-    console.error('joinWaitlist failed', e)
+    logError('joinWaitlist failed', e)
     return { status: 'error', email }
   }
 }

@@ -16,7 +16,8 @@ export function newRefCode(): string {
 export function secret(): string {
   const s = process.env.WAITLIST_SECRET
   if (s) return s
-  if (process.env.NODE_ENV === 'production' && !process.env.SITE_ALLOW_UNREADY_BRAND) throw new Error('WAITLIST_SECRET is not set')
+  // Required in every production run, including a local preview build (SITE_ALLOW_UNREADY_BRAND does not relax it).
+  if (process.env.NODE_ENV === 'production') throw new Error('WAITLIST_SECRET is not set')
   return 'dev-only-waitlist-secret'
 }
 
