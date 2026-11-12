@@ -16,6 +16,7 @@ import { PositionCard } from '@/ui/components/wealth/position-card'
 import { IlloGallery } from '@/ui/components/tour/illos'
 import { ToastGallery } from '@/ui/components/toast'
 import { CaptureGallery } from '@/ui/components/capture/capture-gallery'
+import { PeekGallery } from '@/ui/components/peek/peek-gallery'
 import { InstalledBeuiGallery, PeekLinkDemo, SegmentTabsDemo, SheetDemo, ShellDemo, TypeScale } from '@/ui/components/gallery-foundations'
 import { RecoveryPanel, SystemQuests } from '@/ui/components/system-quests'
 import type { RecoveryView } from '@/domain/recovery'
@@ -154,6 +155,10 @@ export default function UiGallery() {
 
       <Section title="Peek link">
         <PeekLinkDemo />
+      </Section>
+
+      <Section title="Peek views">
+        <PeekGallery />
       </Section>
 
       <Section title="Shell pieces">

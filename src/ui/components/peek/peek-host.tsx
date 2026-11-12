@@ -52,7 +52,7 @@ const TYPE_LABEL: Record<PeekType, string> = {
   metric: 'Metric', routine: 'Routine', goal: 'Goal', txn: 'Payment', merchant: 'Merchant', insight: 'Coach', connector: 'Connection', person: 'Person', quest: 'Quest', sync: 'Sync status', brief: 'Summary',
 }
 
-function Gone({ onClose }: { onClose: () => void }) {
+export function Gone({ onClose }: { onClose: () => void }) {
   return (
     <div className="flex flex-col items-center gap-3 px-4 py-12 text-center">
       <CircleSlash className="size-6 text-ink-3" strokeWidth={1.5} aria-hidden />
@@ -63,7 +63,7 @@ function Gone({ onClose }: { onClose: () => void }) {
   )
 }
 
-function Failed({ onRetry }: { onRetry: () => void }) {
+export function Failed({ onRetry }: { onRetry: () => void }) {
   return (
     <div role="alert" className="flex flex-col items-center gap-3 px-4 py-12 text-center">
       <p className="text-heading text-ink">Couldn’t load this</p>
