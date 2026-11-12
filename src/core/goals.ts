@@ -165,6 +165,16 @@ export async function loadGoalsPage(user: User, now = new Date()) {
   }
 }
 
+/** What the goal form needs to open from a draft anywhere (Coach's Needs you): the picker, today and how many goals are active. */
+export async function goalFormContext(user: User, now = new Date()) {
+  const today = localDate(now, user.timezone)
+  const [picker, [active]] = await Promise.all([
+    goalPicker(user, today),
+    db.select({ n: sql<number>`count(*)::int` }).from(G).where(and(eq(G.userId, user.id), eq(G.status, 'active'))),
+  ])
+  return { picker, today, activeCount: active?.n ?? 0 }
+}
+
 /** How many active goals wait on a weekly-review decision. Two light queries, for the dot on the Plan › Review tab. */
 export async function dueReviewCount(user: User) {
   const [active, reviews] = await Promise.all([

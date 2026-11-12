@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { ChartNoAxesColumn, ChevronDown, RotateCcw, Sparkles } from 'lucide-react'
 import { parsePeek } from '@/domain/peek'
 import type { CoachSource } from '@/domain/coach-thread'
@@ -41,6 +41,7 @@ export function AnswerCard({ text, sources = [], error, onRetry, footer, classNa
   text: string; sources?: CoachSource[]; error?: boolean; onRetry?: () => void; footer?: React.ReactNode; className?: string
 }) {
   const [why, setWhy] = useState(false)
+  const whyId = useId()
   if (error) {
     return (
       <div role="alert" className={cn('w-full rounded-lg bg-surface p-4 shadow-1', className)}>
@@ -56,7 +57,7 @@ export function AnswerCard({ text, sources = [], error, onRetry, footer, classNa
         {text.split(/\n{2,}/).map((p, i) => <p key={i} className="whitespace-pre-wrap text-pretty [overflow-wrap:anywhere]">{p}</p>)}
       </div>
       {why ? (
-        <div id="how-i-got-this" className="mt-3 rounded-md bg-surface-2 px-3 py-2.5 text-small text-ink-2 text-pretty">
+        <div id={whyId} className="mt-3 rounded-md bg-surface-2 px-3 py-2.5 text-small text-ink-2 text-pretty">
           <span className="font-semibold text-ink">How I got this: </span>
           {sources.length
             ? `I read ${sources.map((s) => s.label).join(', ')} through ReLife’s data tools, so the numbers come from your records, not from memory. Missing days count as missing, not zero.`
@@ -66,7 +67,7 @@ export function AnswerCard({ text, sources = [], error, onRetry, footer, classNa
       <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
         <SourceChips sources={sources} className="min-w-0" />
         <button
-          type="button" aria-expanded={why} aria-controls={why ? 'how-i-got-this' : undefined} onClick={() => setWhy((v) => !v)}
+          type="button" aria-expanded={why} aria-controls={why ? whyId : undefined} onClick={() => setWhy((v) => !v)}
           className="ml-auto inline-flex h-8 items-center gap-0.5 rounded-sm px-1.5 text-small font-medium text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill"
         >
           Why?<ChevronDown className={cn('size-3.5 transition-[rotate] duration-150 ease-out-quint', why && 'rotate-180')} strokeWidth={1.5} aria-hidden />
