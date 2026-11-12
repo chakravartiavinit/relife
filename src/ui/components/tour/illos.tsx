@@ -5,7 +5,7 @@
 // They are drawn for a 304px plate, where one unit is 0.42px: a few large shapes, text at 24 units or more
 // (10px on screen), and at most a handful of words. The words under the picture do the explaining.
 import { Bell, BellOff, Check, Flame, Moon, Search, Smartphone } from 'lucide-react'
-import { appear, Art, CapsuleMark, Chest, Chip, Cursor, Icon, Illo, Logo, Meter, Mono, Panel, pressAt, timeline, Txt, type Stop } from './illo-kit'
+import { appear, Art, beats, Beats, CapsuleMark, Chest, Chip, Cursor, Icon, Illo, Logo, Meter, Mono, Panel, pressAt, timeline, Txt, type Stop } from './illo-kit'
 
 // ── Small timeline recipes, all in seconds ───────────────────────────────────────────────────────────
 const SHOW = 'opacity:1;transform:translateY(0)'
@@ -100,6 +100,7 @@ const W = timeline('welcome', 5.2, {
   card: { end: 'transform:scale(1)', origin: '50% 50%', stops: pulse(3.05, 1.025) },
   rays: sparkle(3.05),
 })
+export const WELCOME_BEATS = beats('welcome', 5.2, 4.7, [[0.2, 'You check off'], [1.0, 'Apps sync'], [3.05, 'You level up']])
 
 export function IlloWelcome() {
   return (
@@ -205,6 +206,7 @@ const T = timeline('today', 5.6, {
   tick2: tickIn(3.45),
   stamp: { end: 'opacity:1;transform:scale(1)', origin: '50% 50%', stops: [[3.55, 'opacity:0;transform:scale(1.35)', 'out'], [3.8, 'opacity:1;transform:scale(1)'], [HOLD, 'opacity:1;transform:scale(1)', 'quint'], [HOLD + 0.3, 'opacity:0;transform:scale(1)']] },
 })
+export const TODAY_BEATS = beats('today', 5.6, HOLD, [[0.45, 'Tick what’s due'], [1.15, 'Each pays XP'], [2.45, 'Quest clears']])
 
 export function IlloToday() {
   const y = QUEST_Y
@@ -271,6 +273,7 @@ const K = timeline('log', 5.4, {
   tile: { end: TILE_IN, origin: '50% 50%', stops: [[2.8, 'opacity:0;transform:translateY(16px) scale(.94)', 'out'], [3.15, TILE_IN], [LOG_HOLD, TILE_IN, 'quint'], [LOG_HOLD + 0.3, 'opacity:0;transform:translateY(0) scale(1)']] },
   isNew: { end: 'opacity:1;transform:scale(1)', origin: '50% 50%', stops: appear(3.25, LOG_HOLD) },
 })
+export const LOG_BEATS = beats('log', 5.4, LOG_HOLD, [[0.25, 'Press ⌘K'], [1.0, 'Type “coffee 2”'], [2.55, 'New tracker']])
 
 const TRACKERS = [
   { x: 60, name: 'Water', value: '1.25 L', art: '/routines/water.png', tint: 'var(--pill)' },
@@ -336,7 +339,8 @@ export function IlloLog() {
 // ── 3 · Progress: a check-off, your streak and a chest each feed the XP bar until you level up ────────
 const TOKENS = [
   { cx: 145, title: 'Check-off', sub: '+9 XP', ink: 'var(--cat-wealth)', lit: 0.4, orb: 0.8, dx: 306, label: '+9', tone: 'xp' as const },
-  { cx: 360, title: 'Streak', sub: '×1.3', ink: 'var(--pill)', lit: 1.5, orb: 1.9, dx: 121, label: '×1.3', tone: 'pill' as const },
+  // The streak multiplies the check-off (9 × 1.3 ≈ 12), so what it adds to the bar is the extra 3.
+  { cx: 360, title: 'Streak', sub: '×1.3 XP', ink: 'var(--pill)', lit: 1.5, orb: 1.9, dx: 121, label: '+3', tone: 'pill' as const },
   { cx: 575, title: 'Chest', sub: '+50 XP', ink: 'var(--cat-wealth)', lit: 2.6, orb: 3.15, dx: 65, label: '+50', tone: 'xp' as const },
 ]
 const progLv = swap(3.95, HOLD)
@@ -363,10 +367,11 @@ const P = timeline('progress', 5.6, {
   card: { end: 'transform:scale(1)', origin: '50% 50%', stops: pulse(3.95, 1.02) },
   up: { end: 'opacity:1;transform:scale(1)', origin: '50% 50%', stops: appear(4.05, HOLD) },
 })
+export const PROGRESS_BEATS = beats('progress', 5.6, HOLD, [[0.4, 'Check off'], [1.5, 'Streak'], [2.6, 'Chest'], [3.95, 'Level up']])
 
 export function IlloProgress() {
   return (
-    <Illo label="A check-off earns 9 XP, your streak multiplies it by 1.3, and an opened chest adds 50 more. Each one flies into the XP bar, which fills, and you go from level 4 to level 5." css={P.css}>
+    <Illo label="A check-off earns 9 XP, your streak adds 3 more on top, and an opened chest adds 50. Each one flies into the XP bar, which fills, and you go from level 4 to level 5." css={P.css}>
       <g className={P.c.card}>
         <Panel x={50} y={28} w={620} h={176} r={28} />
         <CapsuleMark cx={112} cy={116} w={50} h={80} stroke={4} />
@@ -404,11 +409,12 @@ export function IlloProgress() {
 const SIX = ['health', 'mind', 'skills', 'wealth', 'hobbies', 'relationships'].map((a, i) => ({ color: `var(--cat-${a})`, cx: 95 + i * 106 }))
 const CHART_X = (i: number) => 372 + i * 44
 const BARS = [70, 110, 60, 140, 96, 150, 120]
-// Three pages, one after another. `at` = which capsule; `in`/`out` = when its page shows.
+// Three pages, one after another. `at` = which capsule; `in`/`out` = when its page shows. Each page starts to
+// leave as the next arrives, so they cross-fade and the card is never empty; Health comes back as Wealth leaves.
 const PAGES = [
-  { at: 0, in: 0, out: 1.5, name: 'Health', lv: 'Lv 20', value: '7.2h', sub: 'Sleep, 7-day average', color: 'var(--cat-health)', art: '/routines/heart.png', line: [356, 336, 346, 312, 318, 290, 272] },
-  { at: 2, in: 1.8, out: 3.3, name: 'Skills', lv: 'Lv 16', value: '9', sub: 'Commits this week', color: 'var(--cat-skills)', art: '/routines/learn.png' },
-  { at: 3, in: 3.6, out: 5.05, name: 'Wealth', lv: 'Lv 7', value: '₹2,073', sub: 'Spent today', color: 'var(--cat-wealth)', art: '/routines/money.png', line: [282, 300, 276, 312, 334, 322, 356] },
+  { at: 0, in: 0, out: 1.75, name: 'Health', lv: 'Lv 20', value: '7.2h', sub: 'Sleep, 7-day average', color: 'var(--cat-health)', art: '/routines/heart.png', line: [356, 336, 346, 312, 318, 290, 272] },
+  { at: 2, in: 1.8, out: 3.55, name: 'Skills', lv: 'Lv 16', value: '9', sub: 'Commits this week', color: 'var(--cat-skills)', art: '/routines/learn.png' },
+  { at: 3, in: 3.6, out: 5.15, name: 'Wealth', lv: 'Lv 7', value: '₹2,073', sub: 'Spent today', color: 'var(--cat-wealth)', art: '/routines/money.png', line: [282, 300, 276, 312, 334, 322, 356] },
 ]
 const A = timeline('areas', 5.4, {
   // The highlight glides from capsule to capsule (on-screen movement, so ease-in-out) and is home again by the loop.
@@ -420,7 +426,13 @@ const A = timeline('areas', 5.4, {
   cap2: { end: 'transform:scale(1)', origin: '50% 50%', stops: [[1.75, 'transform:scale(1)', 'out'], [2.05, 'transform:scale(1.12)'], [3.3, 'transform:scale(1.12)', 'quint'], [3.6, 'transform:scale(1)']] },
   cap3: { end: 'transform:scale(1)', origin: '50% 50%', stops: [[3.55, 'transform:scale(1)', 'out'], [3.85, 'transform:scale(1.12)'], [5.0, 'transform:scale(1.12)', 'quint'], [5.3, 'transform:scale(1)']] },
   ...Object.fromEntries(PAGES.flatMap((p, i) => [
-    [`page${i}`, { end: i ? 'opacity:0' : SHOW, stops: [[p.in, 'opacity:0;transform:translateY(10px)', 'out'], [p.in + 0.3, SHOW], [p.out, SHOW, 'quint'], [p.out + 0.2, 'opacity:0;transform:translateY(0)']] }],
+    [`page${i}`, {
+      end: i ? 'opacity:0' : SHOW,
+      stops: i
+        ? [[p.in, 'opacity:0;transform:translateY(10px)', 'out'], [p.in + 0.3, SHOW], [p.out, SHOW, 'quint'], [p.out + 0.2, 'opacity:0;transform:translateY(0)']]
+        // The first page is already up when the loop starts, and rises back in as the last one leaves.
+        : [[0, SHOW], [p.out, SHOW, 'quint'], [p.out + 0.2, 'opacity:0;transform:translateY(0)'], [PAGES[2].out, 'opacity:0;transform:translateY(10px)', 'out'], [5.4, SHOW]],
+    }],
     // Its trend draws itself in, in the area's colour.
     [`line${i}`, { end: i ? 'opacity:0;stroke-dashoffset:1' : 'opacity:1;stroke-dashoffset:0', stops: [[p.in + 0.1, 'opacity:1;stroke-dashoffset:1', 'out'], [p.in + 0.8, 'opacity:1;stroke-dashoffset:0'], [p.out, 'opacity:1;stroke-dashoffset:0', 'quint'], [p.out + 0.2, 'opacity:0;stroke-dashoffset:0'], [p.out + 0.25, 'opacity:0;stroke-dashoffset:1']] }],
     [`wash${i}`, { end: i ? 'opacity:0' : 'opacity:1', stops: [[p.in + 0.5, 'opacity:0', 'out'], [p.in + 0.9, 'opacity:1'], [p.out, 'opacity:1', 'quint'], [p.out + 0.2, 'opacity:0']] }],
@@ -431,6 +443,8 @@ const A = timeline('areas', 5.4, {
     return [`bar${i}`, { end: 'opacity:0', origin: '50% 100%', stops: [[t, 'opacity:1;transform:scaleY(0)', 'out'], [t + 0.35, 'opacity:1;transform:scaleY(1)'], [out, 'opacity:1;transform:scaleY(1)', 'quint'], [out + 0.2, 'opacity:0;transform:scaleY(1)'], [out + 0.25, 'opacity:0;transform:scaleY(0)']] }]
   })) as Record<string, Track>,
 })
+
+export const AREAS_BEATS = beats('areas', 5.4, 5.05, [[0, 'Health'], [1.8, 'Skills'], [3.6, 'Wealth']])
 
 export function IlloAreas() {
   return (
@@ -493,6 +507,7 @@ const C = timeline('connect', 5.6, {
   xpA: { end: 'opacity:0', origin: '50% 50%', stops: [[SOURCES[0].t + 0.3, 'opacity:0;transform:scale(.92)', 'out'], [SOURCES[0].t + 0.55, 'opacity:1;transform:scale(1)'], [SOURCES[2].t + 0.3, 'opacity:1;transform:scale(1)', 'quint'], [SOURCES[2].t + 0.45, 'opacity:0;transform:scale(1)']] },
   xpB: { end: 'opacity:1;transform:scale(1)', origin: '50% 50%', stops: appear(SOURCES[2].t + 0.3, HOLD) },
 })
+export const CONNECT_BEATS = beats('connect', 5.6, HOLD, SOURCES.map((s) => [s.t, `${s.name} syncs`] as [number, string]))
 
 export function IlloConnect() {
   const { x, w, y } = DAY
@@ -560,6 +575,7 @@ const R = timeline('remind', 5.6, {
   bell: { end: ICON_OUT, origin: '50% 50%', stops: [[3.8, ICON_END, 'out'], [4.0, ICON_OUT], [HOLD + 0.35, ICON_OUT], [HOLD + 0.4, ICON_END]] },
   bellOff: { end: ICON_END, origin: '50% 50%', stops: [...iconIn(3.8), [HOLD + 0.35, ICON_END], [HOLD + 0.4, ICON_OUT]] },
 })
+export const REMIND_BEATS = beats('remind', 5.6, HOLD, [[0.3, 'Nudge'], [1.2, 'Tap Done'], [2.1, 'It counts'], [3.3, 'Quiet hours']])
 
 export function IlloRemind() {
   return (
@@ -620,13 +636,13 @@ export function IlloRemind() {
 }
 
 export const TOUR_ILLOS = [
-  { name: 'Welcome', Illo: IlloWelcome },
-  { name: 'Today', Illo: IlloToday },
-  { name: '⌘K', Illo: IlloLog },
-  { name: 'Progress', Illo: IlloProgress },
-  { name: 'Areas', Illo: IlloAreas },
-  { name: 'Connectors', Illo: IlloConnect },
-  { name: 'Reminders', Illo: IlloRemind },
+  { name: 'Welcome', Illo: IlloWelcome, beats: WELCOME_BEATS },
+  { name: 'Today', Illo: IlloToday, beats: TODAY_BEATS },
+  { name: '⌘K', Illo: IlloLog, beats: LOG_BEATS },
+  { name: 'Progress', Illo: IlloProgress, beats: PROGRESS_BEATS },
+  { name: 'Areas', Illo: IlloAreas, beats: AREAS_BEATS },
+  { name: 'Connectors', Illo: IlloConnect, beats: CONNECT_BEATS },
+  { name: 'Reminders', Illo: IlloRemind, beats: REMIND_BEATS },
 ]
 
 /** Every picture the illustrations load, so the tour can fetch them while the welcome is on screen. */
@@ -641,9 +657,10 @@ export function IlloGallery() {
   return (
     // Same plate as the tour card: 304px wide, 8px inside a radius-20 card, so radius 12.
     <div className="grid grid-cols-[repeat(auto-fill,304px)] gap-6">
-      {TOUR_ILLOS.map(({ name, Illo }) => (
+      {TOUR_ILLOS.map(({ name, Illo, beats: set }) => (
         <figure key={name} className="flex flex-col gap-2">
           <div className="aspect-[720/460] w-[304px] overflow-hidden rounded-md bg-surface-2"><Illo /></div>
+          <Beats set={set} className="px-2" />
           <figcaption className="text-[13px] text-ink-2">{name}</figcaption>
         </figure>
       ))}
