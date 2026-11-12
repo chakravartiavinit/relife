@@ -2,7 +2,7 @@
 
 import brand from '@relife/brand/brand.json'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Check, Copy, ExternalLink, Laptop, QrCode as QrIcon, RefreshCw, ServerOff, ShieldCheck, Smartphone } from 'lucide-react'
+import { ArrowLeft, Check, Copy, ExternalLink, Laptop, Puzzle, QrCode as QrIcon, RefreshCw, ServerOff, ShieldCheck, Smartphone } from 'lucide-react'
 import {
   createPairingOffer, disconnectDevice, findWaitingByCode, offerState, waitingDevices, type Offer, type WaitingDevice,
 } from '@/app/devices-actions'
@@ -22,8 +22,12 @@ const MAX_ROTATIONS = 3
 
 type Joined = { id: string; name: string; kind: keyof typeof KIND }
 
-/** "Connect a device": a QR and code for a phone or another browser (flow A), and a code box for a Mac app or extension waiting to be approved (flow B). */
-export function ConnectDialog({ open, onClose, initialCode }: { open: boolean; onClose: () => void; initialCode?: string }) {
+/**
+ * "Connect a device": a QR and code for a phone or another browser (flow A), and a code box for a Mac app or extension waiting
+ * to be approved (flow B). `mode="approve"` is flow B alone (no QR, no offer), for "Connect the Chrome extension".
+ */
+export function ConnectDialog({ open, onClose, initialCode, mode = 'all' }: { open: boolean; onClose: () => void; initialCode?: string; mode?: 'all' | 'approve' }) {
+  const approveOnly = mode === 'approve'
   const [offer, setOffer] = useState<Offer | null>(null)
   const [rotations, setRotations] = useState(0)
   const [joined, setJoined] = useState<Joined | null>(null)
@@ -55,8 +59,8 @@ export function ConnectDialog({ open, onClose, initialCode }: { open: boolean; o
   useEffect(() => {
     if (!open) return
     setOffer(null); setJoined(null); setCode(''); setCodeError(null); setReview(null); setCopied(false)
-    void make(0)
-  }, [open, make])
+    if (!approveOnly) void make(0)
+  }, [open, make, approveOnly])
 
   // The code rotates on its own while the dialog is open, up to 3 times, then shows the expired state.
   useEffect(() => {
@@ -92,14 +96,29 @@ export function ConnectDialog({ open, onClose, initialCode }: { open: boolean; o
     if (open && initialCode) { setCode(initialCode); void find(initialCode) }
   }, [open, initialCode, find])
 
+  const codeBox = (
+    <>
+      <CodeInput value={code} onChange={(v) => { setCode(v); setCodeError(null) }} onComplete={(v) => void find(v)} disabled={checking} invalid={!!codeError} autoFocus />
+      <div className="mt-2 min-h-5">{codeError ? <FormError message={codeError} /> : null}</div>
+      <div className="mt-2 flex items-center gap-2">
+        <Button size="sm" disabled={code.length !== 8 || checking} onClick={() => void find(code)}>{checking ? 'Looking…' : 'Find device'}</Button>
+        {waiting.length ? (
+          <Button size="sm" variant="ghost" onClick={() => setReview(waiting[0])}>
+            <span aria-hidden className="size-1.5 rounded-full bg-pill" />{waiting.length === 1 ? `${waiting[0].name} is waiting` : `${waiting.length} devices are waiting`}
+          </Button>
+        ) : null}
+      </div>
+    </>
+  )
+
   const phoneBlocked = !!offer && !offer.qrUrl
   const hostLabel = offer?.qrUrl ? new URL(offer.qrUrl).host : offer?.host
 
   return (
     <Dialog
-      open={open} onClose={onClose} icon={QrIcon} width="max-w-[780px]"
-      title="Connect a device"
-      description="Your phone, another browser, the Mac app or the Chrome extension."
+      open={open} onClose={onClose} icon={approveOnly ? Puzzle : QrIcon} width={approveOnly ? 'max-w-[520px]' : 'max-w-[780px]'}
+      title={approveOnly ? 'Connect the Chrome extension' : 'Connect a device'}
+      description={approveOnly ? 'The extension shows a code. Type it here to let it in.' : 'Your phone, another browser, the Mac app or the Chrome extension.'}
     >
       {review ? (
         <div>
@@ -108,6 +127,15 @@ export function ConnectDialog({ open, onClose, initialCode }: { open: boolean; o
           </button>
           <ApproveCard device={review} />
           <div className="mt-4 flex justify-end"><Button onClick={onClose}>Done</Button></div>
+        </div>
+      ) : approveOnly ? (
+        <div>
+          <ol className="flex flex-col gap-3 text-[14px] leading-snug text-ink-2">
+            <Step n={1}>Open the <b className="font-semibold text-ink">{brand.name} extension</b> in Chrome and choose <b className="font-semibold text-ink">Connect</b>.</Step>
+            <Step n={2}>It shows an 8-character code. Type it below.</Step>
+          </ol>
+          <div className="mt-5">{codeBox}</div>
+          <div className="mt-6 flex justify-end border-t border-divider pt-4"><Button onClick={onClose}>Done</Button></div>
         </div>
       ) : (
         <>
@@ -190,16 +218,7 @@ export function ConnectDialog({ open, onClose, initialCode }: { open: boolean; o
 
               <p className="text-[14px] font-medium text-ink">Connecting the Mac app or Chrome extension?</p>
               <p className="mt-0.5 mb-3 text-[13px] text-ink-3">Type the code it shows.</p>
-              <CodeInput value={code} onChange={(v) => { setCode(v); setCodeError(null) }} onComplete={(v) => void find(v)} disabled={checking} invalid={!!codeError} autoFocus />
-              <div className="mt-2 min-h-5">{codeError ? <FormError message={codeError} /> : null}</div>
-              <div className="mt-2 flex items-center gap-2">
-                <Button size="sm" disabled={code.length !== 8 || checking} onClick={() => void find(code)}>{checking ? 'Looking…' : 'Find device'}</Button>
-                {waiting.length ? (
-                  <Button size="sm" variant="ghost" onClick={() => setReview(waiting[0])}>
-                    <span aria-hidden className="size-1.5 rounded-full bg-pill" />{waiting.length === 1 ? `${waiting[0].name} is waiting` : `${waiting.length} devices are waiting`}
-                  </Button>
-                ) : null}
-              </div>
+              {codeBox}
             </div>
           </div>
 

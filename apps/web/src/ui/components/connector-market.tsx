@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState, useEffect, useId, useRef, useState, useTransition } from 'react'
-import { AtSign, Check, ChevronRight, CircleAlert, CircleCheck, Code2, Copy, Cpu, Dumbbell, ExternalLink, Gamepad2, Globe, GraduationCap, KeyRound, Lock, LogIn, Moon, RefreshCw, Search, Send, ShoppingBag, Timer, UtensilsCrossed, Wallet, Zap, type LucideIcon } from 'lucide-react'
+import { AtSign, Check, ChevronRight, CircleAlert, CircleCheck, Code2, Copy, Cpu, Dumbbell, ExternalLink, Gamepad2, Globe, GraduationCap, KeyRound, Lock, LogIn, Moon, Puzzle, RefreshCw, Search, Send, ShoppingBag, Timer, UtensilsCrossed, Wallet, Zap, type LucideIcon } from 'lucide-react'
 import type { Category } from '@/db/schema'
 import type { SetupField } from '@/core/types'
 import { connectIntegration, disconnectIntegration, openAppLogin, syncNow } from '@/app/actions'
@@ -10,6 +10,7 @@ import { Field, Input, Segmented } from './form'
 import { IconChip } from './card'
 import { FormError } from './forms/dialog'
 import { CenterMorphModal, CenterMorphModalContent, CenterMorphModalTrigger } from '@/ui/beui/motion/center-morph-modal'
+import { ConnectExtension, openConnectExtension } from './devices/connect-extension'
 import { useToast } from './toast'
 import { AppLogo as Logo } from './app-logo'
 import { cn } from '../cn'
@@ -116,6 +117,7 @@ export function ConnectorMarket({ items, worker }: { items: ConnectorItem[]; wor
 
   return (
     <div className="flex flex-col gap-6">
+      <ConnectExtension />
       <div className="rise flex flex-wrap items-center gap-2" style={{ '--i': 0 } as React.CSSProperties}>
         <Pill>{connected.length} of {items.length} connected</Pill>
         <Pill color={worker.alive ? 'var(--good)' : 'var(--warn)'} title={worker.alive ? `Heartbeat ${worker.ago}` : 'Start it with npm run dev'}>
@@ -432,6 +434,7 @@ function ConnectorDialog({ c, trigger }: { c: ConnectorItem; trigger: React.Reac
           </header>
 
           <p id={`${uid}-desc`} className="-mt-1 text-[14px] leading-relaxed text-ink-2">{c.description}</p>
+          {c.id === 'laptop' ? <ExtensionAction onOpen={() => setOpen(false)} /> : null}
           {!c.connected ? (
             <ul aria-label="What it brings in" className="-mt-2 flex flex-wrap gap-1.5">
               {c.provides.map((p) => <li key={p} className="inline-flex h-7 items-center rounded-full px-2.5 text-[12.5px] text-ink-2 shadow-[inset_0_0_0_1px_var(--hairline)]">{p}</li>)}
@@ -462,6 +465,20 @@ function ConnectorDialog({ c, trigger }: { c: ConnectorItem; trigger: React.Reac
         </div>
       </CenterMorphModalContent>
     </CenterMorphModal>
+  )
+}
+
+/** Laptop activity: the extension connects with a code, from the same dialog as every other device. */
+function ExtensionAction({ onOpen }: { onOpen: () => void }) {
+  return (
+    <div className="-mt-1 flex items-center gap-3 rounded-[16px] bg-surface-2/60 p-3.5 shadow-[inset_0_0_0_1px_var(--hairline)]">
+      <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-[12px] bg-pill-wash text-pill-ink"><Puzzle className="size-5" strokeWidth={1.5} /></span>
+      <div className="min-w-0 flex-1">
+        <p className="text-[14px] font-medium text-ink">Chrome extension</p>
+        <p className="text-[12.5px] text-ink-3">It shows a code; you type it here. No token to paste.</p>
+      </div>
+      <Button variant="primary" size="sm" onClick={() => { onOpen(); openConnectExtension() }}>Connect the Chrome extension</Button>
+    </div>
   )
 }
 
