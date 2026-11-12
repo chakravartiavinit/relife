@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
-import { BookOpen, ChartColumn, ChartPie, Flame, Footprints, Gift, GitCommitHorizontal, GitPullRequest, GraduationCap, HeartHandshake, Moon, PiggyBank, Shapes, Smile, Sparkles, Trophy, Waves, type LucideIcon } from 'lucide-react'
+import { BookOpen, ChartColumn, ChevronDown, ChartPie, Flame, Footprints, Gift, GitCommitHorizontal, GitPullRequest, GraduationCap, HeartHandshake, Moon, PiggyBank, Shapes, Smile, Sparkles, Trophy, Waves, type LucideIcon } from 'lucide-react'
 import type { Category } from '@/db/schema'
 import { getUser } from '@/core/user'
 import { addDays, formatDay, localDate } from '@/core/time'
@@ -56,6 +56,7 @@ async function Progress() {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* On a phone Achievements come before Consistency (the most "do something next" content); on a laptop the order is the page's. */}
       <CharacterBanner
         s={s} name={user.name} heading={s.title} eyebrow={user.name}
         streak={streak} freezes={freezes} areas={user.profile.areas}
@@ -65,15 +66,15 @@ async function Progress() {
         </div>
       </CharacterBanner>
 
-      <section id="streak" aria-label="This week" className="scroll-mt-6">
+      <section id="streak" aria-label="This week" className="scroll-mt-6 max-lg:order-1">
         <LifeKpis user={user} now={now} />
       </section>
-      <Consistency user={user} now={now} />
+      <div className="max-lg:order-3"><Consistency user={user} now={now} /></div>
 
       {/* Achievements full width; then XP over time beside where it comes from, both columns ending together. */}
-      <AchievementsBoard items={board.map((a) => ({ ...a, unlockedAt: a.unlockedAt ? a.unlockedAt.toISOString() : null, unlockedOn: a.unlockedAt ? localDate(a.unlockedAt, user.timezone) : null }))} />
+      <div className="max-lg:order-2"><AchievementsBoard items={board.map((a) => ({ ...a, unlockedAt: a.unlockedAt ? a.unlockedAt.toISOString() : null, unlockedOn: a.unlockedAt ? localDate(a.unlockedAt, user.timezone) : null }))} /></div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid gap-6 max-lg:order-4 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="flex min-w-0 flex-col gap-6 [&>*:last-child]:flex-1">
 
           <Card>
@@ -134,8 +135,9 @@ async function Progress() {
           </Card>
 
           <Card>
-            <CardHeader title="How XP works" icon={<BookOpen strokeWidth={2} />} color="var(--pill)" />
-            <ul className="flex flex-col gap-3 text-[13px] leading-relaxed text-ink-2">
+            <details className="group">
+              <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 text-heading font-semibold text-ink focus-visible:outline-2 focus-visible:outline-pill [&::-webkit-details-marker]:hidden"><BookOpen className="size-4 text-pill-ink" strokeWidth={2} aria-hidden />How XP works<ChevronDown className="ms-auto size-4 text-ink-3 transition-transform duration-150 group-open:rotate-180" strokeWidth={1.5} aria-hidden /></summary>
+            <ul className="mt-3 flex flex-col gap-3 text-[13px] leading-relaxed text-ink-2">
               <Rule color="var(--pill)" title="Your plan">Up to 100 XP a day, split across what was due. More routines don’t raise the ceiling.</Rule>
               <Rule color="var(--good)" title="Fixed measures">7h sleep, 8k steps, a commit, a catch-up and more. The same for everyone.</Rule>
               <Rule color="var(--good)" title="Synced beats typed">Data that arrives by itself earns full XP. Typed-in data earns half, up to 40 a day.</Rule>
@@ -143,6 +145,7 @@ async function Progress() {
               <Rule color="var(--medal-sakura)" title="Quests and chests">Two daily quests and one weekly quest, picked from your areas. Each one finished earns a chest, and every new level earns an epic one. Chests hold XP and sometimes a streak freeze.</Rule>
               <Rule color="var(--ink-3)" title="Fair play">New routines pay from the next day, and days older than yesterday are final.</Rule>
             </ul>
+            </details>
           </Card>
         </aside>
       </div>
