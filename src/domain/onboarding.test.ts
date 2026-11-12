@@ -24,7 +24,7 @@ test('pickSources: only the picked areas, cheapest first, spread across areas, T
     src('anthropic', undefined, { section: 'ai' }), src('telegram', undefined, { section: 'messaging' }),
   ]
   const ids = (areas: string[]) => pickSources(items, areas).map((c) => c.id)
-  assert.deepEqual(ids(['skills', 'hobbies', 'health']), ['codeforces', 'lichess', 'icloud-inbox', 'leetcode', 'steam', 'telegram'])
+  assert.deepEqual(ids(['skills', 'hobbies', 'health']), ['codeforces', 'lichess', 'leetcode', 'icloud-inbox', 'steam', 'telegram'])
   assert.deepEqual(ids(['wealth']), ['binance', 'swiggy', 'telegram'])
   assert.equal(ids(['skills', 'hobbies', 'health', 'wealth', 'mind']).length, 6)
   assert.equal(ids([]).join(), 'telegram')

@@ -167,20 +167,21 @@ function SourceRow({ c }: { c: ConnectorItem }) {
   const how = connectHow(c)
   const sub = [c.provides.slice(0, 3).join(', '), howNote(c)].filter(Boolean).join(' · ')
   return (
-    <li className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
+    <li className="flex items-start gap-3 px-4 py-3">
       <AppLogo id={c.id} category={c.category} size="sm" />
-      <div className="min-w-0 flex-1 basis-40">
+      <div className="min-w-0 flex-1 self-center">
         <p className="truncate text-body font-semibold text-ink">{c.name}</p>
         {c.connected || how !== 'inline' ? <p className="line-clamp-2 text-caption text-ink-3">{c.connected ? `Connected · ${c.statusLabel ?? 'first sync starting'}` : sub}</p> : null}
+        {/* A username is one field, checked when you press Connect. */}
+        {!c.connected && how === 'inline' ? <div className="mt-1.5"><InlineUsernameConnect c={c} /></div> : null}
       </div>
       {c.connected ? (
-        <span role="img" aria-label="Connected" className="grid size-6 shrink-0 place-items-center rounded-full bg-good text-white"><Check className="size-3.5" strokeWidth={3} /></span>
+        <span role="img" aria-label="Connected" className="grid size-6 shrink-0 place-items-center self-center rounded-full bg-good text-white"><Check className="size-3.5" strokeWidth={3} /></span>
       ) : how === 'later' ? (
-        <span className="inline-flex h-7 shrink-0 items-center rounded-full bg-surface-2 px-2.5 text-caption font-medium text-ink-2">Later</span>
+        <span className="inline-flex h-7 shrink-0 items-center self-center rounded-full bg-surface-2 px-2.5 text-caption font-medium text-ink-2">Later</span>
       ) : how === 'dialog' ? (
-        <ConnectorDialog c={c} trigger={<Button variant="secondary">{c.fields.length ? 'Connect' : 'Set up'}</Button>} />
+        <span className="shrink-0 self-center"><ConnectorDialog c={c} trigger={<Button variant="secondary">{c.fields.length ? 'Connect' : 'Set up'}</Button>} /></span>
       ) : null}
-      {!c.connected && how === 'inline' ? <div className="w-full pb-0.5"><InlineUsernameConnect c={c} /></div> : null}
     </li>
   )
 }
@@ -225,7 +226,7 @@ function Target({ label, value, onChange, range, text }: { label: string; value:
     <div className="[--background:var(--surface-2)]">
       <AdaptiveStepper value={value} onValueChange={onChange} min={range.min} max={range.max} step={range.step} aria-label={label} formatValueText={text}>
         <AdaptiveStepperDecrement aria-label={`${label}, less`} />
-        <AdaptiveStepperValue className="text-body">{(n) => text(n)}</AdaptiveStepperValue>
+        <AdaptiveStepperValue className="px-1 text-sm whitespace-nowrap">{(n) => text(n)}</AdaptiveStepperValue>
         <AdaptiveStepperIncrement aria-label={`${label}, more`} />
       </AdaptiveStepper>
     </div>

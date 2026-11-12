@@ -27,7 +27,7 @@ const rank = (c: Source) => EFFORT[connectHow(c)] + (c.connected ? 10 : 0)
 /**
  * The sources Connect offers for the picked areas: the cheapest first (a username, then a key, then the ones that
  * need a sign-in), spread across the areas so one area does not take every row, then Telegram last for reminders.
- * Already connected ones sink, so a row is never spent on what is done.
+ * Already connected ones sink, so a row is never spent on what is done, and the rows read easiest to hardest.
  */
 export function pickSources<T extends Source>(items: T[], areas: string[], max = MAX_SOURCES): T[] {
   const telegram = items.find((c) => c.id === 'telegram')
@@ -38,6 +38,8 @@ export function pickSources<T extends Source>(items: T[], areas: string[], max =
   for (let k = 0; out.length < room && lanes.some((l) => k < l.length); k++) {
     for (const l of lanes) if (k < l.length && out.length < room) out.push(l[k])
   }
+  // Easiest on top, like the draw: a username box, then a key, then what waits for later.
+  out.sort((x, y) => rank(x) - rank(y))
   return telegram ? [...out, telegram] : out
 }
 
