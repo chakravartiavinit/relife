@@ -1,6 +1,7 @@
 'use client'
 
 import { usePathname, useRouter } from 'next/navigation'
+import { Suspense } from 'react'
 import { Tabs, TabsList, TabsTrigger } from '@/ui/beui/motion/tabs'
 import { cn } from '../cn'
 
@@ -53,5 +54,17 @@ export function SegmentTabs({ tabs, label, className, pathname: given, onNavigat
         </TabsList>
       </Tabs>
     </nav>
+  )
+}
+
+/**
+ * `SegmentTabs` for a server layout: the Suspense and the same-sized placeholder (the row with nothing selected)
+ * are built in, so reading the pathname never blocks the layout's static shell.
+ */
+export function RouteTabs(props: { tabs: SegmentTab[]; label: string; className?: string }) {
+  return (
+    <Suspense fallback={<SegmentTabs {...props} pathname="" onNavigate={() => {}} />}>
+      <SegmentTabs {...props} />
+    </Suspense>
   )
 }

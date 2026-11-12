@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState, useEffect, useId, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Check, ChartLine, ClipboardCheck, Info, Plus, Target, TriangleAlert, type LucideIcon } from 'lucide-react'
 import { decideGoalReviewAction, saveGoal, type GoalFormState } from '@/app/actions'
 import { addDays } from '@/core/time'
@@ -364,7 +364,7 @@ function GoalForm({ mode, initial, picker, today, onDone }: { mode: Mode; initia
               </label>
             )
           })}
-          {!actionOptions.length ? <p className="text-[13px] text-ink-3">Add a routine on Habits first, then link it here.</p> : null}
+          {!actionOptions.length ? <p className="text-[13px] text-ink-3">Add a routine in Plan › Routines first, then link it here.</p> : null}
         </div>
         <p className="text-[12.5px] text-ink-3 tabular-nums">{actions.length} of {MAX_ACTIONS} selected.{outcomeTrackerKey ? ' The measure can’t also be an action.' : ''}</p>
         <FieldError id={`${id}-actions-e`} message={errors.actions} />
@@ -394,19 +394,25 @@ function GoalForm({ mode, initial, picker, today, onDone }: { mode: Mode; initia
   )
 }
 
-/** "Create goal"; also opens itself for `/goals?new=1`. Disabled at the cap with the reason read out. */
-export function NewGoalButton({ today, picker, activeCount, autoOpen = false }: { today: string; picker: GoalPickerData; activeCount: number; autoOpen?: boolean }) {
+/**
+ * "Create goal"; also open while the URL is `/plan?new=1`. Open state comes from the URL, not from state set once,
+ * so a page kept alive in the background never comes back with a stale dialog. Disabled at the cap with the reason read out.
+ */
+export function NewGoalButton({ today, picker, activeCount, listenToUrl = false }: { today: string; picker: GoalPickerData; activeCount: number; listenToUrl?: boolean }) {
   const atCap = activeCount >= MAX_ACTIVE
-  const [open, setOpen] = useState(autoOpen && !atCap)
+  const [open, setOpen] = useState(false)
   const router = useRouter()
+  const pathname = usePathname()
+  const params = useSearchParams()
+  const fromUrl = listenToUrl && pathname === '/plan' && params.get('new') === '1'
   return (
     <>
       <Button variant="primary" onClick={() => setOpen(true)} disabled={atCap} aria-describedby={atCap ? 'goal-cap-note' : undefined}>
         <Plus className="size-4" strokeWidth={2} />
         Create goal
       </Button>
-      <GoalDialog open={open} mode={{ kind: 'create', activeCount }} initial={blank(today)} picker={picker} today={today}
-        onClose={() => { setOpen(false); if (autoOpen) router.replace('/goals', { scroll: false }) }} />
+      <GoalDialog open={(open || fromUrl) && !atCap} mode={{ kind: 'create', activeCount }} initial={blank(today)} picker={picker} today={today}
+        onClose={() => { setOpen(false); if (fromUrl) router.replace(pathname, { scroll: false }) }} />
     </>
   )
 }

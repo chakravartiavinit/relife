@@ -190,7 +190,7 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
     : i === 1 ? (v.sleepHours <= inBed - 0.25 ? `${inBed}h in bed, so we’ll aim for ${v.sleepHours}h of sleep.` : `${inBed}h in bed is tight for ${v.sleepHours}h of sleep.`)
     : i === 2 ? (refused ? 'Up to three. Drop one to swap.' : `${v.areas.length} area${v.areas.length === 1 ? '' : 's'} · ${picks.length} of ${MAX_IMPROVE} to train`)
     : i === 3 ? (v.goals.trim() ? 'Your plans and routines read this.' : 'Goals are optional, but plans get sharper with them.')
-    : routines.length ? `${routines.length} routine${routines.length === 1 ? '' : 's'} picked` : 'None picked. Add routines anytime in Habits.')
+    : routines.length ? `${routines.length} routine${routines.length === 1 ? '' : 's'} picked` : 'None picked. Add routines anytime in Plan.')
 
   return (
     <div className="fixed inset-0 z-[60] grid bg-bg lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
@@ -479,7 +479,7 @@ function StepDay({ v, set }: { v: V; set: Set }) {
         </div>
         <div className="mt-3"><DayBar wake={v.wake} sleep={v.sleep} /></div>
       </Group>
-      <Group label="Daily targets" hint="Change them anytime in Habits.">
+      <Group label="Daily targets" hint="Change them anytime in Plan › Trackers.">
         <div>
           <Row lead={<ArtLead name="sleep" />} label="Sleep" sub="a night">
             <Stepper label="Sleep target" text={`${v.sleepHours}h`} onStep={(d) => bump('sleepHours', SLEEP, d)} low={v.sleepHours <= SLEEP.lo} high={v.sleepHours >= SLEEP.hi} />

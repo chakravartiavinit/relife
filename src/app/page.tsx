@@ -166,7 +166,7 @@ async function Today() {
             <CardHeader
               title="Today’s quest log" icon={<ScrollText strokeWidth={2} />} color="var(--pill)"
               description={total ? (left ? `${done} of ${total} done · ${left} to go` : `All ${total} done. Nice.`) : undefined}
-              action={<Link href="/habits?new=1" className={buttonClass({ variant: 'ghost', size: 'sm' })}><Plus className="size-4" strokeWidth={2} />Add</Link>}
+              action={<Link href="/plan/routines?new=1" className={buttonClass({ variant: 'ghost', size: 'sm' })}><Plus className="size-4" strokeWidth={2} />Add</Link>}
             />
             {total ? <Capsule value={done} max={total} size="sm" color="var(--pill)" label="Done today" className="-mt-2 mb-5" /> : null}
             {goals.length ? (
@@ -178,7 +178,7 @@ async function Today() {
               <EmptyState
                 title="Nothing scheduled today" icon={Sunrise} color={'var(--pill)'}
                 description="Add routines like skincare or medicines and they’ll show up here, with reminders on Telegram."
-                action={<Link href="/habits?new=1" className={buttonClass({ variant: 'primary' })}>Add a routine</Link>}
+                action={<Link href="/plan/routines?new=1" className={buttonClass({ variant: 'primary' })}>Add a routine</Link>}
               />
             ) : null}
           </Card>

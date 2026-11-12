@@ -47,7 +47,7 @@ export async function TrackersGrid({ user }: { user: User }) {
                   <Card key={t.id} as="article" className="flex flex-col gap-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <Link href={`/trackers/${encodeURIComponent(t.slug)}`} className="block truncate text-[15px] font-semibold text-ink hover:underline">
+                        <Link href={`/plan/trackers/${encodeURIComponent(t.slug)}`} className="block truncate text-[15px] font-semibold text-ink hover:underline">
                           {t.name}
                         </Link>
                         <div className="mt-0.5 text-[12px] text-ink-3">

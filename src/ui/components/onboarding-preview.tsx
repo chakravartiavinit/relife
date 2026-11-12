@@ -233,7 +233,7 @@ export function SaveFile({ v, step, done, level, picks, routines, starters }: {
           </Part>
 
           <Part label="Today’s quest log" at={4} step={step} done={done}
-            empty={picked.length ? null : reached(4) ? 'No routines yet. Add them anytime in Habits.' : 'A few routines, each with a reminder and a streak'}>
+            empty={picked.length ? null : reached(4) ? 'No routines yet. Add them anytime in Plan.' : 'A few routines, each with a reminder and a streak'}>
             <ul className="flex flex-col gap-1">
               <AnimatePresence initial={false}>
                 {picked.slice(0, 4).map((t) => (

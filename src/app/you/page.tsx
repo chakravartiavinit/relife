@@ -31,15 +31,15 @@ const KIND = [
   { kind: 'achievement', label: 'Achievements', color: 'var(--medal-sakura)' },
 ] as const
 
-export default function ProfilePage() {
+export default function ProgressPage() {
   return (
-    <Suspense fallback={<ProfileSkeleton />}>
-      <Profile />
+    <Suspense fallback={<ProgressSkeleton />}>
+      <Progress />
     </Suspense>
   )
 }
 
-async function Profile() {
+async function Progress() {
   await connection()
   const user = await getUser()
   const now = new Date()
@@ -173,7 +173,7 @@ function Rule({ color, title, children }: { color: string; title: string; childr
   )
 }
 
-function ProfileSkeleton() {
+function ProgressSkeleton() {
   return (
     <div className="flex flex-col gap-6" aria-busy>
       <Skeleton className="h-[330px] rounded-xl" />

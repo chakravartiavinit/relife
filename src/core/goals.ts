@@ -165,7 +165,16 @@ export async function loadGoalsPage(user: User, now = new Date()) {
   }
 }
 
-/** One goal with its history and check-ins, for /goals/[id]. */
+/** How many active goals wait on a weekly-review decision. Two light queries, for the dot on the Plan › Review tab. */
+export async function dueReviewCount(user: User) {
+  const [active, reviews] = await Promise.all([
+    db.select({ id: G.id }).from(G).where(and(eq(G.userId, user.id), eq(G.status, 'active'))),
+    latestReviews(user.id),
+  ])
+  return active.filter((g) => reviews.some((r) => r.goalId === g.id && !r.decision)).length
+}
+
+/** One goal with its history and check-ins, for /plan/goals/[id]. */
 export async function loadGoalDetail(user: User, id: string, now = new Date()) {
   const today = localDate(now, user.timezone)
   const [goal] = await db.select().from(G).where(and(eq(G.id, id), eq(G.userId, user.id)))

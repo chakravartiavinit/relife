@@ -6,7 +6,7 @@ import { useEffect, useState, useTransition } from 'react'
 import { Plus, Search, Sparkles, type LucideIcon } from 'lucide-react'
 import { routineArt } from '../routine-icons'
 import { quickLog } from '@/app/actions'
-import { NAV, SYSTEM_NAV } from './nav'
+import { NAV } from './nav'
 import { CATEGORY } from '../tokens'
 import { announceXp, useToast } from './toast'
 
@@ -62,7 +62,7 @@ export function CommandMenu() {
                     ) : null}
                     <Command.Item
                       value={`ask ${value}`}
-                      onSelect={() => { router.push(`/insights?ask=${encodeURIComponent(value)}`); close() }}
+                      onSelect={() => { router.push(`/coach?ask=${encodeURIComponent(value)}`); close() }}
                       className={itemClass}
                     >
                       <Chip color="var(--cat-mind)"><Sparkles /></Chip>
@@ -152,20 +152,31 @@ const EXAMPLES = ['water 250', 'mood 4', 'spent 120 chai', 'guitar 30', 'sleep 7
 
 type Entry = { href: string; label: string; icon: LucideIcon; color?: string; sub: string; parent?: string }
 const SUB: Record<string, string> = {
-  '/': 'Quests and routines for today', '/profile': 'Level, streak and achievements', '/habits': 'Routines and trackers',
-  '/insights': 'Patterns, nudges and questions', '/inbox': 'Messages that need a look', '/connectors': 'Apps and data sources',
-  '/settings': 'Profile, the System and notifications', '/wealth/spending': 'Where your money goes', '/wealth/portfolio': 'Holdings and P&L',
-  '/wealth/subscriptions': 'Bills and renewals',
+  '/': 'Quests and routines for today', '/life': 'All six areas and Time at a glance', '/time': 'Where your time on the laptop goes',
+  '/plan': 'Goals, routines, trackers and the weekly review', '/coach': 'Ask, patterns and what needs you', '/you': 'Level, streak, connections and settings',
+  '/plan/routines': 'Check off and manage routines', '/plan/trackers': 'Every number you count', '/plan/review': 'Decide on this week’s goals',
+  '/you/connections': 'Apps and data sources', '/you/notifications': 'Telegram reminders and quiet hours', '/you/settings': 'Profile, the System and appearance',
+  '/wealth/spending': 'Where your money goes', '/wealth/portfolio': 'Holdings and P&L', '/wealth/subscriptions': 'Bills and renewals',
 }
 const AREA_SUB = Object.fromEntries(Object.values(CATEGORY).map((c) => [c.label, c.blurb]))
-const entry = (n: (typeof NAV)[number]['items'][number]): Entry[] => [
-  { href: n.href, label: n.label, icon: n.icon, color: n.color, sub: SUB[n.href] ?? AREA_SUB[n.label] ?? '' },
-  ...(n.children ?? []).map((c) => ({ href: c.href, label: c.label, icon: n.icon, color: n.color, sub: SUB[c.href] ?? '', parent: n.label })),
+// Pages that are tabs of a destination: reachable here, not in the sidebar.
+const MORE: { href: string; label: string; parent: string }[] = [
+  { href: '/plan/routines', label: 'Routines', parent: 'Plan' }, { href: '/plan/trackers', label: 'Trackers', parent: 'Plan' }, { href: '/plan/review', label: 'Review', parent: 'Plan' },
+  { href: '/you/connections', label: 'Connections', parent: 'You' }, { href: '/you/notifications', label: 'Notifications', parent: 'You' }, { href: '/you/settings', label: 'Settings', parent: 'You' },
+  { href: '/wealth/spending', label: 'Spending', parent: 'Wealth' }, { href: '/wealth/portfolio', label: 'Portfolio', parent: 'Wealth' },
+  { href: '/wealth/subscriptions', label: 'Subscriptions', parent: 'Wealth' },
 ]
+const entry = (n: (typeof NAV)[number]['items'][number]): Entry => ({ href: n.href, label: n.href === '/life' ? 'Life' : n.label, icon: n.icon, color: n.color, sub: SUB[n.href] ?? AREA_SUB[n.label] ?? '' })
+const ALL = NAV.flatMap((g) => g.items)
 const GROUPS = [
-  { heading: 'Play', items: NAV[0].items.flatMap(entry) },
-  { heading: 'Areas', items: NAV[1].items.flatMap(entry) },
-  { heading: 'Setup', items: SYSTEM_NAV.flatMap(entry) },
+  { heading: 'Go to', items: ALL.map(entry) },
+  {
+    heading: 'Tabs',
+    items: MORE.map((m): Entry => {
+      const p = ALL.find((i) => i.label === m.parent)!
+      return { href: m.href, label: m.label, icon: p.icon, color: p.color, sub: SUB[m.href] ?? '', parent: m.parent }
+    }),
+  },
 ]
 
 /** Icon in a small tinted tile: the area colour, or neutral for app pages. */

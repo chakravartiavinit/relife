@@ -57,7 +57,7 @@ test('matchRoute and trail', () => {
 
 // Links in src/ that still point at an old path. Phase 2 moves the pages and brings this to 0; until
 // then the count may only go down. Lower the baseline whenever you fix some.
-const LEGACY_LINK_BASELINE = 62
+const LEGACY_LINK_BASELINE = 0
 
 function* sources(dir: string): Generator<string> {
   for (const e of readdirSync(dir, { withFileTypes: true })) {

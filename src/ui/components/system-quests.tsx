@@ -114,7 +114,7 @@ export function RecoveryPanel({ recovery }: { recovery: RecoveryView }) {
       try {
         const result = await chooseQuestRecovery({ insightId: recovery.id, version: recovery.version, choice })
         if (!result.ok) { setError(result.error); setRetryOnly('retryOnly' in result && result.retryOnly === true) }
-        else if (result.choice === 'priorities') router.push('/settings#system')
+        else if (result.choice === 'priorities') router.push('/you/settings#system')
       } catch {
         setError('Could not confirm your choice. Retry to check and save it safely.')
         setRetryOnly(true)
@@ -131,7 +131,7 @@ export function RecoveryPanel({ recovery }: { recovery: RecoveryView }) {
           <h3 className="flex items-center gap-1.5 text-[13.5px] font-medium text-ink"><Check className="size-4 text-good" strokeWidth={2} aria-hidden />{saved === 'rest' ? 'Rest today is saved.' : saved === 'smaller' ? 'Your smaller step is saved.' : 'Priorities review selected.'}</h3>
           {saved === 'smaller' && preview ? <p className="text-[13px] text-ink-2">{preview.title}</p> : null}
           <p className="text-[12.5px] leading-relaxed text-ink-3">{saved !== 'smaller' ? 'No recovery quest added. ' : ''}New quests stay paused until tomorrow.</p>
-          {saved === 'priorities' ? <Link href="/settings#system" className={buttonClass({ variant: 'secondary', size: 'lg' })}>Open priorities</Link> : null}
+          {saved === 'priorities' ? <Link href="/you/settings#system" className={buttonClass({ variant: 'secondary', size: 'lg' })}>Open priorities</Link> : null}
         </div>
       ) : (
         <div className="flex flex-col gap-3">

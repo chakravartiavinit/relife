@@ -1,4 +1,3 @@
-import type { Metadata } from 'next'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
 import { and, desc, eq, sql } from 'drizzle-orm'
@@ -9,27 +8,22 @@ import { SPEND_CATEGORIES } from '@/core/categorize'
 import { formatDay, formatTime, localDate } from '@/core/time'
 import { formatMoney } from '@/domain/money'
 import { groupOf, reasonFor, summarize } from '@/domain/inbox'
-import { Card, CardHeader, IconChip, PageHeader, Skeleton } from '@/ui/components/card'
+import { Card, CardHeader, IconChip, Skeleton } from '@/ui/components/card'
 import { AppLogo } from '@/ui/components/app-logo'
 import { BrandLogo } from '@/ui/components/brand-logo'
 import { CategorySelect } from '@/ui/components/wealth/category-select'
 import { RawEventActions, RetryAll } from '@/ui/components/raw-event-actions'
 import { cn } from '@/ui/cn'
 
-export const metadata: Metadata = { title: 'Inbox' }
-
-export default function InboxPage() {
+/** The old Inbox: messages ReLife couldn't read and payments to sort. Coach shows it under "Data to sort". */
+export function InboxSections() {
   return (
-    <>
-      <PageHeader
-        eyebrow="Inbox"
-        title="Needs a look"
-        description="What ReLife couldn’t sort out by itself. Most of it fixes itself; the rest takes one tap, and ReLife learns from it."
-      />
+    <section aria-labelledby="data-h" className="flex flex-col gap-4">
+      <h2 id="data-h" className="px-1 text-heading text-ink">Data to sort</h2>
       <Suspense fallback={<div className="flex flex-col gap-6"><Skeleton className="h-[104px] rounded-lg" /><Skeleton className="h-[320px] rounded-lg" /></div>}>
         <Inbox />
       </Suspense>
-    </>
+    </section>
   )
 }
 

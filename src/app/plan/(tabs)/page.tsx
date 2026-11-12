@@ -5,7 +5,7 @@ import { Target } from 'lucide-react'
 import { loadGoalsPage } from '@/core/goals'
 import { getUser } from '@/core/user'
 import { MAX_ACTIVE } from '@/domain/goals'
-import { Card, PageHeader, Skeleton } from '@/ui/components/card'
+import { Card, Skeleton } from '@/ui/components/card'
 import { EmptyState } from '@/ui/components/empty'
 import { CapNote, GoalDraftCard, OutcomeGoalCard, PausedFinishedList, ReviewDueCard, SuggestDraftCard } from '@/ui/components/goals/goal-card'
 import { NewGoalButton } from '@/ui/components/goals/goal-form'
@@ -13,17 +13,17 @@ import { cn } from '@/ui/cn'
 
 export const metadata: Metadata = { title: 'Goals' }
 
-export default function GoalsPage({ searchParams }: PageProps<'/goals'>) {
+export default function GoalsPage() {
   return (
     <Suspense fallback={<GoalsSkeleton />}>
-      <Goals searchParams={searchParams} />
+      <Goals />
     </Suspense>
   )
 }
 
-async function Goals({ searchParams }: { searchParams: PageProps<'/goals'>['searchParams'] }) {
+async function Goals() {
   await connection()
-  const [user, sp] = await Promise.all([getUser(), searchParams])
+  const user = await getUser()
   const { aiEnabled } = await import('@/ai')
   const data = await loadGoalsPage(user)
   const atCap = data.activeCount >= MAX_ACTIVE
@@ -33,12 +33,9 @@ async function Goals({ searchParams }: { searchParams: PageProps<'/goals'>['sear
   const hasAside = data.due.length > 0 || drafts.length > 0 || ai
   return (
     <div>
-      <PageHeader
-        eyebrow="Plan"
-        title="Goals"
-        description="Up to 3 outcomes you want to change. Each one has a baseline, a target and the routines that serve it."
-        actions={<NewGoalButton today={data.today} picker={data.picker} activeCount={data.activeCount} autoOpen={sp.new === '1'} />}
-      />
+      <div className="mb-4 flex justify-end">
+        <NewGoalButton today={data.today} picker={data.picker} activeCount={data.activeCount} listenToUrl />
+      </div>
       {/* DOM order: Review due → Active → Drafts → Paused and finished. On wide screens review and drafts sit in the right column. */}
       <div className={cn('grid gap-6', hasAside && 'lg:grid-cols-[minmax(0,1fr)_340px] lg:grid-rows-[auto_1fr_auto]')}>
         {data.due.length ? (
@@ -81,7 +78,7 @@ async function Goals({ searchParams }: { searchParams: PageProps<'/goals'>['sear
 function GoalsSkeleton() {
   return (
     <div aria-busy>
-      <Skeleton className="mb-6 h-[150px] rounded-[24px]" />
+      <Skeleton className="mb-4 ml-auto h-10 w-36" />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="flex flex-col gap-4"><Skeleton className="h-6 w-24" /><Skeleton className="h-[320px] rounded-lg" /><Skeleton className="h-[320px] rounded-lg" /></div>
         <div className="flex flex-col gap-6"><Skeleton className="h-[200px] rounded-lg" /><Skeleton className="h-[220px] rounded-lg" /></div>

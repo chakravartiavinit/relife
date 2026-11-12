@@ -1,6 +1,5 @@
 // Every static route in the app and the old URLs that redirect to them. Pure, relative imports only, so
-// next.config.ts can import it. Not wired into next.config yet: phase 2 moves the pages and adds
-// `redirects()` from LEGACY_REDIRECTS (307, never 308, so no browser caches a mapping we may change).
+// next.config.ts can import it for `redirects()` (307, never 308, so no browser caches a mapping we may change).
 
 export type Redirect = { source: string; destination: string; has?: { type: 'query'; key: string; value: string }[] }
 

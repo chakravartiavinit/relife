@@ -443,7 +443,7 @@ logged in as you. Personal use only, and not an official integration.
 
 1. Create `src/connectors/<id>.ts` exporting a `Connector` (`id`, `name`, `category`, `description`,
    `provides`, `fields`, `env`, `everyMinutes`, `sync`). `fields` are the inputs of its Connect dialog on
-   /connectors; each names the env var the connector reads. In `sync`, call `ctx.emit()` with a stable `externalId` per event and
+   /you/connections; each names the env var the connector reads. In `sync`, call `ctx.emit()` with a stable `externalId` per event and
    save progress with `ctx.setCursor()`. Add a `check(get)` that makes one cheap request with the values being
    saved (`get('<ENV>')`, not `env()`) and throws advice when the key or username is wrong.
 2. Add it to the list in `src/connectors/index.ts`.

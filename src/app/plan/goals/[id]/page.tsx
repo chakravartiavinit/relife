@@ -16,7 +16,7 @@ import { coverageLine, day, directionLabel, fill, measureLine, movement, target,
 
 export const metadata: Metadata = { title: 'Goal' }
 
-export default function GoalDetailPage({ params }: PageProps<'/goals/[id]'>) {
+export default function GoalDetailPage({ params }: PageProps<'/plan/goals/[id]'>) {
   return (
     <Suspense fallback={<div aria-busy><Skeleton className="mb-6 h-[150px] rounded-[24px]" /><Skeleton className="h-[360px] rounded-lg" /></div>}>
       <Detail params={params} />
@@ -24,7 +24,7 @@ export default function GoalDetailPage({ params }: PageProps<'/goals/[id]'>) {
   )
 }
 
-async function Detail({ params }: { params: PageProps<'/goals/[id]'>['params'] }) {
+async function Detail({ params }: { params: PageProps<'/plan/goals/[id]'>['params'] }) {
   await connection()
   const [{ id }, user] = await Promise.all([params, getUser()])
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound()

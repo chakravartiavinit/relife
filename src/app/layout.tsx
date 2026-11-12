@@ -4,8 +4,8 @@ import Link from 'next/link'
 import { Suspense } from 'react'
 import { Wordmark } from '@/ui/components/logo'
 import { cn } from '@/ui/cn'
-import { NavPlaceholder, SystemNavPlaceholder, TabBar } from '@/ui/components/nav'
-import { NavForUser, SystemNavWithCounts } from '@/ui/components/system-nav-server'
+import { NavPlaceholder } from '@/ui/components/nav'
+import { NavForUser, TabBarForUser } from '@/ui/components/system-nav-server'
 import { CommandButton, CommandMenu } from '@/ui/components/command-menu'
 import { Tour } from '@/ui/components/tour/tour'
 import { ThemeToggle, THEME_SCRIPT } from '@/ui/components/theme-toggle'
@@ -80,7 +80,6 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
                   <Suspense fallback={<NavPlaceholder />}><NavForUser /></Suspense>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Suspense fallback={<SystemNavPlaceholder />}><SystemNavWithCounts /></Suspense>
                   <Suspense fallback={<SidebarProfileSkeleton />}><SidebarProfile /></Suspense>
                 </div>
               </div>
@@ -93,7 +92,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
               {children}
             </main>
           </div>
-          <Suspense fallback={null}><TabBar /></Suspense>
+          <Suspense fallback={null}><TabBarForUser /></Suspense>
           <CommandMenu />
           <Tour />
           <Celebration />
