@@ -7,7 +7,11 @@ import { generate } from './run'
 import { COACH_SYSTEM, digestText } from './context'
 import { dataTools } from './tools'
 
-export type AskResult = { answer: string; error?: string; sources?: CoachSource[]; insightIds?: string[] }
+export type AskResult = {
+  answer: string; error?: string; sources?: CoachSource[]; insightIds?: string[]
+  /** The question and the answer are both in `coach_messages`, so the thread already has them. False: the caller shows them itself. */
+  saved?: boolean
+}
 
 /**
  * "Ask your data" for the app and Telegram /ask. Never throws. Both channels share one conversation in
@@ -24,7 +28,7 @@ export async function askData(question: string, { channel = 'app' }: { channel?:
   try {
     const user = await getUser()
     const history = historyForModel(await threadForModel(user))
-    await saveCoachMessage(user, { role: 'user', text: q, channel })
+    const asked = await saveCoachMessage(user, { role: 'user', text: q, channel })
     try {
       const res = await generate('chat', 'chat.ask', {
         model: model('chat'),
@@ -37,12 +41,12 @@ export async function askData(question: string, { channel = 'app' }: { channel?:
       const steps = res.steps
       const sources = sourcesFromSteps(steps)
       const insightIds = proposalIds(steps)
-      await saveCoachMessage(user, { role: 'assistant', text: answer, channel, payload: { ...(sources.length ? { sources } : {}), ...(insightIds.length ? { insightIds } : {}) } })
-      return { answer, sources, insightIds }
+      const replied = await saveCoachMessage(user, { role: 'assistant', text: answer, channel, payload: { ...(sources.length ? { sources } : {}), ...(insightIds.length ? { insightIds } : {}) } })
+      return { answer, sources, insightIds, saved: !!asked && !!replied }
     } catch (err) {
       const error = `LLM error: ${String(err instanceof Error ? err.message : err).slice(0, 300)}`
-      await saveCoachMessage(user, { role: 'assistant', text: error, channel, payload: { error: true } })
-      return { answer: '', error }
+      const replied = await saveCoachMessage(user, { role: 'assistant', text: error, channel, payload: { error: true } })
+      return { answer: '', error, saved: !!asked && !!replied }
     }
   } catch (err) {
     return { answer: '', error: `LLM error: ${String(err instanceof Error ? err.message : err).slice(0, 300)}` }
