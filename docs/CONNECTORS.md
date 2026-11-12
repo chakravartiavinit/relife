@@ -408,7 +408,7 @@ Binance keeps roughly 1.5–2 years there too, so trades older than that are gon
 then counts sales of those coins at break-even and says how much is affected:
 
 ```bash
-npx tsx --env-file=.env scripts/binance-import.ts ~/Downloads/statement.csv
+cd apps/web && npx tsx --env-file=../../.env scripts/binance-import.ts ~/Downloads/statement.csv
 ```
 
 The script rebuilds trades from the statement's lines and keeps only those older than the first trade the API

@@ -112,6 +112,9 @@ npm run service -- stop         # before `npm run dev`, which uses the same port
 npm run service -- uninstall    # remove it
 ```
 
+Upgrading from a version before `apps/web` existed: run `npm install`, then `npm run service -- install` once,
+so the LaunchAgent runs from `apps/web`. Until then it restarts in a loop because `apps/web/.next` does not exist.
+
 It runs the production build (`npm start`) from a LaunchAgent in `~/Library/LaunchAgents/com.relife.app.plist`.
 Postgres comes back on its own (`restart: unless-stopped`) once Docker Desktop starts at login.
 
@@ -142,7 +145,7 @@ and stores them encrypted in your local database; values already in `.env` fill 
 Prefer a vault? Keep keys in [dotsafe](docs/CONNECTORS.md) and start with `npm run dev:vault`.
 
 Binance's API only reaches back about 1.5–2 years. For older trades, download the Transaction History statement
-and run `npx tsx --env-file=.env scripts/binance-import.ts <file.csv>`.
+and run `cd apps/web && npx tsx --env-file=../../.env scripts/binance-import.ts <file.csv>`.
 
 ## Daily use
 
@@ -175,7 +178,7 @@ http://127.0.0.1:3001, so you can check every page with something on it. Your re
 | `npm test` | Domain, parser, connector, job engine, nudge and key-encryption tests |
 | `npm run typecheck` | TypeScript |
 | `npm run db:push` | Apply schema changes |
-| `npx tsx --env-file=.env scripts/binance-import.ts <csv...>` | Import Binance trade exports or Transaction History statements |
+| `cd apps/web && npx tsx --env-file=../../.env scripts/binance-import.ts <csv...>` | Import Binance trade exports or Transaction History statements |
 
 ## Contributing
 

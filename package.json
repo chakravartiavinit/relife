@@ -15,7 +15,7 @@
     "start": "npm run start -w apps/web",
     "service": "npm run service -w apps/web --",
     "db:push": "npm run db:push -w apps/web",
-    "dev:vault": "npm run dev:vault -w apps/web",
+    "dev:vault": "dotsafe run -- env RELIFE_SECRETS=dotsafe npm run dev",
     "dev:mock": "npm run dev:mock -w apps/web",
     "mock:seed": "npm run mock:seed -w apps/web --",
     "seed:demo": "npm run seed:demo -w apps/web --",

@@ -191,7 +191,7 @@ function Setup({ connected, seen }: { connected: boolean; seen: Date | null }) {
           <>
             {connected && seen ? <span className="mb-2 block font-medium text-ink-2">The extension last reached ReLife {ago(seen)}. Time shows here after a few minutes on a site.</span> : null}
             1. On <Link href="/connectors" className="font-medium text-pill-ink hover:underline">Connectors → Laptop activity</Link>, set a token.{' '}
-            2. In Chrome open <code className="rounded-xs bg-surface-2 px-1">chrome://extensions</code>, turn on Developer mode, choose Load unpacked and pick the <code className="rounded-xs bg-surface-2 px-1">extension</code> folder in ReLife.{' '}
+            2. In Chrome open <code className="rounded-xs bg-surface-2 px-1">chrome://extensions</code>, turn on Developer mode, choose Load unpacked and pick the <code className="rounded-xs bg-surface-2 px-1">apps/extension</code> folder in ReLife.{' '}
             3. Open the extension and paste the same token. Mac apps are recorded by ReLife’s worker on its own.
           </>
         }
