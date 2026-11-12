@@ -84,7 +84,7 @@ export function PairClient({ next }: { next?: string }) {
           <span className="h-px w-10 border-t-2 border-dotted border-pill" />
           <span className="grid size-14 place-items-center rounded-[16px] bg-surface-2"><CapsuleMark className="size-9" /></span>
         </div>
-        <h1 className="mt-5 text-center font-display text-[24px] leading-tight font-extrabold tracking-[-0.03em] text-ink">Sign in to ReLife at <span className="break-all">{host}</span>?</h1>
+        <h1 className="mt-5 text-center font-display text-[24px] leading-tight font-extrabold tracking-[-0.03em] text-ink">Sign in to ReLife at <span className="inline-block max-w-full [overflow-wrap:anywhere]">{host}</span>?</h1>
         <p className="mt-2 text-center text-[14px] leading-relaxed text-ink-3">You opened a link from your ReLife. Nothing happens until you continue.</p>
 
         <div className="mt-5 rounded-[16px] bg-surface-2 p-4">

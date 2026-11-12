@@ -30,7 +30,7 @@ export function ApproveCard({ device, onResult, className }: { device: WaitingDe
   const left = useCountdown(device.expiresAt)
   const expired = left === 0
   const kind = KIND[device.kind]
-  const title = `${kind.label} “${device.name}”`
+  const title = `“${device.name}”`
 
   const answer = (approve: boolean) => start(async () => {
     setError(null)

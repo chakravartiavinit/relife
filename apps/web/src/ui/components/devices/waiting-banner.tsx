@@ -8,7 +8,7 @@ import { EASE_OUT } from '@/ui/beui/lib/ease'
 import { Button } from '../button'
 import { Dialog } from '../forms/dialog'
 import { ApproveCard } from './approve-card'
-import { DeviceTile, KIND } from './device-kind'
+import { DeviceTile } from './device-kind'
 import { onLiveEvent } from './live-events'
 
 /**
@@ -36,11 +36,11 @@ export function WaitingBanner() {
           <motion.div
             key={w.id} role="status" aria-live="polite"
             initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0, transition: { duration: 0.2, ease: EASE_OUT } }} exit={{ opacity: 0, transition: { duration: 0.15 } }}
-            className="fixed inset-x-3 top-3 z-40 mx-auto flex max-w-[480px] items-center gap-3 rounded-[20px] bg-surface p-3 shadow-3 shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--pill)_25%,transparent)]"
+            className="fixed inset-x-3 top-3 z-40 mx-auto flex max-w-[560px] items-center gap-3 rounded-[20px] bg-surface p-3 shadow-3 shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--pill)_25%,transparent)]"
           >
             <DeviceTile kind={w.kind} />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[14px] font-semibold text-ink">{KIND[w.kind].label} “{w.name}” wants to connect</p>
+              <p className="truncate text-[14px] font-semibold text-ink">“{w.name}” wants to connect</p>
               <p className="truncate text-[12.5px] text-ink-3">Code <span className="font-mono tabular-nums">{w.code}</span>{list.length > 1 ? ` · ${list.length - 1} more waiting` : ''}</p>
             </div>
             <Button size="sm" variant="secondary" onClick={async () => { await denyDevice(w.id); refresh() }}>Deny</Button>
