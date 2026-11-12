@@ -36,6 +36,21 @@ export function loopbackTrusted(h: Headers, opts: { mode?: Mode; requireSignIn?:
   return isLoopbackHost(h.get('host')) && !hasProxyHeaders(h)
 }
 
+/**
+ * Whether a request is a person opening a page: a top-level GET or HEAD that is not cross-site. Only that may be handed a
+ * session by "trust this Mac" (src/core/auth/gate.ts), so a form post, an image, a fetch or a curl from anywhere cannot
+ * use the trust. Browsers send Sec-Fetch-* on every request; with none of them (an old browser, a script) the request has
+ * to be a GET that asks for HTML.
+ */
+export function isPageNavigation(method: string, h: Headers) {
+  if (method !== 'GET' && method !== 'HEAD') return false
+  const site = h.get('sec-fetch-site')
+  const mode = h.get('sec-fetch-mode')
+  const dest = h.get('sec-fetch-dest')
+  if (site === null && mode === null && dest === null) return /\btext\/html\b/i.test(h.get('accept') ?? '')
+  return site !== 'cross-site' && (mode === 'navigate' || dest === 'document') && (mode ?? 'navigate') === 'navigate' && (dest ?? 'document') === 'document'
+}
+
 /** A known proxy puts the real address in X-Forwarded-For: Tailscale (`*.ts.net`) in self-host, any host in cloud. */
 export function clientIp(h: Headers, opts: { mode?: Mode } = {}) {
   const host = h.get('host')
