@@ -11,7 +11,7 @@ import {
 
 /**
  * Pending insights that still count: everything except nudges older than NUDGE_TTL_DAYS.
- * The Coach list, Today's nudge chip and the shell badge use this, so the three agree.
+ * The Coach list and the shell badge both use this, so they agree.
  */
 export function pendingInsight(userId: string) {
   const I = schema.insights
