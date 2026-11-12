@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { clientIp, cookieName, isPublicPath, loopbackTrusted, scopeAllows, tokenOf } from './trust'
+import { bindIsLoopback, clientIp, cookieName, isPublicPath, loopbackTrusted, trustPossible, scopeAllows, tokenOf } from './trust'
 
 const h = (o: Record<string, string>) => ({ get: (n: string) => o[n.toLowerCase()] ?? null })
 
@@ -56,4 +56,15 @@ test('scopes: full opens everything, the others only themselves', () => {
 test('public paths', () => {
   for (const p of ['/signin', '/pair', '/api/v1/hello', '/api/v1/pair/redeem', '/api/v1/pair/requests/abc/poll', '/_next/static/x.js', '/brand/logo.png', '/manifest.webmanifest']) assert.ok(isPublicPath(p), p)
   for (const p of ['/', '/pair/approve', '/api/v1/today', '/api/v1/devices', '/api/companion', '/settings/devices', '/api/health']) assert.ok(!isPublicPath(p), p)
+})
+
+test('loopback trust is off once other hosts are allowed or the server listens beyond loopback', () => {
+  const direct = h({ host: '127.0.0.1:3030' })
+  assert.ok(loopbackTrusted(direct, { mode: 'self-host', env: {} }))
+  assert.ok(loopbackTrusted(direct, { mode: 'self-host', env: { RELIFE_ALLOWED_HOSTS: '  ', HOSTNAME: 'macbook' } }), 'blank list, a machine name')
+  assert.ok(!loopbackTrusted(direct, { mode: 'self-host', env: { RELIFE_ALLOWED_HOSTS: 'relife.example.com' } }), 'a tunnel name is listed')
+  for (const bind of ['0.0.0.0', '192.168.1.20', '::']) assert.ok(!loopbackTrusted(direct, { mode: 'self-host', env: { RELIFE_BIND: bind } }), `RELIFE_BIND=${bind}`)
+  assert.ok(!loopbackTrusted(direct, { mode: 'self-host', env: { HOSTNAME: '0.0.0.0' } }), 'a container that binds every address')
+  for (const bind of ['127.0.0.1', 'localhost', '::1', '[::1]', '127.0.0.2']) assert.ok(bindIsLoopback({ RELIFE_BIND: bind }), bind)
+  assert.ok(trustPossible({}) && !trustPossible({ RELIFE_ALLOWED_HOSTS: 'x.example' }))
 })

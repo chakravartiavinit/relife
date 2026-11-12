@@ -29,11 +29,37 @@ export function hasProxyHeaders(h: Headers) {
 
 /**
  * "Trust this Mac": a loopback Host and no proxy headers get a browser device without asking. `tailscale serve`
- * traffic arrives with a *.ts.net Host and X-Forwarded-For, so it never qualifies. Cloud mode never trusts.
+ * traffic arrives with a *.ts.net Host and X-Forwarded-For, so it never qualifies. Cloud mode never trusts, and neither
+ * does a server that is open to other hosts (trustPossible). Never put a tunnel or proxy in front that rewrites Host to
+ * localhost: it would make every visitor look like this Mac.
  */
-export function loopbackTrusted(h: Headers, opts: { mode?: Mode; requireSignIn?: boolean } = {}) {
-  if ((opts.mode ?? mode()) !== 'self-host' || opts.requireSignIn) return false
+export function loopbackTrusted(h: Headers, opts: { mode?: Mode; requireSignIn?: boolean; env?: Env } = {}) {
+  if ((opts.mode ?? mode()) !== 'self-host' || opts.requireSignIn || !trustPossible(opts.env)) return false
   return isLoopbackHost(h.get('host')) && !hasProxyHeaders(h)
+}
+
+type Env = Record<string, string | undefined>
+const LOOPBACK_BIND = /^(localhost|127(\.\d{1,3}){3}|\[?::1\]?)$/
+// What `-H` was given, as far as the app can tell: RELIFE_BIND says it outright; HOSTNAME counts when it is an address
+// (a container started with HOSTNAME=0.0.0.0). Next itself does not tell the app its bind address, so with neither set
+// the app assumes the 127.0.0.1 that every script in package.json passes.
+const ADDRESS = /^(\d{1,3}(\.\d{1,3}){3}|\[?[0-9a-f]*:[0-9a-f:]+\]?)$/i
+
+/** Whether the server listens on this Mac only. Anything wider means a request with a loopback Host may not be from this Mac. */
+export function bindIsLoopback(env: Env = process.env) {
+  const hostname = env.HOSTNAME?.trim()
+  const v = (env.RELIFE_BIND?.trim() || (hostname && ADDRESS.test(hostname) ? hostname : '')).toLowerCase()
+  return !v || LOOPBACK_BIND.test(v)
+}
+
+/**
+ * Loopback trust rests on "a request that says Host: 127.0.0.1 really came from this Mac". That stops being true when a
+ * tunnel or reverse proxy rewrites Host to localhost, or the server listens beyond loopback. Naming other hosts in
+ * RELIFE_ALLOWED_HOSTS says such a tunnel exists, and a non-loopback bind says it is reachable, so either turns the
+ * trust off; every browser then connects by pairing (`npm run signin` on the Mac prints the first link).
+ */
+export function trustPossible(env: Env = process.env) {
+  return !env.RELIFE_ALLOWED_HOSTS?.trim() && bindIsLoopback(env)
 }
 
 /**

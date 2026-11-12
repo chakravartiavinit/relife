@@ -5,6 +5,9 @@ import { gate, type GateDeps } from './gate'
 
 // The edge rules (src/core/auth/gate.ts) with the database replaced by a few fakes.
 
+delete process.env.RELIFE_ALLOWED_HOSTS // the rules below are for a plain install; one test sets it
+delete process.env.RELIFE_BIND
+
 const GOOD = 'rlf_b_good'
 const device = (scopes: string[] = ['full']) => ({ id: 'd1', userId: 'u1', scopes, tokenHash: Buffer.alloc(0), revokedAt: null, expiresAt: new Date(Date.now() + 1e9), meta: {} }) as never
 
@@ -129,4 +132,13 @@ test('a bearer is not a way past the edge on a page, and loopback trust does not
   const minted: string[] = []
   const r = await gate(req('/api/v1/today', { headers: { ...NAV, authorization: 'Bearer rlf_b_nope' } }), deps({ minted }))
   assert.equal(r.status, 401); assert.equal(minted.length, 0)
+})
+
+test('naming other hosts turns "trust this Mac" off: this Mac connects by pairing like any device', async () => {
+  process.env.RELIFE_ALLOWED_HOSTS = 'relife.example.com'
+  try {
+    const minted: string[] = []
+    assert.equal(kind(await gate(req('/', { headers: NAV }), deps({ minted }))), 'redirect /signin')
+    assert.equal(minted.length, 0)
+  } finally { delete process.env.RELIFE_ALLOWED_HOSTS }
 })

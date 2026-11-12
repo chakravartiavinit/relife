@@ -218,7 +218,9 @@ Install [Tailscale](https://tailscale.com) on the Mac and iPhone, then run `tail
 Mac. Open the `https://<your-mac>.<tailnet>.ts.net` address it prints in Safari and add it to the Home Screen to
 use it as an app. Only your own devices can reach it; nothing is exposed to the internet. ReLife answers only on `127.0.0.1`,
 `localhost` and `*.ts.net` addresses; add any other name you open it through (a Cloudflare Tunnel, say) to
-`RELIFE_ALLOWED_HOSTS` in `.env`. Steps and sleep keep flowing
+`RELIFE_ALLOWED_HOSTS` in `.env`. Listing a name there also turns off "trust this Mac" (every browser then connects by
+QR or code), and never use a tunnel or proxy that rewrites `Host` to `localhost`: ReLife would take every visitor for
+the Mac itself. Steps and sleep keep flowing
 through the iCloud file even when the Mac is away (see [SHORTCUTS.md](docs/SHORTCUTS.md)).
 
 ## License
