@@ -40,7 +40,7 @@ export async function buildDayPlan(user: User, now = new Date()): Promise<DayPla
       if (!goals.some((g) => g.scheduleId === s.id)) {
         goals.push({
           scheduleId: s.id, name: s.name, value: valueOf(meta.trackerSlug) ?? 0, target: s.target,
-          unit: s.unit ?? '', step: meta.step ?? Math.max(1, Math.round(s.target / 8)), area: s.category,
+          slug: meta.trackerSlug, unit: s.unit ?? '', step: meta.step ?? Math.max(1, Math.round(s.target / 8)), area: s.category,
           // Water reads as water: the capsule blue rather than its area's colour.
           color: meta.trackerSlug === 'water' ? 'var(--pill)' : CATEGORY[s.category].color,
           next: agenda.filter((x) => x.schedule.id === s.id && x.occurrence > now).map((x) => formatTime(x.occurrence, user.timezone))[0],

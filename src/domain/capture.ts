@@ -81,3 +81,21 @@ export function previewQuickLog(q: QuickLog, trackers: PreviewTracker[], goals: 
   const title = `Log ${t.name} ${sign}${amountText(Math.abs(q.value), t.unit)}`
   return { title, sub: g ? `${amountText(Math.max(0, g.value + q.value), g.unit)} of ${amountText(g.target, g.unit)} after this` : 'Adds to today', slug: q.slug }
 }
+
+/** What Capture needs to open: served by `GET /api/capture` (built in src/core/capture.ts). */
+export type CapturePayload = {
+  now: string
+  bucket: Bucket
+  /** The user's base currency: the Spent row's symbol and the code added to a typed amount when it is not INR. */
+  currency: string
+  /** Routines due or overdue in this time of day, in the order to show them. */
+  due: { scheduleId: string; occurrence: string; name: string; time: string; area: Category; kind: string; status: 'pending' | 'missed'; xp?: number }[]
+  /** Quantity goals (water): one tap adds `step`. */
+  goals: { scheduleId: string; slug: string; name: string; value: number; target: number; unit: string; step: number; area: Category }[]
+  frequent: Frequent[]
+  /** Every tracker, so a typed log can show its name and unit before saving. */
+  trackers: { slug: string; name: string; unit: string | null }[]
+  moodToday: number | null
+  /** Manual spends the user repeats, most often first: one tap logs the usual amount again. */
+  spend: { note: string; amount: number; currency: string }[]
+}

@@ -1,7 +1,9 @@
 import { and, eq, gt, gte, inArray, isNull, lte, or, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import type { Category } from '@/db/schema'
+import type { ManualLog } from '@/domain/capture'
 import { convert } from './fx'
+import { addDays, localDate, localHour } from './time'
 import type { User } from './user'
 
 export type Tracker = typeof schema.trackers.$inferSelect
@@ -87,4 +89,19 @@ export async function activeDays(user: User, from: string) {
       .where(and(eq(schema.streakFreezes.userId, user.id), gte(schema.streakFreezes.localDate, from))),
   ])
   return new Set([...checks, ...entries, ...frozen].map((r) => r.d))
+}
+
+/**
+ * Typed-in (manual) entries from the last `days` local days, one per tracker per day, with the local hour each was
+ * last written. Capture ranks these into "what you usually log around now" (`rankCaptureSuggestions`).
+ */
+export async function manualLogHistory(user: User, days: number, now = new Date()): Promise<ManualLog[]> {
+  const from = addDays(localDate(now, user.timezone), -(days - 1))
+  const rows = await db.select({
+    slug: schema.trackers.slug, name: schema.trackers.name, unit: schema.trackers.unit, area: schema.trackers.category,
+    day: schema.entries.localDate, value: schema.entries.value, at: schema.entries.updatedAt,
+  }).from(schema.entries)
+    .innerJoin(schema.trackers, eq(schema.trackers.id, schema.entries.trackerId))
+    .where(and(eq(schema.entries.userId, user.id), eq(schema.entries.source, 'manual'), isNull(schema.trackers.archivedAt), gte(schema.entries.localDate, from)))
+  return rows.map(({ at, value, ...r }) => ({ ...r, value: Number(value), hour: localHour(at, user.timezone) }))
 }
