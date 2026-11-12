@@ -15,6 +15,8 @@ import type { RecoveryChoice, RecoveryView } from '@/domain/recovery'
 import { Button, buttonClass } from './button'
 import { Capsule } from './capsule'
 import { usePeekChanged } from './peek/peek-context'
+import { PeekLink } from './peek/peek-link'
+import { openCapture } from './capture/capture-data'
 import { cn } from '../cn'
 
 export type SystemQuestItem = {
@@ -54,7 +56,7 @@ function useUntilMidnight(timeZone: string) {
 }
 
 /** The System's daily, chosen recovery and corrective quests, with legacy history. */
-export function SystemQuests({ quests, difficulty, hasData, timezone, recovery }: { quests: SystemQuestItem[]; difficulty: number; hasData: boolean; timezone: string; recovery?: RecoveryView | null }) {
+export function SystemQuests({ quests, difficulty, hasData, timezone, recovery, compact }: { quests: SystemQuestItem[]; difficulty: number; hasData: boolean; timezone: string; recovery?: RecoveryView | null; /** Today's rail: one line per quest, a thin bar, "Log" inline for mood. */ compact?: boolean }) {
   const left = useUntilMidnight(timezone)
   const kinds = (['recovery', 'emergency', 'daily', 'penalty'] as const).filter((k) => quests.some((q) => q.kind === k))
   const dailies = quests.filter((q) => q.kind === 'daily')
@@ -63,7 +65,7 @@ export function SystemQuests({ quests, difficulty, hasData, timezone, recovery }
   return (
     <div>
       <div className="mb-2 flex items-center justify-between gap-3">
-        <p className="text-[11px] font-semibold tracking-[0.12em] text-pill-ink uppercase">[System]</p>
+        {compact ? <p className="font-mono text-label text-pill-ink uppercase">System · today{dailies.length ? ` · ${cleared}/${dailies.length}` : ''}</p> : <p className="text-[11px] font-semibold tracking-[0.12em] text-pill-ink uppercase">[System]</p>}
         <span className="flex items-center gap-2 text-[11.5px] text-ink-3 tabular-nums">
           <span title={`Difficulty ${difficulty} of 5: it rises as you clear quests and eases after misses.`} className="flex items-center gap-0.5" aria-label={`Difficulty ${difficulty} of 5`}>
             {[1, 2, 3, 4, 5].map((i) => <span key={i} aria-hidden className="h-2.5 w-1 rounded-full" style={{ background: i <= difficulty ? 'var(--pill)' : 'var(--hairline)' }} />)}
@@ -73,7 +75,11 @@ export function SystemQuests({ quests, difficulty, hasData, timezone, recovery }
       </div>
 
       {recovery ? <RecoveryPanel key={`${recovery.id}:${recovery.version}`} recovery={recovery} /> : null}
-      {quests.length ? (
+      {quests.length && compact ? (
+        <ul className="flex flex-col gap-3">
+          {[...quests].filter((q) => q.kind !== 'penalty').sort((a, b) => ORDER[a.status] - ORDER[b.status]).map((q) => <CompactQuestRow key={q.id} q={q} />)}
+        </ul>
+      ) : quests.length ? (
         <div className="flex flex-col gap-4">
           {kinds.map((k) => {
             const g = GROUP[k]
@@ -265,5 +271,44 @@ function Summon({ hasData }: { hasData: boolean }) {
         {pending ? 'The System is choosing…' : 'Receive today’s quests'}
       </Button>
     </div>
+  )
+}
+
+
+/** The rail's quest: title, what it needs ("5,412 / 8,000", XP, Done) and a thin bar. Mood-type quests carry a Log button for Capture. */
+function CompactQuestRow({ q }: { q: SystemQuestItem }) {
+  const area = q.area && q.area in CATEGORY ? CATEGORY[q.area as keyof typeof CATEGORY].color : 'var(--pill)'
+  const done = q.status === 'cleared'
+  const closed = q.status !== 'active'
+  const value = q.progress ?? 0
+  const over = q.op === 'lte' && value > q.target
+  const asks = q.status === 'active' && q.progress == null && /mood/.test(`${q.statId ?? ''} ${q.title}`.toLowerCase())
+  return (
+    <li className="min-w-0">
+      <div className="flex min-h-10 items-center justify-between gap-3">
+        <PeekLink to={{ type: 'quest', id: q.id }} className={cn('flex min-w-0 items-center gap-2 rounded-xs text-body hover:underline focus-visible:outline-2 focus-visible:outline-pill', done ? 'text-ink-3 line-through decoration-ink-3/50' : 'text-ink')}>
+          <span aria-hidden title={`Rank ${q.rank}`} className="font-mono text-label" style={{ color: `color-mix(in oklch, ${RANK_COLOR[q.rank]} 85%, var(--ink))` }}>{q.rank}</span>
+          <span className="truncate">{q.title}</span>
+        </PeekLink>
+        {asks ? (
+          <Button size="sm" variant="secondary" onClick={() => openCapture()}>Log</Button>
+        ) : done ? (
+          <span className="inline-flex shrink-0 items-center gap-1 text-caption font-medium text-good tabular-nums"><Check className="size-3.5" strokeWidth={2.5} aria-hidden />Done</span>
+        ) : q.status === 'failed' ? (
+          <span className="shrink-0 text-caption font-medium text-bad">Missed</span>
+        ) : closed ? (
+          <span className="shrink-0 text-caption text-ink-3">{q.status === 'unverified' ? 'No data' : 'Retired'}</span>
+        ) : q.progress == null ? (
+          <span className="shrink-0 text-caption text-ink-3 tabular-nums">+{q.xp} XP</span>
+        ) : (
+          <span className={cn('shrink-0 text-caption tabular-nums', over ? 'font-medium text-bad' : 'text-ink-2')}>
+            {formatValue(value, q.unit)} <span className="text-ink-3">/ {formatValue(q.target, q.unit)}{q.op === 'lte' ? ' max' : ''}</span>
+          </span>
+        )}
+      </div>
+      {!closed && !asks && q.progress != null ? (
+        <Capsule value={Math.min(value, q.target)} max={q.target || 1} size="sm" color={over ? 'var(--bad)' : q.op === 'lte' ? 'var(--good)' : area} label={`${q.title}: ${formatValue(value, q.unit)} of ${formatValue(q.target, q.unit)}`} />
+      ) : null}
+    </li>
   )
 }
