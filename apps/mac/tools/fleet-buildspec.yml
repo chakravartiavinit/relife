@@ -17,7 +17,7 @@ phases:
         run grid-lint 120 tools/grid-lint.sh
         APP_HEADLESS=1; export APP_HEADLESS
         run selftest 120 tools/selftest.sh
-        run render 240 tools/render.sh /tmp/ReLife-render
+        run render 150 tools/render.sh /tmp/ReLife-render
         for f in build kit-tests grid-lint selftest render; do echo "=== $f"; grep -v -E "^\[|Test \"|Suite \"" "out/$f.log" | head -c 5000; done
         cp /tmp/ReLife-render/*.png out/ 2>/dev/null
         ls out | wc -l >> out/summary.txt
