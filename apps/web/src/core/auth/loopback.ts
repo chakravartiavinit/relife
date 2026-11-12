@@ -1,3 +1,5 @@
+import { asc } from 'drizzle-orm'
+import { db, schema } from '@/db'
 import { getUser } from '../user'
 import { createDevice } from './devices'
 import { browserDeviceName } from './names'
@@ -6,7 +8,9 @@ import { browserDeviceName } from './names'
 
 /** The "Require sign-in on this Mac" setting turns loopback trust off. */
 export async function requireSignIn() {
-  return !!(await getUser()).profile.requireSignIn
+  // Read fresh (the proxy and the settings action may not share the cached user): this runs only when a request has no session.
+  const [u] = await db.select({ profile: schema.users.profile }).from(schema.users).orderBy(asc(schema.users.createdAt)).limit(1)
+  return !!u?.profile.requireSignIn
 }
 
 // Parallel first requests (page, data, assets) carry no cookie yet; they share one new device instead of making one each.

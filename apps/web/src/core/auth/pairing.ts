@@ -43,7 +43,7 @@ async function freshCode(now: Date) {
 // ── A. Scan to connect ───────────────────────────────────────────────────────────────────────────
 
 /** A signed-in screen shows this. Single use, 2 minutes, at most 3 live per user (older ones expire when a new one is made). */
-export async function createOffer(o: { userId: string; deviceId: string | null; baseUrl: string | null; now?: Date }) {
+export async function createOffer(o: { userId: string; deviceId: string | null; baseUrl: string | null; now?: Date; method?: 'offer' | 'cli' }) {
   const now = o.now ?? new Date()
   const secret = newSecret()
   const userCode = await freshCode(now)
@@ -52,9 +52,11 @@ export async function createOffer(o: { userId: string; deviceId: string | null; 
     .orderBy(asc(schema.pairings.createdAt))
   const drop = keep.slice(0, Math.max(0, keep.length - (MAX_LIVE_OFFERS - 1))).map((r) => r.id)
   if (drop.length) await db.update(schema.pairings).set({ status: 'expired' }).where(inArray(schema.pairings.id, drop))
+  // `npm run signin` makes a `cli` offer: the same thing, but it lives 10 minutes (a person has to read the URL off a terminal).
+  const method = o.method ?? 'offer'
   const [row] = await db.insert(schema.pairings).values({
-    userId: o.userId, method: 'offer', secretHash: hashToken(secret), userCode, scopes: ['full'], createdByDeviceId: o.deviceId,
-    meta: { baseUrl: o.baseUrl ?? undefined } satisfies PairingMeta, expiresAt: new Date(now.getTime() + OFFER_TTL_MS),
+    userId: o.userId, method, secretHash: hashToken(secret), userCode, scopes: ['full'], createdByDeviceId: o.deviceId,
+    meta: { baseUrl: o.baseUrl ?? undefined } satisfies PairingMeta, expiresAt: new Date(now.getTime() + (method === 'cli' ? REQUEST_TTL_MS : OFFER_TTL_MS)),
   }).returning()
   return { id: row.id, secret, userCode, expiresAt: row.expiresAt, baseUrl: o.baseUrl }
 }
@@ -81,18 +83,18 @@ export async function redeem(o: {
 
   let pairing: Pairing | undefined
   if (o.secret) {
-    ;[pairing] = await db.select().from(schema.pairings).where(and(eq(schema.pairings.secretHash, hashToken(o.secret)), eq(schema.pairings.method, 'offer'))).limit(1)
+    ;[pairing] = await db.select().from(schema.pairings).where(and(eq(schema.pairings.secretHash, hashToken(o.secret)), inArray(schema.pairings.method, ['offer', 'cli']))).limit(1)
   } else if (o.code) {
     const code = normalizeCode(o.code)
     if (isCode(code)) {
-      ;[pairing] = await db.select().from(schema.pairings).where(and(eq(schema.pairings.userCode, code), eq(schema.pairings.method, 'offer'), live(now))).limit(1)
+      ;[pairing] = await db.select().from(schema.pairings).where(and(eq(schema.pairings.userCode, code), inArray(schema.pairings.method, ['offer', 'cli']), live(now))).limit(1)
     }
     if (!pairing) {
       // A wrong guess is a guess against every live offer: five of them and those offers expire.
       await db.update(schema.pairings).set({ attempts: sql`${schema.pairings.attempts} + 1` })
-        .where(and(eq(schema.pairings.method, 'offer'), live(now)))
+        .where(and(inArray(schema.pairings.method, ['offer', 'cli']), live(now)))
       await db.update(schema.pairings).set({ status: 'expired' })
-        .where(and(eq(schema.pairings.method, 'offer'), eq(schema.pairings.status, 'pending'), sql`${schema.pairings.attempts} >= ${MAX_CODE_ATTEMPTS}`))
+        .where(and(inArray(schema.pairings.method, ['offer', 'cli']), eq(schema.pairings.status, 'pending'), sql`${schema.pairings.attempts} >= ${MAX_CODE_ATTEMPTS}`))
       return fail()
     }
   }
@@ -231,7 +233,7 @@ export async function denyRequest(o: { id: string; userId: string; now?: Date })
 
 /** Status of an offer for the sheet that made it, and who joined. */
 export async function offerStatus(userId: string, id: string) {
-  const [p] = await db.select().from(schema.pairings).where(and(eq(schema.pairings.id, id), eq(schema.pairings.userId, userId), eq(schema.pairings.method, 'offer'))).limit(1)
+  const [p] = await db.select().from(schema.pairings).where(and(eq(schema.pairings.id, id), eq(schema.pairings.userId, userId), inArray(schema.pairings.method, ['offer', 'cli']))).limit(1)
   if (!p) return null
   const status = p.status === 'pending' && p.expiresAt <= new Date() ? 'expired' : p.status
   return { status, deviceId: p.deviceId, deviceName: p.deviceName, kind: p.kind }
