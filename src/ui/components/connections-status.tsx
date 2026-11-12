@@ -10,6 +10,7 @@ import { FormError } from './forms/dialog'
 import { useToast } from './toast'
 import { AppLogo as Logo } from './app-logo'
 import { PeekLink } from './peek/peek-link'
+import { isInline, needsFix } from '@/domain/connections'
 import { STATUS } from './connector-status'
 import { SyncButton, type ConnectorItem } from './connector-market'
 import { cn } from '../cn'
@@ -21,10 +22,7 @@ import { cn } from '../cn'
 
 const HEALTHY_SHOWN = 8
 const isData = (c: ConnectorItem) => c.section !== 'ai' && c.section !== 'messaging'
-/** A source that needs the user: failing, a key missing, or a sign-in unfinished (not \"first sync running\"). */
-export const needsFix = (c: ConnectorItem) => c.connected && (c.status === 'error' || c.status === 'setup' || (c.status === 'waiting' && !!c.oauth && !c.oauth.signedIn))
-/** Username-only sources connect inline: one visible field, no key, no sign-in, no browser login. */
-export const isInline = (c: ConnectorItem) => c.fields.length === 1 && !c.fields[0].secret && !c.oauth && !c.login
+export { needsFix, isInline }
 
 const fixLabel = (c: ConnectorItem) => (c.oauth ? 'Sign in again' : c.login ? 'Open login window' : c.status === 'setup' ? 'Add key' : 'Fix')
 const synced = (c: ConnectorItem) => (c.syncs ?? []).reduce((n, r) => n + (r.ok === false ? 0 : r.events), 0)
