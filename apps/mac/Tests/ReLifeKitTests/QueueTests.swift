@@ -134,3 +134,33 @@ final class Box<T>: @unchecked Sendable {
 extension Box where T == [UUID] {
     func append(_ id: UUID) { mutate { $0.append(id) } }
 }
+
+@Suite("Queued writes use the client")
+struct QueuedSendTests {
+    private let client: (MockTransport) -> ReLifeClient = {
+        ReLifeClient(baseURL: URL(string: "http://127.0.0.1:3030")!, token: "rlf_m_t", clientVersion: "0.1.0", transport: $0)
+    }
+
+    @Test("an action goes out with its own id as the idempotency key")
+    func action() async throws {
+        let t = MockTransport()
+        try t.reply(fixture: "TodayActionResult.plain")
+        let op = try QueuedOp.action(.add(scheduleId: "s1", amount: 250), now: t0)
+        try await op.send(using: client(t))
+        let r = try #require(t.requests.first)
+        #expect(r.value(forHTTPHeaderField: "Idempotency-Key") == op.id.uuidString.lowercased())
+        #expect(r.bodyJSON?["amount"] as? Double == 250)
+    }
+
+    @Test("an activity batch goes out as stored")
+    func activity() async throws {
+        let t = MockTransport()
+        t.reply(json: #"{"ok":true}"#)
+        let seg = ActivitySegment(id: "x", app: "Safari", bundleId: nil, start: t0, end: t0.addingTimeInterval(60))
+        let op = try QueuedOp.activity([seg], now: t0)
+        try await op.send(using: client(t))
+        let r = try #require(t.requests.first)
+        #expect(r.url?.path == "/api/v1/activity")
+        #expect(r.httpBody == op.body)
+    }
+}

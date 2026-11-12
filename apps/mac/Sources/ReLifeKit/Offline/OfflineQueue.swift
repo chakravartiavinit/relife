@@ -40,6 +40,19 @@ public struct QueuedOp: Codable, Sendable, Equatable, Identifiable {
     }
 }
 
+extension QueuedOp {
+    /// Sends this write with its own id as the idempotency key, so a retry is never counted twice.
+    public func send(using client: ReLifeClient) async throws {
+        switch kind {
+        case .action:
+            let action = try JSONDecoder().decode(TodayAction.self, from: body)
+            _ = try await client.act(action, idempotencyKey: id)
+        case .activity:
+            try await client.postActivity(body: body, idempotencyKey: id)
+        }
+    }
+}
+
 public enum QueueRules {
     /// Writes older than this are dropped, and the count is reported.
     public static let maxAge: TimeInterval = 7 * 24 * 3600

@@ -133,8 +133,13 @@ public struct ReLifeClient: Sendable {
     }
 
     public func postActivity(_ batch: ActivityBatch, idempotencyKey: UUID? = nil) async throws {
+        try await postActivity(body: try Self.encoder.encode(batch), idempotencyKey: idempotencyKey)
+    }
+
+    /// An already encoded batch (what the offline queue stores).
+    public func postActivity(body: Data, idempotencyKey: UUID? = nil) async throws {
         let headers = idempotencyKey.map { ["Idempotency-Key": $0.uuidString.lowercased()] } ?? [:]
-        let _: Empty = try await post("/api/v1/activity", body: batch, headers: headers)
+        let _: Empty = try await run(method: "POST", path: "/api/v1/activity", body: body, headers: headers, auth: true)
     }
 
     public func startPairing(kind: PairKind = .mac, name: String, platform: String? = nil) async throws -> PairRequestStarted {
