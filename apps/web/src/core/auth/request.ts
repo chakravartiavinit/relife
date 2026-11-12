@@ -5,7 +5,7 @@ import { db, schema } from '@/db'
 import { getUser, type User } from '../user'
 import { findByToken, touchIfDue, type Device } from './devices'
 import { COOKIE_MAX_AGE_S } from './mode'
-import { cookieName, isSecureHost, scopeAllows, tokenOf } from './trust'
+import { cookieName, isSecureRequest, scopeAllows, tokenOf } from './trust'
 
 // Checks used by route handlers, server actions and server components. The edge check is src/proxy.ts; a route always
 // calls authenticate() itself (defense in depth).
@@ -49,17 +49,10 @@ export function denied(d: Denied, o: { legacy?: boolean } = {}) {
 
 // ── Cookies ──────────────────────────────────────────────────────────────────────────────────────
 
-/** Set-Cookie for a browser or phone session: HttpOnly, SameSite=Lax, 400 days, `__Host-` on HTTPS. */
-export function sessionCookie(token: string, host: string | null) {
-  const secure = isSecureHost(host)
+/** Set-Cookie for a browser or phone session: HttpOnly, SameSite=Lax, 400 days, `__Host-` and Secure on HTTPS. */
+export function sessionCookie(token: string, h: { get(n: string): string | null }) {
+  const secure = isSecureRequest(h)
   return { name: cookieName(secure), value: token, options: { httpOnly: true, sameSite: 'lax' as const, secure, path: '/', maxAge: COOKIE_MAX_AGE_S } }
-}
-
-/** Origin of this request as the client sees it: https unless it is loopback (or a proxy says otherwise). */
-export function requestOrigin(h: { get(n: string): string | null }) {
-  const host = h.get('host') ?? 'localhost'
-  const proto = h.get('x-forwarded-proto')?.split(',')[0]?.trim() || (isSecureHost(host) ? 'https' : 'http')
-  return `${proto}://${host}`
 }
 
 /** A cookie-setting POST must come from this page: Origin, when sent, has to match Host. Native clients send none. */

@@ -1,12 +1,11 @@
 import brand from '@relife/brand/brand.json'
-import { cookies, headers } from 'next/headers'
+import { headers } from 'next/headers'
 import { findByToken, type Device } from './devices'
-import { cookieName, scopeAllows } from './trust'
+import { scopeAllows, sessionCookieOf } from './trust'
 
 /** The device behind this browser's cookie, for server components and server actions. Null when there is none. */
 export async function viewerDevice(): Promise<Device | null> {
-  const jar = await cookies()
-  const token = jar.get(cookieName(false))?.value ?? jar.get(cookieName(true))?.value
+  const token = sessionCookieOf(await headers())
   if (!token) return null
   const found = await findByToken(token)
   return found.ok && scopeAllows(found.device.scopes, 'full') ? found.device : null

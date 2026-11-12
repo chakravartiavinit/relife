@@ -142,3 +142,13 @@ test('naming other hosts turns "trust this Mac" off: this Mac connects by pairin
     assert.equal(minted.length, 0)
   } finally { delete process.env.RELIFE_ALLOWED_HOSTS }
 })
+
+test('the cookie is read under the one name the request protocol allows', async () => {
+  // A __Host- cookie sent over plain loopback HTTP (planted by a sibling subdomain, say) is not a session.
+  const r = await gate(req('/goals', { headers: { cookie: `__Host-relife=${GOOD}` } }), deps({ requireSignIn: true }))
+  assert.equal(kind(r), 'redirect /signin')
+  const secure = await gate(req('/goals', { host: 'mac.tail1.ts.net', headers: { cookie: `__Host-relife=${GOOD}`, 'x-forwarded-proto': 'https', 'x-forwarded-for': '100.64.0.7' } }), deps())
+  assert.equal(kind(secure), 'next')
+  const wrongName = await gate(req('/goals', { host: 'mac.tail1.ts.net', headers: { cookie: `relife=${GOOD}`, 'x-forwarded-proto': 'https', 'x-forwarded-for': '100.64.0.7' } }), deps())
+  assert.equal(kind(wrongName), 'redirect /signin')
+})

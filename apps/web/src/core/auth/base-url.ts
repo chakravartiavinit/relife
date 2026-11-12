@@ -1,6 +1,5 @@
 import { execFile } from 'node:child_process'
-import { isLoopbackHost } from './trust'
-import { requestOrigin } from './request'
+import { isLoopbackHost, requestOrigin } from './trust'
 
 // What URL goes in the QR (plan §3 "Reachability"): the dashboard's own origin when it is not loopback; RELIFE_PUBLIC_URL;
 // the Tailscale name from `tailscale status --json` (a suggestion: `tailscale serve` has to be on); else none.

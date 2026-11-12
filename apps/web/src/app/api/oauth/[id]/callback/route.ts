@@ -2,7 +2,8 @@ import { and, eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { connectors } from '@/connectors'
 import { authenticate, denied } from '@/core/auth/request'
-import { exchangeCode, requestOrigin } from '@/core/oauth'
+import { requestOrigin } from '@/core/auth/trust'
+import { exchangeCode } from '@/core/oauth'
 import { getUser } from '@/core/user'
 
 // Step 2: the service sends the browser back with a code. Check the state, trade the code for tokens,

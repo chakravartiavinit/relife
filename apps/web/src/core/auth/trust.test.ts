@@ -41,7 +41,7 @@ test('cookie names: __Host- only over HTTPS, mock mode apart', () => {
 test('the token is the bearer first, else the cookie', () => {
   assert.deepEqual(tokenOf(h({ authorization: 'Bearer rlf_m_abc', cookie: 'relife=zzz' })), { token: 'rlf_m_abc', via: 'bearer' })
   assert.deepEqual(tokenOf(h({ cookie: 'a=1; relife=rlf_b_x; b=2' })), { token: 'rlf_b_x', via: 'cookie' })
-  assert.deepEqual(tokenOf(h({ cookie: '__Host-relife=rlf_b_y' })), { token: 'rlf_b_y', via: 'cookie' })
+  assert.deepEqual(tokenOf(h({ host: 'mac.tail1.ts.net', 'x-forwarded-proto': 'https', cookie: '__Host-relife=rlf_b_y' })), { token: 'rlf_b_y', via: 'cookie' })
   assert.equal(tokenOf(h({})), null)
   assert.equal(tokenOf(h({ authorization: 'Basic abc' })), null)
 })

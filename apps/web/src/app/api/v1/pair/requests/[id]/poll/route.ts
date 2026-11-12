@@ -18,7 +18,7 @@ export async function POST(req: Request, ctx: RouteContext<'/api/v1/pair/request
     if (r.status !== 'approved') return Response.json({ status: r.status } satisfies PairPoll)
     const native = r.kind === 'mac' || r.kind === 'extension' || r.kind === 'cli'
     const res = NextResponse.json((native ? { status: 'approved', token: r.token, device: toInfo(r.device) } : { status: 'approved', device: toInfo(r.device) }) satisfies PairPoll)
-    if (!native) { const c = sessionCookie(r.token, req.headers.get('host')); res.cookies.set(c.name, c.value, c.options) }
+    if (!native) { const c = sessionCookie(r.token, req.headers); res.cookies.set(c.name, c.value, c.options) }
     return res
   } catch (e) {
     if (e instanceof PairError) return apiError(e.code === 'rate_limited' ? 429 : 404, e.code === 'expired' ? 'expired' : e.code, e.message, { retryAfter: e.retryAfter })

@@ -1,5 +1,5 @@
 import type { Scope } from '@relife/contract'
-import { hostName } from '../hosts'
+import { allowedHost, hostName } from '../hosts'
 import { mode, type Mode } from './mode'
 
 // Pure rules about who a request is, with no database: loopback trust, proxy headers, cookie names, scopes.
@@ -91,8 +91,29 @@ export function cookieName(secure: boolean, mock = process.env.RELIFE_MOCK === '
   return secure ? `__Host-${base}` : base
 }
 
-/** Anything not on loopback is reached over HTTPS (Tailscale serve, the cloud domain). */
-export const isSecureHost = (host: string | null) => !isLoopbackHost(host)
+const first = (v: string | null) => v?.split(',')[0].trim() || undefined // proxies chain values with commas
+
+/**
+ * Whether the client reached the server over HTTPS. The server itself only ever sees plain HTTP behind `tailscale serve`
+ * or a tunnel, so the answer comes from X-Forwarded-Proto, and only when a proxy we know of is in front: a Host that is
+ * not loopback, or a forwarded host we allow. A direct loopback connection is HTTP whatever a client claims.
+ */
+export function isSecureRequest(h: Headers) {
+  const fwdHost = first(h.get('x-forwarded-host'))
+  const proxied = !isLoopbackHost(h.get('host')) || (!!fwdHost && allowedHost(fwdHost))
+  return proxied && first(h.get('x-forwarded-proto'))?.toLowerCase() === 'https'
+}
+
+/**
+ * The address the client used to reach the server. `req.url` is not reliable for this (Next reports `localhost` even
+ * when you opened 127.0.0.1), and the redirect address registered with an OAuth service must match it exactly. A
+ * forwarded host counts only when it is one we allow.
+ */
+export function requestOrigin(h: Headers) {
+  const fwdHost = first(h.get('x-forwarded-host'))
+  const host = fwdHost && allowedHost(fwdHost) ? fwdHost : h.get('host') ?? '127.0.0.1:3030'
+  return `${isSecureRequest(h) ? 'https' : 'http'}://${host}`
+}
 
 export function readCookie(header: string | null, name: string) {
   if (!header) return undefined
@@ -103,12 +124,14 @@ export function readCookie(header: string | null, name: string) {
   return undefined
 }
 
-/** The session token a request carries: bearer first, then the cookie (either name). */
+/** The session cookie of a request: only the name its own protocol allows (`__Host-` over HTTPS, the plain one over HTTP), never the other. */
+export const sessionCookieOf = (h: Headers) => readCookie(h.get('cookie'), cookieName(isSecureRequest(h)))
+
+/** The session token a request carries: bearer first, then the cookie. */
 export function tokenOf(h: Headers) {
   const bearer = h.get('authorization')?.match(/^Bearer\s+(\S+)$/i)?.[1]
   if (bearer) return { token: bearer, via: 'bearer' as const }
-  const cookie = h.get('cookie')
-  const c = readCookie(cookie, cookieName(false)) ?? readCookie(cookie, cookieName(true))
+  const c = sessionCookieOf(h)
   return c ? { token: decodeURIComponent(c), via: 'cookie' as const } : null
 }
 

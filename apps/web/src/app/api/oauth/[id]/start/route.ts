@@ -2,7 +2,8 @@ import { randomBytes } from 'node:crypto'
 import { connectors } from '@/connectors'
 import { authenticate, denied } from '@/core/auth/request'
 import { env } from '@/core/env'
-import { authorizeUrl, callbackPath, requestOrigin } from '@/core/oauth'
+import { requestOrigin } from '@/core/auth/trust'
+import { authorizeUrl, callbackPath } from '@/core/oauth'
 import { getUser } from '@/core/user'
 
 // Step 1 of signing in: send the browser to the service with a one-time state, kept in a short cookie

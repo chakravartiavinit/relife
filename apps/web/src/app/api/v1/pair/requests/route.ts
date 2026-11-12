@@ -1,7 +1,7 @@
 import { PairRequestStart, type PairRequestStarted } from '@relife/contract'
 import { PairError, startRequest } from '@/core/auth/pairing'
-import { apiError, requestOrigin } from '@/core/auth/request'
-import { clientIp } from '@/core/auth/trust'
+import { apiError } from '@/core/auth/request'
+import { clientIp, requestOrigin } from '@/core/auth/trust'
 import { hostName } from '@/core/hosts'
 
 // Flow B (plan §3): a device asks to be let in and shows the code. Public: anything that can reach the server may ask,

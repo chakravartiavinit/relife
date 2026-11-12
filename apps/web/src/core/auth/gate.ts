@@ -5,7 +5,7 @@ import { getUser } from '../user'
 import { findByToken, touchIfDue } from './devices'
 import { mintLoopbackDevice, requireSignIn } from './loopback'
 import { apiError, denied, sessionCookie } from './request'
-import { cookieName, hasProxyHeaders, isLoopbackHost, isPageNavigation, isPublicPath, loopbackTrusted, readCookie, scopeAllows } from './trust'
+import { cookieName, hasProxyHeaders, isLoopbackHost, isPageNavigation, isPublicPath, loopbackTrusted, scopeAllows, sessionCookieOf } from './trust'
 
 // The edge check behind src/proxy.ts, with its lookups passed in so it can be tested without a database (gate.test.ts).
 //
@@ -51,7 +51,7 @@ export async function gate(req: NextRequest, deps: GateDeps = realDeps): Promise
     return found.ok ? NextResponse.next() : denied({ ok: false, reason: found.reason }, { legacy: LEGACY_BODY.has(pathname) })
   }
 
-  const cookie = readCookie(req.headers.get('cookie'), cookieName(false)) ?? readCookie(req.headers.get('cookie'), cookieName(true))
+  const cookie = sessionCookieOf(req.headers)
   let reason: 'revoked' | 'expired' | undefined
   if (cookie) {
     const found = await deps.findByToken(decodeURIComponent(cookie))
@@ -59,7 +59,7 @@ export async function gate(req: NextRequest, deps: GateDeps = realDeps): Promise
       const res = NextResponse.next()
       // Stay signed in: re-set the cookie (a fresh Max-Age) whenever last_seen is refreshed.
       if (await deps.touchIfDue(found.device).catch(() => false)) {
-        const c = sessionCookie(decodeURIComponent(cookie), host)
+        const c = sessionCookie(decodeURIComponent(cookie), req.headers)
         res.cookies.set(c.name, c.value, c.options)
       }
       return res
@@ -69,7 +69,7 @@ export async function gate(req: NextRequest, deps: GateDeps = realDeps): Promise
 
   if (isPageNavigation(req.method, req.headers) && loopbackTrusted(req.headers, { requireSignIn: await deps.requireSignIn() })) {
     const token = await deps.mintLoopbackDevice(host ?? '127.0.0.1', req.headers.get('user-agent') ?? '')
-    const c = sessionCookie(token, host)
+    const c = sessionCookie(token, req.headers)
     // Forward the new cookie to this very request too, so the page that is about to render already sees it.
     const headers = new Headers(req.headers)
     const old = (headers.get('cookie') ?? '').split(';').filter((p) => ![cookieName(false), cookieName(true)].includes(p.split('=')[0].trim())).join(';')

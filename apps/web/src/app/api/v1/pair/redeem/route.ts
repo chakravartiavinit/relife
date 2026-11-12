@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     const native = r.device.kind === 'mac' || r.device.kind === 'extension' || r.device.kind === 'cli'
     const result: PairRedeemResult = native ? { ok: true, device: toInfo(r.device), token: r.token } : { ok: true, device: toInfo(r.device), next: '/' }
     const res = NextResponse.json(result)
-    if (!native) { const c = sessionCookie(r.token, host); res.cookies.set(c.name, c.value, c.options) }
+    if (!native) { const c = sessionCookie(r.token, req.headers); res.cookies.set(c.name, c.value, c.options) }
     return res
   } catch (e) {
     if (e instanceof PairError) return apiError(e.code === 'rate_limited' ? 429 : e.code === 'forbidden' ? 403 : 404, e.code === 'expired' ? 'expired' : e.code, e.message, { retryAfter: e.retryAfter })
