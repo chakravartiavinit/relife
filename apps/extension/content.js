@@ -33,17 +33,18 @@
       } catch { /* ignore broken JSON-LD */ }
     }
     out.heading = text('h1')?.slice(0, 200)
-    out.image = document.querySelector('meta[property="og:image"]')?.content || undefined
-    out.icon = (document.querySelector('link[rel="apple-touch-icon"]') ?? document.querySelector('link[rel~="icon"][sizes]') ?? document.querySelector('link[rel~="icon"]'))?.href || undefined
-    out.siteName = document.querySelector('meta[property="og:site_name"]')?.content || undefined
+    out.image = /** @type {HTMLMetaElement | null} */ (document.querySelector('meta[property="og:image"]'))?.content || undefined
+    out.icon = /** @type {HTMLLinkElement | null} */ (document.querySelector('link[rel="apple-touch-icon"]') ?? document.querySelector('link[rel~="icon"][sizes]') ?? document.querySelector('link[rel~="icon"]'))?.href || undefined
+    out.siteName = /** @type {HTMLMetaElement | null} */ (document.querySelector('meta[property="og:site_name"]'))?.content || undefined
     // The series a page belongs to, so every episode or lesson counts toward one show or playlist.
     const yt = /(^|\.)youtube\.com$/.test(location.hostname)
     const list = yt && new URLSearchParams(location.search).get('list')
     if (list) {
       out.series = { title: text('#header-description h3, ytd-playlist-panel-renderer .title, h3.ytd-playlist-panel-renderer') ?? 'YouTube playlist', url: `https://www.youtube.com/playlist?list=${list}` }
     } else {
+      /** @type {HTMLAnchorElement | null} */
       const a = episodePage() ? document.querySelector('a[href*="/series/"], a[href*="/show/"], a[href*="/anime/"]') : null
-      const crumb = [...document.querySelectorAll('nav[aria-label*="readcrumb" i] a, [itemtype*="BreadcrumbList"] a')].at(-1)
+      const crumb = /** @type {HTMLAnchorElement[]} */ ([...document.querySelectorAll('nav[aria-label*="readcrumb" i] a, [itemtype*="BreadcrumbList"] a')]).at(-1)
       const link = a ?? crumb
       if (link?.href && link.textContent?.trim()) out.series = { title: link.textContent.trim().slice(0, 200), url: link.href.split('?')[0] }
     }
@@ -76,13 +77,13 @@
         }
       } catch { /* ignore broken JSON-LD */ }
     }
-    const meta = (p) => document.querySelector(`meta[property="${p}"], meta[name="${p}"]`)?.content || undefined
+    const meta = (p) => /** @type {HTMLMetaElement | null} */ (document.querySelector(`meta[property="${p}"], meta[name="${p}"]`))?.content || undefined
     // video:series is usually the series page's address, not its name; the site's name isn't a series either.
     const vs = meta('video:series')
     if (!m.series && meta('og:type') === 'video.episode' && vs && !/^https?:/.test(vs)) m.series = vs
     // Crunchyroll and most anime sites: a link to the series page, and the episode title as the heading.
     if (!m.series) {
-      const a = document.querySelector('a[href*="/series/"], a[href*="/anime/"], a[href*="/show/"]')
+      const a = /** @type {HTMLAnchorElement | null} */ (document.querySelector('a[href*="/series/"], a[href*="/anime/"], a[href*="/show/"]'))
       if (a?.textContent?.trim() && episodePage()) { m.series = a.textContent.trim(); m.seriesUrl = a.href.split('?')[0] }
     }
     if (m.series) {

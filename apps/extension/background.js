@@ -29,6 +29,7 @@ const session = {
     const [ses, loc] = await Promise.all([chrome.storage.session.get(['open', 'pages', 'frames']), chrome.storage.local.get('queue')])
     return { ...ses, queue: loc.queue }
   },
+  /** @param {import('./globals').Stored} state */
   set: async ({ queue, ...rest }) => {
     await Promise.all([
       Object.keys(rest).length ? chrome.storage.session.set(rest) : null,
@@ -172,7 +173,7 @@ async function flush() {
   // Nothing to send: still check ReLife answers, so the badge and "Send now" don't trust an old success.
   const res = empty
     ? await call(s, '/api/activity')
-    : await call(s, '/api/activity', { method: 'POST', body: JSON.stringify({ segments, courses, rules }) })
+    : await call(s, '/api/activity', { method: 'POST', body: JSON.stringify(/** @type {import('@relife/contract').ActivityBatchInput} */ ({ segments, courses, rules })) })
   if (!res.status) {
     await chrome.storage.local.set({ lastSync: { at: Date.now(), ok: false, status: 0, error: OFFLINE } })
     // Offline or ReLife isn't running: keep the queue (capped) and try again next time.
@@ -204,6 +205,7 @@ async function refreshCompanion(force = false) {
   if (!s.token) return
   const { companion } = await chrome.storage.local.get('companion')
   if (!force && companion?.at && Date.now() - companion.at < COMPANION_EVERY_MS) return
+  /** @type {import('./globals').CallResult<import('@relife/contract').TodayResponse>} */
   const r = await call(s, '/api/companion')
   if (r.ok && r.data) await chrome.storage.local.set({ companion: { at: Date.now(), view: r.data } })
   else if (r.status === 404) await chrome.storage.local.set({ companion: { at: Date.now(), view: null, unsupported: true } })
@@ -291,6 +293,7 @@ chrome.tabs.onRemoved.addListener((id) => void serial(async () => {
  * Adds to a pending list (courses or site kinds) and sends at once, so it shows in ReLife right away. Queued with
  * the uploads, so one in flight can't drop it when it clears what it sent. `{ ok }`: whether it got through.
  */
+/** @param {'pendingCourses' | 'pendingRules'} key @param {(list: any[]) => any[]} update */
 async function queueAndSend(key, update) {
   await serial(async () => {
     const { [key]: list = [] } = await chrome.storage.local.get(key)

@@ -95,7 +95,7 @@ can read them and "Private contributions" is on in your profile.
 
 Two local trackers feed one timeline (Activity page):
 
-- **Chrome extension** (`extension/`, see its README): time on each site, YouTube video and course page while
+- **Chrome extension** (`apps/extension/`, see its README): time on each site, YouTube video and course page while
   the tab is in front and you're active or a video plays. It posts to `POST /api/activity` with the token you set
   on Connectors → Laptop activity (`ACTIVITY_TOKEN`).
 - **Mac apps**: the worker checks the app in front every 15 seconds with `lsappinfo` (no permission prompt) and

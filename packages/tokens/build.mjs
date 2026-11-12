@@ -13,7 +13,7 @@ const tokens = JSON.parse(readFileSync(resolve(here, 'tokens.json'), 'utf8'))
 const OUT = {
   css: resolve(here, 'tokens.css'),
   theme: resolve(here, 'theme.css'),
-  extension: resolve(repo, 'extension/tokens.css'),
+  extension: resolve(repo, 'apps/extension/tokens.css'),
   swift: resolve(repo, 'apps/mac/Sources/ReLife/UI/Tokens.swift'),
 }
 

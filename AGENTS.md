@@ -25,7 +25,7 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
 
 ## Layout
 
-- Pages: Today (`/`, the quest log: things to do now), Goals (`/goals`, up to 3 outcome goals with a baseline, linked actions and weekly review decisions; `/goals/[id]` and `/goals/review`), Activity (`/activity`, laptop time from `extension/` and
+- Pages: Today (`/`, the quest log: things to do now), Goals (`/goals`, up to 3 outcome goals with a baseline, linked actions and weekly review decisions; `/goals/[id]` and `/goals/review`), Activity (`/activity`, laptop time from `apps/extension/` and
   the Mac watcher), Progress (`/profile`, the character sheet: level, streak,
   week, consistency, achievements, XP; `/overview` redirects here), Habits, Insights, and six areas (Health, Mind, Skills, Wealth,
   Hobbies, People) that share one template (`AreaHeader` → `KpiStrip` → cards). Inbox, Connectors and Settings sit in the sidebar footer.
@@ -36,7 +36,7 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
   `CapsuleIcon` (`capsule-icon.tsx`, the tilted pill from the logo, for areas and avatars), `SystemLabel` (mono
   area label in `card.tsx`) and the `.halftone` dot texture in header corners. No other decorative textures.
 - Tokens: colors, shadows, radii and easing live in `packages/tokens/tokens.json`; `npm run tokens` regenerates
-  `packages/tokens/tokens.css`/`theme.css`, `extension/tokens.css` and the Mac app's `Tokens.swift` (pre-push runs
+  `packages/tokens/tokens.css`/`theme.css`, `apps/extension/tokens.css` and the Mac app's `Tokens.swift` (pre-push runs
   `npm run tokens -- --check`). Derived values and the Tailwind color mapping stay in `apps/web/src/app/globals.css`.
 - Motion: CSS easing tokens (`--ease-out-quint`, `--ease-out-strong`, `--ease-in-out-strong`, from `tokens.json`);
   JS twins in `apps/web/src/ui/beui/lib/ease.ts` (`EASE_OUT`, `EASE_OUT_STRONG`, read from the package). Never retype the curves. Audits and
@@ -58,15 +58,15 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
 - Logo: the original ReLIFE logo. `packages/brand/logo/relife-logo.png` is the source;
   `npm run brand` rebuilds `apps/web/public/brand/` (light and dark logos and
   icons, with content-hashed names), `apps/web/src/ui/brand-files.ts` (their paths), `apps/web/src/app/icon.png` /
-  `apple-icon.png` and the extension's toolbar icons (`extension/icons/`, the capsule alone on transparent; the
+  `apple-icon.png` and the extension's toolbar icons (`apps/extension/icons/`, the capsule alone on transparent; the
   README header uses the 128 px one). Use `Wordmark` (or `CapsuleMark` for the icon) from `apps/web/src/ui/components/logo.tsx`;
   never redraw the logo.
 - Name: the app is ReLife (it was briefly called Savepoint). Internal identifiers use `relife` too (database
   names, `relife:*` events and storage keys, the iCloud inbox path).
-- Browser extension: `extension/` (MV3, plain scripts, no build step). Shared helpers in `extension/lib.js`; its icons
-  come from `node scripts/extension-icons.mjs` (add a Lucide name there). It talks to `/api/activity` (time) and
-  `/api/companion` (the popup's Today tab: character, quests, routine checks, goal adds, quick log), both behind
-  the Laptop activity token (`apps/web/src/core/companion.ts`). Popup colors come from the generated `extension/tokens.css`. Bump `manifest.json`'s version with each change.
+- Browser extension: `apps/extension/` (MV3, plain scripts, no build step, typed with JSDoc and `checkJs`; its own
+  `AGENTS.md` has the rules). It talks to `/api/activity` (time) and `/api/companion` (the popup's Today tab:
+  character, quests, routine checks, goal adds, quick log), both behind the Laptop activity token
+  (`apps/web/src/core/companion.ts`); the request and response shapes are in `packages/contract`.
 - Vendored UI code: `apps/web/src/ui/beui/` (beui.dev, installed from the `@beui` registry with imports rewritten
   to `@/ui/beui`). Change it only to fit ReLife tokens.
 - Charts: [EvilCharts](https://evilcharts.com/docs), installed unmodified with `npx shadcn@latest add @evilcharts/recharts-<chart>`

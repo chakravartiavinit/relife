@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="extension/icons/icon128.png" width="96" height="96" alt="">
+  <img src="apps/extension/icons/icon128.png" width="96" height="96" alt="">
 </p>
 
 <h1 align="center">ReLife</h1>
@@ -134,7 +134,7 @@ and stores them encrypted in your local database; values already in `.env` fill 
 | Strava workouts; Oura, WHOOP and Withings sleep, recovery and weight; Google Calendar meeting and focus time | Sign in with the service (your own free app) | [CONNECTORS.md](docs/CONNECTORS.md#signing-in-oauth) |
 | WakaTime coding time, Monkeytype typing, Todoist tasks, Toggl time, RescueTime productivity, Hevy gym workouts, Readwise highlights, Last.fm music, Steam gaming | A personal key from each service | [CONNECTORS.md](docs/CONNECTORS.md#personal-data-connectors) |
 | Codewars kata, Letterboxd films, Open Library books, Anki flashcards | Your public username, or the AnkiConnect add-on | [CONNECTORS.md](docs/CONNECTORS.md#personal-data-connectors) |
-| Laptop time per site and app, shows and courses you watch | The browser extension and a shared token | [extension/README.md](extension/README.md) |
+| Laptop time per site and app, shows and courses you watch | The browser extension and a shared token | [apps/extension/README.md](apps/extension/README.md) |
 | Steps, sleep, Health data (iPhone) | iOS Shortcuts writing to an iCloud Drive file | [SHORTCUTS.md](docs/SHORTCUTS.md) |
 | Exchange rates | Nothing: connect FX | Connectors page |
 | AI | A key for Anthropic, OpenAI, Google or OpenRouter, or a local model | Connectors page |
@@ -235,6 +235,6 @@ own MIT notices (see Credits).
 - Routine, hobby and shopping-category pictures (`apps/web/public/routines`, `apps/web/public/hobbies`, `apps/web/public/categories`):
   [Fluent Emoji](https://github.com/microsoft/fluentui-emoji) by Microsoft (MIT).
 - The ReLIFE name and logo (`packages/brand/logo/`, `apps/web/public/brand/`, `apps/web/src/app/icon.png`, `apps/web/src/app/apple-icon.png`,
-  `extension/icons/`)
+  `apps/extension/icons/`)
   belong to their owners (© YayoiSo/comico/ReLIFE Laboratory) and are used as a fan tribute. They are not
   covered by this project's AGPL license.

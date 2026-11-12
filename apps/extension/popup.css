@@ -1,57 +1,10 @@
-/* ReLife popup. Same tokens as the app (src/app/globals.css): ink, white and the capsule blue, light first. */
+/* ReLife popup. Colors, easing and radii come from tokens.css (generated from packages/tokens; link it first). */
 :root {
   color-scheme: light dark;
-  --bg: oklch(0.984 0.003 245);
-  --surface: oklch(1 0 0);
-  --surface-2: oklch(0.962 0.006 245);
-  --surface-3: oklch(0.93 0.009 245);
-  --ink: oklch(0.178 0 0);
-  --ink-2: oklch(0.40 0.012 250);
-  --ink-3: oklch(0.52 0.012 250);
-  --hairline: oklch(0.178 0 0 / 0.08);
-  --pill: oklch(0.655 0.14 250);
-  --pill-ink: oklch(0.52 0.13 252);
-  --pill-wash: oklch(0.655 0.14 250 / 0.10);
-  --good: oklch(0.56 0.12 155);
-  --bad: oklch(0.56 0.17 25);
-  --warn: oklch(0.62 0.13 70);
-  --medal-gold: oklch(0.74 0.14 85);
-  --cat-health: oklch(0.58 0.17 2);
-  --cat-mind: oklch(0.568 0.155 292.2);
-  --cat-skills: oklch(0.526 0.113 247.2);
-  --cat-wealth: oklch(0.563 0.112 76.7);
-  --cat-hobbies: oklch(0.58 0.14 145);
-  --cat-relationships: oklch(0.55 0.1 200);
-  --img-outline: oklch(0 0 0 / 0.1);
   --shadow-1: 0 0 0 1px var(--hairline), 0 1px 2px oklch(0.3 0.04 250 / 0.06), 0 2px 6px oklch(0.3 0.04 250 / 0.04);
-  /* Motion tokens, copied from the app. */
-  --ease-out-quint: cubic-bezier(0.2, 0, 0, 1);       /* hover, press, toggles */
-  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);  /* entrances, reveals */
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: oklch(0.205 0.016 252);
-    --surface: oklch(0.244 0.018 252);
-    --surface-2: oklch(0.280 0.021 248.6);
-    --surface-3: oklch(0.32 0.022 248);
-    --ink: oklch(0.965 0.004 240);
-    --ink-2: oklch(0.80 0.012 245);
-    --ink-3: oklch(0.70 0.014 245);
-    --hairline: oklch(1 0 0 / 0.08);
-    --pill: oklch(0.70 0.13 250);
-    --pill-ink: oklch(0.78 0.11 248);
-    --pill-wash: oklch(0.70 0.13 250 / 0.14);
-    --good: oklch(0.74 0.13 155);
-    --bad: oklch(0.70 0.15 25);
-    --warn: oklch(0.78 0.12 75);
-    --medal-gold: oklch(0.82 0.13 85);
-    --cat-health: oklch(0.66 0.16 355);
-    --cat-mind: oklch(0.62 0.15 292);
-    --cat-skills: oklch(0.65 0.13 245);
-    --cat-wealth: oklch(0.665 0.12 75);
-    --cat-hobbies: oklch(0.7 0.14 145);
-    --cat-relationships: oklch(0.68 0.1 200);
-    --img-outline: oklch(1 0 0 / 0.1);
     --shadow-1: 0 0 0 1px var(--hairline), 0 1px 2px oklch(0 0 0 / 0.3);
   }
 }

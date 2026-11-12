@@ -1,7 +1,7 @@
 // Builds the logo files in apps/web/public/brand and the app icons from the source logo image.
 // Usage: npm run brand            (source: brand.json "logo")
 //        node packages/brand/build.mjs <logo.png>
-// Writes into apps/web (public/brand, src/app icons, src/ui/brand-files.ts) and extension/icons.
+// Writes into apps/web (public/brand, src/app icons, src/ui/brand-files.ts) and apps/extension/icons.
 import sharp from 'sharp'
 import { createHash } from 'node:crypto'
 import { readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
@@ -90,7 +90,7 @@ for (const size of [16, 32, 48, 128]) {
   let inner = sharp(cap).resize({ height: small ? art : art - 2, fit: 'inside' })
   if (small) inner = inner.sharpen({ sigma: 0.5 })
   await sharp({ create: { width: size, height: size, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
-    .composite([{ input: await inner.toBuffer(), gravity: 'centre' }]).png().toFile(at(`extension/icons/icon${size}.png`))
+    .composite([{ input: await inner.toBuffer(), gravity: 'centre' }]).png().toFile(at(`apps/extension/icons/icon${size}.png`))
 }
 // Content-hashed names so browsers never show a stale logo after a rebuild.
 for (const f of readdirSync(at('apps/web/public/brand'))) if (/\.[0-9a-f]{8}\.png$/.test(f)) rmSync(at(`apps/web/public/brand/${f}`))

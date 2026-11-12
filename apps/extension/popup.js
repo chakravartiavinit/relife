@@ -2,23 +2,27 @@
 // This page: what the site counts as and the library item it belongs to.
 // Reads from your ReLife (/api/companion and /api/activity?view=1); everything else stays in chrome.storage.
 
-const $ = (id) => document.getElementById(id)
+/** DOM glue: elements are looked up by id and used as whatever they are, so this stays untyped. The data is what is typed. */
+const $ = /** @type {(id: string) => any} */ ((id) => document.getElementById(id))
 const { DEFAULTS, KINDS, KIND, TYPES, TYPE_LABEL, AREA_COLOR, domainOf, progressOf, keyOf, under, esc, hm, ago, num, call, connect, toast } = self.RL
 // System quest ranks, as on Today (src/ui/components/system-quests.tsx).
 const RANK_HINT = { E: 'easy', D: 'light', C: 'steady', B: 'hard', A: 'very hard', S: 'rare' }
 
-let s = DEFAULTS      // settings
+/** @type {Awaited<ReturnType<typeof load>>} */
+let s = { ...DEFAULTS, lastSync: null }      // settings
 let tab = null        // the active tab
 let domain = null
 let page = {}         // what the content script says about this page
 let type = 'course'   // chosen in the Track form
+/** @type {import('@relife/contract').TodayView | null} */
 let view = null       // the Today data (/api/companion)
 let viewAt = 0        // when ReLife last sent it
 let busy = new Set()  // routines and goals with a save in flight
 
+/** @returns {Promise<import('./globals').Settings & { lastSync: import('./globals').LastSync | null }>} */
 const load = async () => ({ ...DEFAULTS, lastSync: null, ...(await chrome.storage.local.get([...Object.keys(DEFAULTS), 'lastSync'])) })
 const icon = (name) => self.ICON[name] ?? ''
-for (const el of document.querySelectorAll('[data-icon]')) el.innerHTML = icon(el.dataset.icon)
+for (const el of /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-icon]'))) el.innerHTML = icon(el.dataset.icon)
 $('favicon').onerror = () => { $('favicon').style.visibility = 'hidden' }
 $('favicon').onload = () => { $('favicon').style.visibility = '' }
 $('openSettings').innerHTML = icon('settings')
@@ -242,7 +246,10 @@ function renderSkeleton() {
 }
 
 /** Saves a check or a log, then repaints with what ReLife sends back. Level-ups and achievements get a toast. */
+/** @param {import('@relife/contract').TodayAction} body */
 async function post(body) {
+  // The older /api/companion answers failures as { ok: false, error: string }; /api/v1 will use the contract's ApiError.
+  /** @type {import('./globals').CallResult<Partial<import('@relife/contract').TodayActionResult> & { error?: string }>} */
   const r = await call(s, '/api/companion', { method: 'POST', body: JSON.stringify(body) })
   if (r.ok && r.data?.view) {
     view = r.data.view

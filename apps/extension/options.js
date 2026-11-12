@@ -1,10 +1,11 @@
 // ReLife extension settings: the connection, sync status, sites you don't track, items tracked from this browser
 // and the keyboard shortcuts. Everything here lives in chrome.storage; the background worker picks changes up.
 
-const $ = (id) => document.getElementById(id)
+/** DOM glue: elements are looked up by id and used as whatever they are, so this stays untyped. The data is what is typed. */
+const $ = /** @type {(id: string) => any} */ ((id) => document.getElementById(id))
 const { DEFAULTS, TYPE_LABEL, settings, domainOf, esc, ago, connect, toast } = self.RL
 const icon = (name) => self.ICON[name] ?? ''
-for (const el of document.querySelectorAll('[data-icon]')) el.innerHTML = icon(el.dataset.icon)
+for (const el of /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-icon]'))) el.innerHTML = icon(el.dataset.icon)
 
 let s = DEFAULTS
 

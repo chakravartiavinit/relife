@@ -10,7 +10,7 @@ page) and sends it to **your own** ReLife on this computer. Nothing goes anywher
 
 1. In ReLife, open **Connectors → Laptop activity**, put any long random text in **Extension token**
    (e.g. from `openssl rand -hex 24`) and press Connect.
-2. Open `chrome://extensions`, turn on **Developer mode**, press **Load unpacked** and choose this `extension` folder.
+2. Open `chrome://extensions`, turn on **Developer mode**, press **Load unpacked** and choose this `apps/extension` folder.
 3. Click the ReLife icon in the toolbar, open **Connection**, paste the same token and press **Save and test**.
 
 ## Today, from the toolbar
@@ -86,3 +86,13 @@ and no longer logs "Extension context invalidated", but it doesn't track either.
 
 Uploads are clipped to what ReLife accepts, so an unusually long page title can't block the queue, and a long
 offline backlog goes out in batches.
+
+## Developing
+
+- Colors, radii and easing come from `tokens.css`, generated from `packages/tokens` (`npm run tokens` at the repo root).
+  `popup.html` and `options.html` link it before `popup.css`.
+- The code is plain JS, type-checked with JSDoc: `npm run typecheck -w apps/extension`. Server shapes come from
+  `@relife/contract` (see `globals.d.ts` for the shared globals and storage keys).
+- `npm run pack -w apps/extension` writes `dist/relife-extension-<version>.zip` for the Chrome Web Store (without
+  the type-checking files and scripts). Bump `manifest.json`'s version with each change.
+- Toolbar and popup icons: `npm run icons -w apps/extension` (add a Lucide name in `scripts/icons.mjs`).

@@ -105,6 +105,6 @@
     toastTimer = setTimeout(() => t.removeAttribute('data-show'), 3200)
   }
 
-  self.RL = { DEFAULTS, KINDS, KIND, TYPES, TYPE_LABEL, AREA_COLOR, OFFLINE, progressOf, settings, domainOf, keyOf, under, esc, hm, ago, num, call, connect, toast }
+  self.RL = { DEFAULTS, KINDS: /** @type {[string, string, string][]} */ (KINDS), KIND, TYPES: /** @type {[string, string][]} */ (TYPES), TYPE_LABEL, AREA_COLOR, OFFLINE, progressOf, settings, domainOf, keyOf, under, esc, hm, ago, num, call, connect, toast }
   if (typeof module === 'object') module.exports = self.RL
 })()
