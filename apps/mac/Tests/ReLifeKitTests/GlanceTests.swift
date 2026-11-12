@@ -119,3 +119,81 @@ struct GlanceTests {
         #expect(QuickLogMatches.logTitle("  water 250 ") == "Log water 250")
     }
 }
+
+@Suite("Changes, warnings and optimistic updates")
+struct ChangeTests {
+    private func full() throws -> TodayView { try Fixtures.decode(TodayView.self, "TodayView.full") }
+
+    @Test("a higher level is a level up, a newly cleared quest is reported")
+    func changes() throws {
+        let old = try full()
+        var new = old
+        new.character.level += 1
+        new.character.title = "Ascendant"
+        let active = try #require(new.quests.firstIndex { $0.status == .active })
+        new.quests[active].status = .cleared
+        let changes = TodayChanges.between(old, new)
+        #expect(changes.contains(.levelUp(level: old.character.level + 1, title: "Ascendant")))
+        #expect(changes.contains(.questCleared(title: new.quests[active].title, xp: new.quests[active].xp)))
+        #expect(TodayChanges.between(nil, new).isEmpty)
+        #expect(TodayChanges.between(old, old).isEmpty)
+    }
+
+    @Test("a new day reports nothing")
+    func newDay() throws {
+        let old = try full()
+        var new = old
+        new.today = "2026-11-13"
+        new.character.level += 1
+        #expect(TodayChanges.between(old, new).isEmpty)
+    }
+
+    @Test("the 21:00 warning")
+    func warning() throws {
+        let view = try full()
+        let tz = TimeZone(identifier: "UTC")!
+        let nine = Date(timeIntervalSince1970: 1_794_470_400 + 13 * 3600) // 21:00 UTC
+        let msg = try #require(QuestWarning.message(view: view, now: nine, timeZone: tz, lastWarnedDay: nil))
+        #expect(msg.hasPrefix("2 System quests left"))
+        #expect(msg.hasSuffix("3 h to go"))
+        #expect(QuestWarning.message(view: view, now: nine, timeZone: tz, lastWarnedDay: view.today) == nil)
+        #expect(QuestWarning.message(view: view, now: nine.addingTimeInterval(-3600), timeZone: tz, lastWarnedDay: nil) == nil)
+        var clear = view
+        for i in clear.quests.indices { clear.quests[i].status = .cleared }
+        #expect(QuestWarning.message(view: clear, now: nine, timeZone: tz, lastWarnedDay: nil) == nil)
+        let late = Date(timeIntervalSince1970: 1_794_470_400 + 14 * 3600 + 45 * 60) // 22:45
+        #expect(QuestWarning.message(view: view, now: late, timeZone: tz, lastWarnedDay: nil)?.hasSuffix("75 min to go") == true)
+    }
+
+    @Test("checking a routine updates the count at once and undo restores it")
+    func optimisticCheck() throws {
+        let view = try full()
+        let r = try #require(view.routines.first { $0.status == .pending })
+        let done = Optimistic.apply(.check(scheduleId: r.scheduleId, occurrence: r.occurrence, status: .done), to: view)
+        #expect(done.left == view.left - 1)
+        #expect(done.routines.first { $0.scheduleId == r.scheduleId }?.status == .done)
+        let undone = Optimistic.apply(Optimistic.inverse(of: .check(scheduleId: r.scheduleId, occurrence: r.occurrence, status: .done))!, to: done)
+        #expect(undone.left == view.left)
+        #expect(undone.routines.first { $0.scheduleId == r.scheduleId }?.status == .pending)
+    }
+
+    @Test("adding to a goal moves its value and clears it at the target")
+    func optimisticGoal() throws {
+        let view = try full()
+        let g = try #require(view.goals.first { $0.value < $0.target })
+        let step = Optimistic.apply(.add(scheduleId: g.scheduleId, amount: 10), to: view)
+        #expect(step.goals.first { $0.scheduleId == g.scheduleId }?.value == g.value + 10)
+        let finish = Optimistic.apply(.add(scheduleId: g.scheduleId, amount: g.target), to: view)
+        #expect(finish.left == view.left - 1)
+        #expect(Optimistic.inverse(of: .add(scheduleId: "s", amount: 5)) == .add(scheduleId: "s", amount: -5))
+        #expect(Optimistic.inverse(of: .log(text: "water 250")) == nil)
+        #expect(Optimistic.apply(.log(text: "x"), to: view) == view)
+        #expect(Optimistic.apply(.check(scheduleId: "missing", occurrence: "x", status: .done), to: view) == view)
+    }
+
+    @Test("the queue belongs to one account")
+    func accountKey() {
+        #expect(QueueRules.accountKey(origin: "http://127.0.0.1:3030", owner: "Aarav") == QueueRules.accountKey(origin: "HTTP://127.0.0.1:3030", owner: "aarav"))
+        #expect(QueueRules.accountKey(origin: "http://a", owner: "x") != QueueRules.accountKey(origin: "http://b", owner: "x"))
+    }
+}

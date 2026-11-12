@@ -55,6 +55,11 @@ public enum QueueRules {
         }
     }
 
+    /// Who the queue belongs to. When it changes (another server or another owner), the queue is cleared.
+    public static func accountKey(origin: String, owner: String) -> String {
+        origin.lowercased() + "|" + owner.lowercased()
+    }
+
     public static func isExpired(_ op: QueuedOp, now: Date) -> Bool {
         now.timeIntervalSince(op.createdAt) > maxAge
     }
