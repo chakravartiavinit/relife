@@ -9,11 +9,11 @@ import { LibraryGrid } from '@/ui/components/library'
 import { KindTag, SiteKind } from '@/ui/components/site-kind'
 import { getUser } from '@/core/user'
 import { env } from '@/core/env'
-import { activitySummary } from '@/core/activity'
+import { hmSeconds as hm, loadTime } from '@/core/areas/time'
 import { extensionLastSeen } from '@/core/companion'
-import { addDays, formatDay, localDate } from '@/core/time'
-import { KIND_INFO, type ActivityKind } from '@/domain/activity'
-import { Card, CardHeader, KpiStrip, PageHeader, Skeleton } from '@/ui/components/card'
+import { formatDay, localDate } from '@/core/time'
+import { KIND_INFO } from '@/domain/activity'
+import { Card, CardHeader, Skeleton } from '@/ui/components/card'
 import { BrandLogo } from '@/ui/components/brand-logo'
 import { StackedBars } from '@/ui/components/charts'
 import { EmptyState } from '@/ui/components/empty'
@@ -22,66 +22,33 @@ import { KIND_COLOR } from '@/ui/activity-colors'
 
 export const metadata: Metadata = { title: 'Time' }
 
-
-/** Focus and distraction, as the Today page and the System count them. */
-const FOCUS: ActivityKind[] = ['learning', 'work']
-const DISTRACT: ActivityKind[] = ['social', 'entertainment']
-const DISTRACT_CAP = 90 * 60 // social 30 min + entertainment 60 min
-
-const hm = (seconds: number) => {
-  const m = Math.round(seconds / 60)
-  return m >= 60 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` : `${m}m`
-}
-
-export default function ActivityPage() {
+export default function TimePage() {
   return (
-    <>
-      <PageHeader
-        eyebrow="Time"
-        title="Where your time goes"
-        description="Everything you do on this Mac, every site and app, sorted into learning, work, play and the rest. Recorded by the ReLife extension and app watcher; nothing leaves it."
-      />
-      <Suspense fallback={<div className="flex flex-col gap-6"><Skeleton className="h-[104px] rounded-lg" /><Skeleton className="h-[320px] rounded-lg" /></div>}>
-        <Activity />
-      </Suspense>
-    </>
+    <Suspense fallback={<div className="flex flex-col gap-6"><Skeleton className="h-[320px] rounded-lg" /></div>}>
+      <Time />
+    </Suspense>
   )
 }
 
-async function Activity() {
+async function Time() {
   await connection()
   const user = await getUser()
   const today = localDate(new Date(), user.timezone)
-  const from = addDays(today, -6)
-  const [s, library, seen] = await Promise.all([
-    activitySummary(user, from, today),
+  const [t, library, seen] = await Promise.all([
+    loadTime(user, today),
     db.select().from(schema.learningItems).where(and(eq(schema.learningItems.userId, user.id), ne(schema.learningItems.status, 'done')))
       .orderBy(desc(schema.learningItems.lastActiveAt)),
     extensionLastSeen(),
   ])
+  const { s, days } = t
   const connected = !!env('ACTIVITY_TOKEN')
 
   if (!s.rows) return <Setup connected={connected} seen={seen} />
 
-  const todayKinds = s.byDay.get(today) ?? new Map<ActivityKind, number>()
-  const days = Array.from({ length: 7 }, (_, i) => addDays(from, i))
   const shown = s.byKind.map((x) => x.kind)
-  const sum = (m: Map<ActivityKind, number>, ks: ActivityKind[]) => ks.reduce((a, k) => a + (m.get(k) ?? 0), 0)
-  const todayTotal = [...todayKinds.values()].reduce((a, b) => a + b, 0)
-  const focusToday = sum(todayKinds, FOCUS), distractToday = sum(todayKinds, DISTRACT)
-  // Averages over the days that have any tracking, so a new install doesn't divide by 7.
-  const tracked = days.filter((d) => s.byDay.has(d)).length || 1
-  const focusAvg = days.reduce((a, d) => a + sum(s.byDay.get(d) ?? new Map(), FOCUS), 0) / tracked
 
   return (
     <div className="flex flex-col gap-6">
-      <KpiStrip items={[
-        { label: 'Today', value: hm(todayTotal), sub: `${hm(s.total / tracked)} a day this week` },
-        { label: 'Focus today', value: hm(focusToday), sub: `Learning and deep work · ${hm(focusAvg)} a day on average`, tone: focusToday > 0 && focusToday >= focusAvg ? 'good' : undefined },
-        { label: 'Distraction today', value: hm(distractToday), sub: `Social and entertainment · cap ${hm(DISTRACT_CAP)}`, tone: distractToday > DISTRACT_CAP ? 'bad' : undefined },
-        { label: 'Most time on', value: s.places[0]?.name ?? '–', sub: s.places[0] ? `${hm(s.places[0].seconds)} this week` : undefined },
-      ]} />
-
       <Card>
         <CardHeader title="Each day" icon={<ChartColumn strokeWidth={2} />} color="var(--pill)" description={`${hm(s.total)} tracked in the last 7 days`} />
         <StackedBars

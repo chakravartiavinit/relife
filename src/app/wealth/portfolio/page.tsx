@@ -10,7 +10,7 @@ import { coinInfo } from '@/core/coin-logos'
 import { contractCoin, loadPortfolio, type ActivityRow, type Position } from '@/core/portfolio'
 import { timeAgo } from '@/domain/wealth'
 import { CoinLogo } from '@/ui/components/coin-logo'
-import { Badge, Card, CardHeader, KpiStrip, PageHeader, Skeleton } from '@/ui/components/card'
+import { Badge, Card, CardHeader, KpiStrip, Skeleton, peekAll } from '@/ui/components/card'
 import { EmptyState } from '@/ui/components/empty'
 import { buttonClass } from '@/ui/components/button'
 import { cn } from '@/ui/cn'
@@ -31,7 +31,7 @@ export const metadata: Metadata = { title: 'Portfolio' }
 export default function PortfolioPage({ searchParams }: PageProps<'/wealth/portfolio'>) {
   return (
     <>
-      <PageHeader eyebrow="Wealth" title="Portfolio" description="Everything on Binance: what it's worth, what you made since day one, and every trade, P2P order and transfer." />
+      <p className="mb-6 max-w-[60ch] text-body text-ink-2">Everything on Binance: what it's worth, what you made since day one, and every trade, P2P order and transfer.</p>
       <Suspense fallback={<PortfolioSkeleton />}>
         <Portfolio searchParams={searchParams} />
       </Suspense>
@@ -74,12 +74,12 @@ async function Portfolio({ searchParams }: { searchParams: PageProps<'/wealth/po
 
   return (
     <div className="flex flex-col gap-6">
-      <KpiStrip items={[
+      <KpiStrip items={peekAll([
         { label: 'Worth now', value: <Ticker value={totalUsd * p.usdToBase} currency={base} />, sub: p.futures ? `Spot ${money(p.spotUsd)} · futures ${money(p.futuresUsd)}` : formatMoney(totalUsd, 'USD') },
         { label: 'Profit / loss', value: money(p.trading.total, { sign: true }), tone: tone(p.trading.total), sub: p.futures ? `Spot ${money(part('spot'), { sign: true })} · futures ${money(part('futures'), { sign: true })}` : 'From your spot orders' },
         { label: 'Closed', value: money(p.trading.realized, { sign: true }), tone: tone(p.trading.realized), sub: p.futures ? 'Coins sold, closed futures, funding and fees' : 'Coins sold, after fees' },
         { label: 'Open', value: money(p.trading.open, { sign: true }), tone: tone(p.trading.open), sub: p.futures ? `Spot ${money(p.spotOpen, { sign: true })} · futures ${money(p.futures.openUsd, { sign: true })}` : 'On coins still held' },
-      ]} />
+      ], { type: 'brief', id: 'wealth' })} />
       {p.skipped ? (
         <div className="-mt-3 flex flex-wrap gap-2">
           <Badge color="var(--warn)">{p.skipped} trade{p.skipped === 1 ? '' : 's'} not valued (unusual quote)</Badge>
