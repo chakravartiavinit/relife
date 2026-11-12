@@ -1,6 +1,6 @@
-import { timingSafeEqual } from 'node:crypto'
 import { z } from 'zod'
 import { env } from '@/core/env'
+import { extensionAuthorized, markExtensionSeen } from '@/core/companion'
 import { getUser } from '@/core/user'
 import { popupView, recordSegments, setSiteKind, siteKind, trackCourse } from '@/core/activity'
 import { ACTIVITY_KINDS } from '@/domain/activity'
@@ -40,18 +40,12 @@ const course = z.object({
 const rule = z.object({ domain: z.string().min(1).max(200), kind: z.enum(ACTIVITY_KINDS).nullable() })
 const body = z.object({ segments: z.array(seg).max(500).default([]), courses: z.array(course).max(20).default([]), rules: z.array(rule).max(20).default([]) })
 
-/** The bearer token matches ACTIVITY_TOKEN, compared in constant time. */
-function authorized(req: Request, token: string) {
-  const got = Buffer.from(req.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ?? '')
-  const want = Buffer.from(token)
-  return got.length === want.length && timingSafeEqual(got, want)
-}
-
 export async function POST(req: Request) {
   const user = await getUser() // loads saved keys, including ACTIVITY_TOKEN
   const token = env('ACTIVITY_TOKEN')
   if (!token) return Response.json({ error: 'Laptop activity is not connected. Set a token on the Connectors page.' }, { status: 503 })
-  if (!authorized(req, token)) return Response.json({ error: 'unauthorized: the token doesn’t match the one on Connectors → Laptop activity' }, { status: 401 })
+  if (!extensionAuthorized(req)) return Response.json({ error: 'unauthorized: the token doesn’t match the one on Connectors → Laptop activity' }, { status: 401 })
+  await markExtensionSeen()
   const parsed = body.safeParse(await req.json().catch(() => null))
   if (!parsed.success) return Response.json({ error: 'bad request', issues: parsed.error.issues.slice(0, 3) }, { status: 400 })
   const days = await recordSegments(user, parsed.data.segments)
@@ -65,9 +59,9 @@ export async function POST(req: Request) {
 /** The extension's "Save and test"; with ?domain=, what that site counts as; with ?view=1, the popup's data. */
 export async function GET(req: Request) {
   const user = await getUser()
-  const token = env('ACTIVITY_TOKEN')
-  const ok = !!token && authorized(req, token)
+  const ok = extensionAuthorized(req)
   if (!ok) return Response.json({ ok }, { status: 401 })
+  await markExtensionSeen()
   const q = new URL(req.url).searchParams
   // ?view=1 is the extension popup: this site today, today's split and the tracked item (?item=<its url>).
   if (q.get('view')) return Response.json({ ok, app: 'ReLife', ...(await popupView(user, q.get('domain'), q.get('item'))) })
