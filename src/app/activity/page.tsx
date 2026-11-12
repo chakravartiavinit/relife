@@ -10,6 +10,7 @@ import { KindTag, SiteKind } from '@/ui/components/site-kind'
 import { getUser } from '@/core/user'
 import { env } from '@/core/env'
 import { activitySummary } from '@/core/activity'
+import { extensionLastSeen } from '@/core/companion'
 import { addDays, formatDay, localDate } from '@/core/time'
 import { KIND_INFO, type ActivityKind } from '@/domain/activity'
 import { Card, CardHeader, KpiStrip, PageHeader, Skeleton } from '@/ui/components/card'
@@ -52,14 +53,15 @@ async function Activity() {
   const user = await getUser()
   const today = localDate(new Date(), user.timezone)
   const from = addDays(today, -6)
-  const [s, library] = await Promise.all([
+  const [s, library, seen] = await Promise.all([
     activitySummary(user, from, today),
     db.select().from(schema.learningItems).where(and(eq(schema.learningItems.userId, user.id), ne(schema.learningItems.status, 'done')))
       .orderBy(desc(schema.learningItems.lastActiveAt)),
+    extensionLastSeen(),
   ])
   const connected = !!env('ACTIVITY_TOKEN')
 
-  if (!s.rows) return <Setup connected={connected} />
+  if (!s.rows) return <Setup connected={connected} seen={seen} />
 
   const todayKinds = s.byDay.get(today) ?? new Map<ActivityKind, number>()
   const days = Array.from({ length: 7 }, (_, i) => addDays(from, i))
@@ -173,7 +175,13 @@ async function Activity() {
   )
 }
 
-function Setup({ connected }: { connected: boolean }) {
+/** "2 min ago", for when the extension last reached ReLife. */
+function ago(d: Date) {
+  const m = Math.round((Date.now() - d.getTime()) / 60_000)
+  return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 48 * 60 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`
+}
+
+function Setup({ connected, seen }: { connected: boolean; seen: Date | null }) {
   return (
     <Card>
       <EmptyState
@@ -181,6 +189,7 @@ function Setup({ connected }: { connected: boolean }) {
         title={connected ? 'Waiting for the first minutes' : 'Track your laptop time'}
         description={
           <>
+            {connected && seen ? <span className="mb-2 block font-medium text-ink-2">The extension last reached ReLife {ago(seen)}. Time shows here after a few minutes on a site.</span> : null}
             1. On <Link href="/connectors" className="font-medium text-pill-ink hover:underline">Connectors → Laptop activity</Link>, set a token.{' '}
             2. In Chrome open <code className="rounded-xs bg-surface-2 px-1">chrome://extensions</code>, turn on Developer mode, choose Load unpacked and pick the <code className="rounded-xs bg-surface-2 px-1">extension</code> folder in ReLife.{' '}
             3. Open the extension and paste the same token. Mac apps are recorded by ReLife’s worker on its own.
