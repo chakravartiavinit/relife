@@ -167,8 +167,12 @@ async function flush() {
   const segments = [...batch, ...(open ? [open] : [])]
     .filter((x) => x.end - x.start >= 5000)
     .map((x) => ({ ...x, start: new Date(x.start).toISOString(), end: new Date(x.end).toISOString() }))
-  if (!segments.length && !courses.length && !rules.length) { if (batch.length) await session.set({ queue: queue.slice(batch.length) }); return }
-  const res = await call(s, '/api/activity', { method: 'POST', body: JSON.stringify({ segments, courses, rules }) })
+  const empty = !segments.length && !courses.length && !rules.length
+  if (empty && batch.length) await session.set({ queue: queue.slice(batch.length) })
+  // Nothing to send: still check ReLife answers, so the badge and "Send now" don't trust an old success.
+  const res = empty
+    ? await call(s, '/api/activity')
+    : await call(s, '/api/activity', { method: 'POST', body: JSON.stringify({ segments, courses, rules }) })
   if (!res.status) {
     await chrome.storage.local.set({ lastSync: { at: Date.now(), ok: false, status: 0, error: OFFLINE } })
     // Offline or ReLife isn't running: keep the queue (capped) and try again next time.
@@ -177,11 +181,11 @@ async function flush() {
     return
   }
   // ReLife's own words on a failure (a wrong token, not connected yet), for the options page.
-  const error = res.ok ? undefined : (res.data?.error ?? `ReLife answered ${res.status}`)
+  const error = res.ok ? undefined : (res.data?.error ?? (res.status === 401 ? 'The token doesn’t match the one in ReLife' : `ReLife answered ${res.status}`))
   await chrome.storage.local.set({ lastSync: { at: Date.now(), ok: res.ok, status: res.status, ...(error ? { error: String(error).slice(0, 200) } : {}) } })
   // 400 means ReLife can't read this batch, and it never will: drop it rather than retry it forever and block
   // everything after it. Other failures (ReLife restarting, a wrong token) keep it for next time.
-  if (res.ok || res.status === 400) {
+  if (!empty && (res.ok || res.status === 400)) {
     await chrome.storage.local.set({ pendingCourses: pendingCourses.slice(courses.length), pendingRules: pendingRules.slice(rules.length) })
     // Closed stretches are done; the open one keeps its id and is re-sent as it grows.
     const { queue: latest = [] } = await session.get()
