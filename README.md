@@ -120,7 +120,7 @@ bar menu (Safari: **File → Add to Dock**). It gets a Dock icon and its own win
 
 ## Connect your data
 
-Open **Connectors** in the sidebar. Nothing syncs until you connect it. **Connect** asks for that service's keys
+Open **You › Connections** in the sidebar. Nothing syncs until you connect it. **Connect** asks for that service's keys
 and stores them encrypted in your local database; values already in `.env` fill any field you leave blank.
 
 | What | You need | Guide |

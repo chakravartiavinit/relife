@@ -26,7 +26,15 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
   sheet: level, streak, week, consistency, achievements, XP), `/you/connections`, `/you/notifications`, `/you/settings`).
   Old URLs (`/goals`, `/habits`, `/insights`, `/inbox`, `/profile`, `/connectors`, `/settings`, `/activity`,
   `/relationships`, ...) redirect (307) through `LEGACY_REDIRECTS` in `src/domain/routes.ts`; never link to them.
-  Navigation lives in `src/ui/components/nav.tsx`. The game look comes from three banners: `CharacterBanner`
+  Navigation data (`NAV`, `isActive`) lives in `src/ui/components/nav.tsx`; the shell is in `src/ui/components/shell/`: a
+  collapsible desktop `Sidebar` (240px, or a 72px icon rail; the choice is stored in `localStorage` `relife:sidebar`
+  and put on `<html data-sidebar>` before paint by `sidebar-script.ts`, ⌘\ toggles it), the desktop `TopBar`
+  (breadcrumb from `trail()`, Capture field, sync dot, Coach bell, level avatar), the phone `PhoneTopBar` and
+  `TabBar` (a raised `+` opens the command menu until Capture lands). Everything the shell shows besides the page
+  (Coach count, sync dot, level ring, area dots) comes from `loadShellStatus` in `src/core/shell.ts`: one SQL
+  statement plus `xpLevel` and `buildDayPlan`, wrapped in React `cache`, read by each piece in its own Suspense
+  island (`shell-status.tsx`). The needs-you rules (merchant grouping, nudges expire after 3 days) are in
+  `src/domain/needs-you.ts`. The game look comes from three banners: `CharacterBanner`
   (`hud.tsx`, Today and Progress), `AreaHeader` (area pages) and `PageHeader` (everything else). Routine
   pictures come from `src/ui/routine-icons.ts`.
 - Look ("ReLife capsule"): ink black, white and the logo's capsule blue, light-first. The signature shapes are
@@ -45,7 +53,7 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
 - `src/app/`: Next.js 16 App Router pages and `actions.ts` (all server actions). Cache Components is
   on: DB reads go in an async child component that calls `await connection()`, wrapped in
   `<Suspense>` with a skeleton sized like the content. See `src/app/page.tsx`.
-- `src/core/`: ingest pipeline, schedules, metrics, quick-log writes, FX, time zones, connector keys.
+- `src/core/`: ingest pipeline, schedules, metrics, quick-log writes, FX, time zones, connector keys, today's plan (`day-plan.ts`), shell status (`shell.ts`).
 - `src/domain/`: pure TypeScript (recurrence, streaks, FIFO P&L, money formatting, the quick-log grammar, `?peek=`
   parsing, the route map). No DB, no React.
 - `src/connectors/`, `src/parsers/`, `src/rules/`, `src/ai/jobs/`: the four extension points.
