@@ -62,8 +62,9 @@ diagrams (processes, data flow, data model, job engine, nudges, AI, security and
 - **Coach → Data to sort**: messages that couldn't be read and payments without a category.
 - **Connectors**: connect data sources, Telegram and AI providers. Each shows when it last synced and when it
   syncs next.
-- **Welcome** (`/welcome`): first-run setup on one small card, a question at a time: your name, your day,
-  areas, what to train, targets, tone and goals, then routines from a starter list or built by your AI model.
+- **Welcome** (`/welcome`): first-run setup in four steps, a save file building itself beside the questions: your name and
+  region, your areas and what to train first, the sources to connect (a username is one field), then your hours,
+  targets and routines (suggested by your AI model, or from a starter list). It lands on Today with a setup card.
 
 ## Nudges
 
