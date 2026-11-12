@@ -536,6 +536,20 @@ export async function saveSystemFocus(ids: string[]) {
   return { ok: true as const }
 }
 
+/**
+ * You › Notifications: send one message through the outbox (category `events`, so the user's own delivery choice,
+ * quiet hours and daily cap apply, exactly like the real ones). `sent` is false when those rules hold it back.
+ */
+export async function sendTestMessage() {
+  const { telegramConfigured } = await import('@/core/notify')
+  if (!telegramConfigured()) return { ok: false as const, error: 'Telegram isn’t connected yet. Connect it first.' }
+  const user = await getUser()
+  const { notify, delivered } = await import('@/core/outbox')
+  const ref = `test:${crypto.randomUUID()}`
+  await notify(user, 'events', { text: '⭐ Test message from ReLife\nIf you can read this, Progress messages reach you here.', ref })
+  return { ok: true as const, sent: await delivered(user.id, ref) }
+}
+
 /** Settings → Notifications: quiet hours and per-category delivery. The worker reads it each minute. */
 export async function saveNotifications(input: unknown) {
   const { NOTIFY_CATEGORIES } = await import('@/domain/notify')

@@ -22,6 +22,16 @@ export async function notify(user: User, category: NotifyCategory, msg: { text: 
   await flushOutbox(user)
 }
 
+/** The last 7 days of the outbox for You › Notifications: reached Telegram, still waiting (quiet hours, daily cap), dropped (category off or the cap). */
+export async function weeklyNotifications(user: User, now = new Date()) {
+  const N = schema.notifications
+  const since = new Date(now.getTime() - 7 * 86_400_000)
+  const rows = await db.select({ status: N.status, sent: sql<boolean>`${N.sends} >= 1`, n: sql<number>`count(*)::int` }).from(N)
+    .where(and(eq(N.userId, user.id), gte(N.createdAt, since))).groupBy(N.status, sql`${N.sends} >= 1`)
+  const sum = (f: (r: (typeof rows)[number]) => boolean) => rows.filter(f).reduce((a, r) => a + r.n, 0)
+  return { sent: sum((r) => r.sent), held: sum((r) => !r.sent && r.status === 'queued'), skipped: sum((r) => !r.sent && r.status === 'skipped') }
+}
+
 /** Did a message about `ref` reach Telegram? Only a successful send stores a message id; dropped rows have none. */
 export async function delivered(userId: string, ref: string) {
   const N = schema.notifications
