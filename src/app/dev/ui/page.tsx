@@ -158,7 +158,8 @@ export default function UiGallery() {
       </Section>
 
       <Section title="Peek views">
-        <PeekGallery />
+        {/* The metric view draws EvilCharts, which read the clock, so it renders per request too. */}
+        <Suspense fallback={<Skeleton className="h-[420px]" />}><PeekSamples /></Suspense>
       </Section>
 
       <Section title="Shell pieces">
@@ -218,6 +219,11 @@ export default function UiGallery() {
       </Section>
     </div>
   )
+}
+
+async function PeekSamples() {
+  await connection()
+  return <PeekGallery />
 }
 
 async function ChartSamples() {
