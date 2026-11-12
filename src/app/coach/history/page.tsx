@@ -60,7 +60,7 @@ async function History({ searchParams }: { searchParams: PageProps<'/coach/histo
 
       {show === null || show === 'decisions' ? (
         <Card as="section" aria-labelledby="decisions-h" className="px-0 pb-0">
-          <h2 id="decisions-h" className={cn(sectionTitle, 'px-5 pb-3')}>Decisions · last {h.decisions.length || 50}</h2>
+          <h2 id="decisions-h" className={cn(sectionTitle, 'px-5 pb-3')}>Decisions</h2>
           {h.decisions.length ? (
             <ul className="flex flex-col divide-y divide-divider border-t border-divider">
               {h.decisions.map((d) => {

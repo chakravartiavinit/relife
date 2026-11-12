@@ -17,6 +17,7 @@ import { IlloGallery } from '@/ui/components/tour/illos'
 import { ToastGallery } from '@/ui/components/toast'
 import { CaptureGallery } from '@/ui/components/capture/capture-gallery'
 import { PeekGallery } from '@/ui/components/peek/peek-gallery'
+import { CoachGallery } from '@/ui/components/coach/coach-gallery'
 import { AreaGallery } from '@/ui/components/area/area-gallery'
 import { InstalledBeuiGallery, PeekLinkDemo, SegmentTabsDemo, SheetDemo, ShellDemo, TypeScale } from '@/ui/components/gallery-foundations'
 import { RecoveryPanel, SystemQuests } from '@/ui/components/system-quests'
@@ -165,6 +166,11 @@ export default function UiGallery() {
 
       <Section title="Area template and Life hub">
         <Suspense fallback={<Skeleton className="h-[420px]" />}><AreaGallery /></Suspense>
+      </Section>
+
+      <Section title="Coach: Needs you, Ask and no model">
+        {/* The rows format a routine's rhythm with the current date, so this streams in. */}
+        <Suspense fallback={<Skeleton className="h-[480px] rounded-lg" />}><CoachGallery /></Suspense>
       </Section>
 
       <Section title="Shell pieces">
