@@ -1,5 +1,5 @@
 // Import Binance history older than the API returns (about two years of spot trades).
-//   npx tsx --env-file=.env scripts/binance-import.ts ~/Downloads/statement.csv [more.csv]
+//   npx tsx --env-file=../../.env scripts/binance-import.ts ~/Downloads/statement.csv [more.csv]
 // Takes either export:
 //   - Transaction History statement (Wallet → Transaction History → Export; goes back to the account's start)
 //   - Spot trade history (Orders → Spot Order → Trade History; Binance shows only recent months)

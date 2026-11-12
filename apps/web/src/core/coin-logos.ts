@@ -1,11 +1,12 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { dataDir } from './paths'
 
 // Coin logos and names (FET → "Artificial Superintelligence Alliance"), looked up once on CoinGecko's
 // public API and kept in data/coins, so pages never load them from the web. data/ is never committed.
 // A symbol can belong to several coins; the one with the largest market cap wins.
 
-const DIR = join(/* turbopackIgnore: true */ process.cwd(), 'data', 'coins')
+const DIR = dataDir('coins')
 const INDEX = join(DIR, 'index.json')
 const RETRY_MS = 86_400_000 // a symbol CoinGecko didn't know is asked about again after a day
 

@@ -1,10 +1,11 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { dataDir } from './paths'
 
 // Cover pictures for library items (courses, shows), copied once from the page's og:image into data/library
 // so ReLife never loads them from the web again. data/ is never committed.
 
-const DIR = join(/* turbopackIgnore: true */ process.cwd(), 'data', 'library')
+const DIR = dataDir('library')
 const TYPES: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif', 'image/avif': 'avif' }
 
 /** Download a picture for an item. Returns the saved file name, or null if it isn't a usable image. */

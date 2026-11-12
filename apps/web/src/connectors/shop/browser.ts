@@ -3,13 +3,14 @@ import { existsSync, mkdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import path from 'node:path'
 import type { BrowserContext, Page } from 'playwright-core'
+import { dataDir } from '@/core/paths'
 
 // One Chrome profile per app, kept in data/browser/<id> (git-ignored, like the key file). You log in
 // once in a visible window; syncs reuse the saved session in a hidden one. Uses your installed Chrome
 // (or CHROME_PATH), so nothing extra is downloaded.
 
 const profileDir = (id: string) => {
-  const dir = path.join(/* turbopackIgnore: true */ process.cwd(), 'data', 'browser', id)
+  const dir = dataDir('browser', id)
   mkdirSync(dir, { recursive: true })
   return dir
 }

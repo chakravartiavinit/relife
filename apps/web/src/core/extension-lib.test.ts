@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 // extension/lib.js is a plain browser script shared by the extension's worker, popup and options page. It hangs its
 // helpers off `self`, so give Node one before loading it.
 ;(globalThis as { self?: unknown }).self = globalThis
-const RL = require('../../extension/lib.js') as {
+const RL = require('../../../../extension/lib.js') as {
   keyOf: (url: string) => string | null
   under: (a: string, k: string) => boolean
   domainOf: (url: string) => string | null

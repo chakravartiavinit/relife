@@ -58,7 +58,7 @@ Active old penalties become `cancelled`, shown as Retired. Existing failed rows 
 
 ## Outcome goals and weekly reviews
 
-Outcome goals (`src/domain/goals.ts`, `src/core/goals.ts`, page `/goals`) close the loop: choose an outcome, record a baseline, link 1–3 existing routines or trackers, review, decide. At most 3 are active.
+Outcome goals (`apps/web/src/domain/goals.ts`, `apps/web/src/core/goals.ts`, page `/goals`) close the loop: choose an outcome, record a baseline, link 1–3 existing routines or trackers, review, decide. At most 3 are active.
 
 - Code owns every number. A tracker baseline is the mean of recorded days in the 28 complete days before the start (at least 7); missing days are skipped, never zero. A check-in goal uses the user's own baseline. The measure and baseline are locked once the goal starts.
 - Status compares the period's outcome with baseline and target. Movement of at least 10% of the gap is toward (or away); less is flat. Too few records is "Not enough data", never a miss. Activity counts are flagged as weak outcome measures but allowed.

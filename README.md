@@ -183,8 +183,8 @@ Rules for code, data, UI and commits are in [AGENTS.md](AGENTS.md); coding agent
 and its reasoning are in [docs/SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md) and the guide in
 [docs/architecture.html](docs/architecture.html). Animation audits and plans live in [plans/](plans/README.md).
 
-Adding things is one file plus one line: a connector in `src/connectors/`, a message format in `src/parsers/`
-(with a fixture), an alert in `src/rules/`, a job in `src/jobs/index.ts`, an AI job in `src/ai/jobs/`.
+Adding things is one file plus one line: a connector in `apps/web/src/connectors/`, a message format in `apps/web/src/parsers/`
+(with a fixture), an alert in `apps/web/src/rules/`, a job in `apps/web/src/jobs/index.ts`, an AI job in `apps/web/src/ai/jobs/`.
 
 Git hooks in `.githooks/` (turned on by `npm install`) keep the repo clean:
 
@@ -228,13 +228,13 @@ own MIT notices (see Credits).
 
 - Charts: [EvilCharts](https://evilcharts.com) (MIT), on [Recharts](https://recharts.org) (MIT).
 - Motion components: [beUI](https://beui.dev) (MIT).
-- Connector and brand logos (`public/connectors`, `public/brands`): [Simple Icons](https://simpleicons.org)
+- Connector and brand logos (`apps/web/public/connectors`, `apps/web/public/brands`): [Simple Icons](https://simpleicons.org)
   (CC0) and [Lobe Icons](https://github.com/lobehub/lobe-icons) (MIT); a few brands Simple Icons doesn't carry
   use their own app icons. Coin logos come from [CoinGecko](https://www.coingecko.com) and are cached locally.
   Trademarks belong to their owners.
-- Routine, hobby and shopping-category pictures (`public/routines`, `public/hobbies`, `public/categories`):
+- Routine, hobby and shopping-category pictures (`apps/web/public/routines`, `apps/web/public/hobbies`, `apps/web/public/categories`):
   [Fluent Emoji](https://github.com/microsoft/fluentui-emoji) by Microsoft (MIT).
-- The ReLIFE name and logo (`packages/brand/logo/`, `public/brand/`, `src/app/icon.png`, `src/app/apple-icon.png`,
+- The ReLIFE name and logo (`packages/brand/logo/`, `apps/web/public/brand/`, `apps/web/src/app/icon.png`, `apps/web/src/app/apple-icon.png`,
   `extension/icons/`)
   belong to their owners (© YayoiSo/comico/ReLIFE Laboratory) and are used as a fan tribute. They are not
   covered by this project's AGPL license.

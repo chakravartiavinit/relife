@@ -1,16 +1,17 @@
 #!/bin/bash
 # Run ReLife in the background on this Mac: starts at login, restarts if it crashes.
-#   scripts/service.sh install    write the LaunchAgent and start it
-#   scripts/service.sh restart    rebuild and restart (after pulling or changing code)
-#   scripts/service.sh stop       stop it (e.g. before `npm run dev`, which uses the same port)
-#   scripts/service.sh uninstall  stop it and remove the LaunchAgent
-#   scripts/service.sh logs       follow the log
+#   npm run service -- install    write the LaunchAgent and start it
+#   npm run service -- restart    rebuild and restart (after pulling or changing code)
+#   npm run service -- stop       stop it (e.g. before `npm run dev`, which uses the same port)
+#   npm run service -- uninstall  stop it and remove the LaunchAgent
+#   npm run service -- logs       follow the log
 set -euo pipefail
 
 LABEL=com.relife.app
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 LOG_DIR="$HOME/Library/Logs/ReLife"
-DIR="$(cd "$(dirname "$0")/.." && pwd)"
+DIR="$(cd "$(dirname "$0")/../../.." && pwd)"   # repo root
+WEB="$DIR/apps/web"
 DOMAIN="gui/$(id -u)"
 
 case "${1:-}" in
@@ -24,7 +25,7 @@ case "${1:-}" in
 <plist version="1.0">
 <dict>
   <key>Label</key><string>$LABEL</string>
-  <key>WorkingDirectory</key><string>$DIR</string>
+  <key>WorkingDirectory</key><string>$WEB</string>
   <key>ProgramArguments</key>
   <array><string>/bin/zsh</string><string>-c</string><string>exec npm start</string></array>
   <key>EnvironmentVariables</key>
@@ -37,7 +38,7 @@ case "${1:-}" in
 </dict>
 </plist>
 PLIST
-    [ -d "$DIR/.next" ] || (cd "$DIR" && npm run build)
+    [ -d "$WEB/.next" ] || (cd "$WEB" && npm run build)
     launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
     # bootout returns before the old copy has stopped; wait for it so bootstrap doesn't fail.
     for _ in $(seq 1 20); do launchctl print "$DOMAIN/$LABEL" >/dev/null 2>&1 || break; sleep 0.5; done
@@ -45,7 +46,7 @@ PLIST
     echo "ReLife runs at http://127.0.0.1:3030 (log: $LOG_DIR/relife.log)"
     ;;
   restart)
-    (cd "$DIR" && npm run build)
+    (cd "$WEB" && npm run build)
     # After `stop` the service is unloaded, so load it again instead of failing.
     launchctl kickstart -k "$DOMAIN/$LABEL" 2>/dev/null || launchctl bootstrap "$DOMAIN" "$PLIST"
     ;;

@@ -2,7 +2,7 @@
 
 A connector fetches data from one source and stores it untouched in `raw_events`; parsers then
 turn it into entries, transactions, trades and holdings. Each connector lives in one file in
-`src/connectors/` and is listed in `src/connectors/index.ts`.
+`apps/web/src/connectors/` and is listed in `apps/web/src/connectors/index.ts`.
 
 A connector runs only after you connect it on the **Connectors** page. Connect opens a dialog for its
 keys, which are stored encrypted in your local database; values already in `.env` fill any field you
@@ -103,7 +103,7 @@ Two local trackers feed one timeline (Activity page):
   them. Set `ACTIVITY_APPS=off` to turn it off.
 
 Everything is sorted into learning, work, entertainment, social, messages, shopping, news or other
-(`src/domain/activity.ts`; YouTube by title and channel). A site or Mac app the built-in list doesn't know is
+(`apps/web/src/domain/activity.ts`; YouTube by title and channel). A site or Mac app the built-in list doesn't know is
 sorted once by your AI model (the `activity:classify` job, hourly; only the name is sent). Your own pick, from the
 extension popup or the Activity page, always wins and re-sorts past time too.
 
@@ -169,14 +169,14 @@ through it.
 The tokens are kept encrypted with the connection's keys and refreshed before they expire (WHOOP is asked for `offline` again on each refresh); services that rotate the
 refresh token (Strava, Oura, WHOOP, Withings) have the new one saved at once. Disconnect forgets them. A new client ID
 means signing in again. If a refresh is refused, the sync fails with "Sign in again on Connectors" and the dialog's
-**Sign in again** button fixes it. The sign-in flow is in `src/core/oauth.ts` and `src/app/api/oauth/`; a connector
-opts in with an `oauth` spec (`src/core/types.ts`).
+**Sign in again** button fixes it. The sign-in flow is in `apps/web/src/core/oauth.ts` and `apps/web/src/app/api/oauth/`; a connector
+opts in with an `oauth` spec (`apps/web/src/core/types.ts`).
 
 ## Personal data connectors
 
 Each turns one service into daily numbers. Like every tracker, they join Patterns (links such as "on days you
 run you sleep longer"), can be picked in Settings → The System as something to improve, and the System sets and
-checks off quests from them. Synced days earn full XP (`src/domain/xp.ts`). Parsing lives in `src/parsers/daily.ts`.
+checks off quests from them. Synced days earn full XP (`apps/web/src/domain/xp.ts`). Parsing lives in `apps/web/src/parsers/daily.ts`.
 
 | Connector | Area | Trackers | XP |
 |---|---|---|---|
@@ -441,15 +441,15 @@ logged in as you. Personal use only, and not an official integration.
 
 ## Adding a connector
 
-1. Create `src/connectors/<id>.ts` exporting a `Connector` (`id`, `name`, `category`, `description`,
+1. Create `apps/web/src/connectors/<id>.ts` exporting a `Connector` (`id`, `name`, `category`, `description`,
    `provides`, `fields`, `env`, `everyMinutes`, `sync`). `fields` are the inputs of its Connect dialog on
    /connectors; each names the env var the connector reads. In `sync`, call `ctx.emit()` with a stable `externalId` per event and
    save progress with `ctx.setCursor()`. Add a `check(get)` that makes one cheap request with the values being
    saved (`get('<ENV>')`, not `env()`) and throws advice when the key or username is wrong.
-2. Add it to the list in `src/connectors/index.ts`.
-3. Write a parser in `src/parsers/` that matches its `source`, add it to `src/parsers/index.ts`
-   (before `llmFallback`), and add a fixture in `src/parsers/fixtures/`. A source that sends one summary per day
-   can use the helpers in `src/connectors/daily.ts` and add an entry to `DAYS` in `src/parsers/daily.ts` instead.
+2. Add it to the list in `apps/web/src/connectors/index.ts`.
+3. Write a parser in `apps/web/src/parsers/` that matches its `source`, add it to `apps/web/src/parsers/index.ts`
+   (before `llmFallback`), and add a fixture in `apps/web/src/parsers/fixtures/`. A source that sends one summary per day
+   can use the helpers in `apps/web/src/connectors/daily.ts` and add an entry to `DAYS` in `apps/web/src/parsers/daily.ts` instead.
    A service that only reports a lifetime total (like Duolingo XP) can turn it into a daily amount with
-   `todayFromTotal` from `src/domain/running-total.ts`.
+   `todayFromTotal` from `apps/web/src/domain/running-total.ts`.
 4. Document its env vars here and in `.env.example`.
