@@ -1,0 +1,57 @@
+/* ReLife extension settings page. Builds on popup.css (same tokens and components), wider and in a tab. */
+body.options { width: auto; min-height: 100vh; font-size: 13.5px; }
+.opt-head { display: flex; align-items: center; gap: 12px; max-width: 640px; margin: 0 auto; padding: 32px 20px 16px; }
+.opt-head .logo { width: 40px; height: 40px; border-radius: 11px; }
+.opt-head h1 { margin: 0; font-size: 20px; letter-spacing: -0.01em; }
+.opt-head .hint { margin: 2px 0 0; font-variant-numeric: tabular-nums; }
+.opt-head .btn { margin-left: auto; text-decoration: none; }
+.opt-main { display: flex; flex-direction: column; gap: 12px; max-width: 640px; margin: 0 auto; padding: 0 20px 40px; }
+.opt-main .card { padding: 18px 18px 20px; border-radius: 20px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.two .field { margin-top: 0; }
+.row.end { justify-content: flex-end; }
+.row.end .btn { flex: none; }
+
+/* Facts: label on the left, value on the right. */
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 4px 0 0; }
+.facts dt { color: var(--ink-3); }
+.facts dd { margin: 0; text-align: right; font-weight: 500; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.facts dd.good { color: var(--good); }
+.facts dd.bad { color: var(--bad); }
+.facts kbd {
+  display: inline-block; min-width: 22px; padding: 1px 6px; border-radius: 6px; background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--hairline); font: 600 12px/1.5 ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+/* Switches as plain checkboxes with a label and a hint: the browser's own control, 40px rows. */
+.toggle { display: flex; align-items: flex-start; gap: 10px; min-height: 40px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--hairline); cursor: pointer; }
+.toggle input { flex: none; width: 18px; height: 18px; margin: 1px 0 0; accent-color: var(--pill); }
+.toggle > span { display: flex; flex-direction: column; gap: 2px; }
+.toggle .hint { margin: 0; }
+
+/* Manage lists: one row per site or item, with a remove button. */
+.manage { margin: 0; padding: 0; list-style: none; }
+.manage li { display: flex; align-items: center; gap: 10px; min-height: 48px; border-bottom: 1px solid var(--hairline); }
+.manage li:last-child { border-bottom: 0; }
+.manage .fav { width: 32px; height: 32px; border-radius: 9px; }
+.manage .fav img { width: 18px; height: 18px; }
+.manage .m-text { min-width: 0; flex: 1; display: flex; flex-direction: column; }
+.manage .m-title { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.manage .m-sub { font-size: 12px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.manage .icon-btn:hover { color: var(--bad); }
+.add-row { display: flex; gap: 8px; margin-top: 12px; }
+.add-row input {
+  flex: 1; min-width: 0; height: 36px; padding: 0 10px; border: 0; border-radius: 10px; background: var(--surface-2); color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--hairline); font-size: 13px;
+}
+.add-row input:focus-visible { outline: 2px solid var(--pill); outline-offset: 0; }
+.options .note { padding: 4px 8px; }
+.options .toast { left: 50%; right: auto; width: min(420px, calc(100% - 40px)); translate: -50% 6px; }
+.options .toast[data-show] { translate: -50% 0; }
+
+@media (max-width: 520px) {
+  .two { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .options .toast { translate: -50% 0; }
+}

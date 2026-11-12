@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "ReLife",
-  "version": "0.5.1",
-  "description": "Sends your focused time on sites, YouTube, courses and shows (with the episodes you watch) to your own ReLife, on this computer.",
+  "version": "0.6.0",
+  "description": "ReLife in your toolbar: today's quests, level and quick log, plus focused time on sites, videos and courses, kept on this computer.",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -13,6 +13,24 @@
     "default_popup": "popup.html",
     "default_title": "ReLife"
   },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+Shift+R"
+      },
+      "description": "Open ReLife"
+    },
+    "toggle-pause": {
+      "suggested_key": {
+        "default": "Alt+Shift+P"
+      },
+      "description": "Pause or resume tracking"
+    }
+  },
   "background": {
     "service_worker": "background.js"
   },
@@ -21,7 +39,8 @@
     "idle",
     "alarms",
     "storage",
-    "favicon"
+    "favicon",
+    "contextMenus"
   ],
   "host_permissions": [
     "http://127.0.0.1/*",

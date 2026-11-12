@@ -4,19 +4,37 @@
 // switch tabs, leave the browser, go idle, or the page changes. Every 30 seconds the open stretch and any
 // closed ones are posted to ReLife (/api/activity). Nothing is sent anywhere else. Incognito is never
 // tracked, and you can pause tracking or exclude sites from the popup.
+//
+// It also keeps the toolbar badge current (quests left today, or a paused / offline mark), answers the keyboard
+// shortcuts and the icon's right-click menu, and caches the popup's Today data so the popup opens instantly.
 
-const DEFAULTS = { server: 'http://127.0.0.1:3030', token: '', paused: false, exclude: [], courses: {} }
+importScripts('lib.js')
+const { settings, domainOf, keyOf, under, call } = self.RL
+
 const IDLE_SECONDS = 120
 // A player iframe reports every 20 seconds; one silent for longer was closed or navigated away.
 const FRAME_STALE_MS = 60_000
 // What ReLife accepts per post (src/app/api/activity/route.ts).
 const MAX_SEGMENTS = 500
 const MAX_COURSES = 20
+// Unsent stretches kept while ReLife is off. They live in local storage, so a browser restart doesn't lose them.
+const MAX_QUEUE = 2000
+// The Today data behind the badge is refreshed this often while you browse (the popup refreshes it on open).
+const COMPANION_EVERY_MS = 2 * 60_000
 
-const settings = async () => ({ ...DEFAULTS, ...(await chrome.storage.local.get(Object.keys(DEFAULTS))) })
+// Per-browser-session state (the open stretch, what each tab's page said) is in session storage; the queue of
+// closed stretches is in local storage so it survives a restart.
 const session = {
-  get: async () => (await chrome.storage.session.get(['open', 'queue', 'pages', 'frames'])),
-  set: (v) => chrome.storage.session.set(v),
+  get: async () => {
+    const [ses, loc] = await Promise.all([chrome.storage.session.get(['open', 'pages', 'frames']), chrome.storage.local.get('queue')])
+    return { ...ses, queue: loc.queue }
+  },
+  set: async ({ queue, ...rest }) => {
+    await Promise.all([
+      Object.keys(rest).length ? chrome.storage.session.set(rest) : null,
+      queue !== undefined ? chrome.storage.local.set({ queue }) : null,
+    ])
+  },
 }
 
 /** What a content script told us about a tab: title, channel, video playing, course hints. */
@@ -32,9 +50,6 @@ async function pageInfo(tabId) {
   return { ...info, media, playing: info.playing || framePlaying }
 }
 
-function domainOf(url) {
-  try { const u = new URL(url); return /^https?:$/.test(u.protocol) ? u.hostname.replace(/^www\./, '') : null } catch { return null }
-}
 function pathOf(url) {
   try { return new URL(url).pathname } catch { return '' }
 }
@@ -46,23 +61,6 @@ async function frontTab() {
   if (!win || !win.focused || win.incognito) return null
   return win.tabs?.find((t) => t.active) ?? null
 }
-
-/**
- * Library item key for a URL: a YouTube playlist, or the site plus the first two parts of the path
- * (app.100xdevs.com/new-courses/13). Shared with the popup.
- */
-function keyOf(url) {
-  try {
-    const u = new URL(url)
-    const host = u.hostname.replace(/^www\./, '')
-    const list = /(^|\.)youtube\.com$/.test(host) && u.searchParams.get('list')
-    if (list) return `youtube.com/list/${list}`
-    return `${host}/${u.pathname.split('/').filter(Boolean).slice(0, 2).join('/')}`
-  } catch { return null }
-}
-
-/** Whether address `a` is the item `k` or a page under it ("site/course/1" is not under "site/course/13"). */
-const under = (a, k) => a === k || a.startsWith(k.endsWith('/') ? k : `${k}/`)
 
 /** The tracked item this page belongs to: by its own address, or by the series it's part of (episodes). */
 function courseFor(s, domain, path, info, url) {
@@ -151,7 +149,8 @@ async function sampleNow(reason) {
     queue.push(open)
   }
   const current = same ? { ...open, end: now, meta: next.meta } : next ? { id: crypto.randomUUID(), source: 'browser', ...next, start: now, end: now } : null
-  await session.set({ open: current, queue })
+  // The queue is only rewritten when a stretch closed; most samples just extend the open one.
+  await session.set({ open: current, ...(open && !same ? { queue } : {}) })
   if (reason === 'alarm') await flush()
 }
 
@@ -174,7 +173,9 @@ async function flush() {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s.token}` },
       body: JSON.stringify({ segments, courses, rules }),
     })
-    await chrome.storage.local.set({ lastSync: { at: Date.now(), ok: res.ok, status: res.status } })
+    // ReLife's own words on a failure (a wrong token, not connected yet), for the options page.
+    const error = res.ok ? undefined : ((await res.json().catch(() => null))?.error ?? `ReLife answered ${res.status}`)
+    await chrome.storage.local.set({ lastSync: { at: Date.now(), ok: res.ok, status: res.status, ...(error ? { error: String(error).slice(0, 200) } : {}) } })
     // 400 means ReLife can't read this batch, and it never will: drop it rather than retry it forever and block
     // everything after it. Other failures (ReLife restarting, a wrong token) keep it for next time.
     if (res.ok || res.status === 400) {
@@ -184,15 +185,95 @@ async function flush() {
       await session.set({ queue: latest.slice(batch.length) })
     }
   } catch {
-    await chrome.storage.local.set({ lastSync: { at: Date.now(), ok: false, status: 0 } })
+    await chrome.storage.local.set({ lastSync: { at: Date.now(), ok: false, status: 0, error: 'Can’t reach ReLife at this address' } })
     // Offline or ReLife isn't running: keep the queue (capped) and try again next time.
     const { queue: latest = [] } = await session.get()
-    if (latest.length > 2000) await session.set({ queue: latest.slice(-2000) })
+    if (latest.length > MAX_QUEUE) await session.set({ queue: latest.slice(-MAX_QUEUE) })
   }
 }
 
+// ── Today data and the toolbar badge ─────────────────────────────────────────────────────────────
+
+/**
+ * Fetches the popup's Today data (character, quests, routines) into local storage, at most every two minutes
+ * unless forced. The popup paints from this copy first. A ReLife without /api/companion (older) answers 404.
+ */
+async function refreshCompanion(force = false) {
+  const s = await settings()
+  if (!s.token) return
+  const { companion } = await chrome.storage.local.get('companion')
+  if (!force && companion?.at && Date.now() - companion.at < COMPANION_EVERY_MS) return
+  const r = await call(s, '/api/companion')
+  if (r.ok && r.data) await chrome.storage.local.set({ companion: { at: Date.now(), view: r.data } })
+  else if (r.status === 404) await chrome.storage.local.set({ companion: { at: Date.now(), view: null, unsupported: true } })
+}
+
+// Badge colours: the popup's --pill, --good, --bad and --ink-3 in light mode (the badge takes plain colours only).
+const BADGE = { pill: '#3f8fd8', good: '#2e8a5b', bad: '#c2413b', muted: '#6b7280' }
+
+/** The toolbar icon says what's going on without opening the popup. */
+async function renderBadge() {
+  const s = await settings()
+  const { lastSync, companion } = await chrome.storage.local.get(['lastSync', 'companion'])
+  const left = companion?.view?.left
+  // A 400 drops one unreadable batch and carries on, so it isn't "offline"; anything else that failed is.
+  const offline = lastSync && !lastSync.ok && lastSync.status !== 400
+  const [text, color, title] =
+    !s.token ? ['', BADGE.muted, 'ReLife: not set up yet']
+      : s.paused ? ['off', BADGE.muted, 'ReLife: tracking paused']
+        : offline ? ['!', BADGE.bad, `ReLife: ${lastSync.error ?? 'can’t reach ReLife'}`]
+          : !s.badge || left == null ? ['', BADGE.pill, 'ReLife: tracking']
+            : left > 0 ? [String(Math.min(left, 99)), BADGE.pill, `ReLife: ${left} ${left === 1 ? 'quest' : 'quests'} left today`]
+              : ['✓', BADGE.good, 'ReLife: everything done today']
+  await chrome.action.setBadgeText({ text })
+  await chrome.action.setBadgeBackgroundColor({ color })
+  if (chrome.action.setBadgeTextColor) await chrome.action.setBadgeTextColor({ color: '#ffffff' })
+  await chrome.action.setTitle({ title })
+}
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local') return
+  if (['token', 'server', 'paused', 'badge', 'lastSync', 'companion'].some((k) => k in changes)) void renderBadge()
+  if ('paused' in changes) void renderMenus()
+  // A new address or token: what the badge counts came from the old one.
+  if ('token' in changes || 'server' in changes) void chrome.storage.local.remove('companion').then(() => refreshCompanion(true))
+})
+
+// ── Shortcuts and the icon's right-click menu ────────────────────────────────────────────────────
+
+async function togglePause() {
+  const s = await settings()
+  await chrome.storage.local.set({ paused: !s.paused })
+  // Close the open stretch now, so time spent paused never joins it.
+  await sample('pause')
+}
+
+async function renderMenus() {
+  const s = await settings()
+  chrome.contextMenus.update('pause', { title: s.paused ? 'Resume tracking' : 'Pause tracking' }, () => void chrome.runtime.lastError)
+}
+
+function createMenus() {
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({ id: 'pause', title: 'Pause tracking', contexts: ['action'] })
+    chrome.contextMenus.create({ id: 'send', title: 'Send to ReLife now', contexts: ['action'] })
+    chrome.contextMenus.create({ id: 'app', title: 'Open ReLife', contexts: ['action'] })
+    void renderMenus()
+  })
+}
+
+chrome.contextMenus.onClicked.addListener((info) => {
+  if (info.menuItemId === 'pause') void togglePause()
+  if (info.menuItemId === 'send') void sample('alarm').then(() => refreshCompanion(true))
+  if (info.menuItemId === 'app') void settings().then((s) => chrome.tabs.create({ url: s.server }))
+})
+chrome.commands.onCommand.addListener((command) => { if (command === 'toggle-pause') void togglePause() })
+
 chrome.alarms.create('tick', { periodInMinutes: 0.5 })
-chrome.alarms.onAlarm.addListener((a) => { if (a.name === 'tick') void sample('alarm') })
+chrome.alarms.onAlarm.addListener((a) => {
+  if (a.name !== 'tick') return
+  void sample('alarm').then(async () => { if (!(await settings()).paused) await refreshCompanion() })
+})
 chrome.tabs.onActivated.addListener(() => void sample('tab'))
 chrome.tabs.onUpdated.addListener((_id, change) => { if (change.url || change.title) void sample('update') })
 chrome.windows.onFocusChanged.addListener(() => void sample('focus'))
@@ -248,9 +329,19 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   return msg.type === 'flush' || msg.type === 'track-course' || msg.type === 'site-kind'
 })
 
+chrome.runtime.onStartup.addListener(() => { void renderBadge(); void refreshCompanion(true) })
+
 // After an install or update, send every course you've chosen, so ones saved before an update (or while
 // ReLife was off) still reach it. Creating a course twice just updates it.
 chrome.runtime.onInstalled.addListener(() => void serial(async () => {
+  createMenus()
+  // Before 0.6 unsent stretches lived in session storage; move any still there into the local queue.
+  const { queue: old } = await chrome.storage.session.get('queue')
+  if (old?.length) {
+    const { queue = [] } = await chrome.storage.local.get('queue')
+    await chrome.storage.local.set({ queue: [...old, ...queue].slice(-MAX_QUEUE) })
+    await chrome.storage.session.remove('queue')
+  }
   const { courses = {}, pendingCourses = [] } = await chrome.storage.local.get(['courses', 'pendingCourses'])
   const all = Object.entries(courses).map(([key, c]) => {
     const [domain, ...rest] = key.split('/')
@@ -259,4 +350,4 @@ chrome.runtime.onInstalled.addListener(() => void serial(async () => {
   // One entry per item: an update while ReLife is off mustn't pile up copies.
   const byKey = new Map([...pendingCourses, ...all].map((c) => [`${c.domain}${c.path}`, c]))
   if (all.length) await chrome.storage.local.set({ pendingCourses: [...byKey.values()] })
-}).then(() => sample('alarm')))
+}).then(() => sample('alarm')).then(() => refreshCompanion(true)).then(renderBadge))

@@ -13,66 +13,125 @@
   </header>
 
   <div class="views" id="views">
-    <!-- Main view: this site, today, the library item. -->
+    <!-- Main view: Today (character, quick log, quests, screen time) and This page (site, library item). -->
     <main class="view" id="mainView">
-      <section class="card now" id="nowCard">
-        <div class="halftone" aria-hidden="true"></div>
-        <div class="label"><span class="tick"></span>On this page</div>
-        <div class="site">
-          <span class="fav"><img id="favicon" alt="" /></span>
-          <span class="site-text">
-            <span class="site-name" id="site">–</span>
-            <span class="site-sub" id="siteSub">&nbsp;</span>
-          </span>
-          <button class="icon-btn" id="exclude" type="button" aria-pressed="false"></button>
-        </div>
-        <div class="chips" role="radiogroup" aria-label="This site counts as" id="kinds"></div>
-      </section>
+      <div class="tabs" role="tablist" aria-label="ReLife">
+        <button class="tab" role="tab" id="tabToday" type="button" aria-controls="todayPanel" aria-selected="true">Today<span class="count" id="leftCount" hidden></span></button>
+        <button class="tab" role="tab" id="tabPage" type="button" aria-controls="pagePanel" aria-selected="false" tabindex="-1">This page</button>
+      </div>
 
-      <section class="card" id="libCard">
-        <div class="label"><span class="tick"></span>Library</div>
-        <div id="itemView" hidden>
-          <a class="item" id="itemLink" target="_blank" rel="noreferrer">
-            <span class="cover" id="itemCover"></span>
-            <span class="item-text">
-              <span class="item-kind" id="itemKind"></span>
-              <span class="item-title" id="itemTitle"></span>
-              <span class="item-sub" id="itemSub"></span>
-            </span>
-          </a>
-          <div class="capsule" id="itemBar" hidden><span class="fill"></span></div>
+      <div class="panel" id="todayPanel" role="tabpanel" aria-labelledby="tabToday">
+        <!-- Shown instead of the cards when there's nothing to show yet: not set up, offline, an older ReLife. -->
+        <section class="card notice-card" id="todayNotice" hidden>
+          <div class="notice-ic" id="noticeIc"></div>
+          <p class="notice-title" id="noticeTitle"></p>
+          <p class="hint" id="noticeText"></p>
+          <button class="btn primary wide" id="noticeBtn" type="button"></button>
+        </section>
+
+        <div class="skeleton" id="todaySkeleton" aria-hidden="true" hidden>
+          <div class="sk sk-hero"></div>
+          <div class="sk sk-log"></div>
+          <div class="sk sk-list"></div>
         </div>
-        <div id="trackStart">
-          <button class="btn primary wide" id="trackBtn" type="button"><span class="ic" data-icon="plus"></span>Track this page</button>
-          <p class="hint">Add this course, show, series or book. Its time and progress then fill in by themselves.</p>
-        </div>
-        <div class="reveal" id="trackReveal">
-          <form class="reveal-inner" id="trackForm" inert>
-            <div class="chips types" role="radiogroup" aria-label="What is it?" id="types"></div>
-            <div class="cover wide" id="cover" hidden></div>
-            <label class="field">
-              <span>Name in ReLife</span>
-              <input id="trackName" maxlength="200" required />
-            </label>
-            <p class="hint" id="scope"></p>
-            <div class="row">
-              <button class="btn" type="button" id="trackCancel">Cancel</button>
-              <button class="btn primary" type="submit">Track</button>
+
+        <div id="todayCards">
+          <section class="card hero" id="heroCard">
+            <div class="halftone" aria-hidden="true"></div>
+            <div class="hero-top">
+              <span class="lv" id="lv">Lv –</span>
+              <span class="hero-text">
+                <span class="hero-title" id="heroTitle">&nbsp;</span>
+                <span class="hero-sub" id="heroSub">&nbsp;</span>
+              </span>
+              <span class="xp-today" id="xpToday"></span>
             </div>
+            <div class="capsule" id="xpBar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Level progress"><span class="fill"></span></div>
+            <div class="stats" id="stats"></div>
+          </section>
+
+          <form class="card log" id="logForm" autocomplete="off">
+            <label class="sr-only" for="logInput">Quick log</label>
+            <span class="ic log-ic" data-icon="sparkles"></span>
+            <input id="logInput" maxlength="200" placeholder="Log something: water 250, coffee 2…" />
+            <button class="icon-btn small" id="logSend" type="submit" aria-label="Log it" disabled></button>
           </form>
-        </div>
-      </section>
 
-      <section class="card today">
-        <div class="today-head">
-          <div class="label"><span class="tick"></span>Today</div>
-          <a class="link" id="openActivity" target="_blank" rel="noreferrer">Activity <span class="ic" data-icon="open"></span></a>
-        </div>
-        <div class="big" id="todayTotal">–</div>
-        <div class="stack" id="todayBar" role="img" aria-label="Today by kind"></div>
-        <ul class="legend" id="todayLegend"></ul>
-      </section>
+          <section class="card" id="questCard">
+            <div class="card-head">
+              <div class="label"><span class="tick"></span>Quests</div>
+              <span class="head-note" id="questNote"></span>
+            </div>
+            <ul class="list" id="systemList" aria-label="Quests from the System"></ul>
+            <ul class="list" id="goalList" aria-label="Goals"></ul>
+            <ul class="list" id="routineList" aria-label="Routines"></ul>
+            <p class="empty" id="questEmpty" hidden>Nothing due today. Add routines in ReLife and they show up here.</p>
+            <a class="link foot" id="openToday" target="_blank" rel="noreferrer">Open Today in ReLife <span class="ic" data-icon="open"></span></a>
+          </section>
 
+          <section class="card today">
+            <div class="today-head">
+              <div class="label"><span class="tick"></span>Screen time</div>
+              <a class="link" id="openActivity" target="_blank" rel="noreferrer">Activity <span class="ic" data-icon="open"></span></a>
+            </div>
+            <div class="big" id="todayTotal">–</div>
+            <div class="stack" id="todayBar" role="img" aria-label="Today by kind"></div>
+            <ul class="legend" id="todayLegend"></ul>
+          </section>
+          <p class="stamp" id="stamp" aria-live="polite"></p>
+        </div>
+      </div>
+
+      <div class="panel" id="pagePanel" role="tabpanel" aria-labelledby="tabPage" hidden>
+        <p class="empty page-empty" id="pageEmpty" hidden>Open a website to see its time and what it counts as.</p>
+        <section class="card now" id="nowCard">
+          <div class="halftone" aria-hidden="true"></div>
+          <div class="label"><span class="tick"></span>On this page</div>
+          <div class="site">
+            <span class="fav"><img id="favicon" alt="" /></span>
+            <span class="site-text">
+              <span class="site-name" id="site">–</span>
+              <span class="site-sub" id="siteSub">&nbsp;</span>
+            </span>
+            <button class="icon-btn" id="exclude" type="button" aria-pressed="false"></button>
+          </div>
+          <div class="chips" role="radiogroup" aria-label="This site counts as" id="kinds"></div>
+        </section>
+
+        <section class="card" id="libCard">
+          <div class="label"><span class="tick"></span>Library</div>
+          <div id="itemView" hidden>
+            <a class="item" id="itemLink" target="_blank" rel="noreferrer">
+              <span class="cover" id="itemCover"></span>
+              <span class="item-text">
+                <span class="item-kind" id="itemKind"></span>
+                <span class="item-title" id="itemTitle"></span>
+                <span class="item-sub" id="itemSub"></span>
+              </span>
+            </a>
+            <div class="capsule" id="itemBar" hidden><span class="fill"></span></div>
+          </div>
+          <div id="trackStart">
+            <button class="btn primary wide" id="trackBtn" type="button"><span class="ic" data-icon="plus"></span>Track this page</button>
+            <p class="hint">Add this course, show, series or book. Its time and progress then fill in by themselves.</p>
+          </div>
+          <div class="reveal" id="trackReveal">
+            <form class="reveal-inner" id="trackForm" inert>
+              <div class="chips types" role="radiogroup" aria-label="What is it?" id="types"></div>
+              <div class="cover wide" id="cover" hidden></div>
+              <label class="field">
+                <span>Name in ReLife</span>
+                <input id="trackName" maxlength="200" required />
+              </label>
+              <p class="hint" id="scope"></p>
+              <div class="row">
+                <button class="btn" type="button" id="trackCancel">Cancel</button>
+                <button class="btn primary" type="submit">Track</button>
+              </div>
+            </form>
+          </div>
+        </section>
+      </div>
     </main>
 
     <!-- Settings view: where ReLife runs and the token. -->
@@ -93,11 +152,13 @@
         </label>
         <button class="btn primary wide" type="submit">Save and test</button>
       </form>
+      <button class="btn wide" id="openOptions" type="button"><span class="ic" data-icon="sliders"></span>Sites, library and shortcuts</button>
       <div class="note"><span class="ic" data-icon="shield"></span><span>Only this address receives anything. Incognito windows are never tracked, and nothing goes anywhere else.</span></div>
     </section>
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="lib.js"></script>
   <script src="icons.js"></script>
   <script src="popup.js"></script>
 </body>
