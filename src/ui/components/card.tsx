@@ -1,4 +1,6 @@
+import type { PeekRef } from '@/domain/peek'
 import { cn } from '../cn'
+import { PeekLink } from './peek/peek-link'
 
 const CATEGORY_BY_LABEL: Record<string, string> = {
   health: 'var(--cat-health)',
@@ -110,9 +112,9 @@ export function SystemLabel({ color = 'var(--pill)', children }: { color?: strin
   )
 }
 
-export type Kpi = { label: React.ReactNode; value: React.ReactNode; sub?: React.ReactNode; tone?: 'good' | 'bad' }
+export type Kpi = { label: React.ReactNode; value: React.ReactNode; sub?: React.ReactNode; tone?: 'good' | 'bad'; /** Opens this item's Peek. */ peek?: PeekRef }
 
-/** The row of headline numbers at the top of every area page. */
+/** The row of headline numbers at the top of every area page. A number with a `peek` opens its Peek. */
 export function KpiStrip({ items }: { items: Kpi[] }) {
   return (
     <Card className="p-6">
@@ -120,10 +122,17 @@ export function KpiStrip({ items }: { items: Kpi[] }) {
           the numbers beside it still line up. */}
       <div className="grid grid-cols-2 gap-x-6 md:grid-cols-4">
         {items.map((k, i) => (
-          <Stat
-            key={i} label={k.label} value={k.value} sub={k.sub} tone={k.tone}
-            className="row-span-3 grid grid-rows-subgrid content-start [&:nth-child(n+3)]:pt-6 md:[&:nth-child(n+3)]:pt-0 md:[&:nth-child(n+5)]:pt-6"
-          />
+          <div key={i} className="relative row-span-3 grid grid-rows-subgrid content-start [&:nth-child(n+3)]:pt-6 md:[&:nth-child(n+3)]:pt-0 md:[&:nth-child(n+5)]:pt-6">
+            <Stat label={k.label} value={k.value} sub={k.sub} tone={k.tone} className="row-span-3 grid grid-rows-subgrid content-start" />
+            {/* The link covers the whole tile (a sibling, so the numbers keep their layout); the tile tints on hover. */}
+            {k.peek ? (
+              <PeekLink
+                to={k.peek}
+                aria-label={`${typeof k.label === 'string' ? k.label : 'Details'}: open details`}
+                className="absolute -inset-x-3 -inset-y-2 rounded-md transition-colors duration-150 ease-out-quint hover:bg-ink/[0.04] focus-visible:outline-2 focus-visible:outline-pill dark:hover:bg-white/[0.05] md:-inset-x-3"
+              />
+            ) : null}
+          </div>
         ))}
       </div>
     </Card>

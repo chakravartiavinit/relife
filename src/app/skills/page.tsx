@@ -108,8 +108,8 @@ async function Skills() {
     <div className="flex flex-col gap-6">
       <KpiStrip items={[
         { label: 'Days practised, 28 days', value: `${practisedDays28}/28`, sub: streak.current ? `${streak.current}-day streak` : 'Start a streak today' },
-        { label: 'Learning, 28 days', value: hm(sumLast(learningMin, 28)), sub: `${learning.length} in progress` },
-        { label: 'Coding, 28 days', value: formatNumber(sumLast(coding, 28)), sub: `${formatNumber(sumLast(commits, 7))} commits this week` },
+        { label: 'Learning, 28 days', value: hm(sumLast(learningMin, 28)), sub: `${learning.length} in progress`, peek: { type: 'metric', id: 'learning.minutes' } },
+        { label: 'Coding, 28 days', value: formatNumber(sumLast(coding, 28)), sub: `${formatNumber(sumLast(commits, 7))} commits this week`, peek: { type: 'metric', id: 'github.commits' } },
         { label: 'Problems solved, 28 days', value: formatNumber(sumLast(solved, 28)), sub: cpActive ? `${cpActive} active days` : cpSites.length ? 'None this month yet' : 'Connect a judge in You › Connections' },
       ]} />
       <Card>
