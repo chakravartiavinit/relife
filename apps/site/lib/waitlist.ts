@@ -6,6 +6,8 @@ import { CONSENT_VERSION, REFERRAL_CAP, SPOTS_PER_REFERRAL } from './config'
 import { hashToken, hmac, newRefCode, newToken } from './crypto'
 import { isDisposable } from './disposable'
 import { emailDriver } from './email'
+import { logError } from './log'
+import { isSelfReferral } from './referral'
 import { EMAIL_LIMITS, IP_LIMITS, isLimited } from './rate-limit'
 import type { JoinInput } from './validation'
 
@@ -28,24 +30,34 @@ export async function joinWaitlist(input: JoinInput, ip: string): Promise<JoinRe
   if (existing && isLimited(await attemptTimes(eq(waitlistAttempts.emailHash, emailHash)), EMAIL_LIMITS)) return 'sent'
 
   const token = newToken()
-  const referredBy = await resolveReferrer(input.ref, ipHash)
   let row: Signup
   if (existing) {
-    ;[row] = await db().update(t).set({
+    // A re-submit only rotates the link. It never touches who referred the row (set once, at creation) and it keeps
+    // chips someone already chose, so typing another person's pending address can't change their signup.
+    // The rotation is one conditional UPDATE: only one request per 2 minutes gets to issue a link, so parallel
+    // submits can't each email a token and leave one of them dead.
+    const [rotated] = await db().update(t).set({
       tokenHash: hashToken(token),
-      referredBy: existing.referredBy ?? referredBy,
-      ...(input.interests.length ? { interests: input.interests } : {}),
-      ...(input.platforms.length ? { platforms: input.platforms } : {}),
-    }).where(eq(t.id, existing.id)).returning()
+      tokenIssuedAt: new Date(),
+      ...(existing.interests.length ? {} : { interests: input.interests }),
+      ...(existing.platforms.length ? {} : { platforms: input.platforms }),
+    }).where(and(eq(t.id, existing.id), sql`${t.tokenIssuedAt} < now() - ${EMAIL_LIMITS[0].windowMs}::float8 * interval '1 millisecond'`)).returning()
+    if (!rotated) return 'sent'
+    row = rotated
   } else {
-    row = await insertSignup(input, token, ipHash, referredBy)
+    const created = await insertSignup(input, token, ipHash, await resolveReferrer(input, ipHash))
+    // Lost a race with a parallel submit of the same address: that request saved its own token and sends the
+    // email. Sending ours would mail a link whose hash was never stored.
+    if (!created) return 'sent'
+    row = created
   }
   await db().insert(waitlistAttempts).values({ ipHash, emailHash, kind: 'send' })
   await emailDriver().send(row.status === 'confirmed' ? alreadyConfirmedEmail(row.email, token) : confirmEmail(row.email, token))
   return 'sent'
 }
 
-async function insertSignup(input: JoinInput, token: string, ipHash: string, referredBy: string | null): Promise<Signup> {
+/** The new row, or null when another request inserted the same email first. */
+async function insertSignup(input: JoinInput, token: string, ipHash: string, referredBy: string | null): Promise<Signup | null> {
   for (let i = 0; i < 5; i++) {
     try {
       const [row] = await db().insert(t).values({
@@ -55,23 +67,28 @@ async function insertSignup(input: JoinInput, token: string, ipHash: string, ref
       }).returning()
       return row
     } catch (e) {
-      // A double submit races on the unique email: treat it as the existing row. A ref_code collision retries.
-      const [again] = await db().select().from(t).where(eq(t.email, input.email))
-      if (again) return again
+      // Unique email lost a race: the other request owns the row. A ref_code collision (no row for this email) retries.
+      const [again] = await db().select({ id: t.id }).from(t).where(eq(t.email, input.email))
+      if (again) return null
       if (i === 4) throw e
     }
   }
   throw new Error('unreachable')
 }
 
-/** No self-referral: same IP hash as a referrer who signed up in the last day gets no link. */
-async function resolveReferrer(ref: string | undefined, ipHash: string): Promise<string | null> {
-  if (!ref) return null
-  const [r] = await db().select({ id: t.id, ipHash: t.ipHash, createdAt: t.createdAt }).from(t).where(eq(t.refCode, ref))
-  if (!r) return null
-  if (r.ipHash === ipHash && Date.now() - r.createdAt.getTime() < DAY) return null
+/** Who gets credit for this signup, or null. See isSelfReferral for what is refused. */
+async function resolveReferrer(input: JoinInput, ipHash: string): Promise<string | null> {
+  if (!input.ref) return null
+  const [r] = await db().select({ id: t.id, email: t.email, ipHash: t.ipHash }).from(t).where(eq(t.refCode, input.ref))
+  if (!r || isSelfReferral({ referrerEmail: r.email, referrerIpHash: r.ipHash, email: input.email, ipHash })) return null
   return r.id
 }
+
+/** A referrer's credit is the number of their confirmed friends (capped), recomputed so it can't drift. */
+const recount = (referrerId: string) =>
+  db().update(t).set({
+    referralCount: sql`least((select count(*)::int from ${t} f where f.referred_by = ${referrerId} and f.status = 'confirmed'), ${REFERRAL_CAP})`,
+  }).where(eq(t.id, referrerId))
 
 const byToken = async (token: string) => (await db().select().from(t).where(eq(t.tokenHash, hashToken(token))))[0]
 
@@ -84,11 +101,11 @@ export type Status = {
   email: string
 }
 
-/** 1 + confirmed rows ahead: lower score (seq - 10 x referrals), ties to more referrals, then earlier seq. Same rule as position.ts. */
+/** 1 + confirmed rows with a lower score (seq - 10 x referrals), ties by seq. Same rule as position.ts. */
 async function positionIn(me: Signup): Promise<number> {
   const [{ n }] = await db().select({ n: count() }).from(t).where(and(
     eq(t.status, 'confirmed'),
-    sql`(${t.seq} - ${SPOTS_PER_REFERRAL} * ${t.referralCount}, -${t.referralCount}, ${t.seq}) < (${me.seq - SPOTS_PER_REFERRAL * me.referralCount}::bigint, ${-me.referralCount}::int, ${me.seq}::bigint)`,
+    sql`(${t.seq} - ${SPOTS_PER_REFERRAL} * ${t.referralCount}, ${t.seq}) < (${me.seq - SPOTS_PER_REFERRAL * me.referralCount}::bigint, ${me.seq}::bigint)`,
   ))
   return 1 + n
 }
@@ -107,18 +124,18 @@ export async function confirmToken(token: string): Promise<Status | null> {
   if (me.status === 'pending') {
     const [done] = await db().update(t).set({ status: 'confirmed', confirmedAt: new Date() }).where(and(eq(t.id, me.id), eq(t.status, 'pending'))).returning()
     if (done) {
-      if (done.referredBy) {
-        await db().update(t).set({ referralCount: sql`least(${t.referralCount} + 1, ${REFERRAL_CAP})` }).where(eq(t.id, done.referredBy))
-      }
-      await emailDriver().send(welcomeEmail(done.email, token, done.refCode)).catch((e) => console.error('welcome email failed', e))
+      if (done.referredBy) await recount(done.referredBy)
+      await emailDriver().send(welcomeEmail(done.email, token, done.refCode)).catch((e) => logError('welcome email failed', e))
     }
   }
   return statusFor(token)
 }
 
+/** Deletes the row. A confirmed friend who leaves takes their referral credit with them, so leave + rejoin can't pay twice. */
 export async function leaveWaitlist(token: string): Promise<boolean> {
-  const rows = await db().delete(t).where(eq(t.tokenHash, hashToken(token))).returning({ id: t.id })
-  return rows.length > 0
+  const [gone] = await db().delete(t).where(eq(t.tokenHash, hashToken(token))).returning({ referredBy: t.referredBy, status: t.status })
+  if (gone?.referredBy && gone.status === 'confirmed') await recount(gone.referredBy)
+  return !!gone
 }
 
 /** Daily cron: stale pending rows (7 days) and old rate-limit rows (24 h). */

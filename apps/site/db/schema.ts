@@ -8,6 +8,7 @@ export const waitlistSignups = pgTable('waitlist_signups', {
   email: text('email').notNull().unique(), // trimmed, lower-cased
   status: text('status', { enum: ['pending', 'confirmed'] }).notNull().default('pending'),
   tokenHash: text('token_hash').notNull().unique(), // sha256 of the /w/<token> secret
+  tokenIssuedAt: timestamp('token_issued_at', { withTimezone: true }).notNull().defaultNow(), // when the current link was issued: one new link per 2 minutes, enforced in SQL
   refCode: text('ref_code').notNull().unique(), // 8 chars, public, for ?ref=
   referredBy: uuid('referred_by').references((): AnyPgColumn => waitlistSignups.id, { onDelete: 'set null' }),
   referralCount: integer('referral_count').notNull().default(0), // confirmed referrals, capped
