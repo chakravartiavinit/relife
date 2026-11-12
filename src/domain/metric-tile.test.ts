@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { orderTiles, summarizeTracker, type TileTracker } from './metric-tile'
+import { deltaText, formatTileValue, orderTiles, summarizeTracker, type TileTracker } from './metric-tile'
 
 const TODAY = '2026-11-12'
 const day = (back: number) => new Date(Date.parse(`${TODAY}T00:00:00Z`) - back * 86_400_000).toISOString().slice(0, 10)
@@ -92,4 +92,19 @@ test('order: pinned first, synced before manual, quiet apart, empty dropped', ()
   assert.deepEqual(shown.map((t) => t.slug), ['sleep', 'steps', 'hrv', 'weight'])
   // a pinned tracker that has gone quiet is not pinned any more
   assert.deepEqual(quiet.map((t) => t.slug), ['stale-pin', 'old'])
+})
+
+test('big numbers: hours and minutes read as time, the rest by size', () => {
+  assert.deepEqual(formatTileValue(6.1667, 'h'), { text: '6h 10m', unit: null })
+  assert.deepEqual(formatTileValue(125, 'min'), { text: '2h 05m', unit: null })
+  assert.deepEqual(formatTileValue(18, 'min'), { text: '18', unit: 'min' })
+  assert.deepEqual(formatTileValue(41.04, 'ms'), { text: '41', unit: 'ms' })
+  assert.deepEqual(formatTileValue(72.64, 'kg'), { text: '72.6', unit: 'kg' })
+  assert.deepEqual(formatTileValue(1250, 'ml'), { text: '1,250', unit: 'ml' })
+  assert.deepEqual(formatTileValue(8420, null), { text: '8,420', unit: null })
+})
+
+test('delta text', () => {
+  assert.equal(deltaText({ diff: 3, pct: 0.124, tone: 'good' }), '▲ 12% vs usual')
+  assert.equal(deltaText({ diff: -3, pct: -0.25, tone: 'bad' }), '▼ 25% vs usual')
 })

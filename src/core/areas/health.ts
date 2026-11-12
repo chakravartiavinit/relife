@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { and, eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { loadAdherence } from '../adherence'
@@ -9,15 +10,20 @@ import { average, fillDays } from '@/domain/series'
 import { formatNumber } from '@/domain/money'
 import type { AreaKpi } from './types'
 
+/** The water routine (a daily quantity goal) and the tracker it counts into. */
+export const loadWater = cache(async (user: User) => {
+  const goals = await db.select().from(schema.schedules)
+    .where(and(eq(schema.schedules.userId, user.id), eq(schema.schedules.category, 'health'), eq(schema.schedules.active, true)))
+  const goal = goals.find((s) => (s.meta as ScheduleMeta).trackerSlug && s.target)
+  return { goal, slug: goal ? (goal.meta as ScheduleMeta).trackerSlug! : 'water' }
+})
+
 /** Sleep and steps (7-day averages), today's water against its goal, and how many medicines were kept. */
 export async function healthKpis(user: User, today: string): Promise<AreaKpi[]> {
-  const [goals, meds] = await Promise.all([
-    db.select().from(schema.schedules)
-      .where(and(eq(schema.schedules.userId, user.id), eq(schema.schedules.category, 'health'), eq(schema.schedules.active, true))),
+  const [{ goal: waterGoal, slug: waterSlug }, meds] = await Promise.all([
+    loadWater(user),
     loadAdherence(user, { category: 'health', kinds: ['medicine'] }),
   ])
-  const waterGoal = goals.find((s) => (s.meta as ScheduleMeta).trackerSlug && s.target)
-  const waterSlug = waterGoal ? (waterGoal.meta as ScheduleMeta).trackerSlug! : 'water'
   const data = await trackerDays(user, addDays(today, -6), today, { slugs: ['sleep.hours', 'steps', waterSlug] })
   const get = (slug: string) => data.find((d) => d.tracker.slug === slug)
   const avg7 = (slug: string) => average(fillDays(get(slug)?.days ?? new Map(), addDays(today, -6), today).map((p) => p.value))

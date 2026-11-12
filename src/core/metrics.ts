@@ -47,6 +47,26 @@ export async function trackerDays(user: User, from: string, to: string, opts: { 
   })
 }
 
+/**
+ * Where each tracker's values in [from, to] came from (`oura`, `manual`...) and the newest note (Last.fm's top
+ * artist, Steam's top game: the entry's note, or the `artist` / `game` its sync stored), for the All metrics tiles.
+ */
+export async function trackerFacts(user: User, from: string, to: string, trackerIds: string[]) {
+  if (!trackerIds.length) return new Map<string, { sources: string[]; note: string | null }>()
+  const text = sql`coalesce(${schema.entries.note}, ${schema.entries.meta}->>'artist', ${schema.entries.meta}->>'game')`
+  const rows = await db.select({
+    trackerId: schema.entries.trackerId,
+    sources: sql<string[]>`array_agg(distinct ${schema.entries.source})`,
+    note: sql<string | null>`(array_agg(${text} order by ${schema.entries.localDate} desc, ${schema.entries.updatedAt} desc) filter (where ${text} is not null))[1]`,
+  }).from(schema.entries).where(and(
+    eq(schema.entries.userId, user.id),
+    inArray(schema.entries.trackerId, trackerIds),
+    gte(schema.entries.localDate, from),
+    lte(schema.entries.localDate, to),
+  )).groupBy(schema.entries.trackerId)
+  return new Map(rows.map((r) => [r.trackerId, { sources: r.sources, note: r.note }]))
+}
+
 export type Txn = typeof schema.transactions.$inferSelect & { base: number }
 
 /** Transactions in [from, to] with amounts converted to the user's base currency. */

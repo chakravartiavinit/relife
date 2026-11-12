@@ -122,3 +122,16 @@ export function orderTiles(tiles: TileSummary[], pinned: string[]): { shown: Til
     quiet: rest.filter((t) => t.state === 'quiet').sort(order),
   }
 }
+
+/** A tile's big number: hours and long minutes as `6h 10m`, others with the decimals their size needs. */
+export function formatTileValue(v: number, unit: string | null): { text: string; unit: string | null } {
+  const mins = unit === 'h' ? Math.round(v * 60) : unit === 'min' && Math.abs(v) >= 60 ? Math.round(v) : null
+  if (mins != null) return { text: `${Math.floor(mins / 60)}h ${String(mins % 60).padStart(2, '0')}m`, unit: null }
+  const digits = Math.abs(v) >= 100 ? 0 : 1
+  return { text: v.toLocaleString('en-IN', { maximumFractionDigits: digits }), unit }
+}
+
+/** "▲ 12% vs usual": this week's average against the 4 weeks before. */
+export function deltaText(d: NonNullable<TileSummary['delta']>) {
+  return `${d.diff > 0 ? '▲' : '▼'} ${Math.round(Math.abs(d.pct) * 100)}% vs usual`
+}

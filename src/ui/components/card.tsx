@@ -114,6 +114,9 @@ export function SystemLabel({ color = 'var(--pill)', children }: { color?: strin
 
 export type Kpi = { label: React.ReactNode; value: React.ReactNode; sub?: React.ReactNode; tone?: 'good' | 'bad'; /** Opens this item's Peek. */ peek?: PeekRef }
 
+/** Every item opens `peek` unless it already has its own (an area's tiles open the area's summary). */
+export const peekAll = (items: Kpi[], peek: PeekRef): Kpi[] => items.map((k) => ({ peek, ...k }))
+
 /** The row of headline numbers at the top of every area page. A number with a `peek` opens its Peek. */
 export function KpiStrip({ items }: { items: Kpi[] }) {
   return (
