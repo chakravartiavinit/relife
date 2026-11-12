@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Category } from '@/db/schema'
 import type { Template } from '@/core/onboarding'
 import type { SuggestedRoutine } from '@/ai/routines'
@@ -50,6 +50,9 @@ const Frame = ({ title, children, wide }: { title: string; children: React.React
 
 export function OnboardingGallery({ templates }: { templates: Template[] }) {
   const [v, setV] = useState<V>(FIXTURE)
+  // Like setup itself, the steps draw after mount: the region row reads the clock.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
   const set: Set = (k, val) => setV((s) => ({ ...s, [k]: val }))
   const options = IMPROVE.filter((o) => v.areas.includes(o.area))
   const picks = v.improve.filter((id) => options.some((o) => o.id === id))
@@ -57,6 +60,7 @@ export function OnboardingGallery({ templates }: { templates: Template[] }) {
   const rows = pickSources(SOURCES, v.areas)
   const none = { set, building: false, setBuilding: () => {}, starters, existing: ['journal'], today: '2026-11-12', picksSig: SIG }
   const aiV: V = { ...v, generated: GENERATED, templates: ['ai-1', 'ai-2'], routineMode: 'ai' }
+  if (!mounted) return <div className="h-[640px] animate-pulse rounded-lg bg-surface-2" />
   return (
     <div className="flex flex-col gap-8">
       <div className="max-w-[460px]"><Rail current={2} onJump={() => {}} /></div>
