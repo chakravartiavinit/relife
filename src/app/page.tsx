@@ -89,22 +89,23 @@ async function Today() {
         {
           label: 'Today’s plan', value: total ? `${done} / ${total}` : '–',
           sub: !total ? 'Nothing scheduled' : left ? (next ? `Next: ${next.name} · ${next.time}` : `${left} to go`) : 'All done',
-          tone: total && !left ? 'good' : undefined,
+          tone: total && !left ? 'good' : undefined, peek: { type: 'brief', id: 'today' },
         },
         b.focus.tracked
-          ? { label: 'Deep work', value: minutes(b.focus.work ?? 0), sub: `${minutes(b.focus.distract)} social and entertainment`, tone: b.focus.distract > (b.focus.work ?? 0) && b.focus.distract >= 30 ? 'bad' : undefined }
-          : { label: 'Deep work', value: '–', sub: 'Add the browser extension' },
+          ? { label: 'Deep work', value: minutes(b.focus.work ?? 0), sub: `${minutes(b.focus.distract)} social and entertainment`, tone: b.focus.distract > (b.focus.work ?? 0) && b.focus.distract >= 30 ? 'bad' : undefined, peek: { type: 'brief', id: 'time' } }
+          : { label: 'Deep work', value: '–', sub: 'Add the browser extension', peek: { type: 'brief', id: 'time' } },
         {
           label: 'Spent today', value: money(b.money.spentToday),
           sub: b.money.usualDay ? `Usual day ${money(b.money.usualDay)}` : `${b.money.countToday} payment${b.money.countToday === 1 ? '' : 's'}`,
-          tone: b.money.usualDay && b.money.spentToday > b.money.usualDay * 1.5 ? 'bad' : undefined,
+          tone: b.money.usualDay && b.money.spentToday > b.money.usualDay * 1.5 ? 'bad' : undefined, peek: { type: 'brief', id: 'wealth' },
         },
         b.code.tracked
           ? {
               label: 'Shipped', value: `${b.code.commits ?? 0} commit${b.code.commits === 1 ? '' : 's'}`,
               sub: [b.code.prs ? `${b.code.prs} PR${b.code.prs === 1 ? '' : 's'}` : null, b.code.reviews ? `${b.code.reviews} review${b.code.reviews === 1 ? '' : 's'}` : null, b.code.solved ? `${b.code.solved} solved` : null, b.code.learning ? `${minutes(b.code.learning)} learning` : null].filter(Boolean).join(' · ') || 'Nothing else yet',
+              peek: { type: 'metric', id: 'github.commits' },
             }
-          : { label: 'Shipped', value: '–', sub: 'Connect GitHub or Codeforces' },
+          : { label: 'Shipped', value: '–', sub: 'Connect GitHub or Codeforces', peek: { type: 'brief', id: 'skills' } },
       ]} />
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
