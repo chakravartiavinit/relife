@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { LAST_VALUE, parseQuickLog, slugify } from './quicklog'
+import { LAST_VALUE, parseQuickLog, quickLogUndo, slugify } from './quicklog'
 
 test('quick log grammar', () => {
   assert.deepEqual(parseQuickLog('water 250'), { type: 'entry', slug: 'water', value: 250 })
@@ -25,4 +25,12 @@ test('slugify and the set-not-add trackers', () => {
   assert.equal(slugify('  Cold Shower! '), 'cold-shower')
   assert.equal(slugify('sleep.hours'), 'sleep.hours')
   assert.ok(LAST_VALUE.has('mood') && !LAST_VALUE.has('water'))
+})
+
+test('undo tokens', () => {
+  const ctx = { date: '2026-11-12', prev: null as number | null, externalRef: 'manual:1' }
+  assert.deepEqual(quickLogUndo({ type: 'entry', slug: 'water', value: 250 }, ctx), { kind: 'entry', slug: 'water', date: '2026-11-12', value: 250 })
+  assert.deepEqual(quickLogUndo({ type: 'entry', slug: 'mood', value: 4 }, ctx), { kind: 'set', slug: 'mood', date: '2026-11-12', prev: null })
+  assert.deepEqual(quickLogUndo({ type: 'entry', slug: 'weight', value: 71 }, { ...ctx, prev: 72 }), { kind: 'set', slug: 'weight', date: '2026-11-12', prev: 72 })
+  assert.deepEqual(quickLogUndo({ type: 'spend', amount: 120, currency: 'INR', note: 'chai' }, ctx), { kind: 'spend', externalRef: 'manual:1' })
 })
