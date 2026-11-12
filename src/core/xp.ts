@@ -300,3 +300,11 @@ export async function recentXp(user: User, limit = 40) {
   }).from(schema.xpEvents).where(eq(schema.xpEvents.userId, user.id))
     .orderBy(desc(schema.xpEvents.localDate), desc(schema.xpEvents.amount)).limit(limit)
 }
+
+/** Level, progress to the next and title: one `sum`, for the shell (the full `xpSummary` does far more). */
+export async function xpLevel(user: User) {
+  const [row] = await db.select({ n: sql<number>`coalesce(sum(${schema.xpEvents.amount}), 0)::int` }).from(schema.xpEvents)
+    .where(eq(schema.xpEvents.userId, user.id))
+  const lv = levelFor(row.n)
+  return { level: lv.level, progress: lv.progress, title: titleFor(lv.level) }
+}
