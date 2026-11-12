@@ -1,6 +1,5 @@
 import { z } from 'zod'
-import { env } from '@/core/env'
-import { extensionAuthorized, markExtensionSeen } from '@/core/companion'
+import { extensionAuthorized, extensionDenied, markExtensionSeen } from '@/core/companion'
 import { getUser } from '@/core/user'
 import { popupView, recordSegments, setSiteKind, siteKind, trackCourse } from '@/core/activity'
 import { ACTIVITY_KINDS } from '@/domain/activity'
@@ -42,9 +41,7 @@ const body = z.object({ segments: z.array(seg).max(500).default([]), courses: z.
 
 export async function POST(req: Request) {
   const user = await getUser() // loads saved keys, including ACTIVITY_TOKEN
-  const token = env('ACTIVITY_TOKEN')
-  if (!token) return Response.json({ error: 'Laptop activity is not connected. Set a token on the Connectors page.' }, { status: 503 })
-  if (!extensionAuthorized(req)) return Response.json({ error: 'unauthorized: the token doesn’t match the one on Connectors → Laptop activity' }, { status: 401 })
+  if (!extensionAuthorized(req)) return extensionDenied()
   await markExtensionSeen()
   const parsed = body.safeParse(await req.json().catch(() => null))
   if (!parsed.success) return Response.json({ error: 'bad request', issues: parsed.error.issues.slice(0, 3) }, { status: 400 })

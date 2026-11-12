@@ -2,22 +2,11 @@
 // and the keyboard shortcuts. Everything here lives in chrome.storage; the background worker picks changes up.
 
 const $ = (id) => document.getElementById(id)
-const { DEFAULTS, settings, domainOf, esc, ago } = self.RL
+const { DEFAULTS, TYPE_LABEL, settings, domainOf, esc, ago, connect, toast } = self.RL
 const icon = (name) => self.ICON[name] ?? ''
 for (const el of document.querySelectorAll('[data-icon]')) el.innerHTML = icon(el.dataset.icon)
-const TYPE_LABEL = { course: 'Course', show: 'Show', video: 'Series', book: 'Book', other: 'Other' }
 
 let s = DEFAULTS
-
-let toastTimer
-function toast(text, tone) {
-  const t = $('toast')
-  t.textContent = text
-  t.dataset.tone = tone ?? ''
-  t.toggleAttribute('data-show', true)
-  clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => t.removeAttribute('data-show'), 3200)
-}
 
 const fact = (label, value, tone) => `<dt>${esc(label)}</dt><dd${tone ? ` class="${tone}"` : ''}>${value}</dd>`
 
@@ -55,7 +44,7 @@ function renderCourses() {
   const entries = Object.entries(s.courses).sort((a, b) => a[1].title.localeCompare(b[1].title))
   $('courseEmpty').hidden = entries.length > 0
   $('courseList').innerHTML = entries.map(([key, c]) => `<li>
-    <span class="fav">${icon({ course: 'course', show: 'show', video: 'video', book: 'book' }[c.kind] ?? 'other')}</span>
+    <span class="fav">${icon(TYPE_LABEL[c.kind] ? c.kind : 'other')}</span>
     <span class="m-text"><span class="m-title">${esc(c.title)}</span><span class="m-sub">${esc(TYPE_LABEL[c.kind] ?? 'Item')} · ${esc(key)}</span></span>
     <button class="icon-btn" type="button" data-k="${esc(key)}" aria-label="Stop tracking ${esc(c.title)} from this browser" title="Stop tracking here">${icon('trash')}</button>
   </li>`).join('')
@@ -127,22 +116,20 @@ $('editKeys').onclick = () => chrome.tabs.create({ url: 'chrome://extensions/sho
 
 $('setupForm').onsubmit = async (e) => {
   e.preventDefault()
-  const server = $('server').value.trim().replace(/\/$/, '') || DEFAULTS.server
-  const token = $('token').value.trim()
-  await chrome.storage.local.set({ server, token })
-  try {
-    const res = await fetch(`${server}/api/activity`, { headers: { Authorization: `Bearer ${token}` } })
-    const error = res.ok ? undefined : res.status === 401 ? 'The token doesn’t match the one in ReLife' : `ReLife answered ${res.status}`
-    await chrome.storage.local.set({ lastSync: { at: Date.now(), ok: res.ok, status: res.status, ...(error ? { error } : {}) } })
-    toast(res.ok ? 'Connected to ReLife.' : `${error}.`, res.ok ? 'good' : 'bad')
-  } catch {
-    await chrome.storage.local.set({ lastSync: { at: Date.now(), ok: false, status: 0, error: 'Can’t reach ReLife at this address' } })
-    toast('Can’t reach ReLife at that address. Is it running?', 'bad')
-  }
+  const r = await connect($('server').value, $('token').value)
+  toast(r.ok ? 'Connected to ReLife.' : r.status ? `${r.error}.` : 'Can’t reach ReLife at that address. Is it running?', r.ok ? 'good' : 'bad')
 }
 
 // Live: the popup, the background worker or another settings tab may change things while this is open.
-chrome.storage.onChanged.addListener((_c, area) => { if (area === 'local') void render() })
+chrome.storage.onChanged.addListener(async (changes, area) => {
+  if (area !== 'local') return
+  s = await settings()
+  // Only what changed, so the lists keep keyboard focus while stretches and sync results land every 30 seconds.
+  if ('exclude' in changes) renderExclude()
+  if ('courses' in changes) renderCourses()
+  if ('server' in changes) $('openApp').href = s.server
+  void renderSync()
+})
 // "3 min ago" keeps counting.
 setInterval(() => void renderSync(), 30_000)
 

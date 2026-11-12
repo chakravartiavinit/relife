@@ -25,10 +25,17 @@ export function extensionAuthorized(req: Request) {
   return got.length === want.length && timingSafeEqual(got, want)
 }
 
-/** The extension posts every 30 seconds while the browser is open; Activity and Connectors show when it last did. */
+/** 503 before Laptop activity is connected, else 401 for a token that doesn't match. */
+export const extensionDenied = () => env('ACTIVITY_TOKEN')
+  ? Response.json({ error: 'unauthorized: the token doesn’t match the one on Connectors → Laptop activity' }, { status: 401 })
+  : Response.json({ error: 'Laptop activity is not connected. Set a token on the Connectors page.' }, { status: 503 })
+
+/** The extension posts every 30 seconds while the browser is open; the Activity page shows when it last did. */
+/** Best effort: a failed mark never fails the request that carries the extension's data. */
 export async function markExtensionSeen(now = new Date()) {
   await db.insert(schema.heartbeats).values({ name: 'extension', at: now })
     .onConflictDoUpdate({ target: schema.heartbeats.name, set: { at: now } })
+    .catch((e) => console.error('[heartbeat]', e instanceof Error ? e.message : e))
 }
 
 export async function extensionLastSeen() {
@@ -76,5 +83,3 @@ export async function companionView(user: User, now = new Date()) {
     focus: { seconds: screen.total, byKind: screen.byKind.map(({ kind, seconds }) => ({ kind, seconds })) },
   }
 }
-
-export type CompanionView = Awaited<ReturnType<typeof companionView>>

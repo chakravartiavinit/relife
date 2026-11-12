@@ -1,5 +1,5 @@
 // Shared by the background worker (importScripts), the popup and the options page (<script>): settings defaults,
-// the library item key rule and small formatters. Plain script, no build step; everything hangs off self.RL.
+// the library item key rule, small formatters, the toast and the connection test. Plain script, no build step; everything hangs off self.RL.
 
 ;(() => {
   const DEFAULTS = {
@@ -15,6 +15,9 @@
     ['news', 'News', 'var(--cat-hobbies)'], ['other', 'Other', 'var(--ink-3)'],
   ]
   const KIND = Object.fromEntries(KINDS.map(([k, label, color]) => [k, { label, color }]))
+  // Library item types, as the popup's Track form offers them.
+  const TYPES = [['course', 'Course'], ['show', 'Show'], ['video', 'Series'], ['book', 'Book'], ['other', 'Other']]
+  const TYPE_LABEL = Object.fromEntries(TYPES)
   // Life areas (src/db/schema.ts CATEGORIES) and their colours (src/ui/tokens.ts).
   const AREA_COLOR = {
     health: 'var(--cat-health)', mind: 'var(--cat-mind)', skills: 'var(--cat-skills)', wealth: 'var(--cat-wealth)',
@@ -69,6 +72,36 @@
     }
   }
 
-  self.RL = { DEFAULTS, KINDS, KIND, AREA_COLOR, settings, domainOf, keyOf, under, esc, hm, ago, num, call }
+  const OFFLINE = 'Can’t reach ReLife at this address'
+
+  /** Saves the address and token and tests them; the result is stored as `lastSync` and returned. */
+  async function connect(serverText, tokenText) {
+    const server = serverText.trim().replace(/\/$/, '') || DEFAULTS.server
+    const token = tokenText.trim()
+    await chrome.storage.local.set({ server, token })
+    let lastSync
+    try {
+      const res = await fetch(`${server}/api/activity`, { headers: { Authorization: `Bearer ${token}` } })
+      const error = res.ok ? undefined : res.status === 401 ? 'The token doesn’t match the one in ReLife' : `ReLife answered ${res.status}`
+      lastSync = { at: Date.now(), ok: res.ok, status: res.status, ...(error ? { error } : {}) }
+    } catch {
+      lastSync = { at: Date.now(), ok: false, status: 0, error: OFFLINE }
+    }
+    await chrome.storage.local.set({ lastSync })
+    return lastSync
+  }
+
+  let toastTimer
+  /** A short message in the page's #toast. */
+  function toast(text, tone) {
+    const t = document.getElementById('toast')
+    t.textContent = text
+    t.dataset.tone = tone ?? ''
+    t.toggleAttribute('data-show', true)
+    clearTimeout(toastTimer)
+    toastTimer = setTimeout(() => t.removeAttribute('data-show'), 3200)
+  }
+
+  self.RL = { DEFAULTS, KINDS, KIND, TYPES, TYPE_LABEL, AREA_COLOR, OFFLINE, settings, domainOf, keyOf, under, esc, hm, ago, num, call, connect, toast }
   if (typeof module === 'object') module.exports = self.RL
 })()

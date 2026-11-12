@@ -3,9 +3,7 @@
 // Reads from your ReLife (/api/companion and /api/activity?view=1); everything else stays in chrome.storage.
 
 const $ = (id) => document.getElementById(id)
-const { DEFAULTS, KINDS, KIND, AREA_COLOR, domainOf, keyOf, under, esc, hm, ago, num, call } = self.RL
-const TYPES = [['course', 'Course'], ['show', 'Show'], ['video', 'Series'], ['book', 'Book'], ['other', 'Other']]
-const TYPE_ICON = { course: 'course', show: 'show', video: 'video', book: 'book', other: 'other' }
+const { DEFAULTS, KINDS, KIND, TYPES, TYPE_LABEL, AREA_COLOR, domainOf, keyOf, under, esc, hm, ago, num, call, connect, toast } = self.RL
 // System quest ranks, as on Today (src/ui/components/system-quests.tsx).
 const RANK_HINT = { E: 'easy', D: 'light', C: 'steady', B: 'hard', A: 'very hard', S: 'rare' }
 
@@ -15,6 +13,7 @@ let domain = null
 let page = {}         // what the content script says about this page
 let type = 'course'   // chosen in the Track form
 let view = null       // the Today data (/api/companion)
+let viewAt = 0        // when ReLife last sent it
 let busy = new Set()  // routines and goals with a save in flight
 
 const load = async () => ({ ...DEFAULTS, lastSync: null, ...(await chrome.storage.local.get([...Object.keys(DEFAULTS), 'lastSync'])) })
@@ -32,16 +31,6 @@ function trackedHere() {
   const series = page.series?.url ? keyOf(page.series.url) : null
   const key = Object.keys(s.courses).find((k) => (own && under(own, k)) || (series && under(series, k)))
   return key ? s.courses[key] : null
-}
-
-let toastTimer
-function toast(text, tone) {
-  const t = $('toast')
-  t.textContent = text
-  t.dataset.tone = tone ?? ''
-  t.toggleAttribute('data-show', true)
-  clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => t.removeAttribute('data-show'), 3200)
 }
 
 function setView(v, focus = true) {
@@ -162,7 +151,7 @@ function goalRow(g) {
   return `<li class="row-item${met ? ' met' : ''}">
     <span class="row-text"><span class="row-title">${esc(g.name)}</span><span class="row-sub">${met ? `${icon('check')}` : ''}${progressText(g.value, g.target, g.unit)}</span>
       <div class="capsule thin" style="--p:${pct}%;--c:${met ? 'var(--good)' : color}"><span class="fill"></span></div></span>
-    <button class="btn small add" type="button" data-goal="${esc(g.scheduleId)}" data-step="${g.step}" ${busy.has(g.scheduleId) ? 'disabled' : ''} aria-label="Add ${num(g.step)}${g.unit ? ` ${esc(g.unit)}` : ''} to ${esc(g.name)}">+${num(g.step)}</button>
+    <button class="btn small add" type="button" data-goal="${esc(g.scheduleId)}" data-step="${Number(g.step) || 0}" ${busy.has(g.scheduleId) ? 'disabled' : ''} aria-label="Add ${num(g.step)}${g.unit ? ` ${esc(g.unit)}` : ''} to ${esc(g.name)}">+${num(g.step)}</button>
   </li>`
 }
 
@@ -171,7 +160,7 @@ function routineRow(r) {
   const done = r.status === 'done', skipped = r.status === 'skipped', missed = r.status === 'missed'
   const key = `${r.scheduleId}|${r.occurrence}`
   const color = AREA_COLOR[r.area] ?? 'var(--pill)'
-  const sub = [r.time, missed ? '<span class="warn-text">Missed</span>' : '', skipped ? 'Skipped' : ''].filter(Boolean).join(' · ')
+  const sub = [esc(r.time), missed ? '<span class="warn-text">Missed</span>' : '', skipped ? 'Skipped' : ''].filter(Boolean).join(' · ')
   return `<li class="row-item${done || skipped ? ' resolved' : ''}">
     <button class="check" type="button" role="checkbox" aria-checked="${done}" data-key="${esc(key)}" style="--c:${color}" ${busy.has(key) || skipped ? 'disabled' : ''}
       aria-label="${esc(r.name)} at ${esc(r.time)}${done ? ', done. Undo' : skipped ? ', skipped' : '. Mark done'}"><span class="box">${done ? icon('check') : ''}</span></button>
@@ -213,6 +202,7 @@ function renderScreen(focus) {
 
 /** Paints the Today tab from `view`. `at` is when it was fetched; `stale` when the latest fetch failed. */
 function renderToday(at, stale) {
+  viewAt = at
   $('openToday').href = `${base()}/`
   if (!view) return
   renderNotice(null)
@@ -273,15 +263,22 @@ async function toggleRoutine(key) {
   r0.status = status ?? (new Date(r0.occurrence).getTime() + 3_600_000 < Date.now() ? 'missed' : 'pending')
   busy.add(key)
   renderQuests(view)
+  const focusRow = () => $('routineList').querySelector(`[data-key="${CSS.escape(key)}"]`)?.focus()
+  focusRow()
   const res = await post({ action: 'check', scheduleId: r0.scheduleId, occurrence: r0.occurrence, status })
   busy.delete(key)
-  if (!res.ok) { r0.status = before; toast(res.data?.error ?? 'Can’t reach ReLife. Nothing changed.', 'bad') }
-  renderToday(Date.now(), false)
+  if (!res.ok) {
+    // `view` may have been replaced by a refresh meanwhile: put back the row that's shown now.
+    const shown = view?.routines.find((r) => `${r.scheduleId}|${r.occurrence}` === key)
+    if (shown) shown.status = before
+    toast(res.data?.error ?? 'Can’t reach ReLife. Nothing changed.', 'bad')
+  }
+  renderToday(res.ok ? Date.now() : viewAt, !res.ok && !res.status)
   if (res.ok && status === 'done') {
     const box = $('routineList').querySelector(`[data-key="${CSS.escape(key)}"] svg`)
     box?.classList.add('pop')
   }
-  $('routineList').querySelector(`[data-key="${CSS.escape(key)}"]`)?.focus()
+  focusRow()
 }
 
 async function addToGoal(id, amount) {
@@ -291,12 +288,17 @@ async function addToGoal(id, amount) {
   busy.add(id)
   g.value += amount
   renderQuests(view)
+  const focusRow = () => $('goalList').querySelector(`[data-goal="${CSS.escape(id)}"]`)?.focus()
+  focusRow()
   const res = await post({ action: 'add', scheduleId: id, amount })
   busy.delete(id)
-  if (!res.ok) { g.value -= amount; toast(res.data?.error ?? 'Can’t reach ReLife. Nothing changed.', 'bad') }
-  else if (!res.data?.news?.levelUp) toast(`${g.name}: +${num(amount)}${g.unit ? ` ${g.unit}` : ''}.`, 'good')
-  renderToday(Date.now(), false)
-  $('goalList').querySelector(`[data-goal="${CSS.escape(id)}"]`)?.focus()
+  if (!res.ok) {
+    const shown = view?.goals.find((x) => x.scheduleId === id)
+    if (shown) shown.value -= amount
+    toast(res.data?.error ?? 'Can’t reach ReLife. Nothing changed.', 'bad')
+  } else if (!res.data?.news?.levelUp) toast(`${g.name}: +${num(amount)}${g.unit ? ` ${g.unit}` : ''}.`, 'good')
+  renderToday(res.ok ? Date.now() : viewAt, !res.ok && !res.status)
+  focusRow()
 }
 
 $('logInput').oninput = () => { $('logSend').disabled = !$('logInput').value.trim() }
@@ -362,8 +364,8 @@ function renderItem(local, item) {
   $('trackStart').hidden = !!tracked || $('trackReveal').hasAttribute('data-open')
   if (!tracked) return
   const kind = item?.kind ?? local?.kind ?? 'course'
-  const label = (TYPES.find(([k]) => k === kind) ?? TYPES[0])[1]
-  $('itemKind').innerHTML = `${icon(TYPE_ICON[kind] ?? 'other')}${label}${item?.status === 'done' ? ' · Finished' : ''}`
+  const typeIcon = icon(TYPE_LABEL[kind] ? kind : 'other')
+  $('itemKind').innerHTML = `${typeIcon}${TYPE_LABEL[kind] ?? 'Course'}${item?.status === 'done' ? ' · Finished' : ''}`
   $('itemTitle').textContent = item?.title ?? local.title
   const bits = []
   if (item) bits.push(`${hm(item.minutes * 60)} spent`)
@@ -373,7 +375,7 @@ function renderItem(local, item) {
   const cover = $('itemCover')
   cover.className = `cover${item?.iconOnly ? ' logo' : ''}`
   cover.style.backgroundImage = item?.image ? `url("${base()}/api/library/${item.id}/image")` : ''
-  cover.innerHTML = item?.image ? '' : icon(TYPE_ICON[kind] ?? 'other')
+  cover.innerHTML = item?.image ? '' : typeIcon
   $('itemLink').href = `${base()}/${kind === 'show' ? 'hobbies' : 'skills'}`
   $('itemBar').hidden = !item?.total
   if (item?.total) $('itemBar').style.setProperty('--p', `${Math.min(100, (item.done / item.total) * 100)}%`)
@@ -463,18 +465,9 @@ $('closeSettings').onclick = () => setView('main')
 $('openOptions').onclick = () => chrome.runtime.openOptionsPage()
 $('setupForm').onsubmit = async (e) => {
   e.preventDefault()
-  const server = $('server').value.trim().replace(/\/$/, '') || DEFAULTS.server
-  const token = $('token').value.trim()
-  await chrome.storage.local.set({ server, token })
-  try {
-    const res = await fetch(`${server}/api/activity`, { headers: { Authorization: `Bearer ${token}` } })
-    await chrome.storage.local.set({ lastSync: { at: Date.now(), ok: res.ok, status: res.status, ...(res.ok ? {} : { error: res.status === 401 ? 'The token doesn’t match the one in ReLife' : `ReLife answered ${res.status}` }) } })
-    toast(res.ok ? 'Connected to ReLife.' : res.status === 401 ? 'That token doesn’t match the one in ReLife.' : `ReLife answered ${res.status}.`, res.ok ? 'good' : 'bad')
-    if (res.ok) { $('setupIntro').hidden = true; setView('main') }
-  } catch {
-    await chrome.storage.local.set({ lastSync: { at: Date.now(), ok: false, status: 0, error: 'Can’t reach ReLife at this address' } })
-    toast('Can’t reach ReLife at that address. Is it running?', 'bad')
-  }
+  const r = await connect($('server').value, $('token').value)
+  toast(r.ok ? 'Connected to ReLife.' : r.status === 401 ? 'That token doesn’t match the one in ReLife.' : r.status ? `${r.error}.` : 'Can’t reach ReLife at that address. Is it running?', r.ok ? 'good' : 'bad')
+  if (r.ok) { $('setupIntro').hidden = true; setView('main') }
   await refreshPage()
   view = null
   await loadToday(true)

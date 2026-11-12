@@ -9,7 +9,7 @@
 // shortcuts and the icon's right-click menu, and caches the popup's Today data so the popup opens instantly.
 
 importScripts('lib.js')
-const { settings, domainOf, keyOf, under, call } = self.RL
+const { OFFLINE, settings, domainOf, keyOf, under, call } = self.RL
 
 const IDLE_SECONDS = 120
 // A player iframe reports every 20 seconds; one silent for longer was closed or navigated away.
@@ -32,7 +32,8 @@ const session = {
   set: async ({ queue, ...rest }) => {
     await Promise.all([
       Object.keys(rest).length ? chrome.storage.session.set(rest) : null,
-      queue !== undefined ? chrome.storage.local.set({ queue }) : null,
+      // Capped on every write: ReLife answering with an error (wrong token, DB down) must not grow it forever.
+      queue !== undefined ? chrome.storage.local.set({ queue: queue.slice(-MAX_QUEUE) }) : null,
     ])
   },
 }
@@ -167,28 +168,24 @@ async function flush() {
     .filter((x) => x.end - x.start >= 5000)
     .map((x) => ({ ...x, start: new Date(x.start).toISOString(), end: new Date(x.end).toISOString() }))
   if (!segments.length && !courses.length && !rules.length) { if (batch.length) await session.set({ queue: queue.slice(batch.length) }); return }
-  try {
-    const res = await fetch(`${s.server.replace(/\/$/, '')}/api/activity`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s.token}` },
-      body: JSON.stringify({ segments, courses, rules }),
-    })
-    // ReLife's own words on a failure (a wrong token, not connected yet), for the options page.
-    const error = res.ok ? undefined : ((await res.json().catch(() => null))?.error ?? `ReLife answered ${res.status}`)
-    await chrome.storage.local.set({ lastSync: { at: Date.now(), ok: res.ok, status: res.status, ...(error ? { error: String(error).slice(0, 200) } : {}) } })
-    // 400 means ReLife can't read this batch, and it never will: drop it rather than retry it forever and block
-    // everything after it. Other failures (ReLife restarting, a wrong token) keep it for next time.
-    if (res.ok || res.status === 400) {
-      await chrome.storage.local.set({ pendingCourses: pendingCourses.slice(courses.length), pendingRules: pendingRules.slice(rules.length) })
-      // Closed stretches are done; the open one keeps its id and is re-sent as it grows.
-      const { queue: latest = [] } = await session.get()
-      await session.set({ queue: latest.slice(batch.length) })
-    }
-  } catch {
-    await chrome.storage.local.set({ lastSync: { at: Date.now(), ok: false, status: 0, error: 'Can’t reach ReLife at this address' } })
+  const res = await call(s, '/api/activity', { method: 'POST', body: JSON.stringify({ segments, courses, rules }) })
+  if (!res.status) {
+    await chrome.storage.local.set({ lastSync: { at: Date.now(), ok: false, status: 0, error: OFFLINE } })
     // Offline or ReLife isn't running: keep the queue (capped) and try again next time.
     const { queue: latest = [] } = await session.get()
     if (latest.length > MAX_QUEUE) await session.set({ queue: latest.slice(-MAX_QUEUE) })
+    return
+  }
+  // ReLife's own words on a failure (a wrong token, not connected yet), for the options page.
+  const error = res.ok ? undefined : (res.data?.error ?? `ReLife answered ${res.status}`)
+  await chrome.storage.local.set({ lastSync: { at: Date.now(), ok: res.ok, status: res.status, ...(error ? { error: String(error).slice(0, 200) } : {}) } })
+  // 400 means ReLife can't read this batch, and it never will: drop it rather than retry it forever and block
+  // everything after it. Other failures (ReLife restarting, a wrong token) keep it for next time.
+  if (res.ok || res.status === 400) {
+    await chrome.storage.local.set({ pendingCourses: pendingCourses.slice(courses.length), pendingRules: pendingRules.slice(rules.length) })
+    // Closed stretches are done; the open one keeps its id and is re-sent as it grows.
+    const { queue: latest = [] } = await session.get()
+    await session.set({ queue: latest.slice(batch.length) })
   }
 }
 
@@ -286,6 +283,20 @@ chrome.tabs.onRemoved.addListener((id) => void serial(async () => {
   await session.set({ pages, frames })
 }).then(() => sample('closed')))
 
+/**
+ * Adds to a pending list (courses or site kinds) and sends at once, so it shows in ReLife right away. Queued with
+ * the uploads, so one in flight can't drop it when it clears what it sent. `{ ok }`: whether it got through.
+ */
+async function queueAndSend(key, update) {
+  await serial(async () => {
+    const { [key]: list = [] } = await chrome.storage.local.get(key)
+    await chrome.storage.local.set({ [key]: update(list) })
+  })
+  await sample('alarm')
+  const { lastSync } = await chrome.storage.local.get('lastSync')
+  return { ok: !!lastSync?.ok }
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   if (msg.type === 'page' && sender.tab) {
     void serial(async () => {
@@ -301,29 +312,10 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
       await session.set({ frames })
     })
   }
-  // Popup: "Track this course" saves the course and sends it at once, so it shows in ReLife right away.
-  if (msg.type === 'track-course') {
-    void (async () => {
-      // Queued with the uploads, so one in flight can't drop it when it clears what it sent.
-      await serial(async () => {
-        const { pendingCourses = [] } = await chrome.storage.local.get('pendingCourses')
-        await chrome.storage.local.set({ pendingCourses: [...pendingCourses, msg.course] })
-      })
-      await sample('alarm')
-      const { lastSync } = await chrome.storage.local.get('lastSync')
-      reply({ ok: !!lastSync?.ok })
-    })()
-  }
+  // Popup: "Track this course" and a site's kind.
+  if (msg.type === 'track-course') void queueAndSend('pendingCourses', (list) => [...list, msg.course]).then(reply)
   if (msg.type === 'site-kind') {
-    void (async () => {
-      await serial(async () => {
-        const { pendingRules = [] } = await chrome.storage.local.get('pendingRules')
-        await chrome.storage.local.set({ pendingRules: [...pendingRules.filter((r) => r.domain !== msg.domain), { domain: msg.domain, kind: msg.kind }] })
-      })
-      await sample('alarm')
-      const { lastSync } = await chrome.storage.local.get('lastSync')
-      reply({ ok: !!lastSync?.ok })
-    })()
+    void queueAndSend('pendingRules', (list) => [...list.filter((r) => r.domain !== msg.domain), { domain: msg.domain, kind: msg.kind }]).then(reply)
   }
   if (msg.type === 'flush') void sample('alarm').then(() => reply({ ok: true }))
   return msg.type === 'flush' || msg.type === 'track-course' || msg.type === 'site-kind'
@@ -335,13 +327,6 @@ chrome.runtime.onStartup.addListener(() => { void renderBadge(); void refreshCom
 // ReLife was off) still reach it. Creating a course twice just updates it.
 chrome.runtime.onInstalled.addListener(() => void serial(async () => {
   createMenus()
-  // Before 0.6 unsent stretches lived in session storage; move any still there into the local queue.
-  const { queue: old } = await chrome.storage.session.get('queue')
-  if (old?.length) {
-    const { queue = [] } = await chrome.storage.local.get('queue')
-    await chrome.storage.local.set({ queue: [...old, ...queue].slice(-MAX_QUEUE) })
-    await chrome.storage.session.remove('queue')
-  }
   const { courses = {}, pendingCourses = [] } = await chrome.storage.local.get(['courses', 'pendingCourses'])
   const all = Object.entries(courses).map(([key, c]) => {
     const [domain, ...rest] = key.split('/')
