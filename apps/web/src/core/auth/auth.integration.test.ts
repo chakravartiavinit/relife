@@ -86,6 +86,57 @@ test('devices, pairing and legacy tokens against PostgreSQL', { skip: !enabled }
     assert.deepEqual(await devices.findByToken(`legacy-ingest-${run}`), { ok: false, reason: 'invalid' })
   })
 
+  await t.test('legacy tokens: two requests loading the keys at once leave one row and no error', async () => {
+    const tokens: Record<string, string | undefined> = { ACTIVITY_TOKEN: `legacy-race-${run}` }
+    await Promise.all([1, 2, 3, 4].map(() => devices.syncLegacyTokens(user.id, (n) => tokens[n])))
+    assert.equal((await devices.listDevices(user.id)).filter((d) => d.name === 'Chrome extension (old token)').length, 1)
+    tokens.ACTIVITY_TOKEN = undefined
+    await devices.syncLegacyTokens(user.id, (n) => tokens[n])
+  })
+
+  await t.test('a device id that is not a UUID is a 404, not a database error', async () => {
+    const { token } = await devices.createDevice({ userId: user.id, kind: 'browser', name: 'Full', scopes: ['full'] })
+    const auth = { authorization: `Bearer ${token}`, 'content-type': 'application/json' }
+    const ctx = (id: string) => ({ params: Promise.resolve({ id }) }) as never
+    const rename = await import('@/app/api/v1/devices/[id]/route')
+    const revoke = await import('@/app/api/v1/devices/[id]/revoke/route')
+    for (const id of ['nope', '123', 'x'.repeat(200), '../me', '00000000-0000-0000-0000-00000000000z']) {
+      const a = await rename.PATCH(new Request('http://127.0.0.1/x', { method: 'PATCH', headers: auth, body: JSON.stringify({ name: 'New' }) }), ctx(id))
+      assert.equal(a.status, 404, `PATCH ${id}`)
+      const b = await revoke.POST(new Request('http://127.0.0.1/x', { method: 'POST', headers: auth }), ctx(id))
+      assert.equal(b.status, 404, `revoke ${id}`)
+    }
+    assert.equal(await devices.revokeDevice(user.id, 'nope'), false)
+    assert.equal(await devices.renameDevice(user.id, 'nope', 'x'), false)
+    const ok = await rename.PATCH(new Request('http://127.0.0.1/x', { method: 'PATCH', headers: auth, body: JSON.stringify({ name: 'Renamed' }) }), ctx('me'))
+    assert.equal(ok.status, 200, 'me still works')
+  })
+
+  await t.test('idempotency: a retry replays; a first try that died is reclaimable after 2 minutes', async () => {
+    const { withIdempotency, STALE_PENDING_MS } = await import('@/core/v1/idempotency')
+    const { device } = await devices.createDevice({ userId: user.id, kind: 'browser', name: 'Idem', scopes: ['full'] })
+    let runs = 0
+    const work = async () => { runs++; return Response.json({ ok: true, n: runs }) }
+    const first = await withIdempotency(device.id, 'k1', work)
+    assert.equal(first.status, 200)
+    const replay = await withIdempotency(device.id, 'k1', work)
+    assert.equal(runs, 1, 'the retry did not run again')
+    assert.equal(replay.headers.get('Idempotent-Replayed'), 'true')
+
+    // Another try is still running: 503.
+    await db.insert(schema.idempotency).values({ deviceId: device.id, key: 'k2', response: { pending: true } })
+    const busy = await withIdempotency(device.id, 'k2', work)
+    assert.equal(busy.status, 503)
+    assert.equal(runs, 1)
+
+    // The server died mid-write 3 minutes ago: the key is free, and the work runs.
+    await db.update(schema.idempotency).set({ createdAt: new Date(Date.now() - STALE_PENDING_MS - 60_000) }).where(eq(schema.idempotency.key, 'k2'))
+    const again = await withIdempotency(device.id, 'k2', work)
+    assert.equal(again.status, 200)
+    assert.equal(runs, 2)
+    assert.equal((await withIdempotency(device.id, 'k2', work)).headers.get('Idempotent-Replayed'), 'true', 'and it is stored this time')
+  })
+
   await t.test('flow A: an offer redeems once, then fails', async () => {
     const offer = await pairing.createOffer({ userId: user.id, deviceId: null, baseUrl: 'https://mac.tailnet.ts.net' })
     assert.match(offer.userCode, /^[2-9A-HJKMNP-TV-Z]{8}$/)

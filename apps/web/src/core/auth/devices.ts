@@ -64,8 +64,13 @@ export const listDevices = (userId: string) =>
   db.select().from(schema.devices).where(and(eq(schema.devices.userId, userId), isNull(schema.devices.revokedAt)))
     .orderBy(desc(schema.devices.lastSeenAt), desc(schema.devices.createdAt))
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+/** An id that is not a UUID names no device (and would make Postgres refuse the query). */
+export const isDeviceId = (id: string) => UUID.test(id)
+
 /** Sign a device out for good. Returns false when it is not this user's or already gone. */
 export async function revokeDevice(userId: string, id: string) {
+  if (!isDeviceId(id)) return false
   const rows = await db.update(schema.devices).set({ revokedAt: new Date() })
     .where(and(eq(schema.devices.id, id), eq(schema.devices.userId, userId), isNull(schema.devices.revokedAt)))
     .returning({ id: schema.devices.id })
@@ -77,7 +82,7 @@ export async function revokeDevice(userId: string, id: string) {
 
 export async function renameDevice(userId: string, id: string, name: string) {
   const n = name.trim().slice(0, 80)
-  if (!n) return false
+  if (!n || !isDeviceId(id)) return false
   const rows = await db.update(schema.devices).set({ name: n })
     .where(and(eq(schema.devices.id, id), eq(schema.devices.userId, userId), isNull(schema.devices.revokedAt)))
     .returning({ id: schema.devices.id })
@@ -117,11 +122,11 @@ export async function syncLegacyTokens(userId: string, get: (name: string) => st
       forgetDevice(d.id)
     }
     if (!hash || mine.some((d) => d.tokenHash.equals(hash))) continue // none, or already there (revoked included)
-    const [clash] = await db.select({ id: schema.devices.id }).from(schema.devices).where(eq(schema.devices.tokenHash, hash)).limit(1)
-    if (clash) continue
+    // Two requests loading the keys at once both get here: the unique token hash lets one insert win and the other do nothing
+    // (and a token that is already some other device's stays that device's).
     await db.insert(schema.devices).values({
       userId, kind: l.kind, name: l.name, scopes: [l.scope], tokenHash: hash, meta: { legacy: true }, expiresAt: FOREVER,
-    })
+    }).onConflictDoNothing({ target: schema.devices.tokenHash })
   }
 }
 
