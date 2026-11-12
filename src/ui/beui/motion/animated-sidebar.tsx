@@ -41,7 +41,8 @@ type SidebarSide = "left" | "right";
 type SidebarVariant = "sidebar" | "floating" | "inset";
 type SidebarCollapsible = "offcanvas" | "icon" | "none";
 
-// ReLife: in-app links go through next/link (client navigation, prefetch).
+// ReLife: in-app links go through next/link (client navigation, prefetch). motion adds tabIndex=0 to a custom
+// component on the server, so the links set it themselves, or hydration reports a mismatch.
 const MotionLink = motion.create(Link);
 
 const MOBILE_QUERY = "(max-width: 767px)";
@@ -1012,7 +1013,7 @@ export function AnimatedSidebarMenuSubButton({
       }
       aria-current={isActive ? "page" : undefined}
       aria-disabled={disabled || undefined}
-      tabIndex={disabled ? -1 : undefined}
+      tabIndex={disabled ? -1 : 0}
       onClick={select}
       whileTap={context.reduce || disabled ? undefined : { scale: 0.98 }}
       transition={SPRING_PRESS}
@@ -1174,7 +1175,7 @@ export function AnimatedSidebarMenuButton({
       aria-disabled={disabled || undefined}
       aria-label={panel.collapsed ? textLabel : undefined}
       title={panel.collapsed ? textLabel : undefined}
-      tabIndex={disabled ? -1 : undefined}
+      tabIndex={disabled ? -1 : 0}
       onClick={select}
       whileTap={context.reduce || disabled ? undefined : { scale: 0.98 }}
       transition={SPRING_PRESS}

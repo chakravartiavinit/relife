@@ -21,7 +21,7 @@ export function SyncDot({ tone, label, className }: { tone: SyncTone | 'loading'
         className="size-2 shrink-0 rounded-full"
         style={{ background: TONE[tone], boxShadow: `0 0 0 3px color-mix(in oklch, ${TONE[tone]} 18%, transparent)` }}
       />
-      {label ? <span className="hidden whitespace-nowrap tabular-nums lg:inline">{label}</span> : null}
+      {label ? <span className="hidden whitespace-nowrap tabular-nums xl:inline">{label}</span> : null}
     </Link>
   )
 }

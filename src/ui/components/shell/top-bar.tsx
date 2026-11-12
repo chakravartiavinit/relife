@@ -15,7 +15,7 @@ import { Wordmark } from '../logo'
 /** Stays 72px (`--topbar-h`, which also sets where the Sheet panel starts). */
 export function TopBar({ date, sync, bell, avatar }: { date: ReactNode; sync: ReactNode; bell: ReactNode; avatar: ReactNode }) {
   return (
-    <header className="sticky top-0 z-30 hidden h-[var(--topbar-h)] grid-cols-[1fr_auto_1fr] items-center gap-4 bg-[color-mix(in_oklch,var(--bg)_86%,transparent)] pr-10 pl-7 backdrop-blur-md lg:grid">
+    <header className="sticky top-0 z-30 hidden h-[var(--topbar-h)] grid-cols-[1fr_minmax(0,520px)_1fr] items-center gap-4 bg-[color-mix(in_oklch,var(--bg)_86%,transparent)] pr-10 pl-7 backdrop-blur-md lg:grid">
       <Suspense fallback={null}><Crumbs date={date} /></Suspense>
       <CaptureField />
       <div className="flex items-center justify-end gap-1">{sync}{bell}{avatar}</div>
@@ -27,7 +27,7 @@ export function TopBar({ date, sync, bell, avatar }: { date: ReactNode; sync: Re
 export function PhoneTopBar({ sync, avatar, extra }: { sync: ReactNode; avatar: ReactNode; extra?: ReactNode }) {
   return (
     <header className="flex h-14 items-center justify-between lg:hidden">
-      <Link href="/" aria-label="ReLife, Today" className="rounded-sm"><Wordmark className="h-7" /></Link>
+      <Link href="/" aria-label="ReLife, Today" className="relative rounded-sm after:absolute after:inset-[-6px] after:content-[''] focus-visible:outline-2 focus-visible:outline-pill"><Wordmark className="h-7" /></Link>
       <div className="-mr-2 flex items-center">{extra}{sync}{avatar}</div>
     </header>
   )
@@ -70,7 +70,7 @@ function CaptureField() {
       aria-haspopup="dialog"
       aria-keyshortcuts="Meta+K Control+K"
       onClick={() => window.dispatchEvent(new Event('relife:command'))}
-      className="flex h-11 w-[min(520px,100%)] items-center gap-2.5 rounded-full bg-surface pr-2 pl-4 text-left text-body text-ink-3 shadow-1 transition-[box-shadow,color] duration-150 ease-out-quint hover:text-ink-2 hover:shadow-2 focus-visible:outline-2 focus-visible:outline-pill"
+      className="flex h-11 w-full items-center gap-2.5 rounded-full bg-surface pr-2 pl-4 text-left text-body text-ink-3 shadow-1 transition-[box-shadow,color] duration-150 ease-out-quint hover:text-ink-2 hover:shadow-2 focus-visible:outline-2 focus-visible:outline-pill"
     >
       <span aria-hidden className="grid size-6 shrink-0 place-items-center rounded-full bg-ink text-bg"><Plus className="size-4" strokeWidth={2} /></span>
       <span className="flex-1 truncate">Log, check off or ask…</span>
