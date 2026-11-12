@@ -32,8 +32,6 @@ export const FOCUS = 'focus-visible:outline-2 focus-visible:outline-offset-2 foc
 export const choice = cn('transition-[background-color,box-shadow,scale,opacity] duration-150 ease-out-quint active:scale-[0.96]', FOCUS)
 export const IDLE = 'bg-surface shadow-1 hover:bg-surface-2'
 export const PICKED = 'bg-pill-wash shadow-[0_0_0_1.5px_var(--pill)]'
-// 16px text on a phone: iOS zooms the page on anything smaller.
-export const CONTROL = 'h-10 text-base sm:text-body'
 // The region pickers, at the same height and look as the name field.
 export const PICKER = 'h-10 rounded-md bg-surface px-3 text-base shadow-1 focus-visible:shadow-[0_0_0_2px_var(--pill)] aria-expanded:shadow-[0_0_0_2px_var(--pill)] sm:text-body'
 // A 32px pill with a 40px hit area.

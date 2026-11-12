@@ -3,7 +3,6 @@
 // user's time zone, computed on the server so the client never guesses it.
 
 import type { Category, ProposedAction, ReviewContent } from '@/db/schema'
-import type { PeekType } from '@/domain/peek'
 import type { MetricSummary } from '@/domain/metric-peek'
 import type { RecoveryView } from '@/domain/recovery'
 import type { SyncTone } from '@/domain/shell'
@@ -200,6 +199,3 @@ export type BriefPeek = {
 }
 
 export type PeekData = MetricPeek | RoutinePeek | GoalPeek | TxnPeek | MerchantPeek | InsightPeek | ConnectorPeek | PersonPeek | QuestPeek | SyncPeek | BriefPeek
-
-/** The data type for one peek type. */
-export type PeekOf<T extends PeekType> = Extract<PeekData, { type: T }>
