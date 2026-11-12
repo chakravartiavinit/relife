@@ -26,7 +26,7 @@ import { showUpStreak } from '@/ui/components/life-kpis'
 import { TodayGoals } from '@/ui/components/goals/goals-summary'
 import { Quests, type QuestItem } from '@/ui/components/quests'
 import { TodayHeader } from '@/ui/components/today/today-header'
-import { AttentionStrip, type AttentionCard } from '@/ui/components/today/attention-strip'
+import { AttentionStrip } from '@/ui/components/today/attention-strip'
 import { PulseRow } from '@/ui/components/today/pulse-row'
 import { MoneyToday } from '@/ui/components/today/money-today'
 import { SetupCard } from '@/ui/components/today/setup-card'
@@ -112,12 +112,8 @@ async function Attention({ user }: { user: User }) {
   await connection()
   if (await isFirstDay(user)) return null
   const [{ briefing }, shell] = await Promise.all([loadTodayBriefing(user), loadShellStatus(user)])
-  const rank = { bad: 0, warn: 1, info: 2 } as const
-  // Nudges are part of Coach's count, so they are not listed twice; overdue routines stay in the timeline.
-  const cards: AttentionCard[] = briefing.attention
-    .filter((a): a is typeof a & { kind: AttentionCard['kind'] } => a.kind !== 'nudge')
-    .sort((a, b) => rank[a.tone] - rank[b.tone])
-  return <AttentionStrip cards={cards} coach={shell.needsYou.total} />
+  // Nudges are part of Coach's count, so the briefing leaves them out; overdue routines stay in the timeline.
+  return <AttentionStrip cards={briefing.attention} coach={shell.needsYou.total} />
 }
 
 async function Setup({ user }: { user: User }) {

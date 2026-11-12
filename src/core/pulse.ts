@@ -59,7 +59,7 @@ export const loadPulse = cache(async (user: User): Promise<PulseTile[]> => {
         tone: usualDay && spentToday > usualDay * 1.5 ? 'bad' : undefined,
       }
     }
-    if (d.slug === 'mind' && b.body.mood == null) return { ...base, measure: 'Mood', value: '–', sub: 'Not logged · tap to log', peek: k?.peek ?? brief, action: 'capture' }
+    if (d.slug === 'mind' && b.mood == null) return { ...base, measure: 'Mood', value: '–', sub: 'Not logged · tap to log', peek: k?.peek ?? brief, action: 'capture' }
     if (!k) return { ...base, measure: d.title, value: '–', sub: 'Nothing tracked yet', peek: brief }
     return { ...base, measure: measureOf(k), value: k.value, sub: k.sub, tone: k.tone, peek: k.peek ?? brief }
   })
