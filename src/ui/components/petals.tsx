@@ -3,26 +3,6 @@
 import { useEffect, useState } from 'react'
 import { Petal } from './line-art'
 
-/**
- * A short, sparse sakura burst the first time a day is fully complete.
- * Rare by design: once per day (localStorage). Skipped under prefers-reduced-motion.
- */
-export function PetalBurst({ complete, day }: { complete: boolean; day: string }) {
-  const [show, setShow] = useState(false)
-  useEffect(() => {
-    if (!complete) return
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    const key = `relife:petals:${day}`
-    if (localStorage.getItem(key)) return
-    localStorage.setItem(key, '1')
-    setShow(true)
-    const t = setTimeout(() => setShow(false), 2600)
-    return () => clearTimeout(t)
-  }, [complete, day])
-
-  return show ? <Petals /> : null
-}
-
 /** Plays the burst whenever a level-up or achievement fires `relife:celebrate`. Mounted once in the layout. */
 export function Celebration() {
   const [run, setRun] = useState(0)
