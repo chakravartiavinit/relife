@@ -1,9 +1,10 @@
 import brand from '@relife/brand/brand.json'
 import { NextResponse, type NextRequest } from 'next/server'
 import { allowedHost } from '../hosts'
+import { getUser } from '../user'
 import { findByToken, touchIfDue } from './devices'
 import { mintLoopbackDevice, requireSignIn } from './loopback'
-import { apiError, sessionCookie } from './request'
+import { apiError, denied, sessionCookie } from './request'
 import { cookieName, hasProxyHeaders, isLoopbackHost, isPageNavigation, isPublicPath, loopbackTrusted, readCookie, scopeAllows } from './trust'
 
 // The edge check behind src/proxy.ts, with its lookups passed in so it can be tested without a database (gate.test.ts).
@@ -18,13 +19,15 @@ import { cookieName, hasProxyHeaders, isLoopbackHost, isPageNavigation, isPublic
 //    API call or server action gets 401 JSON.
 
 export type GateDeps = {
+  /** Loads the saved keys, so the legacy ACTIVITY_TOKEN and INGEST_TOKEN rows exist before a token is looked up. */
+  warm: () => Promise<unknown>
   findByToken: typeof findByToken
   touchIfDue: typeof touchIfDue
   requireSignIn: () => Promise<boolean>
   mintLoopbackDevice: (host: string, userAgent: string) => Promise<string>
 }
 
-export const realDeps: GateDeps = { findByToken, touchIfDue, requireSignIn: () => requireSignIn().catch(() => false), mintLoopbackDevice }
+export const realDeps: GateDeps = { warm: getUser, findByToken, touchIfDue, requireSignIn: () => requireSignIn().catch(() => false), mintLoopbackDevice }
 
 /** These routes answered `{ error: string }` before device tokens; extensions before 0.7 still read that. */
 const LEGACY_BODY = new Set(['/api/companion', '/api/activity', '/api/ingest'])
@@ -39,8 +42,14 @@ export async function gate(req: NextRequest, deps: GateDeps = realDeps): Promise
   if (isPublicPath(pathname)) return NextResponse.next()
 
   const api = pathname.startsWith('/api/')
-  // A bearer token goes to the route, which calls authenticate(req, scope) itself.
-  if (api && /^Bearer\s+\S+/i.test(req.headers.get('authorization') ?? '')) return NextResponse.next()
+  // A bearer token is checked here, whatever the route does with it: a route that forgot to authenticate must not be
+  // opened by `Authorization: Bearer x`. The route still checks the token's scope (authenticate(req, scope)).
+  const bearer = api ? req.headers.get('authorization')?.match(/^Bearer\s+(\S+)$/i)?.[1] : undefined
+  if (bearer) {
+    await deps.warm().catch(() => {})
+    const found = await deps.findByToken(bearer)
+    return found.ok ? NextResponse.next() : denied({ ok: false, reason: found.reason }, { legacy: LEGACY_BODY.has(pathname) })
+  }
 
   const cookie = readCookie(req.headers.get('cookie'), cookieName(false)) ?? readCookie(req.headers.get('cookie'), cookieName(true))
   let reason: 'revoked' | 'expired' | undefined

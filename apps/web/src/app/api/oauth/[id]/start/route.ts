@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto'
 import { connectors } from '@/connectors'
+import { authenticate, denied } from '@/core/auth/request'
 import { env } from '@/core/env'
 import { authorizeUrl, callbackPath, requestOrigin } from '@/core/oauth'
 import { getUser } from '@/core/user'
@@ -7,6 +8,8 @@ import { getUser } from '@/core/user'
 // Step 1 of signing in: send the browser to the service with a one-time state, kept in a short cookie
 // so the callback can check the reply is the one we asked for.
 export async function GET(req: Request, ctx: RouteContext<'/api/oauth/[id]/start'>) {
+  const a = await authenticate(req, 'full')
+  if (!a.ok) return denied(a)
   const { id } = await ctx.params
   const c = connectors.find((x) => x.id === id && x.oauth)
   if (!c?.oauth) return new Response('Unknown connector', { status: 404 })

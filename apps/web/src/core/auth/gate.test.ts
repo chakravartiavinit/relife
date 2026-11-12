@@ -8,9 +8,10 @@ import { gate, type GateDeps } from './gate'
 const GOOD = 'rlf_b_good'
 const device = (scopes: string[] = ['full']) => ({ id: 'd1', userId: 'u1', scopes, tokenHash: Buffer.alloc(0), revokedAt: null, expiresAt: new Date(Date.now() + 1e9), meta: {} }) as never
 
-function deps(o: { minted?: string[]; requireSignIn?: boolean; tokens?: Record<string, ReturnType<typeof device> | 'revoked' | 'expired'> } = {}): GateDeps {
-  const tokens = { [GOOD]: device(), ...o.tokens }
+function deps(o: { minted?: string[]; requireSignIn?: boolean; tokens?: Record<string, unknown> } = {}): GateDeps {
+  const tokens: Record<string, unknown> = { [GOOD]: device(), ...o.tokens }
   return {
+    warm: async () => undefined,
     findByToken: (async (t: string) => {
       const d = tokens[t]
       if (!d) return { ok: false, reason: 'invalid' }
@@ -71,7 +72,7 @@ test('the legacy bearer routes need their bearer again', async () => {
     assert.equal(r.status, 401, path)
     assert.equal(typeof (await r.json()).error, 'string', `${path} keeps the old { error: string } body`)
   }
-  assert.equal(kind(await gate(req('/api/ingest', { method: 'POST', headers: { authorization: 'Bearer rlf_i_whatever' } }), deps())), 'next', 'a bearer goes on to the route')
+  assert.equal(kind(await gate(req('/api/ingest', { method: 'POST', headers: { authorization: `Bearer ${GOOD}` } }), deps())), 'next', 'a bearer goes on to the route')
 })
 
 test('no session: pages redirect to /signin (with next), API calls and server actions get 401 JSON', async () => {
@@ -108,4 +109,24 @@ test('public paths need nothing; /api/health is for this Mac only; unknown hosts
   assert.equal(kind(await gate(req('/api/health'), deps())), 'next')
   assert.equal(kind(await gate(req('/api/health', { host: 'x.ts.net' }), deps())), '404')
   assert.equal((await gate(req('/', { host: 'evil.example' }), deps())).status, 421)
+})
+
+test('a bearer is checked at the edge, on every API route', async () => {
+  for (const path of ['/api/oauth/strava/start', '/api/oauth/strava/callback', '/api/library/abc/image', '/api/coins/BTC', '/api/v1/me']) {
+    const bad = await gate(req(path, { headers: { authorization: 'Bearer rlf_b_nope' } }), deps())
+    assert.equal(bad.status, 401, `${path} with a made-up bearer`)
+    const revoked = await gate(req(path, { headers: { authorization: 'Bearer rlf_b_gone' } }), deps({ tokens: { rlf_b_gone: 'revoked' } }))
+    assert.equal((await revoked.json()).error.code, 'revoked', path)
+    assert.equal(kind(await gate(req(path, { headers: { authorization: `Bearer ${GOOD}` } }), deps())), 'next', `${path} with a real token goes on to the route`)
+  }
+  const legacy = await gate(req('/api/companion', { headers: { authorization: 'Bearer rlf_c_nope' } }), deps())
+  assert.equal(legacy.status, 401)
+  assert.equal(typeof (await legacy.json()).error, 'string', 'extensions before 0.7 still get { error: string }')
+})
+
+test('a bearer is not a way past the edge on a page, and loopback trust does not rescue a bad bearer', async () => {
+  assert.equal(kind(await gate(req('/goals', { headers: { ...NAV, authorization: 'Bearer rlf_b_nope' } }), deps({ requireSignIn: true }))), 'redirect /signin')
+  const minted: string[] = []
+  const r = await gate(req('/api/v1/today', { headers: { ...NAV, authorization: 'Bearer rlf_b_nope' } }), deps({ minted }))
+  assert.equal(r.status, 401); assert.equal(minted.length, 0)
 })
