@@ -10,11 +10,16 @@ import { addDays, localDate } from './time'
 import { formatMoney } from '@/domain/money'
 import { dueLabel, oneOffs } from '@/domain/wealth'
 import { toLiquidation } from '@/domain/watch'
+import type { PeekRef } from '@/domain/peek'
 
 // The morning briefing on Today: what needs you first, the day's key numbers next to a usual day, and a short look
 // at yesterday. Each part reads only what it shows; anything not connected simply drops out.
 
-export type Attention = { key: string; tone: 'bad' | 'warn' | 'info'; kind: 'risk' | 'money' | 'medicine' | 'routine' | 'nudge' | 'sync'; title: string; detail: string; href: string }
+export type Attention = {
+  key: string; tone: 'bad' | 'warn' | 'info'; kind: 'risk' | 'money' | 'medicine' | 'routine' | 'nudge' | 'sync'; title: string; detail: string; href: string
+  /** Opens this Peek instead of going to `href` (the routine or renewal behind it). */
+  peek?: PeekRef
+}
 
 const SLUGS = ['screen.work', 'screen.social', 'screen.entertainment', 'github.commits', 'github.prs', 'github.reviews', 'cp.solved', 'learning.minutes', 'sleep.hours', 'steps', 'mood']
 const MEDICINE_LOW = 7 // doses left before it's worth a heads-up
@@ -60,7 +65,7 @@ export async function loadBriefing(user: User, payments: DueItem[], now = new Da
   }
   for (const d of payments.filter((x) => x.daysLeft <= SOON_DAYS)) {
     attention.push({
-      key: `due:${d.schedule.id}`, tone: 'warn', kind: 'money', href: '/wealth/subscriptions',
+      key: `due:${d.schedule.id}`, tone: 'warn', kind: 'money', href: '/wealth/subscriptions', peek: { type: 'routine', id: d.schedule.id },
       title: `${d.schedule.name} renews ${dueLabel(d.daysLeft).toLowerCase()}`,
       detail: d.amount ? formatMoney(d.amount, d.currency ?? user.baseCurrency) : 'Renewal',
     })
@@ -68,7 +73,7 @@ export async function loadBriefing(user: User, payments: DueItem[], now = new Da
   for (const m of schedules) {
     const stock = (m.meta as ScheduleMeta).stock
     if (typeof stock === 'number' && stock <= ((m.meta as ScheduleMeta).refillAt ?? MEDICINE_LOW)) {
-      attention.push({ key: `med:${m.id}`, tone: stock <= 2 ? 'bad' : 'warn', kind: 'medicine', href: '/plan/routines', title: `${m.name}: ${stock} left`, detail: 'Time to refill' })
+      attention.push({ key: `med:${m.id}`, tone: stock <= 2 ? 'bad' : 'warn', kind: 'medicine', href: '/plan/routines', peek: { type: 'routine', id: m.id }, title: `${m.name}: ${stock} left`, detail: 'Time to refill' })
     }
   }
   if (failing.length) {
@@ -104,3 +109,39 @@ export const loadTodayBriefing = cache(async (user: User) => {
   const payments = await upcomingPayments(user, now)
   return { payments, briefing: await loadBriefing(user, payments, now) }
 })
+
+/** What Today's Money card draws: formatted, so the component (and its /dev/ui fixtures) holds no logic. */
+export type MoneyView = {
+  total: string
+  /** "₹160 under a usual day"; `bad` when well over. */
+  versus?: { text: string; bad: boolean }
+  payments: { id: string; name: string; logo: string; sub: string; amount: string; typed: boolean; needsCategory: boolean }[]
+  more: number
+  renewals: { id: string; weekday: string; day: string; name: string; when: string; soon: boolean; amount?: string }[]
+}
+
+/** Today's payments as they came in (newest first), then what renews in the next 7 days. */
+export function moneyView(user: User, b: Awaited<ReturnType<typeof loadBriefing>>, payments: DueItem[]): MoneyView {
+  const money = (v: number) => formatMoney(v, user.baseCurrency, { decimals: 0 })
+  const time = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: user.timezone })
+  const wd = new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: user.timezone })
+  const dd = new Intl.DateTimeFormat('en-GB', { day: 'numeric', timeZone: user.timezone })
+  const { spentToday, usualDay, paymentsToday, countToday } = b.money
+  const diff = usualDay ? spentToday - usualDay : null
+  return {
+    total: money(spentToday),
+    versus: diff == null ? undefined : { text: `${money(Math.abs(diff))} ${diff <= 0 ? 'under' : 'over'} a usual day`, bad: !!usualDay && spentToday > usualDay * 1.5 },
+    payments: paymentsToday.map((t) => {
+      const needsCategory = !t.category || t.category === 'Uncategorized'
+      return {
+        id: t.id, name: t.merchant ?? t.upiId ?? 'Payment', logo: t.merchant ?? t.upiId ?? t.source,
+        sub: [time.format(t.at), needsCategory ? null : t.category].filter(Boolean).join(' · '), amount: money(-t.base), typed: t.source === 'manual', needsCategory,
+      }
+    }),
+    more: Math.max(0, countToday - paymentsToday.length),
+    renewals: payments.filter((p) => p.daysLeft <= 7).map((p) => ({
+      id: p.schedule.id, weekday: wd.format(p.due), day: dd.format(p.due), name: p.schedule.name, when: dueLabel(p.daysLeft), soon: p.daysLeft <= 1,
+      amount: p.amount ? formatMoney(p.amount, p.currency ?? user.baseCurrency) : undefined,
+    })),
+  }
+}
