@@ -1,6 +1,6 @@
 #!/bin/zsh
-# Builds ReLife and installs it to ~/Applications/ReLife.app.
-# Build products live in ~/Library/Developer/ReLife, outside the repo
+# Builds the app and installs it to ~/Applications/<app name>.app (the name comes from tools/env.sh).
+# Build products live in ~/Library/Developer/<app name>, outside the repo
 # (and outside Dropbox or iCloud, which would try to sync them).
 #
 # Usage: ./build.sh            release build, install
@@ -8,7 +8,8 @@
 #        ./build.sh --open     install, then quit the running copy and open the new one
 set -euo pipefail
 here=${0:A:h}
-name="ReLife"
+source "$here/tools/env.sh"
+name=$APP_NAME
 scratch="$HOME/Library/Developer/$name/build"
 config=release
 [[ " $* " == *" --debug "* ]] && config=debug
@@ -27,7 +28,7 @@ swift build -c "$config" --package-path "$here" --scratch-path "$scratch" > "$bu
 grep -E "error|warning|Build complete" "$build_log" | grep -v "^\[" || true
 rm -f "$build_log"
 [[ "$build_ok" == 1 ]] || { echo "build failed"; exit 1; }
-bin="$scratch/$config/$name"
+bin="$scratch/$config/$SWIFT_EXE"
 [[ -x "$bin" ]] || { echo "build failed"; exit 1; }
 # swift build can report success while an edited file failed to compile. Catch that.
 stale=$(find "$here/Sources" -name '*.swift' -newer "$bin" | head -1)
@@ -42,7 +43,7 @@ mkdir -p "$HOME/Applications"
 rm -rf "$app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$bin" "$app/Contents/MacOS/$name"
-sed -e "s/__BUILD__/$(date +%Y%m%d%H%M)/" "$here/Info.plist.in" > "$app/Contents/Info.plist"
+sed -e "s/__BUILD__/$(date +%Y%m%d%H%M)/" -e "s/__APP_NAME__/$name/g" "$here/Info.plist.in" > "$app/Contents/Info.plist"
 # The icon: Icon/AppIcon.icon -> Resources/Assets.car + AppIcon.icns, rebuilt when it changed.
 if [[ -d "$here/Icon/AppIcon.icon" ]]; then
   car="$here/Resources/Assets.car"

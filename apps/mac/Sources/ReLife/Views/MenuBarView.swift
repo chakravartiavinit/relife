@@ -97,7 +97,7 @@ struct MenuBarView: View {
                 Spacer()
             }
             if QuestList.isEmpty(view) {
-                Text("Nothing due today. Add routines in ReLife.").font(.callout).foregroundStyle(.secondary)
+                Text("Nothing due today. Add routines in \(Brand.name).").font(.callout).foregroundStyle(.secondary)
             } else if menu.rows.isEmpty {
                 Label("All clear", systemImage: "checkmark.circle.fill")
                     .font(.callout)
@@ -116,9 +116,9 @@ struct MenuBarView: View {
 
     private var disconnected: some View {
         VStack(alignment: .leading, spacing: Space.sm) {
-            Text("Connect to your ReLife").font(.headline)
+            Text("Connect to your \(Brand.name)").font(.headline)
             Text(model.statusLine).font(.callout).foregroundStyle(.secondary)
-            Button("Open ReLife") { model.showMainWindow() }
+            Button("Open \(Brand.name)") { model.showMainWindow() }
                 .buttonStyle(.borderedProminent)
         }
     }
@@ -126,7 +126,7 @@ struct MenuBarView: View {
     private var footer: some View {
         VStack(alignment: .leading, spacing: Space.xs) {
             MenuItem(title: "Open Today", symbol: "macwindow", shortcut: "⌘O") { model.showMainWindow(page: .today) }
-            MenuItem(title: "Open ReLife in Browser", symbol: "globe", shortcut: "⇧⌘D") { model.openDashboard() }
+            MenuItem(title: "Open \(Brand.name) in Browser", symbol: "globe", shortcut: "⇧⌘D") { model.openDashboard() }
             MenuItem(title: "Settings…", symbol: "gearshape", shortcut: "⌘,") { model.showSettings() }
             Divider().padding(.vertical, Space.xs)
             HStack {

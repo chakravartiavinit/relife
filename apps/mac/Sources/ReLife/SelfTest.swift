@@ -4,7 +4,7 @@ import SwiftData
 
 /// Self-test for agents: runs the app's real functions on a test store with the offline queue, prints PASS or
 /// FAIL per check, and quits with exit code 0 or 1.
-///   APP_STORE=/tmp/ReLife-self.store ~/Applications/ReLife.app/Contents/MacOS/ReLife --selftest
+///   APP_STORE=/tmp/app-self.store <app> --selftest
 /// (tools/selftest.sh does this.) Add a check for every story with logic.
 @MainActor
 enum SelfTest {
@@ -83,8 +83,8 @@ enum SelfTest {
         check("relife://log queues a quick log", model.queueCount == 2, "queue \(model.queueCount)")
         check("a bad link does nothing", RelifeLink(url: URL(string: "relife://open?path=//evil")!) == nil)
 
-        // The activity watcher never records ReLife itself.
-        check("the watcher skips ReLife's own windows", ActivityWatcher.excluded.contains("com.relife.mac"))
+        // The activity watcher never records the app itself.
+        check("the watcher skips \(Brand.name)'s own windows", ActivityWatcher.excluded.contains("com.relife.mac"))
 
         // Notice texts.
         check("the account-change notice names the count", QueueNotice.accountChanged(dropped: 2)?.hasPrefix("2 unsent logs were cleared") == true)
@@ -93,7 +93,7 @@ enum SelfTest {
         model.endSession(.revoked)
         check("a revoked token shows the Connect screen", model.showsOnboarding)
         check("and clears the token", model.tokens.load(account: "http://127.0.0.1:9") == nil)
-        check("with the reason in words", Words.sessionEnded(.revoked) == "This device was disconnected from ReLife.")
+        check("with the reason in words", Words.sessionEnded(.revoked) == "This device was disconnected from \(Brand.name).")
     }
 
     private static func check(_ name: String, _ ok: Bool, _ detail: String = "") {

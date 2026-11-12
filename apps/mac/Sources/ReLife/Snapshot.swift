@@ -4,7 +4,7 @@ import ReLifeKit
 import SwiftUI
 
 /// Screenshot mode for agents.
-///   APP_STORE=/tmp/test.store APP_SEED=1 APP_SNAPSHOT=/tmp/shots ~/Applications/ReLife.app/Contents/MacOS/ReLife
+///   APP_STORE=/tmp/test.store APP_SEED=1 APP_SNAPSHOT=/tmp/shots <app>
 /// writes <name>-light.png and <name>-dark.png for every page, state, panel and Settings tab, then quits:
 ///   today, progress, activity, today-offline, today-loading, today-empty, today-server-old,
 ///   onboarding-where, onboarding-connect, onboarding-connect-expired, onboarding-reminders, onboarding-shortcut, connect-ended,

@@ -34,10 +34,10 @@ struct GlanceTests {
     func words() {
         let tz = TimeZone(identifier: "UTC")!
         let at = Date(timeIntervalSince1970: 1_794_470_400 + 2 * 3600 + 42 * 60) // 10:42 UTC
-        #expect(Words.offline(lastUpdated: at, queued: 2, timeZone: tz) == "Offline · showing 10:42. 2 checks will send when ReLife is back.")
+        #expect(Words.offline(lastUpdated: at, queued: 2, timeZone: tz) == "Offline · showing 10:42. 2 checks will send when \(Brand.name) is back.")
         #expect(Words.offline(lastUpdated: nil, queued: 0, timeZone: tz) == "Offline.")
-        #expect(Words.offline(lastUpdated: at, queued: 1, timeZone: tz).hasSuffix("1 check will send when ReLife is back."))
-        #expect(Words.sessionEnded(.revoked) == "This device was disconnected from ReLife.")
+        #expect(Words.offline(lastUpdated: at, queued: 1, timeZone: tz).hasSuffix("1 check will send when \(Brand.name) is back."))
+        #expect(Words.sessionEnded(.revoked) == "This device was disconnected from \(Brand.name).")
         #expect(Words.sessionEnded(.expired) == "Your sign-in ended.")
         let now = Date(timeIntervalSince1970: 1_794_470_400)
         #expect(Words.synced(now, now: now.addingTimeInterval(20)) == "Synced now")

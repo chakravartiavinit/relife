@@ -1,6 +1,9 @@
-# Builds, tests and renders ReLife for Mac on a remote macOS machine (the sandbox is Linux, with no Xcode).
-# Used with the ios-build tools: upload apps/mac as the source, start with this buildspec, then download
-# relife-out.zip (logs and every PNG from tools/render.sh).
+# Builds, tests and renders the Mac app on a remote macOS machine (the sandbox is Linux, with no Xcode).
+# Used with the ios-build tools. The source root is the repo layout (the tests read ../../packages/contract/fixtures),
+# so stage it first:  mkdir -p /var/tmp/stage/apps /var/tmp/stage/packages/contract
+#                     cp -R apps/mac /var/tmp/stage/apps/ && cp -R packages/contract/fixtures /var/tmp/stage/packages/contract/
+# then upload-source /var/tmp/stage, start with this buildspec, and download relife-out.zip (logs and every PNG
+# from tools/render.sh).
 # The fleet has no logged-in user, so there is no screen: tools/snap.sh (screencapture) cannot run here.
 # tools/render.sh draws with ImageRenderer instead.
 version: 0.2
@@ -9,19 +12,23 @@ phases:
     commands:
       - |
         set +e
-        mkdir -p out
-        run() { name=$1; shift; perl -e 'alarm shift; exec @ARGV' "$@" > "out/$name.log" 2>&1; echo "$name exit $?" | tee -a out/summary.txt; }
-        sw_vers >> out/summary.txt; xcodebuild -version >> out/summary.txt; swift --version >> out/summary.txt 2>&1
+        root=$PWD
+        cd apps/mac
+        APP_NAME=$(zsh -c 'source tools/env.sh && echo $APP_NAME')
+        mkdir -p "$root/out"
+        out="$root/out"
+        run() { name=$1; shift; perl -e 'alarm shift; exec @ARGV' "$@" > "$out/$name.log" 2>&1; echo "$name exit $?" | tee -a "$out/summary.txt"; }
+        sw_vers >> "$out/summary.txt"; xcodebuild -version >> "$out/summary.txt"; swift --version >> "$out/summary.txt" 2>&1
         run build 900 ./build.sh
-        run kit-tests 600 swift test --scratch-path "$HOME/Library/Developer/ReLife/test-build"
+        run kit-tests 600 swift test --scratch-path "$HOME/Library/Developer/$APP_NAME/test-build"
         run grid-lint 120 tools/grid-lint.sh
         APP_HEADLESS=1; export APP_HEADLESS
         run selftest 120 tools/selftest.sh
-        run render 150 tools/render.sh /tmp/ReLife-render
-        for f in build kit-tests grid-lint selftest render; do echo "=== $f"; grep -v -E "^\[|Test \"|Suite \"" "out/$f.log" | head -c 5000; done
-        cp /tmp/ReLife-render/*.png out/ 2>/dev/null
-        ls out | wc -l >> out/summary.txt
-        cd out && zip -qr ../relife-out.zip . && cd ..
+        run render 150 tools/render.sh /tmp/app-render
+        for f in build kit-tests grid-lint selftest render; do echo "=== $f"; grep -v -E "^\[|Test \"|Suite \"" "$out/$f.log" | head -c 5000; done
+        cp /tmp/app-render/*.png "$out/" 2>/dev/null
+        ls "$out" | wc -l >> "$out/summary.txt"
+        cd "$out" && zip -qr "$root/relife-out.zip" . && cd "$root"
 artifacts:
   files:
     - relife-out.zip

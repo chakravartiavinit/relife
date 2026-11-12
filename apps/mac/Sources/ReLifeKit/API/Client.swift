@@ -90,9 +90,11 @@ public struct URLSessionTransport: HTTPTransport {
 
 // MARK: - Client
 
-/// A client of one ReLife server (local or cloud). Sends `X-ReLife-Client: mac/<version>` and, when
+/// A client of one server (local or cloud). Sends the client header (`mac/<version>`) and, when
 /// signed in, `Authorization: Bearer <token>`.
 public struct ReLifeClient: Sendable {
+    /// The header that tells the server which app and version is calling (the server's name for it, so it stays).
+    public static let clientHeader = "X-ReLife-Client"
     public let baseURL: URL
     public let token: String?
     public let clientVersion: String
@@ -207,7 +209,7 @@ public struct ReLifeClient: Sendable {
         guard let url = URL(string: path, relativeTo: baseURL)?.absoluteURL else { throw ClientError.unreachable("bad address") }
         var request = URLRequest(url: url, timeoutInterval: timeout)
         request.httpMethod = method
-        request.setValue("mac/\(clientVersion)", forHTTPHeaderField: "X-ReLife-Client")
+        request.setValue("mac/\(clientVersion)", forHTTPHeaderField: Self.clientHeader)
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         if auth {
             guard let token else { throw ClientError.unauthorized }

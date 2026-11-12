@@ -3,15 +3,15 @@ import ReLifeKit
 import SwiftData
 import SwiftUI
 
-// ReLife for Mac: a client of one ReLife server (local or cloud). It does not run the server.
-//   ReLife                              the app
-//   APP_STORE=<file> ReLife             use another database and keep settings and the token in memory (tests, experiments)
-//   APP_SNAPSHOT=<dir> ReLife           save a PNG of every page, state, panel and Settings tab in light and dark mode, then quit
-//   APP_SEED=1 ReLife                   fill an empty /tmp store with a sample character and quests (tools/snap.sh)
-//   ReLife --selftest                   run the self-test on a /tmp store and quit with 0 or 1 (tools/selftest.sh)
+// The Mac app: a client of one server (local or cloud). It does not run the server.
+//   <app>                              the app
+//   APP_STORE=<file> <app>             use another database and keep settings and the token in memory (tests, experiments)
+//   APP_SNAPSHOT=<dir> <app>           save a PNG of every page, state, panel and Settings tab in light and dark mode, then quit
+//   APP_SEED=1 <app>                   fill an empty /tmp store with a sample character and quests (tools/snap.sh)
+//   <app> --selftest                   run the self-test on a /tmp store and quit with 0 or 1 (tools/selftest.sh)
 //   APP_HEADLESS=1 ...                  with --selftest or APP_RENDER: run with no NSApplication, so a machine with no logged-in user (CI) works
-//   APP_RENDER=<dir> ReLife             like APP_SNAPSHOT, but drawn with ImageRenderer: no screen or permission needed (CI)
-//   APP_GRID=1 ReLife                   draw the 8 pt grid and the layout probes over the window
+//   APP_RENDER=<dir> <app>             like APP_SNAPSHOT, but drawn with ImageRenderer: no screen or permission needed (CI)
+//   APP_GRID=1 <app>                   draw the 8 pt grid and the layout probes over the window
 //   relife://pair?server=…&s=…          connect to a server from a dashboard link
 //   relife://log?text=water%20250       quick log from Raycast or a script
 //   relife://open?path=/wealth          open a dashboard page
@@ -23,7 +23,7 @@ struct ReLifeApp: App {
     @AppStorage("menubar.show", store: Prefs.defaults) private var showMenuBar = true
 
     var body: some Scene {
-        Window("ReLife", id: "main") {
+        Window(Brand.name, id: "main") {
             ContentView()
                 .environment(model)
                 .tint(Tokens.pill)
@@ -75,7 +75,7 @@ struct AppCommands: Commands {
             Button("Progress") { model.showMainWindow(page: .progress) }.keyboardShortcut("2")
             Button("Activity") { model.showMainWindow(page: .activity) }.keyboardShortcut("3")
             Divider()
-            Button("Open ReLife in Browser") { model.openDashboard() }.keyboardShortcut("d", modifiers: [.command, .shift])
+            Button("Open \(Brand.name) in Browser") { model.openDashboard() }.keyboardShortcut("d", modifiers: [.command, .shift])
             Button("Pause or Resume Activity Tracking") { model.setTrackingPaused(!model.trackingPaused) }
         }
     }
@@ -139,7 +139,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let items: [(String, Selector)] = [
             ("Quick Log…", #selector(quickLog)),
             ("Open Today", #selector(openToday)),
-            ("Open ReLife in Browser", #selector(openBrowser)),
+            ("Open \(Brand.name) in Browser", #selector(openBrowser)),
             ("Pause or Resume Activity Tracking", #selector(toggleTracking)),
         ]
         for (title, action) in items {

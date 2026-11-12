@@ -22,7 +22,7 @@ struct ClientTests {
         let r = try #require(t.requests.first)
         #expect(r.url?.absoluteString == "http://127.0.0.1:3030/api/v1/hello")
         #expect(r.value(forHTTPHeaderField: "Authorization") == nil)
-        #expect(r.value(forHTTPHeaderField: "X-ReLife-Client") == "mac/0.1.0")
+        #expect(r.value(forHTTPHeaderField: ReLifeClient.clientHeader) == "mac/0.1.0")
     }
 
     @Test("a 404 on hello means the server is too old")

@@ -173,12 +173,12 @@ public enum QueueFlusher {
     }
 }
 
-/// The notice shown when the queue is cleared because the device now belongs to another ReLife.
+/// The notice shown when the queue is cleared because the device now belongs to another server.
 public enum QueueNotice {
     public static func accountChanged(dropped: Int) -> String? {
         guard dropped > 0 else { return nil }
         let things = dropped == 1 ? "1 unsent log was" : "\(dropped) unsent logs were"
-        return "\(things) cleared because this device now belongs to another ReLife."
+        return "\(things) cleared because this device now belongs to another \(Brand.name)."
     }
 
     public static func expired(dropped: Int) -> String? {

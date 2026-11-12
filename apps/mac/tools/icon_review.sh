@@ -2,11 +2,12 @@
 # Renders Icon/AppIcon.icon the way macOS shows it, with Icon Composer's
 # ictool, into one contact sheet:
 #   Default, Dark, TintedDark, ClearLight at 256 pt, then Default at 32 and 16 pt.
-# Usage: tools/icon_review.sh [out.png]     (default /tmp/ReLife-icon.png)
+# Usage: tools/icon_review.sh [out.png]     (default /tmp/<app name>-icon.png)
 set -euo pipefail
 here=${0:A:h}
 repo=${here:h}
-out=${1:-/tmp/ReLife-icon.png}
+source "$here/env.sh"
+out=${1:-/tmp/$APP_NAME-icon.png}
 ictool="$(xcode-select -p)/../Applications/Icon Composer.app/Contents/Executables/ictool"
 [[ -x "$ictool" ]] || { echo "ictool not found. Install Xcode 26 or later."; exit 1; }
 work=$(mktemp -d)

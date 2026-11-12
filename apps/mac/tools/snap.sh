@@ -4,9 +4,10 @@
 #        APP_SNAPSHOT_ONLY=today,menubar tools/snap.sh
 #        tools/snap.sh -AppleShowScrollBars Always     see the scroll bars as people with a mouse see them
 set -u
-app=~/Applications/ReLife.app/Contents/MacOS/ReLife
-store=/tmp/ReLife-test.store
-shots=/tmp/ReLife-shots
+source "${0:A:h}/env.sh"
+app=$APP_BIN
+store=/tmp/$APP_NAME-test.store
+shots=/tmp/$APP_NAME-shots
 # A crashed run leaves saved window state, and the next launch would wait on a "reopen windows?" alert.
 rm -rf ~/Library/Saved\ Application\ State/com.relife.mac.savedState
 # Per-run settings live in their own suite; clear it so every run starts the same.

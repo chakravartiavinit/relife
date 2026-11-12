@@ -92,7 +92,7 @@ struct AccountRow: View {
                 .foregroundStyle(Tokens.pill)
             VStack(alignment: .leading, spacing: 0) {
                 Text(model.ownerName).font(.callout.weight(.semibold))
-                Text(model.serverURL.map { ServerAddress.isLoopback($0) ? "ReLife on this Mac" : ServerAddress.display($0) } ?? "Not connected")
+                Text(model.serverURL.map { ServerAddress.isLoopback($0) ? "\(Brand.name) on this Mac" : ServerAddress.display($0) } ?? "Not connected")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

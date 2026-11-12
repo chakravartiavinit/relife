@@ -209,10 +209,10 @@ struct QuickLogView: View {
 
     private func subtitle(_ a: QuickAction) -> String {
         switch a {
-        case .log: "ReLife works out what this is"
+        case .log: "\(Brand.name) works out what this is"
         case let .complete(r):
             if case let .goal(g) = r { "Adds \(Format.goalStep(g).dropFirst()) · \(Format.goal(g))" } else { "Quest" }
-        case .openToday: "Opens the ReLife window"
+        case .openToday: "Opens the \(Brand.name) window"
         }
     }
 
@@ -234,7 +234,7 @@ struct QuickLogView: View {
     }
 }
 
-/// The small result bar shown when ReLife is not the front app: "Logged water 250 ml · Undo".
+/// The small result bar shown when the app is not the front app: "Logged water 250 ml · Undo".
 final class HUDPanelController {
     static let shared = HUDPanelController()
     private var panel: NSPanel?

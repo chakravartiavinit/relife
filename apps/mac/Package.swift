@@ -6,8 +6,8 @@ import PackageDescription
 var targets: [Target] = [
     // API client, models, SSE parser, offline queue rules and the activity segmenter: no SwiftUI.
     .target(name: "ReLifeKit"),
-    // Fixtures/ is a fallback copy of packages/contract/fixtures, read by path (Fixtures.swift), not bundled.
-    .testTarget(name: "ReLifeKitTests", dependencies: ["ReLifeKit"], exclude: ["Fixtures"]),
+    // The contract tests read packages/contract/fixtures by path (Fixtures.swift), so drift from the server is caught.
+    .testTarget(name: "ReLifeKitTests", dependencies: ["ReLifeKit"]),
 ]
 #if os(macOS)
 targets.append(

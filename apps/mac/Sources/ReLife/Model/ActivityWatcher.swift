@@ -22,7 +22,7 @@ final class ActivityWatcher {
     @ObservationIgnored private var timer: Timer?
     @ObservationIgnored private var day = Calendar.current.startOfDay(for: .now)
 
-    /// The apps that are never recorded: the person's list plus ReLife itself.
+    /// The apps that are never recorded: the person's list plus the app itself.
     static var excluded: Set<String> {
         Set(Prefs.excludedApps).union(["com.relife.mac"])
     }

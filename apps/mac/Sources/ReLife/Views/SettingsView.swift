@@ -44,13 +44,13 @@ struct GeneralSettings: View {
     var body: some View {
         @Bindable var model = model
         Section("Startup") {
-            Toggle("Open ReLife at login", isOn: $login)
+            Toggle("Open \(Brand.name) at login", isOn: $login)
                 .onChange(of: login) { _, on in LaunchAtLogin.set(on) }
-            Toggle("Show ReLife in the Dock", isOn: $model.showInDock)
-            Text("Without this, the Dock icon shows only while a ReLife window is open.").font(.caption).foregroundStyle(.secondary)
+            Toggle("Show \(Brand.name) in the Dock", isOn: $model.showInDock)
+            Text("Without this, the Dock icon shows only while a \(Brand.name) window is open.").font(.caption).foregroundStyle(.secondary)
         }
         Section("Menu bar") {
-            Toggle("Show ReLife in the menu bar", isOn: $showMenuBar)
+            Toggle("Show \(Brand.name) in the menu bar", isOn: $showMenuBar)
             Toggle("Show the number of quests left", isOn: $showCount)
                 .disabled(!showMenuBar)
         }
@@ -77,7 +77,7 @@ struct ShortcutSettings: View {
         Section("In the app") {
             LabeledContent("Quick Log", value: "⌘L")
             LabeledContent("Open Today", value: "⌘1")
-            LabeledContent("Open ReLife in Browser", value: "⇧⌘D")
+            LabeledContent("Open \(Brand.name) in Browser", value: "⇧⌘D")
             LabeledContent("Refresh", value: "⌘R")
         }
     }
@@ -156,7 +156,7 @@ struct AccountSettings: View {
 
     var body: some View {
         @Bindable var model = model
-        Section("Your ReLife") {
+        Section("Your \(Brand.name)") {
             LabeledContent("Address", value: model.serverURL.map { ServerAddress.display($0) } ?? "Not connected")
             LabeledContent("Account", value: model.me?.name ?? model.view?.name ?? "–")
             LabeledContent("Status") { Text(model.statusLine).foregroundStyle(.secondary) }
@@ -167,10 +167,10 @@ struct AccountSettings: View {
             Button("Manage Devices in Browser") { model.openDashboard(path: "/settings/devices") }
             Button("Disconnect This Mac…", role: .destructive) { confirming = true }
                 .disabled(!model.isSignedIn)
-                .confirmationDialog("Disconnect this Mac from ReLife?", isPresented: $confirming) {
+                .confirmationDialog("Disconnect this Mac from \(Brand.name)?", isPresented: $confirming) {
                     Button("Disconnect", role: .destructive) { Task { await model.disconnect() } }
                 } message: {
-                    Text("It signs out for good. To use ReLife for Mac again, connect it again.")
+                    Text("It signs out for good. To use \(Brand.name) for Mac again, connect it again.")
                 }
         }
         if let url = model.serverURL, ServerAddress.isLoopback(url), model.localServer.isInstalled {
@@ -179,7 +179,7 @@ struct AccountSettings: View {
     }
 }
 
-/// Status, Start, Stop, Restart and Open log for the LaunchAgent that runs ReLife on this Mac.
+/// Status, Start, Stop, Restart and Open log for the LaunchAgent that runs the server on this Mac.
 struct LocalServerSection: View {
     @Environment(AppModel.self) private var model
 
@@ -230,7 +230,7 @@ struct ActivitySettings: View {
     var body: some View {
         Section("Tracking") {
             Toggle("Track which app is in front", isOn: Binding(get: { !model.trackingPaused }, set: { model.setTrackingPaused(!$0) }))
-            Text("ReLife counts the front app while you use the Mac. Idle time, sleep and a locked screen are not counted. Window titles are never read, so this needs no permission.")
+            Text("\(Brand.name) counts the front app while you use the Mac. Idle time, sleep and a locked screen are not counted. Window titles are never read, so this needs no permission.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -255,7 +255,7 @@ struct ActivitySettings: View {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.application]
         panel.directoryURL = URL(fileURLWithPath: "/Applications")
-        panel.message = "Choose an app ReLife should never record."
+        panel.message = "Choose an app \(Brand.name) should never record."
         guard panel.runModal() == .OK, let url = panel.url, let id = Bundle(url: url)?.bundleIdentifier, !excluded.contains(id) else { return }
         excluded.append(id)
         Prefs.excludedApps = excluded

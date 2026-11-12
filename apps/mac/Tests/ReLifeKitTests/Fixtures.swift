@@ -1,16 +1,13 @@
 import Foundation
 
-/// Where the contract fixtures live. The monorepo keeps them in packages/contract/fixtures (shared with the
-/// TypeScript tests). Until that lands on this branch, a copy sits next to the tests; the shared folder wins when present.
+/// The contract fixtures, read straight from packages/contract/fixtures (shared with the TypeScript tests), so the
+/// Mac client breaks when the server's shapes change. There is no copy next to the tests.
 enum Fixtures {
-    static let directory: URL = {
-        let here = URL(fileURLWithPath: #filePath)
-        let shared = here.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-            .deletingLastPathComponent().deletingLastPathComponent().appending(path: "packages/contract/fixtures", directoryHint: .isDirectory)
-        if let override = ProcessInfo.processInfo.environment["RELIFE_FIXTURES_DIR"] { return URL(fileURLWithPath: override, isDirectory: true) }
-        if FileManager.default.fileExists(atPath: shared.path) { return shared }
-        return here.deletingLastPathComponent().appending(path: "Fixtures", directoryHint: .isDirectory)
-    }()
+    /// <repo>/apps/mac/Tests/ReLifeKitTests/Fixtures.swift -> <repo>/packages/contract/fixtures
+    static let directory: URL = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        .deletingLastPathComponent().deletingLastPathComponent()
+        .appending(path: "packages/contract/fixtures", directoryHint: .isDirectory)
 
     /// Every `<Schema>.<case>.json` file name.
     static func names() throws -> [String] {

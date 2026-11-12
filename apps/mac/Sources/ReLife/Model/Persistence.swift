@@ -42,7 +42,7 @@ final class CachedView {
     }
 }
 
-/// Where the data lives: ~/Library/Application Support/ReLife/ReLife.store
+/// Where the data lives: ~/Library/Application Support/<app name>/<app name>.store
 enum Store {
     /// True when APP_STORE points somewhere else (tests, snapshots, seed data).
     static var isOverridden: Bool {
@@ -53,9 +53,9 @@ enum Store {
         if let path = ProcessInfo.processInfo.environment["APP_STORE"], !path.isEmpty {
             return URL(fileURLWithPath: path)
         }
-        let dir = URL.applicationSupportDirectory.appending(path: "ReLife", directoryHint: .isDirectory)
+        let dir = URL.applicationSupportDirectory.appending(path: Brand.name, directoryHint: .isDirectory)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appending(path: "ReLife.store")
+        return dir.appending(path: "\(Brand.name).store")
     }
 
     static func makeContainer() -> ModelContainer {

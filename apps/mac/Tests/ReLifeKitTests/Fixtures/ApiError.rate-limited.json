@@ -1,7 +1,0 @@
-{
-  "ok": false,
-  "error": {
-    "code": "rate_limited",
-    "message": "Too many tries. Wait a few minutes."
-  }
-}

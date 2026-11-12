@@ -7,6 +7,7 @@ import { execFileSync } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { swiftIsFresh } from './swift.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const repo = resolve(here, '../..')
@@ -22,9 +23,15 @@ if (process.argv.includes('--public')) {
   process.exit(0)
 }
 
+// The generated Swift file must match brand.json (like `tokens --check`).
+if (!swiftIsFresh()) {
+  console.error('brand: apps/mac/Sources/ReLifeKit/Brand.swift is out of date (run `npm run brand:swift`)')
+  process.exit(1)
+}
+
 // Developer docs may name the product; code, UI strings, the extension and scripts may not (except through brand.json).
 const SCANNED = /\.(ts|tsx|js|mjs|json|css|html|md|webmanifest|sh|swift|plist)$/
-const EXEMPT = /^(packages\/brand\/|packages\/contract\/fixtures\/|docs\/|plans\/|\.claude\/|\.agents\/|\.githooks\/|README\.md$|AGENTS\.md$|CLAUDE\.md$|LICENSE$|package-lock\.json$|skills-lock\.json$)|(^|\/)(AGENTS|CLAUDE)\.md$/
+const EXEMPT = /^(packages\/brand\/|packages\/contract\/fixtures\/|apps\/mac\/Sources\/ReLifeKit\/Brand\.swift$|docs\/|plans\/|\.claude\/|\.agents\/|\.githooks\/|README\.md$|AGENTS\.md$|CLAUDE\.md$|LICENSE$|package-lock\.json$|skills-lock\.json$)|(^|\/)(AGENTS|CLAUDE)\.md$/
 const pattern = new RegExp(`\\b(${brand.legacyNames.join('|')})\\b`, 'g')
 
 const files = execFileSync('git', ['ls-files', '-z'], { cwd: repo, encoding: 'utf8' }).split('\0').filter((f) => f && SCANNED.test(f) && !EXEMPT.test(f))

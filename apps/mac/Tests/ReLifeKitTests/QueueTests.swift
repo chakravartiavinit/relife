@@ -117,7 +117,7 @@ struct QueueTests {
     @Test("notices say how many were cleared")
     func notices() {
         #expect(QueueNotice.accountChanged(dropped: 0) == nil)
-        #expect(QueueNotice.accountChanged(dropped: 2) == "2 unsent logs were cleared because this device now belongs to another ReLife.")
+        #expect(QueueNotice.accountChanged(dropped: 2) == "2 unsent logs were cleared because this device now belongs to another \(Brand.name).")
         #expect(QueueNotice.accountChanged(dropped: 1)?.hasPrefix("1 unsent log was") == true)
         #expect(QueueNotice.expired(dropped: 3) == "3 unsent logs were dropped after 7 days offline.")
     }

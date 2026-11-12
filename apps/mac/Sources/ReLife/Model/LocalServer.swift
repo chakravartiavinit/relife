@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import Observation
+import ReLifeKit
 
 /// The Local server panel: shown when the server address is this Mac and the LaunchAgent `com.relife.app`
 /// exists (`npm run service -- install`). Status, Start, Stop, Restart and Open log. Rebuilding stays in the CLI.
@@ -17,7 +18,7 @@ final class LocalServer {
         URL.homeDirectory.appending(path: "Library/LaunchAgents/\(label).plist")
     }
     static var logURL: URL {
-        URL.homeDirectory.appending(path: "Library/Logs/ReLife/relife.log")
+        URL.homeDirectory.appending(path: "Library/Logs/\(Brand.name)/relife.log")
     }
 
     var status: Status = .unknown

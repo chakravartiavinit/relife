@@ -336,7 +336,7 @@ struct EmptyToday: View {
         ContentUnavailableView {
             Label("Nothing due today", systemImage: "checkmark.circle")
         } description: {
-            Text("Add routines in ReLife.")
+            Text("Add routines in \(Brand.name).")
         } actions: {
             Button("Open Today") { model.openDashboard(path: "/") }
         }

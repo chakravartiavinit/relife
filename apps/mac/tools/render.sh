@@ -1,11 +1,12 @@
 #!/bin/zsh
 # Headless snapshots (no screen needed): every page, state, panel in light and dark, drawn with ImageRenderer.
-# Usage: tools/render.sh [out-dir]      (default: /tmp/ReLife-render)
+# Usage: tools/render.sh [out-dir]      (default: /tmp/<app name>-render)
 # System chrome and AppKit-backed controls are not drawn; use tools/snap.sh on a Mac with a screen for the full check.
 set -u
-app=~/Applications/ReLife.app/Contents/MacOS/ReLife
-store=/tmp/ReLife-render.store
-out=${1:-/tmp/ReLife-render}
+source "${0:A:h}/env.sh"
+app=$APP_BIN
+store=/tmp/$APP_NAME-render.store
+out=${1:-/tmp/$APP_NAME-render}
 defaults delete com.relife.mac.test 2>/dev/null
 rm -f $store $store-shm $store-wal
 rm -rf $out

@@ -2,7 +2,7 @@ import ReLifeKit
 import SwiftUI
 
 // The shared parts of the game elements spec: level, XP, streak, quest rows, status. Native system parts
-// (controls, windows, materials) stay Apple's; these only carry ReLife's tokens and words.
+// (controls, windows, materials) stay Apple's; these only carry the app's tokens and words.
 
 // MARK: - Area colors
 

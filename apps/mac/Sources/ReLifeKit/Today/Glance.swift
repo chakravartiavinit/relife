@@ -4,7 +4,7 @@ import Foundation
 // The server computes XP, streaks and progress; nothing here scores anything. These only
 // choose words and order (shared rules in the surfaces plan: glossary, game elements, state matrix).
 
-/// The four menu bar states: count, all clear, tracking paused, your ReLife can't be reached.
+/// The four menu bar states: count, all clear, tracking paused, your server can't be reached.
 public enum BadgeState: Sendable, Equatable {
     case count(Int)
     case allClear
@@ -34,7 +34,7 @@ public enum BadgeState: Sendable, Equatable {
         case let .count(n): n == 1 ? "1 quest left" : "\(n) quests left"
         case .allClear: "All clear"
         case .paused: "Activity tracking is off"
-        case .unreachable: "Can't reach your ReLife"
+        case .unreachable: "Can't reach your \(Brand.name)"
         }
     }
 }
@@ -61,23 +61,23 @@ public enum ConnectionPhase: Sendable, Equatable {
 public enum Words {
     public static func sessionEnded(_ reason: SessionEnd) -> String {
         switch reason {
-        case .revoked: "This device was disconnected from ReLife."
+        case .revoked: "This device was disconnected from \(Brand.name)."
         case .expired: "Your sign-in ended."
         }
     }
 
-    public static let serverTooOld = "Update ReLife to use this version of the Mac app."
+    public static let serverTooOld = "Update \(Brand.name) to use this version of the Mac app."
 
     public static func clientTooOld(minimum: String) -> String {
-        "This version of ReLife for Mac is too old for your ReLife. Update to \(minimum) or later."
+        "This version of \(Brand.name) for Mac is too old for your \(Brand.name). Update to \(minimum) or later."
     }
 
-    /// "Offline · showing 10:42. 2 checks will send when ReLife is back."
+    /// "Offline · showing 10:42. 2 checks will send when the server is back."
     public static func offline(lastUpdated: Date?, queued: Int, timeZone: TimeZone = .current) -> String {
         var s = "Offline"
         if let lastUpdated { s += " · showing \(clock(lastUpdated, timeZone: timeZone))" }
         s += "."
-        if queued > 0 { s += " \(queued == 1 ? "1 check" : "\(queued) checks") will send when ReLife is back." }
+        if queued > 0 { s += " \(queued == 1 ? "1 check" : "\(queued) checks") will send when \(Brand.name) is back." }
         return s
     }
 
@@ -214,7 +214,7 @@ public enum QuestList {
         return view.left == 1 ? "1 quest left" : "\(view.left) quests left"
     }
 
-    /// "Nothing due today. Add routines in ReLife." when there is nothing at all.
+    /// "Nothing due today. Add routines in the app." when there is nothing at all.
     public static func isEmpty(_ view: TodayView) -> Bool {
         view.quests.isEmpty && view.routines.isEmpty && view.goals.isEmpty
     }

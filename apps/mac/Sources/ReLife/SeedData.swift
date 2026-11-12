@@ -2,7 +2,7 @@ import Foundation
 import ReLifeKit
 
 /// Sample data for snapshots and the self-test: APP_SEED=1 with APP_STORE in /tmp makes the app look signed in
-/// to a ReLife with a realistic character, System quests, routines, a goal and screen time. It never touches
+/// to a server with a realistic character, System quests, routines, a goal and screen time. It never touches
 /// a network or the Keychain (the token store is memory when APP_STORE is set).
 @MainActor
 enum SeedData {

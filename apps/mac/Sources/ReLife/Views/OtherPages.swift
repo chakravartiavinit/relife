@@ -156,7 +156,7 @@ struct ThisMacCard: View {
                             Text(Format.duration(item.seconds)).font(.callout.monospacedDigit()).foregroundStyle(.secondary)
                         }
                     }
-                    Text("Since ReLife opened today. The server keeps the full day.").font(.caption).foregroundStyle(.secondary)
+                    Text("Since \(Brand.name) opened today. The server keeps the full day.").font(.caption).foregroundStyle(.secondary)
                 }
             }
         }

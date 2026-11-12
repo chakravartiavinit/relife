@@ -3,7 +3,7 @@ import ServiceManagement
 import SwiftUI
 
 /// First launch, and the Connect screen whenever the device is not signed in (the state matrix: "Connect screen
-/// replaces content"). Four steps: where is your ReLife, connect, reminders, the shortcut.
+/// replaces content"). Four steps: where is your server, connect, reminders, the shortcut.
 struct OnboardingView: View {
     @Environment(AppModel.self) private var model
 
@@ -11,7 +11,7 @@ struct OnboardingView: View {
         VStack(spacing: 0) {
             HStack(alignment: .top, spacing: Space.section) {
                 VStack(alignment: .leading, spacing: Space.lg) {
-                    SystemLabel(text: "Set up ReLife for Mac")
+                    SystemLabel(text: "Set up \(Brand.name) for Mac")
                     content
                     Spacer(minLength: 0)
                 }
@@ -77,7 +77,7 @@ private struct WhereStep: View {
             if let notice = model.notice {
                 NoticeCard(symbol: "tray.full", tint: Tokens.pill, title: notice)
             }
-            Text("Where does your ReLife run?").font(.callout.weight(.semibold))
+            Text("Where does your \(Brand.name) run?").font(.callout.weight(.semibold))
             option(.local, symbol: "laptopcomputer", title: "On this Mac", detail: localDetail, trailing: localBadge)
             option(.other, symbol: "server.rack", title: "On another computer", detail: "Self-hosted at home or on your own server.", trailing: nil) {
                 InputField("https://relife.home", text: $address)
@@ -85,7 +85,7 @@ private struct WhereStep: View {
                     .onSubmit { addressError = nil }
                 if let addressError { Text(addressError).font(.caption).foregroundStyle(Tokens.bad) }
             }
-            option(.cloud, symbol: "cloud", title: "ReLife Cloud", detail: "Hosted for you. Not open yet.", trailing: AnyView(XPChip(text: "Soon", tone: .neutral)), disabled: true)
+            option(.cloud, symbol: "cloud", title: "\(Brand.name) Cloud", detail: "Hosted for you. Not open yet.", trailing: AnyView(XPChip(text: "Soon", tone: .neutral)), disabled: true)
             HStack {
                 Spacer()
                 Button("Continue", action: next)
@@ -100,18 +100,18 @@ private struct WhereStep: View {
 
     private var title: String {
         if case .sessionEnded = model.phase { return "Connect again" }
-        return "Connect this Mac to your ReLife"
+        return "Connect this Mac to your \(Brand.name)"
     }
 
     private var subtitle: String {
-        "Your level, quests and quick log live in the menu bar. Pick where your ReLife runs, then approve this Mac once. It stays signed in."
+        "Your level, quests and quick log live in the menu bar. Pick where your \(Brand.name) runs, then approve this Mac once. It stays signed in."
     }
 
     private var localDetail: String {
         switch model.pairing.local {
-        case .checking: "Looking for ReLife at 127.0.0.1:3030…"
-        case .found: "Found ReLife at 127.0.0.1:3030"
-        case .missing: "ReLife isn't running on this Mac. Run `npm run service -- install` in the ReLife folder."
+        case .checking: "Looking for \(Brand.name) at 127.0.0.1:3030…"
+        case .found: "Found \(Brand.name) at 127.0.0.1:3030"
+        case .missing: "\(Brand.name) isn't running on this Mac. Run `npm run service -- install` in the \(Brand.name) folder."
         }
     }
 
@@ -185,7 +185,7 @@ private struct ConnectStep: View {
         @Bindable var pairing = model.pairing
         VStack(alignment: .leading, spacing: Space.lg) {
             Text("Approve this Mac").font(.system(.largeTitle, design: .rounded, weight: .bold))
-            Text("A prompt opens in your dashboard. Check that the code matches, then approve. Or scan the code with a phone where ReLife is signed in.")
+            Text("A prompt opens in your dashboard. Check that the code matches, then approve. Or scan the code with a phone where \(Brand.name) is signed in.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
             LabeledContent("Server") { Text(pairing.server.map(ServerAddress.display) ?? "–").foregroundStyle(.secondary) }
@@ -238,7 +238,7 @@ struct ApprovalCard: View {
         Card(padding: Space.xl) {
             VStack(alignment: .leading, spacing: Space.lg) {
                 SystemLabel(text: "Approve this Mac")
-                Text("Approve from the ReLife you're signed in to").font(.headline)
+                Text("Approve from the \(Brand.name) you're signed in to").font(.headline)
                 if let started = pairing.started, pairing.state == .waiting {
                     QRCodeView(text: started.approveUrl).frame(width: 176, height: 176).frame(maxWidth: .infinity)
                     CodeBoxes(code: started.userCode).frame(maxWidth: .infinity)
@@ -253,7 +253,7 @@ struct ApprovalCard: View {
     @ViewBuilder private func status(_ pairing: PairingModel) -> some View {
         switch pairing.state {
         case .idle, .requesting:
-            HStack(spacing: Space.sm) { Spinner().controlSize(.small); Text("Asking ReLife for a code…") }.font(.callout)
+            HStack(spacing: Space.sm) { Spinner().controlSize(.small); Text("Asking \(Brand.name) for a code…") }.font(.callout)
         case .waiting:
             HStack(spacing: Space.sm) { Spinner().controlSize(.small); Text("Waiting for approval…") }
                 .font(.callout.weight(.semibold))
@@ -264,7 +264,7 @@ struct ApprovalCard: View {
         case .expired:
             retry("This code expired.", symbol: "clock.badge.exclamationmark", pairing)
         case .denied:
-            retry("The request was denied in ReLife.", symbol: "xmark.circle", pairing)
+            retry("The request was denied in \(Brand.name).", symbol: "xmark.circle", pairing)
         case let .failed(message):
             retry(message, symbol: "exclamationmark.triangle", pairing)
         }
@@ -329,7 +329,7 @@ private struct RemindersStep: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Space.lg) {
             Text("Get reminders on this Mac?").font(.system(.largeTitle, design: .rounded, weight: .bold))
-            Text("Level ups, cleared quests and a warning at 21:00 when System quests are left. ReLife asks for permission only when you turn this on.")
+            Text("Level ups, cleared quests and a warning at 21:00 when System quests are left. \(Brand.name) asks for permission only when you turn this on.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
             Card {
@@ -341,7 +341,7 @@ private struct RemindersStep: View {
                 }
             }
             if denied {
-                NoticeCard(symbol: "bell.slash", title: "Notifications are off for ReLife", message: "Turn them on in System Settings, then try again.",
+                NoticeCard(symbol: "bell.slash", title: "Notifications are off for \(Brand.name)", message: "Turn them on in System Settings, then try again.",
                            actionTitle: "Open System Settings") { model.notifier.openSystemSettings() }
             }
             HStack {

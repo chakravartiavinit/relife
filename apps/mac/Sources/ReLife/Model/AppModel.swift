@@ -137,8 +137,8 @@ final class AppModel {
         case .ready(let at): Words.synced(at, now: .now)
         case .offline(let last): Words.offline(lastUpdated: last, queued: queueCount, timeZone: timeZone)
         case .loading: "Connecting…"
-        case .serverTooOld: "Update ReLife"
-        case .clientTooOld: "Update ReLife for Mac"
+        case .serverTooOld: "Update \(Brand.name)"
+        case .clientTooOld: "Update \(Brand.name) for Mac"
         case .sessionEnded(let reason): Words.sessionEnded(reason)
         case .unpaired, .pairing: "Not connected"
         }
@@ -306,7 +306,7 @@ final class AppModel {
                 enqueue(action, id: key)
                 if let row { pendingRows.insert(row) }
                 markOffline()
-                show(HUDMessage(text: "Saved. It will send when ReLife is back.", undo: nil))
+                show(HUDMessage(text: "Saved. It will send when \(Brand.name) is back.", undo: nil))
             case .reject:
                 show(HUDMessage(text: rejectMessage(error), undo: nil, isError: true))
                 await refresh(force: true)
@@ -326,7 +326,7 @@ final class AppModel {
 
     func show(_ message: HUDMessage) {
         hud = message
-        // Away from ReLife's windows (a quick log from the shortcut), the bar floats on its own.
+        // Away from the app's windows (a quick log from the shortcut), the bar floats on its own.
         if !appIsInFront, !Store.isOverridden { HUDPanelController.shared.present(message, model: self) }
         hudTask?.cancel()
         hudTask = Task { [weak self, id = message.id] in
@@ -608,7 +608,7 @@ final class AppModel {
         showMainWindow()
         let alert = NSAlert()
         alert.messageText = "Connect to \(ServerAddress.display(server))?"
-        alert.informativeText = "This Mac will sign in to the ReLife at \(ServerAddress.display(server)). Only continue if you started this from your own ReLife."
+        alert.informativeText = "This Mac will sign in to the \(Brand.name) at \(ServerAddress.display(server)). Only continue if you started this from your own \(Brand.name)."
         alert.addButton(withTitle: "Connect")
         alert.addButton(withTitle: "Cancel")
         guard alert.runModal() == .alertFirstButtonReturn else { return }
@@ -616,7 +616,7 @@ final class AppModel {
     }
 }
 
-/// Dock icon only while a ReLife window is open (Settings → General can keep it).
+/// Dock icon only while an app window is open (Settings → General can keep it).
 enum DockPolicy {
     @MainActor
     static func update() {

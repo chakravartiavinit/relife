@@ -2,7 +2,7 @@ import AppKit
 import Observation
 import ReLifeKit
 
-/// Connect this Mac to a ReLife. Flow B (the surfaces plan): this Mac shows a code, you approve it in the
+/// Connect this Mac to a server. Flow B (the surfaces plan): this Mac shows a code, you approve it in the
 /// dashboard or on a signed-in phone. Flow A: type a code from the dashboard's "Connect a device" sheet.
 @Observable
 final class PairingModel {
@@ -34,9 +34,9 @@ final class PairingModel {
 
     var displayCode: String? { started.map { ConnectCode.display($0.userCode) } }
 
-    // MARK: - Where is ReLife
+    // MARK: - Where is the server
 
-    /// "On this Mac": look for ReLife at 127.0.0.1:3030.
+    /// "On this Mac": look for the server at 127.0.0.1:3030.
     func discoverLocal() async {
         local = .checking
         let client = ReLifeClient(baseURL: ServerAddress.local, clientVersion: AppModel.version)
@@ -74,7 +74,7 @@ final class PairingModel {
         } catch ClientError.api(_, let error) where error.code == .rateLimited {
             state = .failed("Too many tries. Wait a few minutes.")
         } catch {
-            state = .failed("Can't reach ReLife at \(ServerAddress.display(server)).")
+            state = .failed("Can't reach \(Brand.name) at \(ServerAddress.display(server)).")
         }
     }
 
@@ -99,7 +99,7 @@ final class PairingModel {
                     return
                 case let .approved(token, device):
                     guard let token, let server else {
-                        state = .failed("ReLife approved this Mac but sent no sign-in. Try again.")
+                        state = .failed("\(Brand.name) approved this Mac but sent no sign-in. Try again.")
                         return
                     }
                     state = .idle
@@ -109,7 +109,7 @@ final class PairingModel {
             } catch {
                 failures += 1
                 if failures >= 5 {
-                    state = .failed("Lost the connection to ReLife.")
+                    state = .failed("Lost the connection to \(Brand.name).")
                     return
                 }
             }
@@ -149,7 +149,7 @@ final class PairingModel {
             let result = try await client.redeem(secret: secret, code: code, name: model?.deviceName ?? "Mac",
                                                  platform: "macOS \(v.majorVersion).\(v.minorVersion)")
             guard let token = result.token else {
-                state = .failed("ReLife sent no sign-in. Try again.")
+                state = .failed("\(Brand.name) sent no sign-in. Try again.")
                 return
             }
             state = .idle
@@ -158,7 +158,7 @@ final class PairingModel {
             typedCodeError = error.message
             state = .idle
         } catch {
-            typedCodeError = "Can't reach ReLife at \(ServerAddress.display(server))."
+            typedCodeError = "Can't reach \(Brand.name) at \(ServerAddress.display(server))."
             state = .idle
         }
     }
