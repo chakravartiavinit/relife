@@ -14,6 +14,8 @@ enum Headless {
     static var isActive: Bool { ProcessInfo.processInfo.environment["APP_HEADLESS"] == "1" }
 
     static func run() -> Never {
+        // Print each line at once, so a hang or crash keeps the lines before it.
+        setvbuf(stdout, nil, _IOLBF, 0)
         Task { @MainActor in
             let model = AppModel.shared
             if SelfTest.requested {
@@ -25,7 +27,9 @@ enum Headless {
                 exit(2)
             }
         }
-        dispatchMain()
+        // Run the main run loop (not dispatchMain): SwiftUI's renderer waits on the real main thread.
+        RunLoop.main.run()
+        exit(0)
     }
 
     /// Ends the process: through NSApp.terminate when there is an app, else with exit().

@@ -44,13 +44,17 @@ enum SelfTest {
         }
         check("the shortcut reads Control-Option-Space", HotKeyCenter.describe(code: 49, modifiers: 4096 | 2048) == "⌃⌥Space")
 
-        // The Keychain keeps a token and gives it back.
-        let keychain = KeychainTokenStore()
-        let account = "selftest.\(UUID().uuidString)"
-        keychain.save("rlf_m_selftest", account: account)
-        check("the Keychain stores the token", keychain.load(account: account) == "rlf_m_selftest")
-        keychain.delete(account: account)
-        check("the Keychain forgets it on delete", keychain.load(account: account) == nil)
+        // The Keychain keeps a token and gives it back. A machine with no logged-in user has no keychain to talk to.
+        if Headless.isActive {
+            print("SKIP the Keychain checks (no user session)")
+        } else {
+            let keychain = KeychainTokenStore()
+            let account = "selftest.\(UUID().uuidString)"
+            keychain.save("rlf_m_selftest", account: account)
+            check("the Keychain stores the token", keychain.load(account: account) == "rlf_m_selftest")
+            keychain.delete(account: account)
+            check("the Keychain forgets it on delete", keychain.load(account: account) == nil)
+        }
 
         // Offline queue: point at a port nobody listens on, sign in with a fake token, then act.
         model.serverURL = URL(string: "http://127.0.0.1:9")
