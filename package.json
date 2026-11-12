@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "license": "AGPL-3.0-or-later",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "dev": "concurrently -k -n web,worker -c blue,magenta \"npm:web\" \"npm:worker\"",
     "web": "next dev -H 127.0.0.1 -p 3030",
@@ -16,8 +19,10 @@
     "mock:seed": "tsx --env-file=.env scripts/mock.ts",
     "seed:demo": "tsx --env-file=.env scripts/seed-demo.ts",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --env-file=.env --test src/domain/*.test.ts src/core/*.test.ts src/connectors/shop/*.test.ts src/ai/*.test.ts src/parsers/*.test.ts src/worker/*.test.ts src/connectors/*.test.ts src/rules/*.test.ts",
-    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true"
+    "test": "tsx --env-file=.env --test src/domain/*.test.ts src/core/*.test.ts src/connectors/shop/*.test.ts src/ai/*.test.ts src/parsers/*.test.ts src/worker/*.test.ts src/connectors/*.test.ts src/rules/*.test.ts packages/contract/src/*.test.ts",
+    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
+    "tokens": "node packages/tokens/build.mjs",
+    "contract:check": "npm test -w @relife/contract"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.138",
@@ -25,6 +30,8 @@
     "@ai-sdk/openai": "^3.0.137",
     "@ai-sdk/openai-compatible": "^2.0.90",
     "@floating-ui/dom": "^1.8.0",
+    "@relife/contract": "*",
+    "@relife/tokens": "*",
     "ai": "^6.0.323",
     "ccxt": "^4.5.92",
     "clsx": "^2.1.1",

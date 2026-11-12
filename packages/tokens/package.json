@@ -1,0 +1,19 @@
+{
+  "name": "@relife/tokens",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "ReLife design tokens: tokens.json is the source; build.mjs writes CSS and Swift.",
+  "exports": {
+    "./tokens.css": "./tokens.css",
+    "./theme.css": "./theme.css",
+    "./tokens.json": "./tokens.json"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "node build.mjs --check"
+  },
+  "devDependencies": {
+    "culori": "^4.0.2"
+  }
+}

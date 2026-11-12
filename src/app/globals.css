@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "@relife/tokens/tokens.css";
+@import "@relife/tokens/theme.css";
 
 /* Dark mode follows [data-theme] on <html>, set before first paint by the inline script in layout. */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
@@ -9,120 +11,16 @@
  * ReLife design tokens: the ReLIFE capsule. Ink black, clean white and capsule blue, light-first,
  * with halftone dots as the one decorative texture. Tuned for contrast.
  * Text-safe colors are AA (4.5:1) on their surface; sky / sakura / cardigan are fills only.
- * Keep in sync with src/ui/tokens.ts (used by charts and future native clients).
+ * The values live in packages/tokens/tokens.json; edit there and run `npm run tokens`.
+ * Derived values (var() aliases) and the Tailwind color mapping stay here.
  */
 :root {
-  color-scheme: light;
-
-  --bg: oklch(0.984 0.003 245);           /* clean white paper, barely cool */
-  --surface: oklch(1 0 0);
-  --surface-2: oklch(0.962 0.006 245);    /* inset wells, tracks */
-  --surface-3: oklch(0.93 0.009 245);     /* hover on surface-2 */
-  --ink: oklch(0.178 0 0);                /* wordmark black */
-  --ink-2: oklch(0.40 0.012 250);         /* secondary text, 9.6:1 */
-  --ink-3: oklch(0.52 0.012 250);         /* tertiary text, 5.6:1 */
-  --hairline: oklch(0.178 0 0 / 0.08);
-  --divider: oklch(0.178 0 0 / 0.07);
-
-  --pill: oklch(0.655 0.14 250);          /* #4A9BE8 the logo's capsule blue: fills, focus ring */
-  --pill-ink: oklch(0.52 0.13 252);       /* text-safe blue, 5.3:1 on white */
-  --pill-wash: oklch(0.655 0.14 250 / 0.10);
-  --line-blue: oklch(0.703 0.109 245.2);  /* #61A6DF line-art */
-  --sky: oklch(0.813 0.114 231.8);        /* #6DCFFF */
-  --sky-soft: oklch(0.937 0.036 233.8);   /* #D4EFFF */
-  --sakura: oklch(0.867 0.081 351.8);     /* #FEBED9 */
-  --sakura-soft: oklch(0.93 0.04 352);    /* petals */
-  --cardigan: oklch(0.917 0.043 89.4);    /* #EFE3C4 */
-  --night: oklch(0.280 0.021 248.6);      /* #212A33 */
-
-  --good: oklch(0.56 0.12 155);
-  --bad: oklch(0.56 0.17 25);
-  --warn: oklch(0.62 0.13 70);
-  /* Gamification medals */
-  --medal-bronze: oklch(0.62 0.11 55);
-  --medal-silver: oklch(0.68 0.015 250);
-  --medal-gold: oklch(0.74 0.14 85);
-  --medal-sakura: oklch(0.68 0.15 355);
-
-  /* Category hues: validated categorical palette (lightness band, chroma, CVD, contrast) */
-  --cat-health: oklch(0.58 0.17 2);
-  --cat-mind: oklch(0.568 0.155 292.2);
-  --cat-skills: oklch(0.526 0.113 247.2);
-  --cat-wealth: oklch(0.563 0.112 76.7);
-  --cat-hobbies: oklch(0.58 0.14 145);
-  --cat-relationships: oklch(0.55 0.1 200);
-
-  /* Elevation: layered transparent shadows, no borders */
-  /* Shadows are tinted toward the sky hue and carry a 1px top highlight (light from above). */
-  --elev-1: inset 0 1px 0 oklch(1 0 0 / 0.9), 0 0 0 1px oklch(0.30 0.03 250 / 0.07), 0 1px 2px oklch(0.30 0.04 250 / 0.06), 0 4px 14px -6px oklch(0.30 0.05 250 / 0.10);
-  --elev-2: inset 0 1px 0 oklch(1 0 0 / 0.9), 0 0 0 1px oklch(0.30 0.03 250 / 0.07), 0 2px 4px oklch(0.30 0.04 250 / 0.05), 0 12px 32px -10px oklch(0.30 0.06 250 / 0.18);
-  --elev-3: inset 0 1px 0 oklch(1 0 0 / 0.9), 0 0 0 1px oklch(0.30 0.03 250 / 0.08), 0 4px 8px oklch(0.30 0.04 250 / 0.06), 0 28px 64px -16px oklch(0.30 0.06 250 / 0.28);
-  --elev-inset: inset 0 1px 2px oklch(0.30 0.04 250 / 0.08), inset 0 0 0 1px oklch(0.30 0.03 250 / 0.06);
-
-  /* App canvas: clean paper with one capsule-blue glow at the top right. */
-  --canvas-wash: radial-gradient(1100px 520px at 85% -14%, oklch(0.9 0.06 248 / 0.5), transparent 70%);
-  --grain-opacity: 0.025;
-  --glass: oklch(1 0 0 / 0.62);
-  --scrim: oklch(0.178 0 0 / 0.32);
-
-  --img-outline: oklch(0 0 0 / 0.1);
-
   /* shadcn-style aliases so registry components (beui.dev) inherit the ReLife theme.
      They reference ReLife tokens, so dark mode follows automatically. */
   --foreground: var(--ink);
   --background: var(--surface);
   --muted-foreground: var(--ink-3);
   --accent: var(--pill);
-}
-
-[data-theme="dark"] {
-  color-scheme: dark;
-
-  --bg: oklch(0.205 0.016 252);
-  --surface: oklch(0.244 0.018 252);      /* #1A2129-ish */
-  --surface-2: oklch(0.280 0.021 248.6);  /* night navy */
-  --surface-3: oklch(0.32 0.022 248);
-  --ink: oklch(0.965 0.004 240);
-  --ink-2: oklch(0.80 0.012 245);
-  --ink-3: oklch(0.70 0.014 245);
-  --hairline: oklch(1 0 0 / 0.08);
-  --divider: oklch(1 0 0 / 0.07);
-
-  --pill: oklch(0.70 0.13 250);
-  --pill-ink: oklch(0.78 0.11 248);
-  --pill-wash: oklch(0.70 0.13 250 / 0.14);
-  --sky-soft: oklch(0.32 0.04 240);
-  --sakura-soft: oklch(0.34 0.05 352);
-  --cardigan: oklch(0.36 0.03 85);
-
-  --good: oklch(0.74 0.13 155);
-  --bad: oklch(0.70 0.15 25);
-  --warn: oklch(0.78 0.12 75);
-  --medal-bronze: oklch(0.70 0.11 55);
-  --medal-silver: oklch(0.80 0.015 250);
-  --medal-gold: oklch(0.82 0.13 85);
-  --medal-sakura: oklch(0.76 0.13 355);
-
-  /* validated with the dataviz palette checker against #1A2129 */
-  --cat-health: oklch(0.66 0.16 355);
-  --cat-mind: oklch(0.62 0.15 292);
-  --cat-skills: oklch(0.65 0.13 245);
-  --cat-wealth: oklch(0.665 0.12 75);
-  --cat-hobbies: oklch(0.7 0.14 145);
-  --cat-relationships: oklch(0.68 0.1 200);
-
-  --elev-1: inset 0 1px 0 oklch(1 0 0 / 0.06), 0 0 0 1px oklch(1 0 0 / 0.06), 0 1px 2px oklch(0 0 0 / 0.3), 0 6px 16px -8px oklch(0 0 0 / 0.5);
-  --elev-2: inset 0 1px 0 oklch(1 0 0 / 0.07), 0 0 0 1px oklch(1 0 0 / 0.07), 0 12px 32px -10px oklch(0 0 0 / 0.6);
-  --elev-3: inset 0 1px 0 oklch(1 0 0 / 0.08), 0 0 0 1px oklch(1 0 0 / 0.08), 0 28px 64px -16px oklch(0 0 0 / 0.7);
-  --elev-inset: inset 0 1px 2px oklch(0 0 0 / 0.35), inset 0 0 0 1px oklch(1 0 0 / 0.05);
-
-  /* Night: deep ink-navy with the capsule-blue glow. */
-  --canvas-wash: radial-gradient(1100px 560px at 85% -14%, oklch(0.34 0.08 252 / 0.6), transparent 70%);
-  --grain-opacity: 0.05;
-  --glass: oklch(0.26 0.02 252 / 0.62);
-  --scrim: oklch(0 0 0 / 0.55);
-
-  --img-outline: oklch(1 0 0 / 0.1);
 }
 
 @theme inline {
@@ -171,23 +69,11 @@
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-outfit), var(--font-inter), ui-sans-serif, sans-serif;
 
-  /* Concentric radius scale: outer = inner + padding */
-  --radius-xs: 6px;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 20px;   /* cards */
-  --radius-xl: 24px;   /* panels, sidebar */
-  --radius-2xl: 28px;  /* hero */
-
   --shadow-1: var(--elev-1);
   --shadow-2: var(--elev-2);
   --shadow-3: var(--elev-3);
   --shadow-inset: var(--elev-inset);
   --color-glass: var(--glass);
-
-  --ease-out-quint: cubic-bezier(0.2, 0, 0, 1);         /* UI state changes: hover, press, toggles */
-  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);    /* entrances and chart reveals */
-  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1); /* on-screen movement */
 }
 
 @layer base {
