@@ -80,7 +80,7 @@ private struct WhereStep: View {
             Text("Where does your ReLife run?").font(.callout.weight(.semibold))
             option(.local, symbol: "laptopcomputer", title: "On this Mac", detail: localDetail, trailing: localBadge)
             option(.other, symbol: "server.rack", title: "On another computer", detail: "Self-hosted at home or on your own server.", trailing: nil) {
-                TextField("https://relife.home", text: $address)
+                InputField("https://relife.home", text: $address)
                     .textFieldStyle(.roundedBorder)
                     .onSubmit { addressError = nil }
                 if let addressError { Text(addressError).font(.caption).foregroundStyle(Tokens.bad) }
@@ -119,7 +119,7 @@ private struct WhereStep: View {
         switch model.pairing.local {
         case .found: AnyView(Label("Found", systemImage: "circle.fill").labelStyle(.titleAndIcon).font(.caption.weight(.semibold)).foregroundStyle(Tokens.good))
         case .missing: AnyView(Button("Retry") { Task { await model.pairing.discoverLocal() } }.controlSize(.small))
-        case .checking: AnyView(ProgressView().controlSize(.small))
+        case .checking: AnyView(Spinner().controlSize(.small))
         }
     }
 
@@ -190,7 +190,7 @@ private struct ConnectStep: View {
                 .foregroundStyle(.secondary)
             LabeledContent("Server") { Text(pairing.server.map(ServerAddress.display) ?? "–").foregroundStyle(.secondary) }
             LabeledContent("This Mac is called") {
-                TextField("Name", text: Binding(get: { model.deviceName }, set: { model.deviceName = $0; Prefs.deviceName = $0 }))
+                InputField("Name", text: Binding(get: { model.deviceName }, set: { model.deviceName = $0; Prefs.deviceName = $0 }))
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 200)
             }
@@ -198,7 +198,7 @@ private struct ConnectStep: View {
                 VStack(alignment: .leading, spacing: Space.sm) {
                     Text("Type the 8-character code from Settings → Devices → Connect a device.").font(.caption).foregroundStyle(.secondary)
                     HStack {
-                        TextField("K7FQ-2M9X", text: $pairing.typedCode)
+                        InputField("K7FQ-2M9X", text: $pairing.typedCode)
                             .textFieldStyle(.roundedBorder)
                             .font(.system(.body, design: .monospaced))
                             .frame(width: 160)
@@ -253,9 +253,9 @@ struct ApprovalCard: View {
     @ViewBuilder private func status(_ pairing: PairingModel) -> some View {
         switch pairing.state {
         case .idle, .requesting:
-            HStack(spacing: Space.sm) { ProgressView().controlSize(.small); Text("Asking ReLife for a code…") }.font(.callout)
+            HStack(spacing: Space.sm) { Spinner().controlSize(.small); Text("Asking ReLife for a code…") }.font(.callout)
         case .waiting:
-            HStack(spacing: Space.sm) { ProgressView().controlSize(.small); Text("Waiting for approval…") }
+            HStack(spacing: Space.sm) { Spinner().controlSize(.small); Text("Waiting for approval…") }
                 .font(.callout.weight(.semibold))
                 .foregroundStyle(Tokens.pillInk)
                 .frame(maxWidth: .infinity)
@@ -334,10 +334,10 @@ private struct RemindersStep: View {
                 .foregroundStyle(.secondary)
             Card {
                 VStack(alignment: .leading, spacing: Space.md) {
-                    Toggle("Reminders on this Mac", isOn: $reminders)
+                    SwitchRow("Reminders on this Mac", isOn: $reminders)
                         .onChange(of: reminders) { _, on in enableReminders(on) }
                     Divider()
-                    Toggle("Open at login", isOn: $login)
+                    SwitchRow("Open at login", isOn: $login)
                 }
             }
             if denied {

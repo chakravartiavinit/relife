@@ -131,7 +131,7 @@ struct QuickLogView: View {
     private var field: some View {
         HStack(spacing: Space.md) {
             Image(systemName: "capsule.lefthalf.filled").font(.title2).foregroundStyle(Tokens.pill)
-            TextField("Log something…", text: $text)
+            InputField("Log something…", text: $text)
                 .textFieldStyle(.plain)
                 .font(.title2)
                 .focused($focused)

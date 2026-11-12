@@ -8,7 +8,7 @@ struct ProgressPage: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        ScrollView {
+        PageScroll {
             VStack(spacing: Space.lg) {
                 PageNotices()
                 if let view = model.view {
@@ -90,7 +90,7 @@ struct ActivityPage: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        ScrollView {
+        PageScroll {
             VStack(spacing: Space.lg) {
                 PageNotices()
                 if let view = model.view {
@@ -138,7 +138,7 @@ struct ThisMacCard: View {
                 HStack {
                     Text("On this Mac").font(.headline)
                     Spacer()
-                    Toggle("Track activity", isOn: Binding(get: { !model.trackingPaused }, set: { model.setTrackingPaused(!$0) }))
+                    SwitchRow("Track activity", isOn: Binding(get: { !model.trackingPaused }, set: { model.setTrackingPaused(!$0) }))
                         .toggleStyle(.switch)
                         .controlSize(.small)
                 }

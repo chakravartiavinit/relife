@@ -127,7 +127,7 @@ struct HUDView: View {
                 .foregroundStyle(message.isError ? Tokens.warn : Tokens.good)
             Text(message.text).font(.callout)
             if message.undo != nil {
-                Button("Undo", action: onUndo).buttonStyle(.link)
+                Button("Undo", action: onUndo).linkButton()
             }
         }
         .padding(.horizontal, Space.lg)

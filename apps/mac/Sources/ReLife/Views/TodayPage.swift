@@ -6,7 +6,7 @@ struct TodayPage: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        ScrollView {
+        PageScroll {
             VStack(spacing: Space.lg) {
                 PageNotices()
                 if let view = model.view {

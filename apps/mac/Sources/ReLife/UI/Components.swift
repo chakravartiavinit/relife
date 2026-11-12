@@ -342,13 +342,13 @@ struct FocusBreakdown: View {
             }
             .frame(height: Space.sm)
             .background(Tokens.surface2, in: Capsule())
-            LazyVGrid(columns: [GridItem(.flexible(), alignment: .leading), GridItem(.flexible(), alignment: .leading)], spacing: Space.sm) {
+            LazyVGrid(columns: [GridItem(.flexible(), alignment: .leading)], spacing: Space.sm) {
                 ForEach(focus.byKind.filter { $0.seconds > 0 }.sorted { $0.seconds > $1.seconds }.prefix(6), id: \.kind) { part in
                     HStack(spacing: Space.sm) {
                         Circle().fill(Tokens.kind(part.kind)).frame(width: Space.sm, height: Space.sm)
                         Text(Tokens.kindName(part.kind)).font(.callout).foregroundStyle(.secondary).lineLimit(1)
                         Spacer(minLength: Space.xs)
-                        Text(Format.duration(part.seconds)).font(.callout.weight(.semibold).monospacedDigit())
+                        Text(Format.duration(part.seconds)).font(.callout.weight(.semibold).monospacedDigit()).lineLimit(1)
                     }
                 }
             }
@@ -376,5 +376,90 @@ struct LoadingBlocks: View {
             visible = true
         }
         .accessibilityHidden(true)
+    }
+}
+
+/// A page's scroll area. Under the headless render (APP_RENDER) it is a plain top-aligned stack, because
+/// `ImageRenderer` cannot draw a `ScrollView` (AppKit-backed).
+struct PageScroll<Content: View>: View {
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        if HeadlessSnapshot.requested {
+            content.frame(maxWidth: .infinity, alignment: .top)
+        } else {
+            ScrollView { content }
+        }
+    }
+}
+
+/// A text field. Under the headless render (APP_RENDER) it is a static line, because `ImageRenderer` draws a
+/// placeholder for AppKit-backed controls.
+struct InputField: View {
+    var prompt: String
+    @Binding var text: String
+
+    init(_ prompt: String, text: Binding<String>) {
+        self.prompt = prompt
+        _text = text
+    }
+
+    var body: some View {
+        if HeadlessSnapshot.requested {
+            Text(text.isEmpty ? prompt : text)
+                .foregroundStyle(text.isEmpty ? .secondary : .primary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            TextField(prompt, text: $text)
+        }
+    }
+}
+
+/// A spinner. A static symbol under the headless render, for the same reason as `InputField`.
+struct Spinner: View {
+    var body: some View {
+        if HeadlessSnapshot.requested {
+            Image(systemName: "arrow.triangle.2.circlepath").foregroundStyle(.secondary)
+        } else {
+            ProgressView()
+        }
+    }
+}
+
+extension View {
+    /// A link-style button. Plain accent text under the headless render (APP_RENDER), because `ImageRenderer`
+    /// draws a placeholder for the AppKit link style.
+    @ViewBuilder
+    func linkButton() -> some View {
+        if HeadlessSnapshot.requested {
+            buttonStyle(.plain).foregroundStyle(Tokens.pill)
+        } else {
+            buttonStyle(.link)
+        }
+    }
+}
+
+/// A labelled switch. A static switch under the headless render (APP_RENDER), for the same reason as `InputField`.
+struct SwitchRow: View {
+    var title: String
+    @Binding var isOn: Bool
+
+    init(_ title: String, isOn: Binding<Bool>) {
+        self.title = title
+        _isOn = isOn
+    }
+
+    var body: some View {
+        if HeadlessSnapshot.requested {
+            HStack {
+                Text(title)
+                Spacer()
+                Capsule().fill(isOn ? Tokens.pill : Tokens.surface3)
+                    .frame(width: 40, height: 24)
+                    .overlay(alignment: isOn ? .trailing : .leading) { Circle().fill(.white).padding(Space.xs) }
+            }
+        } else {
+            Toggle(title, isOn: $isOn)
+        }
     }
 }

@@ -7,7 +7,8 @@ extension View {
     /// and sheet, except one whose only job is typing (a search or quick-add
     /// panel focuses its field on purpose).
     func noInitialFocus() -> some View {
-        background(WindowHook())
+        // Not under the headless render, where ImageRenderer would draw a placeholder for an AppKit view.
+        background { if !HeadlessSnapshot.requested { WindowHook() } }
     }
 
     /// Sizes a Form, List, or ScrollView to its content, up to `max` points.

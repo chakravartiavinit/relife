@@ -21,6 +21,7 @@ enum HeadlessSnapshot {
             return
         }
         try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+        print("RENDER start \(dir)")
         Task {
             try? await Task.sleep(for: .seconds(0.3))
             for mode in ["light", "dark"] {
@@ -151,8 +152,11 @@ private struct Drawer {
     }
 
     private func write<V: View>(_ name: String, size: CGSize?, content: V) {
-        let base = content.tint(Tokens.pill).environment(\.colorScheme, scheme)
-        let sized: AnyView = size.map { AnyView(base.frame(width: $0.width, height: $0.height).background(Tokens.bg)) } ?? AnyView(base)
+        // The colour scheme goes on the outside, so the backdrop resolves its dynamic colours in the same scheme.
+        let base = content.tint(Tokens.pill)
+        let sized: AnyView = size.map { AnyView(base.frame(width: $0.width, height: $0.height).background(Tokens.bg).environment(\.colorScheme, scheme)) }
+            ?? AnyView(base.environment(\.colorScheme, scheme))
+        print("RENDER drawing \(name)-\(mode)")
         let renderer = ImageRenderer(content: sized)
         renderer.scale = 2
         let path = "\(dir)/\(name)-\(mode).png"
@@ -203,11 +207,16 @@ private struct StaticWindow: View {
                 .padding(.horizontal, Space.margin)
                 .frame(height: Space.section + Space.md)
                 Divider()
-                switch page {
-                case .today: TodayPage()
-                case .progress: ProgressPage()
-                case .activity: ActivityPage()
-                }
+                // The page overflows the window; show its top and clip the rest, like a scroll view at the top.
+                Color.clear
+                    .overlay(alignment: .top) {
+                        switch page {
+                        case .today: TodayPage()
+                        case .progress: ProgressPage()
+                        case .activity: ActivityPage()
+                        }
+                    }
+                    .clipped()
             }
         }
     }

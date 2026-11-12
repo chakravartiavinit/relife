@@ -29,7 +29,7 @@ struct MenuBarView: View {
             if model.isSignedIn, let view = model.view {
                 signedIn(view)
             } else if model.isSignedIn {
-                ProgressView().frame(maxWidth: .infinity, minHeight: Space.section * 3)
+                Spinner().frame(maxWidth: .infinity, minHeight: Space.section * 3)
             } else {
                 disconnected
             }
@@ -74,7 +74,7 @@ struct MenuBarView: View {
     private var quickLogField: some View {
         HStack(spacing: Space.sm) {
             Image(systemName: "sparkles").foregroundStyle(Tokens.pill)
-            TextField("Log something…", text: $text)
+            InputField("Log something…", text: $text)
                 .textFieldStyle(.plain)
                 .onSubmit {
                     model.log(text)
@@ -108,7 +108,7 @@ struct MenuBarView: View {
             }
             if menu.more > 0 {
                 Button("+\(menu.more) more") { model.showMainWindow(page: .today) }
-                    .buttonStyle(.link)
+                    .linkButton()
                     .font(.caption)
             }
         }
@@ -135,7 +135,7 @@ struct MenuBarView: View {
                     Text(model.statusLine).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                 }
                 Spacer()
-                Button("Quit ⌘Q") { NSApp.terminate(nil) }.buttonStyle(.link).font(.caption)
+                Button("Quit ⌘Q") { NSApp.terminate(nil) }.linkButton().font(.caption)
             }
         }
     }
