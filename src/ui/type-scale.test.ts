@@ -6,14 +6,16 @@ import { join } from 'node:path'
 // Ratchet: text sizes come from the type scale in globals.css (`text-body`, `text-title`, ...), not from
 // `text-[13px]`. The count may only go down. When you convert some, lower MAX_ARBITRARY_TEXT_SIZES to the
 // new count; never raise it. Vendored code (src/ui/beui) and EvilCharts are not counted.
-const MAX_ARBITRARY_TEXT_SIZES = 702
+const MAX_ARBITRARY_TEXT_SIZES = 700
 
 // Files fully on the scale. They must stay at zero.
 // The shell (sidebar, top bar, tab bar and their status pieces) is fully on the scale.
 const SHELL = ['sidebar', 'top-bar', 'tab-bar', 'sync-dot', 'coach-bell', 'avatar-ring', 'shell-status'].map((f) => `src/ui/components/shell/${f}.tsx`)
 // Capture (phase 4) is fully on the scale too.
 const CAPTURE = ['capture.tsx', 'capture-view.tsx', 'capture-gallery.tsx'].map((f) => `src/ui/components/capture/${f}`)
-const CLEAN: string[] = ['src/ui/components/sheet.tsx', 'src/ui/components/segment-tabs.tsx', 'src/ui/components/peek/peek-link.tsx', ...SHELL, ...CAPTURE]
+// Peek (phase 5) is fully on the scale too: every file under peek/ is checked below.
+const PEEK = ['peek-context', 'peek-parts', 'peek-host', 'peek-view', 'peek-gallery', 'views/metric', 'views/routine', 'views/goal', 'views/money', 'views/insight', 'views/connector', 'views/people', 'views/status'].map((f) => `src/ui/components/peek/${f}.tsx`)
+const CLEAN: string[] = ['src/ui/components/sheet.tsx', 'src/ui/components/segment-tabs.tsx', 'src/ui/components/peek/peek-link.tsx', ...SHELL, ...CAPTURE, ...PEEK]
 
 const PATTERN = /text-\[\d+(?:\.\d+)?px\]/g
 const SKIP = new Set(['beui', 'node_modules', 'evilcharts'])
