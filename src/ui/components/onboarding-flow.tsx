@@ -247,7 +247,7 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
 }
 
 /** The four steps as labelled capsules. Finished ones jump back. */
-function Rail({ current, onJump }: { current: number; onJump: (k: number) => void }) {
+export function Rail({ current, onJump }: { current: number; onJump: (k: number) => void }) {
   return (
     <ol aria-label="Setup steps" className="grid grid-cols-4 gap-1.5">
       {STEPS.map((s, k) => {
