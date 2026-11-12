@@ -445,6 +445,8 @@ details[open]::details-content { opacity: 1; }
    inset, so the panel sits below it. On a phone the sheet is a bottom sheet and ignores it. */
 :root { --sheet-top: 12px; --topbar-h: 72px; --tabbar-h: calc(64px + max(20px, env(safe-area-inset-bottom))); }
 @media (min-width: 1024px) { :root { --sheet-top: calc(var(--topbar-h) + 12px); } }
+/* The element that opened the open peek (PeekHost sets the attribute): a 2px capsule-blue ring. */
+[data-peek-open] { outline: 2px solid var(--pill); outline-offset: 2px; }
 
 /* Sidebar, before hydration: a saved rail is drawn at once from <html data-sidebar>, ignoring the width and label
    state React has not caught up with yet. `data-sidebar-ready` (set shortly after load) hands control back to

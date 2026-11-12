@@ -6,17 +6,19 @@ import { createPerson, markContacted } from '@/app/actions'
 import { Button } from '../button'
 import { Field, Input } from '../form'
 import { announceXp, useToast } from '../toast'
+import { usePeekChanged } from '../peek/peek-context'
 import { Dialog, FormError } from './dialog'
 
 export function ContactedButton({ id, name }: { id: string; name: string }) {
   const [pending, start] = useTransition()
   const toast = useToast()
+  const changed = usePeekChanged()
   return (
     <Button
       size="sm"
       disabled={pending}
       onClick={() => start(async () => {
-        try { const news = await markContacted(id); toast(`Catch-up with ${name} logged`, 'good', { icon: '/routines/call.png' }); announceXp(toast, news) } catch { toast.error() }
+        try { const news = await markContacted(id); changed(); toast(`Catch-up with ${name} logged`, 'good', { icon: '/routines/call.png' }); announceXp(toast, news) } catch { toast.error() }
       })}
     >
       <Check className="size-4" strokeWidth={2} />

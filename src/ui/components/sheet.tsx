@@ -14,6 +14,8 @@ export type SheetProps = {
   onOpenChange: (open: boolean) => void
   title: string
   description?: string
+  /** Desktop only: a mark in front of the title (Peek's icon chip). A phone sheet shows the title alone. */
+  icon?: React.ReactNode
   /**
    * Desktop only. Default (false) is a non-modal panel: no scrim, no scroll lock, the page stays clickable so
    * another number can swap the content (Peek). True dims the page and holds focus inside (a full-attention task).
@@ -43,7 +45,7 @@ export function useIsDesktop() {
  * Desktop: a 440px panel on the right, below the top bar (`--sheet-top`), Esc closes, focus moves in and returns
  * to the trigger on close. Non-modal by default; see `modal`.
  */
-export function Sheet({ open, onOpenChange, title, description, modal = false, snapPoints = [0.5, 0.92], className, children }: SheetProps) {
+export function Sheet({ open, onOpenChange, title, description, icon, modal = false, snapPoints = [0.5, 0.92], className, children }: SheetProps) {
   const desktop = useIsDesktop()
   if (!desktop) {
     return (
@@ -54,12 +56,12 @@ export function Sheet({ open, onOpenChange, title, description, modal = false, s
   }
   return (
     <AnimatePresence>
-      {open ? <Panel key="panel" onOpenChange={onOpenChange} title={title} description={description} modal={modal} className={className}>{children}</Panel> : null}
+      {open ? <Panel key="panel" onOpenChange={onOpenChange} title={title} description={description} icon={icon} modal={modal} className={className}>{children}</Panel> : null}
     </AnimatePresence>
   )
 }
 
-function Panel({ onOpenChange, title, description, modal, className, children }: Omit<SheetProps, 'open' | 'snapPoints'> & { modal: boolean }) {
+function Panel({ onOpenChange, title, description, icon, modal, className, children }: Omit<SheetProps, 'open' | 'snapPoints'> & { modal: boolean }) {
   const ref = useRef<HTMLDialogElement>(null)
   const reduce = useReducedMotion()
   const uid = useId()
@@ -84,7 +86,8 @@ function Panel({ onOpenChange, title, description, modal, className, children }:
   // A non-modal dialog gets no native Esc, so listen for it. Something inside that already handled Esc keeps it.
   useEffect(() => {
     if (modal) return
-    const on = (e: KeyboardEvent) => { if (e.key === 'Escape' && !e.defaultPrevented) closeRef.current() }
+    // A modal dialog opened from inside (an edit form) takes that Esc for itself.
+    const on = (e: KeyboardEvent) => { if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('dialog:modal')) closeRef.current() }
     document.addEventListener('keydown', on)
     return () => document.removeEventListener('keydown', on)
   }, [modal])
@@ -106,8 +109,9 @@ function Panel({ onOpenChange, title, description, modal, className, children }:
         className,
       )}
     >
-      <header className="flex items-start justify-between gap-3 p-5 pb-3">
-        <div className="min-w-0">
+      <header className="flex items-start gap-3 p-5 pb-3">
+        {icon}
+        <div className="min-w-0 flex-1">
           <h2 id={`${uid}-title`} className="text-heading text-ink">{title}</h2>
           {description ? <p id={`${uid}-desc`} className="mt-0.5 text-small text-ink-3">{description}</p> : null}
         </div>

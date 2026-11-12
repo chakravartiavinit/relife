@@ -9,6 +9,7 @@ import { cn } from '@/ui/cn'
 import { Button } from '../button'
 import { Badge, Card, IconChip, Stat } from '../card'
 import { Capsule } from '../capsule'
+import { usePeekChanged } from '../peek/peek-context'
 import { Field, Input, Textarea } from '../form'
 import { GoalStatusBadge } from './goal-card'
 import { GoalDialog, Notice, UnitInput, initialFromGoal, type GoalPickerData } from './goal-form'
@@ -153,6 +154,7 @@ export function CheckInPanel({ g, today, full = false }: { g: GoalViewData; toda
   const [pending, start] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+  const changed = usePeekChanged()
   const latest = g.snapshot?.outcome.latestCheckIn
   const submit = (form: FormData) => {
     const raw = String(form.get('value') ?? '').trim()
@@ -160,7 +162,7 @@ export function CheckInPanel({ g, today, full = false }: { g: GoalViewData; toda
     setError(null)
     start(async () => {
       const res = await recordGoalCheckInAction({ goalId: g.id, localDate: String(form.get('date') || today), value: Number(raw), note: String(form.get('note') ?? '') || undefined })
-      if (res.ok) setSaved(true)
+      if (res.ok) { setSaved(true); changed() }
       else setError(res.error)
     })
   }

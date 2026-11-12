@@ -14,6 +14,7 @@ import type { QuestStatus, Rank, SystemKind } from '@/domain/system'
 import type { RecoveryChoice, RecoveryView } from '@/domain/recovery'
 import { Button, buttonClass } from './button'
 import { Capsule } from './capsule'
+import { usePeekChanged } from './peek/peek-context'
 import { cn } from '../cn'
 
 export type SystemQuestItem = {
@@ -103,6 +104,7 @@ const ORDER: Record<QuestStatus, number> = { active: 0, cleared: 1, failed: 2, u
 /** An explicit choice, never a new commitment until the server confirms it. */
 export function RecoveryPanel({ recovery }: { recovery: RecoveryView }) {
   const router = useRouter()
+  const changed = usePeekChanged()
   const [pending, start] = useTransition()
   const [attempt, setAttempt] = useState<RecoveryChoice | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -120,6 +122,7 @@ export function RecoveryPanel({ recovery }: { recovery: RecoveryView }) {
         setRetryOnly(true)
       }
       router.refresh()
+      changed()
     })
   }
   const preview = recovery.preview

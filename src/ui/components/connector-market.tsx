@@ -11,6 +11,7 @@ import { IconChip } from './card'
 import { FormError } from './forms/dialog'
 import { CenterMorphModal, CenterMorphModalContent, CenterMorphModalTrigger } from '@/ui/beui/motion/center-morph-modal'
 import { useToast } from './toast'
+import { usePeekChanged } from './peek/peek-context'
 import { AppLogo as Logo } from './app-logo'
 import { cn } from '../cn'
 
@@ -47,7 +48,7 @@ export type ConnectorItem = {
   syncs?: { at: string; ok: boolean | null; events: number }[]
 }
 
-const STATUS: Record<ConnectorStatus, { label: string; color: string }> = {
+export const STATUS: Record<ConnectorStatus, { label: string; color: string }> = {
   ok: { label: 'Connected', color: 'var(--good)' },
   error: { label: 'Sync failing', color: 'var(--bad)' },
   setup: { label: 'Key missing', color: 'var(--warn)' },
@@ -379,15 +380,17 @@ function Tile({ c, ...props }: { c: ConnectorItem } & React.ButtonHTMLAttributes
 /** "API key" stays, "Personal access token" → "personal access token". */
 const lowerFirst = (s: string) => (/^[A-Z][A-Z]/.test(s) ? s : s[0].toLowerCase() + s.slice(1))
 
-function SyncButton({ id, name }: { id: string; name: string }) {
+export function SyncButton({ id, name }: { id: string; name: string }) {
   const [pending, start] = useTransition()
   const toast = useToast()
+  const changed = usePeekChanged()
   return (
     <Button
       disabled={pending}
       onClick={() => start(async () => {
         const t = toast.loading(`Syncing ${name}…`, { icon: <Logo id={id} size="xs" /> })
         const r = await syncNow(id)
+        changed()
         if (r.ok) toast.update(t, `${name} synced`, 'good', { description: r.events ? `${r.events} new` : 'Nothing new since the last sync' })
         else toast.update(t, `Couldn’t sync ${name}`, 'bad', { description: r.error ?? 'Try again in a moment' })
       })}
@@ -406,7 +409,6 @@ function ConnectorDialog({ c, trigger }: { c: ConnectorItem; trigger: React.Reac
   const [open, setOpen] = useState(false)
   const uid = useId()
   const status = STATUS[c.status]
-  const secrets = c.fields.filter((f) => f.secret && !f.optional) // the ones you must have
   return (
     <CenterMorphModal open={open} onOpenChange={setOpen}>
       <CenterMorphModalTrigger>{trigger}</CenterMorphModalTrigger>
@@ -431,37 +433,50 @@ function ConnectorDialog({ c, trigger }: { c: ConnectorItem; trigger: React.Reac
             </div>
           </header>
 
-          <p id={`${uid}-desc`} className="-mt-1 text-[14px] leading-relaxed text-ink-2">{c.description}</p>
-          {!c.connected ? (
-            <ul aria-label="What it brings in" className="-mt-2 flex flex-wrap gap-1.5">
-              {c.provides.map((p) => <li key={p} className="inline-flex h-7 items-center rounded-full px-2.5 text-[12.5px] text-ink-2 shadow-[inset_0_0_0_1px_var(--hairline)]">{p}</li>)}
-              <li className="inline-flex h-7 items-center gap-1 px-1 text-[12.5px] text-ink-3"><KeyRound className="size-3.5" strokeWidth={1.5} aria-hidden />{c.login ? 'Log in with your account' : c.oauth ? `Sign in with ${c.name}` : secrets.length ? `Needs ${secrets.map((f) => lowerFirst(f.label)).join(' and ')}` : 'No key needed'}</li>
-            </ul>
-          ) : (
-            <div className="flex flex-col gap-3 rounded-[16px] bg-surface-2/60 p-4 shadow-[inset_0_0_0_1px_var(--hairline)]">
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-[13px] text-ink-2 tabular-nums">{c.detail}</span>
-                {c.sync ? <SyncButton id={c.id} name={c.name} /> : null}
-              </div>
-              {c.error && c.status === 'error' ? <p className="rounded-md bg-bad/10 px-3 py-2 text-[12.5px] text-bad">{c.error}</p> : null}
-              {c.syncs?.length ? (
-                <ul aria-label="Recent syncs" className="flex flex-col divide-y divide-divider text-[12.5px]">
-                  {c.syncs.map((r, i) => (
-                    <li key={i} className="flex h-8 items-center gap-2.5">
-                      {r.ok === false ? <CircleAlert className="size-3.5 text-bad" strokeWidth={2} aria-label="Failed" /> : <CircleCheck className="size-3.5 text-good" strokeWidth={2} aria-label="OK" />}
-                      <span className="flex-1 text-ink-2 tabular-nums">{r.at}</span>
-                      <span className="text-ink-3 tabular-nums">{r.ok === false ? 'Failed' : `${r.events} new`}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
-          )}
-
-          <ConnectForm c={c} onDone={() => setOpen(false)} />
+          <ConnectorBody c={c} onDone={() => setOpen(false)} descId={`${uid}-desc`} />
         </div>
       </CenterMorphModalContent>
     </CenterMorphModal>
+  )
+}
+
+/**
+ * What a connector dialog shows under its title, and what the connector Peek shows too: the description, what it
+ * brings in or (when connected) its status, recent syncs and Sync now, then the connect or settings form.
+ */
+export function ConnectorBody({ c, onDone, descId }: { c: ConnectorItem; onDone: () => void; descId?: string }) {
+  const secrets = c.fields.filter((f) => f.secret && !f.optional) // the ones you must have
+  return (
+    <>
+      <p id={descId} className="-mt-1 text-[14px] leading-relaxed text-ink-2">{c.description}</p>
+      {!c.connected ? (
+        <ul aria-label="What it brings in" className="-mt-2 flex flex-wrap gap-1.5">
+          {c.provides.map((p) => <li key={p} className="inline-flex h-7 items-center rounded-full px-2.5 text-[12.5px] text-ink-2 shadow-[inset_0_0_0_1px_var(--hairline)]">{p}</li>)}
+          <li className="inline-flex h-7 items-center gap-1 px-1 text-[12.5px] text-ink-3"><KeyRound className="size-3.5" strokeWidth={1.5} aria-hidden />{c.login ? 'Log in with your account' : c.oauth ? `Sign in with ${c.name}` : secrets.length ? `Needs ${secrets.map((f) => lowerFirst(f.label)).join(' and ')}` : 'No key needed'}</li>
+        </ul>
+      ) : (
+        <div className="flex flex-col gap-3 rounded-[16px] bg-surface-2/60 p-4 shadow-[inset_0_0_0_1px_var(--hairline)]">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[13px] text-ink-2 tabular-nums">{c.detail}</span>
+            {c.sync ? <SyncButton id={c.id} name={c.name} /> : null}
+          </div>
+          {c.error && c.status === 'error' ? <p className="rounded-md bg-bad/10 px-3 py-2 text-[12.5px] text-bad">{c.error}</p> : null}
+          {c.syncs?.length ? (
+            <ul aria-label="Recent syncs" className="flex flex-col divide-y divide-divider text-[12.5px]">
+              {c.syncs.map((r, i) => (
+                <li key={i} className="flex h-8 items-center gap-2.5">
+                  {r.ok === false ? <CircleAlert className="size-3.5 text-bad" strokeWidth={2} aria-label="Failed" /> : <CircleCheck className="size-3.5 text-good" strokeWidth={2} aria-label="OK" />}
+                  <span className="flex-1 text-ink-2 tabular-nums">{r.at}</span>
+                  <span className="text-ink-3 tabular-nums">{r.ok === false ? 'Failed' : `${r.events} new`}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      )}
+
+      <ConnectForm c={c} onDone={onDone} />
+    </>
   )
 }
 

@@ -5,6 +5,8 @@ import { connectorStatus } from '@/worker/sync'
 import type { User } from '../user'
 import type { SyncPeek } from './types'
 
+const ago = (ms: number) => { const a = agoShort(ms); return a === 'just now' ? a : `${a} ago` }
+
 /** How data is flowing: the worker's heartbeat and every enabled connection, failing ones first. */
 export async function loadSyncPeek(_user: User): Promise<SyncPeek> {
   const now = Date.now()
@@ -19,7 +21,7 @@ export async function loadSyncPeek(_user: User): Promise<SyncPeek> {
     return {
       id: s.id, name: s.name, category: s.category ?? null,
       status: (c.status === 'error' ? 'error' : c.lastSyncAt ? 'ok' : 'waiting') as 'ok' | 'error' | 'waiting',
-      ago: c.lastSyncAt ? `${agoShort(now - c.lastSyncAt.getTime())} ago` : 'not yet',
+      ago: c.lastSyncAt ? ago(now - c.lastSyncAt.getTime()) : 'not yet',
       error: c.status === 'error' ? c.lastError : null, failures: c.failures,
     }
   }).sort((a, b) => Number(b.status === 'error') - Number(a.status === 'error') || a.name.localeCompare(b.name))
@@ -30,7 +32,7 @@ export async function loadSyncPeek(_user: User): Promise<SyncPeek> {
     type: 'sync',
     tone,
     label: syncLabel(tone, failing, last, now),
-    worker: { alive, heartbeat: beat?.at.toISOString() ?? null, ago: beat ? `${agoShort(now - beat.at.getTime())} ago` : 'never' },
+    worker: { alive, heartbeat: beat?.at.toISOString() ?? null, ago: beat ? ago(now - beat.at.getTime()) : 'never' },
     connections,
   }
 }
