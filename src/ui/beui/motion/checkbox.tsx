@@ -79,7 +79,7 @@ export function Checkbox({
         aria-describedby={describedBy}
         disabled={disabled}
         onClick={() => !disabled && onCheckedChange(!checked)}
-        whileTap={reduce || disabled ? undefined : { scale: 0.92 }}
+        whileTap={disabled ? undefined : { scale: reduce ? 1 : 0.92 }}
         transition={SPRING_PRESS}
         data-state={
           checked ? "checked" : indeterminate ? "indeterminate" : "unchecked"
@@ -105,8 +105,8 @@ export function Checkbox({
               strokeWidth={3}
               strokeLinecap="round"
               strokeLinejoin="round"
-              initial={reduce ? { opacity: 1 } : { opacity: 0, scale: 0.5 }}
-              animate={reduce ? { opacity: 1 } : { opacity: 1, scale: 1 }}
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
               exit={
                 reduce
                   ? { opacity: 0 }
@@ -120,7 +120,8 @@ export function Checkbox({
               <title>{t(indeterminate ? "indeterminate" : "checked")}</title>
               <motion.path
                 d={path}
-                initial={reduce ? { pathLength: 1 } : { pathLength: 0 }}
+                // initial/animate do not branch on `reduce`: the server cannot know the preference, so a branch differs on hydration. Reduced motion changes the transition (0s) only.
+                initial={{ pathLength: 0 }}
                 animate={{ pathLength: 1 }}
                 transition={
                   reduce
