@@ -38,7 +38,7 @@ export function TimeTile({ kinds, kpis, brief }: { kinds: { kind: ActivityKind; 
             {kpis.slice(0, 4).map((k) => (
               <div key={k.label} className="min-w-0">
                 <PeekLink to={k.peek ?? { type: 'brief', id: 'time' }} className="-m-1 block rounded-md p-1 transition-colors duration-150 ease-out-quint hover:bg-ink/[0.04] focus-visible:outline-2 focus-visible:outline-pill dark:hover:bg-white/[0.05]">
-                  <dt className="truncate text-caption text-ink-3">{k.label}</dt>
+                  <dt className="line-clamp-2 text-caption text-ink-3">{k.label}</dt>
                   <dd className="num truncate text-heading text-ink">{k.value}</dd>
                 </PeekLink>
               </div>

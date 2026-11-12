@@ -58,7 +58,7 @@ export function AreaTile({ d }: { d: TileData }) {
           {d.kpis.slice(0, 3).map((k) => (
             <div key={k.label} className="min-w-0">
               <PeekLink to={k.peek ?? { type: 'brief', id: scope }} className="block rounded-md p-1 -m-1 transition-colors duration-150 ease-out-quint hover:bg-ink/[0.04] focus-visible:outline-2 focus-visible:outline-pill dark:hover:bg-white/[0.05]">
-                <dt className="truncate text-caption text-ink-3">{k.label}</dt>
+                <dt className="line-clamp-2 min-h-[2lh] text-caption text-ink-3">{k.label}</dt>
                 <dd className={`num truncate text-heading ${k.tone === 'good' ? 'text-good' : k.tone === 'bad' ? 'text-bad' : 'text-ink'}`}>{k.value}</dd>
               </PeekLink>
             </div>

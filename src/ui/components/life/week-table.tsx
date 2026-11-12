@@ -40,7 +40,7 @@ export function WeekTable({ week, changes, show }: { week: Week; changes: Record
               <div className="flex items-center gap-2">
                 <span aria-hidden className="h-1.5 min-w-0 flex-1 rounded-full bg-ink/[0.06] dark:bg-white/[0.08]"><span className="block h-full rounded-full" style={{ width: `${(r.xp / max) * 100}%`, background: def.color }} /></span>
                 <span className="num w-14 text-end text-small text-ink">{formatNumber(r.xp)}</span>
-                {r.delta == null ? <span className="w-10 text-end text-caption text-ink-3">new</span> : <span className={`w-10 text-end text-caption tabular-nums ${r.delta >= 0 ? 'text-good' : 'text-bad'}`}>{r.delta >= 0 ? '+' : '−'}{Math.round(Math.abs(r.delta) * 100)}%</span>}
+                {r.delta == null ? <span className="w-10 text-end text-caption text-ink-3">new</span> : Math.round(Math.abs(r.delta) * 100) === 0 ? <span className="w-10 text-end text-caption text-ink-3">flat</span> : <span className={`w-10 text-end text-caption tabular-nums ${r.delta > 0 ? 'text-good' : 'text-bad'}`}>{r.delta > 0 ? '+' : '−'}{Math.round(Math.abs(r.delta) * 100)}%</span>}
               </div>
             </li>
           )

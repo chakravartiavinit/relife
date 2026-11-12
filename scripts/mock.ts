@@ -442,6 +442,29 @@ async function main() {
     },
   })
 
+  // Two weeks of laptop time (what the browser extension and Mac watcher record), for the Time page and the hub tile.
+  const lt = rng(seed ^ 0x71e)
+  const sites: { domain: string; app?: string; kind: 'learning' | 'work' | 'entertainment' | 'social' | 'communication'; source: 'browser' | 'mac' }[] = [
+    { domain: 'github.com', kind: 'work', source: 'browser' }, { domain: 'developer.mozilla.org', kind: 'learning', source: 'browser' },
+    { domain: 'leetcode.com', kind: 'learning', source: 'browser' }, { domain: 'youtube.com', kind: 'entertainment', source: 'browser' },
+    { domain: 'x.com', kind: 'social', source: 'browser' }, { domain: 'slack.com', kind: 'communication', source: 'browser' },
+    { domain: '', app: 'Visual Studio Code', kind: 'work', source: 'mac' },
+  ]
+  const stretches: (typeof schema.activity.$inferInsert)[] = []
+  for (let i = 13; i >= 0; i--) {
+    const d = addDays(today, -i)
+    const wd = weekday(d)
+    const n = wd === 0 || wd === 6 ? lt.int(3, 6) : lt.int(8, 14)
+    for (let j = 0; j < n; j++) {
+      const site = lt.pick(sites)
+      const start = wallToUtc(new Date(`${d}T${String(lt.int(8, 21)).padStart(2, '0')}:${String(lt.int(0, 5) * 10).padStart(2, '0')}:00Z`), tz)
+      const seconds = lt.int(8, 70) * 60
+      if (start.getTime() + seconds * 1000 > now.getTime()) continue
+      stretches.push({ userId: uid, source: site.source, app: site.app ?? null, domain: site.domain || null, kind: site.kind, startedAt: start, endedAt: new Date(start.getTime() + seconds * 1000), seconds, localDate: d, ref: `mock:${d}:${j}` })
+    }
+  }
+  await db.insert(schema.activity).values(stretches)
+
   // The one-line briefs on the Life hub and every area header: written by the rules, as the daily job would.
   const { areaBriefs } = await import('@/ai/jobs/area-briefs')
   await areaBriefs(user, now)
