@@ -1,0 +1,48 @@
+{
+  "ok": true,
+  "message": "Added.",
+  "news": {
+    "levelUp": {
+      "level": 8,
+      "title": "Ascendant",
+      "from": 7,
+      "newTitle": true
+    },
+    "unlocked": [
+      {
+        "key": "hydrated",
+        "name": "Hydrated",
+        "tier": "bronze",
+        "xp": 50
+      }
+    ],
+    "chests": 1
+  },
+  "view": {
+    "today": "2026-11-12",
+    "name": "Aarav",
+    "character": {
+      "level": 8,
+      "title": "Ascendant",
+      "total": 2140,
+      "floor": 1900,
+      "next": 2500,
+      "progress": 0.4,
+      "todayXp": 60,
+      "streak": 12,
+      "best": 31,
+      "doneToday": true,
+      "freezes": 1
+    },
+    "quests": [],
+    "routines": [],
+    "goals": [],
+    "done": 0,
+    "total": 0,
+    "left": 0,
+    "focus": {
+      "seconds": 0,
+      "byKind": []
+    }
+  }
+}

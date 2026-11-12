@@ -1,0 +1,53 @@
+import { z } from 'zod'
+import { DeviceInfo } from './common'
+
+/** The kinds a new device may ask for. `cli` pairs only from the server's shell. */
+const PairKind = z.enum(['mac', 'extension', 'phone', 'browser'])
+
+/** POST /api/v1/pair/redeem: flow A, a QR secret or the typed XXXX-XXXX code. */
+export const PairRedeem = z.object({
+  secret: z.string().optional(),
+  code: z.string().trim().min(8).max(16).optional(),
+  kind: PairKind.optional(),
+  name: z.string().trim().min(1).max(80).optional(),
+  platform: z.string().max(80).optional(),
+}).refine((v) => v.secret || v.code, { message: 'secret or code is required' })
+export type PairRedeem = z.infer<typeof PairRedeem>
+
+/** Browsers get the cookie and `next`; native clients get `token` in the body. */
+export const PairRedeemResult = z.object({
+  ok: z.literal(true),
+  device: DeviceInfo,
+  token: z.string().optional(),
+  next: z.string().optional(),
+})
+export type PairRedeemResult = z.infer<typeof PairRedeemResult>
+
+/** POST /api/v1/pair/requests: flow B, the new device shows a code a signed-in screen approves. */
+export const PairRequestStart = z.object({
+  kind: PairKind,
+  name: z.string().trim().min(1).max(80),
+  platform: z.string().max(80).optional(),
+})
+export type PairRequestStart = z.infer<typeof PairRequestStart>
+
+export const PairRequestStarted = z.object({
+  id: z.string(),
+  /** 8 Crockford base32 characters, shown as XXXX-XXXX. */
+  userCode: z.string(),
+  pollSecret: z.string(),
+  approveUrl: z.string(),
+  expiresAt: z.iso.datetime(),
+  /** Seconds between polls. */
+  interval: z.number(),
+})
+export type PairRequestStarted = z.infer<typeof PairRequestStarted>
+
+/** POST /api/v1/pair/requests/:id/poll. `approved` (with the token) comes back exactly once. */
+export const PairPoll = z.discriminatedUnion('status', [
+  z.object({ status: z.literal('pending') }),
+  z.object({ status: z.literal('denied') }),
+  z.object({ status: z.literal('expired') }),
+  z.object({ status: z.literal('approved'), token: z.string().optional(), device: DeviceInfo }),
+])
+export type PairPoll = z.infer<typeof PairPoll>

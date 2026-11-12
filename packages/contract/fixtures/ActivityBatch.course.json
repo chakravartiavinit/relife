@@ -1,0 +1,52 @@
+{
+  "segments": [
+    {
+      "id": "6b4e8a0c-3d5f-4c79-9ea2-f4a6b8c0d2e3",
+      "source": "browser",
+      "domain": "netflix.com",
+      "path": "/watch/80100172",
+      "title": "Dark",
+      "start": 1794474000000,
+      "end": 1794474300000,
+      "meta": {
+        "playing": true,
+        "course": {
+          "title": "Dark",
+          "lesson": "Secrets",
+          "kind": "show",
+          "url": "https://www.netflix.com/title/80100172",
+          "auto": true,
+          "episode": {
+            "episode": "Secrets",
+            "number": 3,
+            "season": 1,
+            "duration": 3000,
+            "position": 1200
+          }
+        }
+      }
+    }
+  ],
+  "courses": [
+    {
+      "domain": "coursera.org",
+      "path": "/learn/ml",
+      "title": "Machine Learning",
+      "url": "https://www.coursera.org/learn/ml",
+      "done": 4,
+      "total": 12,
+      "kind": "course",
+      "lesson": "Week 4"
+    }
+  ],
+  "rules": [
+    {
+      "domain": "reddit.com",
+      "kind": "social"
+    },
+    {
+      "domain": "news.ycombinator.com",
+      "kind": null
+    }
+  ]
+}
