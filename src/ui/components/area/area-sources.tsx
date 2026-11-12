@@ -5,12 +5,13 @@ import type { AreaDef } from '@/core/areas'
 import { loadConnectorItems } from '@/core/connector-items'
 import { db, schema } from '@/db'
 import { requestOrigin } from '@/core/oauth'
-import { addDays } from '@/core/time'
+import { addDays, formatDay } from '@/core/time'
 import type { User } from '@/core/user'
 import { AppLogo } from '../app-logo'
 import { buttonClass } from '../button'
 import { Card, CardHeader } from '../card'
-import { STATUS, type ConnectorItem } from '../connector-market'
+import { STATUS } from '../connector-status'
+import type { ConnectorItem } from '../connector-market'
 import { PeekLink } from '../peek/peek-link'
 import Link from 'next/link'
 
@@ -60,7 +61,7 @@ export async function AreaSources({ user, def, today }: { user: User; def: AreaD
             {own.map((t) => (
               <li key={t.source} className="flex min-h-14 items-center justify-between gap-3 py-2">
                 <span className="text-body text-ink">{sourceLabel(t.source)}</span>
-                <span className="text-small text-ink-3 tabular-nums">{t.trackers} metric{t.trackers === 1 ? '' : 's'} · last {t.last}</span>
+                <span className="text-small text-ink-3 tabular-nums">{t.trackers} metric{t.trackers === 1 ? '' : 's'} · last {formatDay(t.last, { day: 'numeric', month: 'short' })}</span>
               </li>
             ))}
           </ul>

@@ -1,5 +1,6 @@
 'use client'
 
+import { STATUS, type ConnectorStatus } from './connector-status'
 import { useActionState, useEffect, useId, useRef, useState, useTransition } from 'react'
 import { AtSign, Check, ChevronRight, CircleAlert, CircleCheck, Code2, Copy, Cpu, Dumbbell, ExternalLink, Gamepad2, Globe, GraduationCap, KeyRound, Lock, LogIn, Moon, RefreshCw, Search, Send, ShoppingBag, Timer, UtensilsCrossed, Wallet, Zap, type LucideIcon } from 'lucide-react'
 import type { Category } from '@/db/schema'
@@ -15,7 +16,7 @@ import { usePeekChanged } from './peek/peek-context'
 import { AppLogo as Logo } from './app-logo'
 import { cn } from '../cn'
 
-export type ConnectorStatus = 'ok' | 'error' | 'setup' | 'off' | 'waiting' | 'ready'
+export type { ConnectorStatus }
 /** A dialog field plus what the server already has for it. Secret values are never sent. */
 export type FieldView = SetupField & { saved: boolean; fromEnv: boolean; value?: string; envSource?: 'dotsafe' | '.env' }
 export type ConnectorSection = 'built-in' | 'keys' | 'shopping' | 'messaging' | 'ai'
@@ -48,14 +49,7 @@ export type ConnectorItem = {
   syncs?: { at: string; ok: boolean | null; events: number }[]
 }
 
-export const STATUS: Record<ConnectorStatus, { label: string; color: string }> = {
-  ok: { label: 'Connected', color: 'var(--good)' },
-  error: { label: 'Sync failing', color: 'var(--bad)' },
-  setup: { label: 'Key missing', color: 'var(--warn)' },
-  off: { label: 'Not connected', color: 'var(--ink-3)' },
-  waiting: { label: 'Almost there', color: 'var(--warn)' },
-  ready: { label: 'Ready, not in use', color: 'var(--pill)' },
-}
+export { STATUS }
 const RANK: Record<ConnectorStatus, number> = { error: 0, setup: 1, waiting: 2, ready: 3, ok: 4, off: 5 }
 
 type Group = { key: string; shelf: string; title: string; hint: string; icon: LucideIcon; color: string; ids: string[] }

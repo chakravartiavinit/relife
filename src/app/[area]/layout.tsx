@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { Suspense } from 'react'
 import { AREAS, TEMPLATE_SLUGS, areaBySlug } from '@/core/areas'
+import { Skeleton } from '@/ui/components/card'
 import { AreaLayout } from '@/ui/components/area/area-layout'
 import { AddHobbyButton } from '@/ui/components/hobbies'
 import { NewPersonButton } from '@/ui/components/forms/people-forms'
@@ -16,7 +18,12 @@ export async function generateMetadata({ params }: LayoutProps<'/[area]'>): Prom
   return def ? { title: def.title } : {}
 }
 
-export default async function AreaRootLayout({ children, params }: LayoutProps<'/[area]'>) {
+export default function AreaRootLayout({ children, params }: LayoutProps<'/[area]'>) {
+  // The slug is URL data: it is read under Suspense, the header-sized fallback holds the space until it is known.
+  return <Suspense fallback={<Skeleton className="h-[160px] rounded-xl" />}><Area params={params}>{children}</Area></Suspense>
+}
+
+async function Area({ params, children }: { params: LayoutProps<'/[area]'>['params']; children: React.ReactNode }) {
   const { area } = await params
   if (!(TEMPLATE_SLUGS as readonly string[]).includes(area)) notFound()
   const def = AREAS[area as (typeof TEMPLATE_SLUGS)[number]]
