@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server'
 
 // Flow A (plan §3): the new device redeems a QR secret or the typed code. Public. A browser or phone gets the session
 // cookie and `next`; the Mac app and the extension get `token` in the body. The cookie-setting POST must come from
-// this very site (Origin = Host), so another page can't make a visitor's browser join someone else's ReLife.
+// this very site (Origin = Host), so another page can't make a visitor's browser join someone else's server.
 
 export async function POST(req: Request) {
   if (!sameOrigin(req.headers)) return apiError(403, 'forbidden', 'This request came from another site.')

@@ -3,7 +3,7 @@ import { authenticate, denied } from '@/core/auth/request'
 import { toListItem } from '@/core/auth/device-view'
 import { listDevices } from '@/core/auth/devices'
 
-// Everything signed in to this ReLife: what Settings → Devices shows, for the Mac app's account tab too.
+// Everything signed in to this server: what Settings → Devices shows, for the Mac app's account tab too.
 
 export async function GET(req: Request) {
   const a = await authenticate(req, 'full')

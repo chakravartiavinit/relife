@@ -10,7 +10,7 @@ type Headers = { get(name: string): string | null }
 const LOOPBACK = new Set(['127.0.0.1', 'localhost', '[::1]'])
 export const isLoopbackHost = (host: string | null) => !!host && LOOPBACK.has(hostName(host))
 
-/** Set by a proxy or tunnel in front of ReLife. A request carrying any of them did not come straight from this Mac. */
+/** Set by a proxy or tunnel in front of the app. A request carrying any of them did not come straight from this Mac. */
 const PROXY_HEADERS = ['forwarded', 'tailscale-user-login', 'cf-connecting-ip', 'x-real-ip']
 const LOOPBACK_IPS = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1'])
 

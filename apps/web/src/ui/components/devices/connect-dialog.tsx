@@ -1,5 +1,6 @@
 'use client'
 
+import brand from '@relife/brand/brand.json'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowLeft, Check, Copy, ExternalLink, Laptop, QrCode as QrIcon, RefreshCw, ServerOff, ShieldCheck, Smartphone } from 'lucide-react'
 import {
@@ -127,7 +128,7 @@ export function ConnectDialog({ open, onClose, initialCode }: { open: boolean; o
                 <div className="flex aspect-square w-full flex-col items-center justify-center gap-2 rounded-[20px] bg-surface-2 p-5 text-center">
                   <Smartphone className="size-6 text-ink-3" strokeWidth={1.5} aria-hidden />
                   <p className="text-[14px] font-semibold text-ink">Your phone can’t reach {offer.host}</p>
-                  <p className="text-[12.5px] leading-relaxed text-ink-3">A phone needs an address it can open. Set up Tailscale on this Mac and the phone, then open ReLife from its <code className="font-mono">.ts.net</code> address. The Mac app and the extension work from here.</p>
+                  <p className="text-[12.5px] leading-relaxed text-ink-3">A phone needs an address it can open. Set up Tailscale on this Mac and the phone, then open {brand.name} from its <code className="font-mono">.ts.net</code> address. The Mac app and the extension work from here.</p>
                   <a href="https://tailscale.com/kb/1312/serve" target="_blank" rel="noreferrer" className="inline-flex h-10 items-center gap-1 text-[13px] font-medium text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-pill">Set up Tailscale<ExternalLink className="size-3.5" aria-hidden /></a>
                 </div>
               ) : joined ? (
@@ -142,7 +143,7 @@ export function ConnectDialog({ open, onClose, initialCode }: { open: boolean; o
                 </div>
               ) : (
                 <div className="relative w-full">
-                  <QrCode value={offer.qrUrl!} label={`QR code to connect a device to ReLife at ${hostLabel}`} dim={expired} />
+                  <QrCode value={offer.qrUrl!} label={`QR code to connect a device to ${brand.name} at ${hostLabel}`} dim={expired} />
                   {expired ? (
                     <div className="absolute inset-0 grid place-items-center p-4">
                       <div className="flex flex-col items-center gap-2 rounded-[16px] bg-surface/90 px-4 py-3 text-center shadow-2 backdrop-blur-sm">
@@ -177,11 +178,11 @@ export function ConnectDialog({ open, onClose, initialCode }: { open: boolean; o
               <SystemLabel>Scan with your phone</SystemLabel>
               <ol className="mt-3 flex flex-col gap-3 text-[14px] leading-snug text-ink-2">
                 <Step n={1}>Open the <b className="font-semibold text-ink">Camera</b> on your phone and point it at the code.</Step>
-                <Step n={2}>Tap the ReLife link, then <b className="font-semibold text-ink">Continue</b>. It stays signed in.</Step>
+                <Step n={2}>Tap the {brand.name} link, then <b className="font-semibold text-ink">Continue</b>. It stays signed in.</Step>
               </ol>
               {isMac && offer && !joined ? (
                 <a href={offer.macLink} className="mt-3 inline-flex h-10 items-center gap-2 self-start rounded-md px-1 text-[13px] font-medium text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-pill">
-                  <Laptop className="size-4" strokeWidth={1.5} aria-hidden />Open in ReLife for Mac
+                  <Laptop className="size-4" strokeWidth={1.5} aria-hidden />Open in {brand.name} for Mac
                 </a>
               ) : null}
 

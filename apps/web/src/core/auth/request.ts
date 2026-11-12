@@ -1,3 +1,4 @@
+import brand from '@relife/brand/brand.json'
 import { eq } from 'drizzle-orm'
 import type { ApiError, Scope } from '@relife/contract'
 import { db, schema } from '@/db'
@@ -28,9 +29,9 @@ export async function authenticate(req: Request, scope: Scope): Promise<Authed |
 }
 
 const MESSAGES: Record<AuthFail, [ApiError['error']['code'], number, string]> = {
-  missing: ['unauthorized', 401, 'Connect this device to your ReLife first.'],
-  invalid: ['unauthorized', 401, 'This device isn’t connected to your ReLife. Connect it again.'],
-  revoked: ['revoked', 401, 'This device was disconnected from ReLife.'],
+  missing: ['unauthorized', 401, `Connect this device to your ${brand.name} first.`],
+  invalid: ['unauthorized', 401, `This device isn’t connected to your ${brand.name}. Connect it again.`],
+  revoked: ['revoked', 401, `This device was disconnected from ${brand.name}.`],
   expired: ['expired', 401, 'Your sign-in ended. Connect this device again.'],
   scope: ['forbidden', 403, 'This device isn’t allowed to do that.'],
 }

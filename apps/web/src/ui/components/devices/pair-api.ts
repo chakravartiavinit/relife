@@ -1,5 +1,6 @@
 'use client'
 
+import brand from '@relife/brand/brand.json'
 import type { ApiError } from '@relife/contract'
 
 // The pairing calls a visitor's browser makes before it has a session (/signin and /pair). The cookie comes back on the response.
@@ -9,10 +10,10 @@ export async function postJson<T>(path: string, body: unknown): Promise<{ ok: tr
     const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), cache: 'no-store', credentials: 'same-origin' })
     const json = await r.json().catch(() => null)
     if (r.ok) return { ok: true, data: json as T }
-    const error = (json as ApiError | null)?.error ?? { code: 'unavailable' as const, message: 'ReLife didn’t answer. Try again.' }
+    const error = (json as ApiError | null)?.error ?? { code: 'unavailable' as const, message: `${brand.name} didn’t answer. Try again.` }
     return { ok: false, error, retryAfter: Number(r.headers.get('retry-after')) || null }
   } catch {
-    return { ok: false, error: { code: 'unavailable', message: 'Can’t reach ReLife. Is it running?' }, retryAfter: null }
+    return { ok: false, error: { code: 'unavailable', message: `Can’t reach ${brand.name}. Is it running?` }, retryAfter: null }
   }
 }
 

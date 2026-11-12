@@ -1,5 +1,6 @@
 'use client'
 
+import brand from '@relife/brand/brand.json'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Clock, Loader2, ShieldAlert, Terminal } from 'lucide-react'
 import type { PairPoll, PairRequestStarted } from '@relife/contract'
@@ -20,7 +21,7 @@ type State =
   | { s: 'locked'; until: number }
 
 const REASON: Record<string, string> = {
-  revoked: 'This device was disconnected from ReLife.',
+  revoked: `This device was disconnected from ${brand.name}.`,
   expired: 'Your sign-in ended.',
 }
 
@@ -86,9 +87,9 @@ export function SigninClient({ next, reason }: { next?: string; reason?: string 
 
       {st.s === 'waiting' ? <Waiting req={st.req} onCancel={() => setSt({ s: 'idle' })} /> : st.s === 'locked' ? <Locked until={st.until} onBack={() => { setSt({ s: 'idle' }); setCode('') }} /> : (
         <>
-          <h1 className="font-display text-[26px] leading-tight font-extrabold tracking-[-0.03em] text-ink">{st.s === 'ended' ? (st.why === 'denied' ? 'It was turned down' : 'That request expired') : 'Connect to your ReLife'}</h1>
+          <h1 className="font-display text-[26px] leading-tight font-extrabold tracking-[-0.03em] text-ink">{st.s === 'ended' ? (st.why === 'denied' ? 'It was turned down' : 'That request expired') : `Connect to your ${brand.name}`}</h1>
           <p className="mt-2 text-[14px] leading-relaxed text-ink-3">
-            {st.s === 'ended' ? 'Start again whenever you are ready.' : 'This browser shows a code. Approve it from a screen that is already signed in: ReLife on your Mac or phone, in Settings → Devices.'}
+            {st.s === 'ended' ? 'Start again whenever you are ready.' : `This browser shows a code. Approve it from a screen that is already signed in: ${brand.name} on your Mac or phone, in Settings → Devices.`}
           </p>
           {typing ? (
             <div className="mt-5">
@@ -121,8 +122,8 @@ function Waiting({ req, onCancel }: { req: PairRequestStarted; onCancel: () => v
   return (
     <div role="status" aria-live="polite">
       <SystemLabel>Waiting for approval</SystemLabel>
-      <h1 className="mt-2 font-display text-[22px] leading-tight font-extrabold tracking-[-0.03em] text-ink">Approve this code in ReLife</h1>
-      <p className="mt-1.5 text-[14px] leading-relaxed text-ink-3">Open ReLife on a device that’s signed in, go to Settings → Devices, and check this code. Or scan it with a signed-in phone.</p>
+      <h1 className="mt-2 font-display text-[22px] leading-tight font-extrabold tracking-[-0.03em] text-ink">Approve this code in {brand.name}</h1>
+      <p className="mt-1.5 text-[14px] leading-relaxed text-ink-3">Open {brand.name} on a device that’s signed in, go to Settings → Devices, and check this code. Or scan it with a signed-in phone.</p>
       <div className="mt-5 flex flex-col items-center gap-4 rounded-[16px] bg-surface-2 p-4">
         <ConnectCode code={req.userCode} size="lg" />
         <QrCode value={req.approveUrl} label="QR code that opens the approval page" className="w-44" />

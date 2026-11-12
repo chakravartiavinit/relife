@@ -135,7 +135,7 @@ test('devices, pairing and legacy tokens against PostgreSQL', { skip: !enabled }
   })
 
   const request = (o: Partial<Parameters<typeof pairing.startRequest>[0]> = {}) =>
-    pairing.startRequest({ kind: 'mac', name: 'MacBook Pro', ip: ip(10), userAgent: 'ReLife/1', baseUrl: 'http://127.0.0.1:3030', via: '127.0.0.1', ...o })
+    pairing.startRequest({ kind: 'mac', name: 'MacBook Pro', ip: ip(10), userAgent: 'MacApp/1', baseUrl: 'http://127.0.0.1:3030', via: '127.0.0.1', ...o })
 
   await t.test('flow B: request, approve, poll returns the token exactly once', async () => {
     const r = await request({ name: `Mac ${run} a` })

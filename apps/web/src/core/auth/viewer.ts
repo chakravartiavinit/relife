@@ -1,3 +1,4 @@
+import brand from '@relife/brand/brand.json'
 import { cookies, headers } from 'next/headers'
 import { findByToken, type Device } from './devices'
 import { cookieName, scopeAllows } from './trust'
@@ -14,7 +15,7 @@ export async function viewerDevice(): Promise<Device | null> {
 /** Server actions that change devices or pairings need a signed-in browser, whatever the proxy already checked. */
 export async function requireDevice(): Promise<Device> {
   const d = await viewerDevice()
-  if (!d) throw new Error('Sign in to ReLife first.')
+  if (!d) throw new Error(`Sign in to ${brand.name} first.`)
   return d
 }
 

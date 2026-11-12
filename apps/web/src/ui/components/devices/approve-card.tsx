@@ -1,5 +1,6 @@
 'use client'
 
+import brand from '@relife/brand/brand.json'
 import { useState, useTransition } from 'react'
 import { Check, Clock, X } from 'lucide-react'
 import { approveDevice, denyDevice, type WaitingDevice } from '@/app/devices-actions'
@@ -70,7 +71,7 @@ export function ApproveCard({ device, onResult, className }: { device: WaitingDe
         <DeviceTile kind={device.kind} className="size-11" />
         <div className="min-w-0 flex-1">
           <h3 className="font-display text-[20px] font-bold tracking-[-0.02em] text-ink">Approve {title}?</h3>
-          <p className="mt-1 text-[13px] text-ink-3">It asked to connect to your ReLife {ago(device.askedAt)}.</p>
+          <p className="mt-1 text-[13px] text-ink-3">It asked to connect to your {brand.name} {ago(device.askedAt)}.</p>
         </div>
       </div>
 

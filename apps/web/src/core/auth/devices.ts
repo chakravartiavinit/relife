@@ -125,7 +125,7 @@ export async function syncLegacyTokens(userId: string, get: (name: string) => st
   }
 }
 
-/** When an extension last reached ReLife (replaces the old `extension` heartbeat). */
+/** When an extension last reached the server (replaces the old `extension` heartbeat). */
 export async function extensionLastSeen(userId: string) {
   const [r] = await db.select({ at: sql<Date | null>`max(${schema.devices.lastSeenAt})` }).from(schema.devices)
     .where(and(eq(schema.devices.userId, userId), eq(schema.devices.kind, 'extension'), isNull(schema.devices.revokedAt)))

@@ -1,3 +1,4 @@
+import brand from '@relife/brand/brand.json'
 import { NextResponse, type NextRequest } from 'next/server'
 import { allowedHost } from '@/core/hosts'
 import { findByToken, touchIfDue } from '@/core/auth/devices'
@@ -5,10 +6,10 @@ import { mintLoopbackDevice, requireSignIn } from '@/core/auth/loopback'
 import { apiError, sessionCookie } from '@/core/auth/request'
 import { cookieName, hasProxyHeaders, isLoopbackHost, isPublicPath, loopbackTrusted, readCookie, scopeAllows } from '@/core/auth/trust'
 
-// Two checks at the edge of ReLife.
+// Two checks at the edge of the app.
 //
 // 1. Host. A web page can reach the local port through DNS rebinding (its own domain re-pointed at 127.0.0.1), and the
-//    browser then treats ReLife's pages and server actions as that page's own. A rebound request carries the attacker's
+//    browser then treats the app's pages and server actions as that page's own. A rebound request carries the attacker's
 //    domain in Host, not one of ours (src/core/hosts.ts says what is allowed).
 // 2. Sign-in. Every request needs a device (src/core/auth, plan §2): a bearer token goes to the route, which checks it
 //    itself; otherwise the session cookie is checked here. No valid cookie on loopback mints one ("trust this Mac");
@@ -16,7 +17,7 @@ import { cookieName, hasProxyHeaders, isLoopbackHost, isPublicPath, loopbackTrus
 
 export async function proxy(req: NextRequest) {
   const host = req.headers.get('host')
-  if (!allowedHost(host)) return new NextResponse('ReLife refused this address. Add it to RELIFE_ALLOWED_HOSTS in .env to allow it.', { status: 421 })
+  if (!allowedHost(host)) return new NextResponse(`${brand.name} refused this address. Add it to RELIFE_ALLOWED_HOSTS in .env to allow it.`, { status: 421 })
 
   const { pathname, search } = req.nextUrl
   // The health probe is for this Mac only.
@@ -56,9 +57,9 @@ export async function proxy(req: NextRequest) {
   }
 
   if (api || req.headers.has('next-action')) {
-    return reason === 'revoked' ? apiError(401, 'revoked', 'This device was disconnected from ReLife.')
+    return reason === 'revoked' ? apiError(401, 'revoked', `This device was disconnected from ${brand.name}.`)
       : reason === 'expired' ? apiError(401, 'expired', 'Your sign-in ended. Connect this device again.')
-        : apiError(401, 'unauthorized', 'Sign in to ReLife first.')
+        : apiError(401, 'unauthorized', `Sign in to ${brand.name} first.`)
   }
   const to = new URL('/signin', req.url)
   if (pathname !== '/') to.searchParams.set('next', pathname + search)

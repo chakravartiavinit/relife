@@ -1,3 +1,4 @@
+import brand from '@relife/brand/brand.json'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { connection } from 'next/server'
@@ -83,7 +84,7 @@ async function Settings() {
 
       <NotificationSettings initial={user.profile.notifications} />
 
-      <SettingsSection id="appearance" title="Appearance" description="Saved to your ReLife, so every device shows the same. The sun and moon button in the sidebar switches too.">
+      <SettingsSection id="appearance" title="Appearance" description={`Saved to your ${brand.name}, so every device shows the same. The sun and moon button in the sidebar switches too.`}>
         <SettingsRow label="Theme" hint="System follows your Mac or phone.">
           <ThemePicker />
         </SettingsRow>

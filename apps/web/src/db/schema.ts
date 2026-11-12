@@ -81,7 +81,7 @@ export const users = pgTable('users', {
 
 export { DEVICE_KINDS, SCOPES, type DeviceKind, type Scope }
 
-/** Everything signed in to a ReLife: a browser tab, the phone app, the Mac app, the extension. Holds a hashed, revocable token. */
+/** Everything signed in to the app: a browser tab, the phone app, the Mac app, the extension. Holds a hashed, revocable token. */
 export const devices = pgTable('devices', {
   id: id(),
   userId: userId(),

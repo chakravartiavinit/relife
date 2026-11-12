@@ -1,3 +1,4 @@
+import brand from '@relife/brand/brand.json'
 import { and, asc, eq, gt, inArray, isNull, lt, sql } from 'drizzle-orm'
 import type { DeviceKind } from '@relife/contract'
 import { db, schema } from '@/db'
@@ -98,12 +99,12 @@ export async function redeem(o: {
       return fail()
     }
   }
-  if (!pairing || pairing.status !== 'pending' || pairing.expiresAt <= now) return fail('This link has expired or was already used. Make a new one on your ReLife.')
+  if (!pairing || pairing.status !== 'pending' || pairing.expiresAt <= now) return fail(`This link has expired or was already used. Make a new one on your ${brand.name}.`)
   if (!pairing.userId) return fail()
 
   const claimed = await db.update(schema.pairings).set({ status: 'redeemed' })
     .where(and(eq(schema.pairings.id, pairing.id), live(now))).returning()
-  if (!claimed.length) return fail('This link has expired or was already used. Make a new one on your ReLife.')
+  if (!claimed.length) return fail(`This link has expired or was already used. Make a new one on your ${brand.name}.`)
 
   const kind = o.kind ?? kindFromUa(o.userAgent)
   const name = o.name?.trim() || defaultName(kind, o.userAgent)
@@ -249,7 +250,7 @@ export async function cleanup(now = new Date()) {
 }
 
 function defaultName(kind: DeviceKind, ua: string) {
-  if (kind === 'mac') return 'ReLife for Mac'
+  if (kind === 'mac') return `${brand.name} for Mac`
   if (kind === 'extension') return 'Chrome extension'
   return browserDeviceName(ua)
 }

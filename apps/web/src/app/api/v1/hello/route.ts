@@ -7,7 +7,7 @@ import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import pkg from '../../../../../package.json'
 
-// Public. A client calls it first to check it found a ReLife server and whether it is new enough. The owner's first name
+// Public. A client calls it first to check it found the server and whether it is new enough. The owner's first name
 // is added only for a valid device token, so an unconnected visitor learns nothing about who lives here.
 
 export async function GET(req: Request) {

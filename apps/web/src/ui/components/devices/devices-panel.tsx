@@ -1,5 +1,6 @@
 'use client'
 
+import brand from '@relife/brand/brand.json'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Check, Laptop, LogOut, Pencil, Puzzle, Smartphone, X } from 'lucide-react'
@@ -23,7 +24,7 @@ import { DeviceTile, KIND } from './device-kind'
 import { onLiveEvent } from './live-events'
 import { ago } from './use-countdown'
 
-const DETAIL: Record<string, string> = { browser: 'Dashboard', phone: 'ReLife web app', mac: 'Mac app', extension: 'Chrome extension', cli: 'Command line' }
+const DETAIL: Record<string, string> = { browser: 'Dashboard', phone: `${brand.name} web app`, mac: 'Mac app', extension: 'Chrome extension', cli: 'Command line' }
 
 /** Settings → Devices (plan Part 2, Dashboard §1): who is waiting, everything signed in, and "Connect a device". */
 export function DevicesPanel({ initial, waiting: initialWaiting, requireSignIn, loopbackTrust, approveCode, openConnect }: {
@@ -94,7 +95,7 @@ export function DevicesPanel({ initial, waiting: initialWaiting, requireSignIn, 
         </section>
       ) : null}
 
-      <SettingsSection id="devices" title="Devices" description="Everything signed in to your ReLife. Each one has its own key, so disconnecting it signs it out at once.">
+      <SettingsSection id="devices" title="Devices" description={`Everything signed in to your ${brand.name}. Each one has its own key, so disconnecting it signs it out at once.`}>
         {devices.map((d) => (
           <DeviceRow
             key={d.id} d={d} editing={renaming === d.id}
@@ -127,7 +128,7 @@ export function DevicesPanel({ initial, waiting: initialWaiting, requireSignIn, 
       <Dialog
         open={!!leaving} onClose={() => setLeaving(null)} width="max-w-[420px]" icon={LogOut} color="var(--bad)"
         title={leaving?.current ? 'Sign out of this browser?' : `Disconnect ${leaving?.name ?? ''}?`}
-        description={leaving?.current ? 'You will need to connect it again to use ReLife here.' : 'It signs out now. To use it again, connect it again.'}
+        description={leaving?.current ? `You will need to connect it again to use ${brand.name} here.` : 'It signs out now. To use it again, connect it again.'}
       >
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setLeaving(null)}>Cancel</Button>
@@ -141,7 +142,7 @@ export function DevicesPanel({ initial, waiting: initialWaiting, requireSignIn, 
 function DeviceRow({ d, editing, onEdit, onSave, onCancel, onLeave }: {
   d: DeviceListItem; editing: boolean; onEdit: () => void; onSave: (name: string) => void; onCancel: () => void; onLeave: () => void
 }) {
-  const detail = [DETAIL[d.kind], d.appVersion ? `ReLife ${d.appVersion}` : null, d.platform, d.via && d.via !== 'local' ? `via ${d.via}` : null].filter(Boolean).join(' · ')
+  const detail = [DETAIL[d.kind], d.appVersion ? `${brand.name} ${d.appVersion}` : null, d.platform, d.via && d.via !== 'local' ? `via ${d.via}` : null].filter(Boolean).join(' · ')
   const age = d.lastSeenAt ? Date.now() - new Date(d.lastSeenAt).getTime() : Infinity
   const tone = age < 10 * 60_000 ? 'bg-good' : age < 7 * 86_400_000 ? 'bg-ink-3' : 'bg-warn'
   const seen = age < 2 * 60_000 ? 'Active now' : ago(d.lastSeenAt)
@@ -183,16 +184,16 @@ function RenameField({ name, onSave, onCancel }: { name: string; onSave: (n: str
   )
 }
 
-/** Only this browser is signed in: three ways to get ReLife onto the other screens. */
+/** Only this browser is signed in: three ways to get the app onto the other screens. */
 function GetEverywhere({ onConnect }: { onConnect: () => void }) {
   const cards = [
     { icon: Laptop, title: 'Mac app', text: 'Menu bar, a quick-log shortcut and reminders.', action: 'Connect the Mac app' },
     { icon: Puzzle, title: 'Chrome extension', text: 'Today in a popup, and browsing time counted for you.', action: 'Connect the extension' },
-    { icon: Smartphone, title: 'Phone', text: 'Scan a code, add ReLife to your Home Screen.', action: 'Scan to connect' },
+    { icon: Smartphone, title: 'Phone', text: `Scan a code, add ${brand.name} to your Home Screen.`, action: 'Scan to connect' },
   ]
   return (
     <div className="py-6">
-      <h3 className="font-display text-[17px] font-bold tracking-[-0.015em] text-ink">Get ReLife everywhere</h3>
+      <h3 className="font-display text-[17px] font-bold tracking-[-0.015em] text-ink">Get {brand.name} everywhere</h3>
       <p className="mt-1 text-[13px] text-ink-3">This browser is the only device so far.</p>
       <ul className="mt-4 grid gap-3 sm:grid-cols-3">
         {cards.map(({ icon: Icon, title, text, action }) => (

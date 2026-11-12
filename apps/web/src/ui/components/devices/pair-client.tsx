@@ -1,5 +1,6 @@
 'use client'
 
+import brand from '@relife/brand/brand.json'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Check, KeyRound, Share, ShieldCheck, SquarePlus } from 'lucide-react'
@@ -64,14 +65,14 @@ export function PairClient({ next }: { next?: string }) {
         <p className="mt-1.5 text-[14px] text-ink-3">{name} stays signed in until you disconnect it in Settings → Devices.</p>
         {phone ? (
           <div className="mt-5 w-full rounded-[16px] bg-surface-2 p-4 text-start">
-            <p className="text-[14px] font-semibold text-ink">Add ReLife to your Home Screen</p>
+            <p className="text-[14px] font-semibold text-ink">Add {brand.name} to your Home Screen</p>
             <ol className="mt-3 flex flex-col gap-3 text-[13.5px] text-ink-2">
               <li className="flex items-center gap-3"><span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-[10px] bg-surface text-ink-2 shadow-1"><Share className="size-4" strokeWidth={1.5} /></span>Tap Share in Safari’s toolbar.</li>
               <li className="flex items-center gap-3"><span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-[10px] bg-surface text-ink-2 shadow-1"><SquarePlus className="size-4" strokeWidth={1.5} /></span>Choose Add to Home Screen. The app opens signed in.</li>
             </ol>
           </div>
         ) : null}
-        <Link href={safeNext(next)} className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-md bg-ink px-5 text-[15px] font-medium text-bg transition-[scale,filter] duration-150 ease-out-quint hover:brightness-110 active:scale-[0.96]">Open ReLife</Link>
+        <Link href={safeNext(next)} className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-md bg-ink px-5 text-[15px] font-medium text-bg transition-[scale,filter] duration-150 ease-out-quint hover:brightness-110 active:scale-[0.96]">Open {brand.name}</Link>
       </div>
     )
   }
@@ -84,8 +85,8 @@ export function PairClient({ next }: { next?: string }) {
           <span className="h-px w-10 border-t-2 border-dotted border-pill" />
           <span className="grid size-14 place-items-center rounded-[16px] bg-surface-2"><CapsuleMark className="size-9" /></span>
         </div>
-        <h1 className="mt-5 text-center font-display text-[24px] leading-tight font-extrabold tracking-[-0.03em] text-ink">Sign in to ReLife at <span className="inline-block max-w-full [overflow-wrap:anywhere]">{host}</span>?</h1>
-        <p className="mt-2 text-center text-[14px] leading-relaxed text-ink-3">You opened a link from your ReLife. Nothing happens until you continue.</p>
+        <h1 className="mt-5 text-center font-display text-[24px] leading-tight font-extrabold tracking-[-0.03em] text-ink">Sign in to {brand.name} at <span className="inline-block max-w-full [overflow-wrap:anywhere]">{host}</span>?</h1>
+        <p className="mt-2 text-center text-[14px] leading-relaxed text-ink-3">You opened a link from your {brand.name}. Nothing happens until you continue.</p>
 
         <div className="mt-5 rounded-[16px] bg-surface-2 p-4">
           <label htmlFor="device-name" className="text-[12.5px] font-medium text-ink-3">Name this {phone ? 'phone' : 'browser'}</label>
@@ -104,7 +105,7 @@ export function PairClient({ next }: { next?: string }) {
     <div>
       <span aria-hidden className="grid size-12 place-items-center rounded-[14px] bg-pill-wash text-pill-ink"><KeyRound className="size-6" strokeWidth={1.5} /></span>
       <h1 className="mt-4 font-display text-[24px] leading-tight font-extrabold tracking-[-0.03em] text-ink">Enter a code</h1>
-      <p className="mt-1.5 text-[14px] leading-relaxed text-ink-3">On a screen that’s signed in to ReLife, open Settings → Devices → Connect a device and type the 8-character code it shows.</p>
+      <p className="mt-1.5 text-[14px] leading-relaxed text-ink-3">On a screen that’s signed in to {brand.name}, open Settings → Devices → Connect a device and type the 8-character code it shows.</p>
       <CodeInput value={code} onChange={(v) => { setCode(v); setError(null) }} onComplete={(v) => void redeem({ code: v })} disabled={busy} invalid={!!error} autoFocus className="mt-5" />
       <div className="mt-3 min-h-5"><FormError message={error ?? undefined} /></div>
       <Button variant="primary" size="lg" className="mt-3 w-full" disabled={busy || code.length !== 8} onClick={() => void redeem({ code })}>{busy ? 'Connecting…' : 'Connect'}</Button>

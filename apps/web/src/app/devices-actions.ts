@@ -1,5 +1,6 @@
 'use server'
 
+import brand from '@relife/brand/brand.json'
 import { cookies, headers } from 'next/headers'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
@@ -24,7 +25,7 @@ export type { WaitingDevice }
 
 export type Offer = {
   id: string; code: string; expiresAt: string
-  /** The link in the QR, when a phone can reach this ReLife. */
+  /** The link in the QR, when a phone can reach this server. */
   qrUrl: string | null
   /** Why there is none, or where the address came from. */
   source: 'origin' | 'env' | 'tailscale' | 'none'
@@ -71,7 +72,7 @@ export async function findWaitingByCode(code: string): Promise<{ ok: true; devic
   const ip = clientIp(await headers())
   try {
     const p = await requestByCode(z.string().max(40).parse(code), ip)
-    return p ? { ok: true, device: toWaiting(p) } : { ok: false, error: 'No device is showing that code. Check it, or open ReLife on the device again.' }
+    return p ? { ok: true, device: toWaiting(p) } : { ok: false, error: `No device is showing that code. Check it, or open ${brand.name} on the device again.` }
   } catch (e) {
     if (e instanceof PairError) return { ok: false, error: e.message }
     throw e

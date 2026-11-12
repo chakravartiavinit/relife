@@ -1,7 +1,8 @@
 // Recovery and first sign-in from the shell: shell access to the server means ownership. Prints a one-time sign-in link
-// (valid 10 minutes) and a QR for it. Open the link in any browser, or scan it with a phone that can reach this ReLife.
+// (valid 10 minutes) and a QR for it. Open the link in any browser, or scan it with a phone that can reach this server.
 //
 //   npm run signin
+import brand from '@relife/brand/brand.json'
 import { renderANSI } from 'uqr'
 import { pairBase } from '@/core/auth/base-url'
 import { formatCode } from '@/core/auth/tokens'
@@ -16,7 +17,7 @@ async function main() {
   const base = url ?? local
   const offer = await createOffer({ userId: user.id, deviceId: null, baseUrl: base, method: 'cli' })
   const link = `${base}/pair#s=${offer.secret}`
-  console.log(`\nSign in to ReLife as ${user.name}. This link works once and expires in 10 minutes.\n`)
+  console.log(`\nSign in to ${brand.name} as ${user.name}. This link works once and expires in 10 minutes.\n`)
   console.log(renderANSI(link, { border: 1 }))
   console.log(`  ${link}\n`)
   if (base !== local) console.log(`  On this Mac: ${local}/pair#s=${offer.secret}`)
