@@ -1,51 +1,94 @@
 import Link from 'next/link'
 import { connection } from 'next/server'
-import { CalendarCheck, ChevronRight, Target } from 'lucide-react'
+import { CalendarCheck, ChevronRight, Plus, Target } from 'lucide-react'
 import { goalsSummary } from '@/core/goals'
+import { localDate } from '@/core/time'
 import { getUser } from '@/core/user'
+import { goalPace, type Pace } from '@/domain/day-plan'
 import { CATEGORY } from '@/ui/tokens'
-import { Card, CardHeader } from '../card'
+import { cn } from '../../cn'
+import { Badge, Card, CardHeader } from '../card'
+import { buttonClass } from '../button'
 import { Capsule } from '../capsule'
-import { STATUS_LABEL, fill, target, value } from './format'
+import { PeekLink } from '../peek/peek-link'
+import { day, fill, target, value } from './format'
 
-// Today: active outcome goals in one card, hidden when there are none (the Goals page handles discovery).
+// Today: active outcome goals in one card, with their pace against the date. Hidden when there are none unless the
+// page asks for the one-line empty state (the first day).
 
-export async function TodayGoals() {
+const PACE_COLOR: Record<Pace['tone'], string | undefined> = { good: 'var(--good)', pill: 'var(--pill)', warn: 'var(--warn)', neutral: undefined }
+
+export type PaceGoal = {
+  id: string; title: string; area: keyof typeof CATEGORY; pace: Pace; share: number
+  /** "₹96,000 saved", "Best 63:40": the current value against the target. */
+  line: string; by: string
+}
+
+export async function TodayGoals({ showEmpty }: { showEmpty?: boolean }) {
   await connection()
   const user = await getUser()
   const goals = await goalsSummary(user)
-  if (!goals.length) return null
+  if (!goals.length) return showEmpty ? <GoalsCard goals={[]} due={0} /> : null
+  const today = localDate(new Date(), user.timezone)
   const due = goals.filter((g) => g.reviewDue).length
   return (
+    <GoalsCard due={due} goals={goals.map((g): PaceGoal => {
+      const o = g.snapshot.outcome
+      return {
+        id: g.id, title: g.title, area: g.area, share: fill(g.snapshot),
+        pace: goalPace({ share: o.progressShare, met: o.status === 'met', startedOn: localDate(g.createdAt, user.timezone), targetDate: g.targetDate }, today),
+        line: `${o.current != null ? value(o.current, g.unit) : '—'} · target ${target(g)}`, by: `by ${day(g.targetDate)}`,
+      }
+    })} />
+  )
+}
+
+/** Presentational, so /dev/ui draws it from fixtures. Up to three goals, each opening its Peek. */
+export function GoalsCard({ goals, due }: { goals: PaceGoal[]; due: number }) {
+  return (
     <Card>
-      <CardHeader icon={<Target strokeWidth={1.5} />} color="var(--pill)" title="Outcome goals" description={`${goals.length} active`}
-        action={<Link href="/plan" className="inline-flex h-10 items-center rounded-md px-2 text-[13px] font-medium text-ink-2 hover:text-ink">All goals</Link>} />
+      <CardHeader icon={<Target strokeWidth={1.5} />} color="var(--pill)" title="Goals"
+        action={<Link href="/plan" className="inline-flex h-10 items-center rounded-md px-2 text-small font-medium text-pill-ink hover:underline">Plan</Link>} />
       {due ? (
         <Link href="/plan/review" className="mb-4 flex items-center gap-3 rounded-md bg-pill/7 px-3 py-2.5 transition-[background-color] duration-150 hover:bg-pill/12">
           <CalendarCheck aria-hidden className="size-4 shrink-0 text-pill-ink" strokeWidth={2} />
           <span className="min-w-0 flex-1">
-            <span className="block text-[13.5px] font-semibold text-ink">Weekly review is due</span>
-            <span className="block text-[12.5px] text-ink-3 tabular-nums">{due} {due === 1 ? 'goal' : 'goals'} to review</span>
+            <span className="block text-small font-semibold text-ink">Weekly review is due</span>
+            <span className="block text-caption text-ink-3 tabular-nums">{due} {due === 1 ? 'goal' : 'goals'} to review</span>
           </span>
           <ChevronRight aria-hidden className="size-4 text-ink-3" strokeWidth={1.5} />
         </Link>
       ) : null}
-      <ul className="divide-y divide-divider">
-        {goals.map((g) => {
-          const o = g.snapshot.outcome
-          const right = g.measureKind === 'check_in' && o.observations === 0 ? 'Check-in due' : o.status === 'not_enough_data' ? STATUS_LABEL.not_enough_data : g.measureKind === 'tracker' ? `${o.observations} of ${g.snapshot.window.days} days` : STATUS_LABEL[o.status]
-          return (
-            <li key={g.id} className="py-3 first:pt-0 last:pb-0">
-              <Link href={`/plan/goals/${g.id}`} className="flex min-h-10 items-center justify-between gap-3">
-                <span className="min-w-0 truncate text-[13.5px] font-medium text-ink hover:underline">{g.title}</span>
-                <span className="shrink-0 text-[12px] text-ink-3 tabular-nums">{right}</span>
-              </Link>
-              <Capsule size="sm" className="mt-2" value={fill(g.snapshot)} color={CATEGORY[g.area].color} label={`Progress toward ${g.title}`} />
-              <p className="mt-1.5 text-[12.5px] text-ink-3 tabular-nums">{o.current != null ? value(o.current, g.unit) : '—'} · target {target(g)}</p>
+      {goals.length ? (
+        <ul className="flex flex-col gap-1">
+          {goals.map((g) => (
+            <li key={g.id}>
+              <PeekLink to={{ type: 'goal', id: g.id }} className="block rounded-md p-2 -m-1 transition-colors duration-150 ease-out-quint hover:bg-ink/[0.04] focus-visible:outline-2 focus-visible:outline-pill dark:hover:bg-white/[0.05]">
+                <span className="flex items-center justify-between gap-3">
+                  <span className="flex min-w-0 items-center gap-2 text-body font-medium text-ink">
+                    <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: CATEGORY[g.area].color }} />
+                    <span className="truncate">{g.title}</span>
+                  </span>
+                  <Badge color={PACE_COLOR[g.pace.tone]} className="shrink-0">{g.pace.label}</Badge>
+                </span>
+                {/* The tick is where the pace says you should be today: the bar past it is ahead, short of it is behind. */}
+                <span className="relative mt-2 block">
+                  <Capsule size="sm" value={g.share} color={CATEGORY[g.area].color} label={`Progress toward ${g.title}`} />
+                  <span aria-hidden className={cn('absolute -inset-y-0.5 w-0.5 -translate-x-1/2 rounded-full bg-ink', g.pace.label === 'Reached' && 'hidden')} style={{ left: `${g.pace.elapsed * 100}%` }} />
+                </span>
+                <span className="mt-1.5 flex items-center justify-between gap-3 text-caption text-ink-3 tabular-nums">
+                  <span className="min-w-0 truncate">{g.line}</span><span className="shrink-0">{g.by}</span>
+                </span>
+              </PeekLink>
             </li>
-          )
-        })}
-      </ul>
+          ))}
+        </ul>
+      ) : (
+        <>
+          <p className="text-small text-ink-2">Pick up to 3 outcomes, like “Sleep 7.5 h” or “Save ₹1,50,000”. Routines link to them and Today shows the pace.</p>
+          <Link href="/plan?new=1" className={buttonClass({ variant: 'secondary', size: 'lg', className: 'mt-4 w-full' })}><Plus className="size-4" strokeWidth={2} aria-hidden />New goal</Link>
+        </>
+      )}
     </Card>
   )
 }
