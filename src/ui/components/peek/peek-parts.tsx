@@ -61,7 +61,7 @@ export function PeekIcon({ icon: Icon, color = 'var(--pill)' }: { icon: LucideIc
 /** Pinned to the bottom of the sheet's scroll area: the way to the full page. */
 export function PeekFooter({ children }: { children: React.ReactNode }) {
   return (
-    <div className="sticky bottom-0 z-10 -mx-4 mt-6 -mb-6 flex items-center justify-between gap-3 border-t border-divider bg-surface px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] lg:-mx-5 lg:-mb-5 lg:px-5 lg:pb-3">
+    <div className="sticky bottom-0 z-10 -mx-4 after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-6 after:bg-surface mt-6 -mb-6 flex items-center justify-between gap-3 border-t border-divider bg-surface px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] lg:-mx-5 lg:-mb-5 lg:px-5 lg:pb-3">
       {children}
     </div>
   )

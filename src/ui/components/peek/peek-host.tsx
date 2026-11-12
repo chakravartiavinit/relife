@@ -30,21 +30,23 @@ export function PeekHost() {
 
   const { view, reload } = usePeekData(key)
   const changed = useCallback(() => { invalidateCapture(); reload() }, [reload])
-  useSourceRing(key)
 
   if (!shown) return null
   const data = view?.data
   const heading = data ? peekHeading(data) : { title: TYPE_LABEL[shown.type] }
   return (
-    <Sheet
-      open={!!ref} onOpenChange={(o) => { if (!o) closePeek() }}
-      title={heading.title} description={heading.description} icon={heading.icon}
-      snapPoints={[0.62, 0.92]}
-    >
-      <PeekChangedProvider value={changed}>
-        {data ? <PeekView key={key} data={data} /> : view?.status === 'gone' ? <Gone onClose={closePeek} /> : view?.status === 'error' ? <Failed onRetry={reload} /> : <PeekSkeleton />}
-      </PeekChangedProvider>
-    </Sheet>
+    <>
+    {key ? <SourceRing k={key} /> : null}
+      <Sheet
+        open={!!ref} onOpenChange={(o) => { if (!o) closePeek() }}
+        title={heading.title} description={heading.description} icon={heading.icon}
+        snapPoints={[0.62, 0.92]}
+      >
+        <PeekChangedProvider value={changed}>
+          {data ? <PeekView key={key} data={data} /> : view?.status === 'gone' ? <Gone onClose={closePeek} /> : view?.status === 'error' ? <Failed onRetry={reload} /> : <PeekSkeleton />}
+        </PeekChangedProvider>
+      </Sheet>
+    </>
   )
 }
 
@@ -110,13 +112,12 @@ function usePeekData(key: string | null) {
   return { view: current ?? (cached ? { key: key!, status: 'ready' as const, data: cached } : null), reload }
 }
 
-/** The element that opened the peek gets a 2px pill ring (`[data-peek-open]` in globals.css) while it is open. */
-function useSourceRing(key: string | null) {
-  useEffect(() => {
-    if (!key) return
-    const els = [...document.querySelectorAll<HTMLElement>(`[data-peek="${key.replace(/["\\]/g, '\\$&')}"]`)]
-    for (const el of els) el.setAttribute('data-peek-open', '')
-    return () => { for (const el of els) el.removeAttribute('data-peek-open') }
-  }, [key])
+/**
+ * The element that opened the peek gets a 2px pill ring while it is open. A rule keyed on `data-peek` rather than an
+ * attribute set from an effect: React never sees a changed DOM (no hydration mismatch on a deep link) and links
+ * that stream in later are ringed too. The key is hex-escaped, so a merchant name cannot end the string or the style.
+ */
+function SourceRing({ k }: { k: string }) {
+  const escaped = k.replace(/[^\w:.-]/g, (c) => `\\${c.codePointAt(0)!.toString(16)} `)
+  return <style>{`[data-peek="${escaped}"] { outline: 2px solid var(--pill); outline-offset: 2px; }`}</style>
 }
-
