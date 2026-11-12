@@ -211,3 +211,17 @@ export function CommandButton() {
     </button>
   )
 }
+
+/** Search on its own, for a phone's page header. */
+export function CommandIconButton() {
+  return (
+    <button
+      type="button"
+      aria-label="Log or search"
+      onClick={() => window.dispatchEvent(new Event('relife:command'))}
+      className="grid size-11 shrink-0 place-items-center rounded-md text-ink-2 transition-[background-color,color] duration-150 hover:bg-ink/5 hover:text-ink"
+    >
+      <Search className="size-5" strokeWidth={1.5} aria-hidden />
+    </button>
+  )
+}

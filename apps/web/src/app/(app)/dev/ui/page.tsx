@@ -19,6 +19,8 @@ import { RecoveryPanel, SystemQuests } from '@/ui/components/system-quests'
 import type { RecoveryView } from '@/domain/recovery'
 import { GOAL_FOOTNOTE, goalSnapshot } from '@/domain/goals'
 import { OutcomeGoalCard, PausedFinishedList } from '@/ui/components/goals/goal-card'
+import { PhoneCharacter, PhoneHeader } from '@/ui/components/phone-today'
+import { QuickLog } from '@/ui/components/quick-log'
 import { DevicesGallery } from '@/ui/components/devices/gallery'
 import { GoalReviewCard } from '@/ui/components/goals/goal-review'
 import type { GoalViewData } from '@/ui/components/goals/format'
@@ -169,6 +171,14 @@ export default function UiGallery() {
             review={{ id: 'sample-review', reviewDate: goalToday, snapshot: goalSample.snapshot!, aiNote: 'Practice landed on most due days.', proposal: { field: 'targetDate', value: '2027-03-12', why: 'A month more keeps the weekly step modest.' },
               lines: ['Actions: Practice DSA: done on 5 of 6 due days.', 'Outcome: 64 wpm (6 recordings) vs 60 wpm at baseline.', GOAL_FOOTNOTE],
               prompt: 'You kept the actions and the outcome moved the right way. Keep for another period?', decision: null }} />
+        </div>
+      </Section>
+
+      <Section title="Today on a phone">
+        <div className="mx-auto flex w-full max-w-[358px] flex-col gap-3 rounded-md bg-bg p-3">
+          <PhoneHeader heading="Good evening, Alex." eyebrow="Friday 13 November" />
+          <PhoneCharacter s={{ level: 21, title: 'Vanguard', total: 23892, progress: 0.84, next: 24197, today: 72 }} name="Alex" streak={{ current: 57, best: 57, doneToday: true }} freezes={1} />
+          <QuickLog />
         </div>
       </Section>
 

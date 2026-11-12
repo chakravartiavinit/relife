@@ -28,10 +28,14 @@ import { questBoard, type QuestView } from '@/core/quests'
 import { systemBoard } from '@/core/system'
 import { weekStart } from '@/domain/quests'
 import { Quests, type QuestItem } from '@/ui/components/quests'
+import { PhoneCharacter, PhoneHeader } from '@/ui/components/phone-today'
+import { QuickLog } from '@/ui/components/quick-log'
 import { xpSummary } from '@/core/xp'
 
 // Today is a morning briefing, then the day's work: what needs you first, today's numbers next to a usual day,
 // the quest log, and a short look at money and yesterday. Looking back further lives on Progress (/profile).
+// On a phone (under md) the same parts come in the phone order: greeting, compact character, quick log, quests, quest log,
+// then the rest. The columns dissolve (`contents`) and `order` does the rest, so each part is rendered once.
 
 export default function TodayPage() {
   return (
@@ -127,18 +131,23 @@ async function Today() {
   const firstName = user.name.split(' ')[0]
 
   return (
-    <div className="flex flex-col gap-6">
-      <CharacterBanner
-        s={xp} name={user.name} heading={`${greet}, ${firstName}.`}
-        eyebrow={<span className="inline-flex items-center gap-1.5"><Icon className="size-3.5 text-pill-ink" strokeWidth={2} aria-hidden />{formatDay(today, { weekday: 'long', day: 'numeric', month: 'long' })}</span>}
-        streak={streak} freezes={quests.freezes} areas={user.profile.areas}
-      />
+    <div className="flex flex-col gap-6 max-md:gap-3">
+      <div className="max-md:order-1 md:hidden"><PhoneHeader heading={`${greet}, ${firstName}.`} eyebrow={formatDay(today, { weekday: 'long', day: 'numeric', month: 'long' })} /></div>
+      <PhoneCharacter s={xp} name={user.name} streak={streak} freezes={quests.freezes} className="max-md:order-2 md:hidden" />
+      <QuickLog className="max-md:order-3 md:hidden" />
+      <div className="max-md:hidden">
+        <CharacterBanner
+          s={xp} name={user.name} heading={`${greet}, ${firstName}.`}
+          eyebrow={<span className="inline-flex items-center gap-1.5"><Icon className="size-3.5 text-pill-ink" strokeWidth={2} aria-hidden />{formatDay(today, { weekday: 'long', day: 'numeric', month: 'long' })}</span>}
+          streak={streak} freezes={quests.freezes} areas={user.profile.areas}
+        />
+      </div>
 
       <PetalBurst complete={total > 0 && done === total} day={today} />
 
-      {attention.length ? <CheckFirst items={attention} /> : null}
+      {attention.length ? <div className="md:contents max-md:order-6"><CheckFirst items={attention} /></div> : null}
 
-      <KpiStrip items={[
+      <div className="md:contents max-md:order-7"><KpiStrip items={[
         {
           label: 'Today’s plan', value: total ? `${done} / ${total}` : '–',
           sub: !total ? 'Nothing scheduled' : left ? (next ? `Next: ${next.name} · ${next.time}` : `${left} to go`) : 'All done',
@@ -158,11 +167,11 @@ async function Today() {
               sub: [b.code.prs ? `${b.code.prs} PR${b.code.prs === 1 ? '' : 's'}` : null, b.code.reviews ? `${b.code.reviews} review${b.code.reviews === 1 ? '' : 's'}` : null, b.code.solved ? `${b.code.solved} solved` : null, b.code.learning ? `${minutes(b.code.learning)} learning` : null].filter(Boolean).join(' · ') || 'Nothing else yet',
             }
           : { label: 'Shipped', value: '–', sub: 'Connect GitHub or Codeforces' },
-      ]} />
+      ]} /></div>
 
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="flex flex-col gap-6">
-          <Card id="quest-log" className="scroll-mt-6 p-5 sm:p-6">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 max-md:contents lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="flex flex-col gap-6 max-md:contents">
+          <Card id="quest-log" className="scroll-mt-6 p-5 max-md:order-5 sm:p-6">
             <CardHeader
               title="Today’s quest log" icon={<ScrollText strokeWidth={2} />} color="var(--pill)"
               description={total ? (left ? `${done} of ${total} done · ${left} to go` : `All ${total} done. Nice.`) : undefined}
@@ -183,19 +192,21 @@ async function Today() {
             ) : null}
           </Card>
           {/* Money and yesterday sit under the quest log, so both columns end together. */}
-          <div className="grid flex-1 grid-cols-1 gap-6 md:grid-cols-2">
+          <div className="grid flex-1 grid-cols-1 gap-6 max-md:order-9 md:grid-cols-2">
             <MoneyToday b={b} dueSoon={dueSoon} money={money} tz={user.timezone} base={user.baseCurrency} />
             <Yesterday b={b} money={money} />
           </div>
         </div>
 
-        <aside className="flex flex-col gap-6 [&>*:last-child]:flex-1" aria-label="Also today">
+        <aside className="flex flex-col gap-6 max-md:contents md:[&>*:last-child]:flex-1" aria-label="Also today">
           {/* Its own boundary: a slow goal query never holds up the quest log. Renders nothing without active goals,
               so it has no skeleton: most loads would show one and then collapse. */}
-          <Suspense fallback={null}>
-            <TodayGoals />
-          </Suspense>
-          <Quests
+          <div className="md:contents max-md:order-8 max-md:empty:hidden">
+            <Suspense fallback={null}>
+              <TodayGoals />
+            </Suspense>
+          </div>
+          <div className="md:contents max-md:order-4"><Quests
             system={{
               difficulty: system.difficulty, hasData: system.hasData, timezone: user.timezone, recovery: system.recovery,
               quests: system.quests.map((q) => ({
@@ -207,8 +218,8 @@ async function Today() {
             chests={quests.chests.map((c) => ({ id: c.id, rarity: c.rarity, reason: c.reason }))}
             freezes={quests.freezes} frozeOn={quests.frozeOn}
             weekLeft={daysBetween(today, addDays(weekStart(today), 6))}
-          />
-          {!user.profile.setupHiddenAt && steps.some((s) => !s.done) ? <OnboardingCompact steps={steps} /> : null}
+          /></div>
+          {!user.profile.setupHiddenAt && steps.some((s) => !s.done) ? <div className="md:contents max-md:order-10"><OnboardingCompact steps={steps} /></div> : null}
         </aside>
       </div>
     </div>
