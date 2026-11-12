@@ -93,16 +93,20 @@ function SidebarNav({ coachBadge, coachDot, areas, path }: Slots & { path: strin
   const item = (href: string) => NAV.flatMap((g) => g.items).find((i) => i.href === href)!
   const [today, plan, coach, you] = ['/', '/plan', '/coach', '/you'].map(item)
   const onLifeChild = LIFE_CHILDREN.some((c) => isActive(path, c.href))
-  const row = (i: NavItem, active = isActive(path, i.href)) => (
-    <AnimatedSidebarMenuButton
-      href={i.href}
-      isActive={active}
-      icon={<i.icon className={cn('size-5', active && 'text-pill-ink')} strokeWidth={active ? 2 : 1.5} />}
-      className={rowClass(active)}
-    >
-      {i.label}
-    </AnimatedSidebarMenuButton>
-  )
+  const row = (i: NavItem, badge?: ReactNode) => {
+    const active = isActive(path, i.href)
+    return (
+      <AnimatedSidebarMenuButton
+        href={i.href}
+        isActive={active}
+        icon={<i.icon className={cn('size-5', active && 'text-pill-ink')} strokeWidth={active ? 2 : 1.5} />}
+        badge={badge}
+        className={rowClass(active)}
+      >
+        {i.label}
+      </AnimatedSidebarMenuButton>
+    )
+  }
   return (
     <nav aria-label="Main" className="w-full">
       <AnimatedSidebarMenu>
@@ -113,15 +117,7 @@ function SidebarNav({ coachBadge, coachDot, areas, path }: Slots & { path: strin
         </AnimatedSidebarMenuItem>
         <AnimatedSidebarMenuItem className="rounded-md">{row(plan)}</AnimatedSidebarMenuItem>
         <AnimatedSidebarMenuItem className="rounded-md">
-          <AnimatedSidebarMenuButton
-            href={coach.href}
-            isActive={isActive(path, coach.href)}
-            icon={<coach.icon className={cn('size-5', isActive(path, coach.href) && 'text-pill-ink')} strokeWidth={isActive(path, coach.href) ? 2 : 1.5} />}
-            badge={coachBadge}
-            className={rowClass(isActive(path, coach.href))}
-          >
-            {coach.label}
-          </AnimatedSidebarMenuButton>
+          {row(coach, coachBadge)}
           <span className="pointer-events-none absolute top-1.5 right-2 z-20 hidden rail:block">{coachDot}</span>
         </AnimatedSidebarMenuItem>
         <AnimatedSidebarMenuItem data-tour="/you" className="rounded-md">{row(you)}</AnimatedSidebarMenuItem>
