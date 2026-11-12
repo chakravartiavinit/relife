@@ -1,4 +1,4 @@
-import { and, count, eq, gt, lt, sql } from 'drizzle-orm'
+import { and, count, eq, gt, lt, sql, type SQL } from 'drizzle-orm'
 import { db } from '@/db'
 import { waitlistAttempts, waitlistSignups as t, type Signup } from '@/db/schema'
 import { alreadyConfirmedEmail, confirmEmail, welcomeEmail } from '@/emails/templates'
@@ -12,13 +12,13 @@ import type { JoinInput } from './validation'
 const DAY = 24 * 60 * 60_000
 export type JoinResult = 'sent' | 'rate_limited' | 'disposable'
 
-const attemptTimes = async (where: ReturnType<typeof eq>) =>
+const attemptTimes = async (where: SQL) =>
   (await db().select({ at: waitlistAttempts.at }).from(waitlistAttempts).where(and(where, gt(waitlistAttempts.at, new Date(Date.now() - DAY))))).map((r) => r.at.getTime())
 
 /** The one write path for the signup form. Returns what to tell the visitor; the email is always "check your inbox". */
 export async function joinWaitlist(input: JoinInput, ip: string): Promise<JoinResult> {
   const ipHash = hmac(ip)
-  if (isLimited(await attemptTimes(eq(waitlistAttempts.ipHash, ipHash)), IP_LIMITS)) return 'rate_limited'
+  if (isLimited(await attemptTimes(and(eq(waitlistAttempts.ipHash, ipHash), eq(waitlistAttempts.kind, 'submit'))!), IP_LIMITS)) return 'rate_limited'
   await db().insert(waitlistAttempts).values({ ipHash, kind: 'submit' })
   if (isDisposable(input.email)) return 'disposable'
 
@@ -84,11 +84,11 @@ export type Status = {
   email: string
 }
 
-/** 1 + confirmed rows with a lower score (seq - 10 x referrals), ties by seq. Same rule as position.ts. */
+/** 1 + confirmed rows ahead: lower score (seq - 10 x referrals), ties to more referrals, then earlier seq. Same rule as position.ts. */
 async function positionIn(me: Signup): Promise<number> {
   const [{ n }] = await db().select({ n: count() }).from(t).where(and(
     eq(t.status, 'confirmed'),
-    sql`(${t.seq} - ${SPOTS_PER_REFERRAL} * ${t.referralCount}, ${t.seq}) < (${me.seq - SPOTS_PER_REFERRAL * me.referralCount}, ${me.seq})`,
+    sql`(${t.seq} - ${SPOTS_PER_REFERRAL} * ${t.referralCount}, -${t.referralCount}, ${t.seq}) < (${me.seq - SPOTS_PER_REFERRAL * me.referralCount}::bigint, ${-me.referralCount}::int, ${me.seq}::bigint)`,
   ))
   return 1 + n
 }

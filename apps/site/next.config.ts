@@ -18,6 +18,7 @@ export default (phase: string): NextConfig => {
   if (phase === PHASE_PRODUCTION_BUILD && process.argv.includes('build')) assertBrandReady() // not for `next typegen`, which reuses this phase
   return {
     poweredByHeader: false,
+    devIndicators: false,
     images: { formats: ['image/avif', 'image/webp'] },
   }
 }

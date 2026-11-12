@@ -21,7 +21,7 @@ export function Showcase({ panels }: { panels: Panel[] }) {
 
   return (
     <>
-      <div className="tabs" role="tablist" aria-label="Where ReLife runs" onKeyDown={onKey}>
+      <div className="tabs" role="tablist" aria-label="Where it runs" onKeyDown={onKey}>
         {panels.map((p) => (
           <button
             key={p.id} ref={(el) => { refs.current[p.id] = el }} role="tab" className="tab" id={`${base}-t-${p.id}`} aria-controls={`${base}-p-${p.id}`}

@@ -160,7 +160,7 @@ img, svg { display: block; max-width: 100%; }
 .q .bar { grid-column: 2 / 4; height: 6px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
 .q .bar span { display: block; height: 100%; width: var(--w); border-radius: inherit; background: var(--c); transform-origin: left; }
 .q.done { background: color-mix(in oklch, var(--good) 9%, var(--surface-2)); }
-.q.done .xpchip { background: color-mix(in oklch, var(--good) 16%, var(--surface)); color: var(--good); }
+.q.done .xpchip { background: color-mix(in oklch, var(--good) 16%, var(--surface)); color: color-mix(in oklch, var(--good) 65%, var(--ink)); }
 .q .rank.swap { position: relative; }
 .q .rank.swap > * { position: absolute; inset: 0; margin: auto; }
 .q .rank.swap b { display: grid; place-items: center; font: 800 14px/1 var(--font-display); opacity: 0; scale: 0.25; filter: blur(4px); }
@@ -184,9 +184,10 @@ img, svg { display: block; max-width: 100%; }
   .q.play { animation: row-done 300ms var(--ease-out-quint) 1000ms both; }
   .q.play .xpchip { animation: chip-done 300ms var(--ease-out-quint) 1000ms both; }
   .xp.play span { animation: fill 700ms var(--ease-out-strong) 700ms both; }
-  .ticker { counter-reset: xp var(--xp); animation: xp-up 900ms var(--ease-out-strong) 900ms both; }
+  .ticker { animation: xp-up 900ms var(--ease-out-strong) 900ms both; }
   .streak.play .flame { animation: flame 500ms var(--ease-out-quint) 1300ms both; }
 }
+.ticker { counter-reset: xp var(--xp); }
 .ticker::after { content: counter(xp); }
 @keyframes fill { from { transform: scaleX(0); } }
 @keyframes tick-in { from { opacity: 0; scale: 0.25; filter: blur(4px); } }
@@ -266,6 +267,7 @@ img, svg { display: block; max-width: 100%; }
 .mini .q { margin: 0; }
 .menubar { align-self: stretch; display: flex; justify-content: flex-end; align-items: center; gap: 12px; height: 30px; padding: 0 12px; border-radius: 10px; background: color-mix(in oklch, var(--ink) 6%, var(--surface)); font-size: 13px; font-weight: 500; }
 .menubar .count { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 999px; background: var(--surface); box-shadow: var(--elev-1); font-weight: 600; }
+.menubar .cap { width: 12px; height: 20px; box-shadow: 0 0 0 1.5px var(--ink); }
 .kbd { display: inline-flex; align-items: center; gap: 4px; font: 600 13px/1 var(--font-mono); padding: 6px 10px; border-radius: 8px; background: var(--surface); box-shadow: var(--elev-1); }
 .quicklog { width: 100%; max-width: 420px; padding: 14px 16px; border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--elev-3); display: flex; align-items: center; gap: 10px; font: 500 16px/1 var(--font-sans); }
 .phone { width: 230px; padding: 10px; border-radius: 36px; background: var(--ink); box-shadow: var(--elev-3); }

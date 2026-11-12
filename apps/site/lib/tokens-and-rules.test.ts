@@ -10,19 +10,22 @@ test('position: join order, and each referral is worth 10 spots', () => {
   const rows = Array.from({ length: 30 }, (_, i) => ({ seq: i + 1, referralCount: 0 }))
   assert.equal(positionOf(rows[0], rows), 1)
   assert.equal(positionOf(rows[29], rows), 30)
-  rows[29].referralCount = 1 // seq 30 - 10 = score 20, which ties seq 20, so it lands right after seq 20
+  rows[29].referralCount = 1 // seq 30 - 10 = score 20: exactly 10 places up, in front of seq 20
   assert.equal(scoreOf(rows[29]), 20)
-  assert.equal(positionOf(rows[29], rows), 21)
-  assert.equal(positionOf(rows[19], rows), 20)
-  assert.equal(positionOf(rows[20], rows), 22) // seq 21 is pushed back one place
+  assert.equal(positionOf(rows[29], rows), 20)
+  assert.equal(positionOf(rows[19], rows), 21) // seq 20 is pushed back one place
+  assert.equal(positionOf(rows[20], rows), 22)
 })
 
-test('position: ties go to the earlier seq', () => {
+test('position: a tie goes to more referrals, then the earlier seq', () => {
   const a = { seq: 20, referralCount: 0 }
   const b = { seq: 30, referralCount: 1 }
   assert.equal(scoreOf(a), scoreOf(b))
-  assert.equal(positionOf(a, [a, b]), 1)
-  assert.equal(positionOf(b, [a, b]), 2)
+  assert.equal(positionOf(b, [a, b]), 1) // the referrer wins the tie, so the 10-spot jump is exact
+  assert.equal(positionOf(a, [a, b]), 2)
+  const c = { seq: 5, referralCount: 0 }
+  const d = { seq: 9, referralCount: 0 }
+  assert.equal(positionOf(c, [c, d]), 1)
 })
 
 test('tokens: hash is stable, tokens are unique and url-safe, ref codes are 8 chars without 0/O/1/I', () => {

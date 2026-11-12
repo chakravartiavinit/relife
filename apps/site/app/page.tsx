@@ -33,10 +33,10 @@ const WALL: { title: string; color: string; items: [string, string?][] }[] = [
 ]
 
 const FAQ: [string, string][] = [
-  ['Is it free?', 'Self-hosting is meant to be free (it is coming soon). ReLife Cloud pricing comes later. Joining the waitlist costs nothing and commits you to nothing.'],
+  ['Is it free?', `Self-hosting is meant to be free (it is coming soon). ${NAME} Cloud pricing comes later. Joining the waitlist costs nothing and commits you to nothing.`],
   ['Which devices does it run on?', 'A Mac app, a Chrome extension, an iPhone and Android web app, and the web dashboard. Scan once to connect them all to the same account.'],
   ['What is The System?', 'The part that issues your daily quests. It looks at what is slipping and what you want to improve, sets a target near what you usually do, and rates it E to S. Code works out every number; the AI only words the nudge.'],
-  ['Do I need to code?', 'Not with ReLife Cloud. Self-hosting needs a terminal today.'],
+  ['Do I need to code?', `Not with ${NAME} Cloud. Self-hosting needs a terminal today.`],
   ['Which AI does it use?', 'Your pick: OpenAI, Anthropic, Gemini, OpenRouter, or a local model through Ollama. You can also turn AI off. The quests still work.'],
   ['Is my data private?', 'Your data lives on your machine with your own database. Nothing syncs until you connect a source, keys are encrypted at rest, and when you use an AI model it gets a short summary, never your raw rows. This waitlist stores only your email and the choices you make in the form.'],
   ['Does it work outside India?', `Yes. Some details are India-first (rupees, a few order apps), but ${NAME} is written for everyone, and currency and time zone are settings.`],
