@@ -332,7 +332,7 @@ Category colors (charts, chips, capsule fills), harmonized with the brand:
 | Wealth | cardigan gold (deepened for contrast) |
 | Relationships | sky teal |
 
-Logo: the wordmark with the "i" replaced by a capsule (blue top, white bottom, ink outline). App icon: the capsule on its own. Source: `assets/brand/relife-logo.png`; `node scripts/brand.mjs assets/brand/relife-logo.png` builds the light and dark logos, the app icons and the extension's toolbar icons (the capsule alone on transparent, also used in the README header). The capsule is also the core UI motif (below).
+Logo: the wordmark with the "i" replaced by a capsule (blue top, white bottom, ink outline). App icon: the capsule on its own. Source: `packages/brand/logo/relife-logo.png`; `npm run brand` builds the light and dark logos, the app icons and the extension's toolbar icons (the capsule alone on transparent, also used in the README header). The capsule is also the core UI motif (below).
 
 > IP note: the ReLIFE name, wordmark and capsule-"i" are from the anime (© YayoiSo/comico/ReLIFE Laboratory). The project uses the original logo as a fan tribute; it is excluded from the AGPL license (see README → Credits).
 

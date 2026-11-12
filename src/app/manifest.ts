@@ -1,12 +1,13 @@
 import type { MetadataRoute } from 'next'
+import brand from '@relife/brand/brand.json'
 import { BRAND } from '@/ui/brand-files'
 
 // Installable on iPhone via Safari → Share → Add to Home Screen (over Tailscale HTTPS).
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'ReLife',
-    short_name: 'ReLife',
-    description: 'Level up your real life, one day at a time.',
+    name: brand.name,
+    short_name: brand.shortName,
+    description: brand.tagline,
     start_url: '/',
     display: 'standalone',
     background_color: '#f7fafc',

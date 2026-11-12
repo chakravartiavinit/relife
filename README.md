@@ -234,7 +234,7 @@ own MIT notices (see Credits).
   Trademarks belong to their owners.
 - Routine, hobby and shopping-category pictures (`public/routines`, `public/hobbies`, `public/categories`):
   [Fluent Emoji](https://github.com/microsoft/fluentui-emoji) by Microsoft (MIT).
-- The ReLIFE name and logo (`assets/brand/`, `public/brand/`, `src/app/icon.png`, `src/app/apple-icon.png`,
+- The ReLIFE name and logo (`packages/brand/logo/`, `public/brand/`, `src/app/icon.png`, `src/app/apple-icon.png`,
   `extension/icons/`)
   belong to their owners (© YayoiSo/comico/ReLIFE Laboratory) and are used as a fan tribute. They are not
   covered by this project's AGPL license.

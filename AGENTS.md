@@ -27,8 +27,11 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
 - Look ("ReLife capsule"): ink black, white and the logo's capsule blue, light-first. The signature shapes are
   `CapsuleIcon` (`capsule-icon.tsx`, the tilted pill from the logo, for areas and avatars), `SystemLabel` (mono
   area label in `card.tsx`) and the `.halftone` dot texture in header corners. No other decorative textures.
-- Motion: CSS easing tokens in `globals.css` (`--ease-out-quint`, `--ease-out-strong`, `--ease-in-out-strong`);
-  JS twins in `src/ui/beui/lib/ease.ts` (`EASE_OUT`, `EASE_OUT_STRONG`). Never retype the curves. Audits and
+- Tokens: colors, shadows, radii and easing live in `packages/tokens/tokens.json`; `npm run tokens` regenerates
+  `packages/tokens/tokens.css`/`theme.css`, `extension/tokens.css` and the Mac app's `Tokens.swift` (pre-push runs
+  `npm run tokens -- --check`). Derived values and the Tailwind color mapping stay in `src/app/globals.css`.
+- Motion: CSS easing tokens (`--ease-out-quint`, `--ease-out-strong`, `--ease-in-out-strong`, from `tokens.json`);
+  JS twins in `src/ui/beui/lib/ease.ts` (`EASE_OUT`, `EASE_OUT_STRONG`, read from the package). Never retype the curves. Audits and
   plans live in `plans/`.
 - `src/app/`: Next.js 16 App Router pages and `actions.ts` (all server actions). Cache Components is
   on: DB reads go in an async child component that calls `await connection()`, wrapped in
@@ -39,8 +42,13 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
 - `src/worker/`: long-running process (bot, laptop activity, job scheduler). `src/jobs/`: every scheduled job.
   `src/bot/`: Telegram.
 - `src/ui/`: tokens and components. `src/app/globals.css` holds the design tokens.
-- Logo: the original ReLIFE logo. `assets/brand/relife-logo.png` is the source;
-  `node scripts/brand.mjs assets/brand/relife-logo.png` rebuilds `public/brand/` (light and dark logos and
+- Brand: `packages/brand` is the one place for the product name, short name, tagline and logo source
+  (`brand.json`, `logo/`). Read the name from `@relife/brand/brand.json`; don't retype it (`npm run brand:check` ratchets
+  hard-coded names down to zero, so a rename is one change). `publicReady` stays `false` while the fan-tribute name and
+  logo are in use; the public site must not deploy until it is `true`. Internal identifiers (`relife:*`, database names,
+  storage keys) never change with the brand.
+- Logo: the original ReLIFE logo. `packages/brand/logo/relife-logo.png` is the source;
+  `npm run brand` rebuilds `public/brand/` (light and dark logos and
   icons, with content-hashed names), `src/ui/brand-files.ts` (their paths), `src/app/icon.png` /
   `apple-icon.png` and the extension's toolbar icons (`extension/icons/`, the capsule alone on transparent; the
   README header uses the 128 px one). Use `Wordmark` (or `CapsuleMark` for the icon) from `src/ui/components/logo.tsx`;

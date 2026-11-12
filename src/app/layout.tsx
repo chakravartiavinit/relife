@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter, Outfit } from 'next/font/google'
+import brand from '@relife/brand/brand.json'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { Wordmark } from '@/ui/components/logo'
@@ -22,9 +23,9 @@ const inter = Inter({ variable: '--font-inter', subsets: ['latin'], display: 'sw
 const outfit = Outfit({ variable: '--font-outfit', subsets: ['latin'], weight: ['600', '700', '800', '900'], display: 'swap' })
 
 export const metadata: Metadata = {
-  title: { default: 'ReLife', template: '%s · ReLife' },
-  description: 'Level up your real life, one day at a time.',
-  appleWebApp: { capable: true, title: 'ReLife', statusBarStyle: 'default' },
+  title: { default: brand.name, template: `%s · ${brand.name}` },
+  description: brand.tagline,
+  appleWebApp: { capable: true, title: brand.shortName, statusBarStyle: 'default' },
 }
 
 export const viewport: Viewport = {
@@ -67,7 +68,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
               {/* Floating glass panel: radius 24 with 12px padding, so inner rows use 12. */}
               <div className="flex h-full flex-col gap-4 rounded-xl bg-glass p-3 shadow-2 backdrop-blur-xl">
                 <div className="flex items-center justify-between pt-2 pr-1 pl-2.5">
-                  <Link href="/" aria-label="ReLife, Today" className="rounded-sm">
+                  <Link href="/" aria-label={`${brand.name}, Today`} className="rounded-sm">
                     <Wordmark className="h-[30px]" />
                   </Link>
                   <ThemeToggle />
@@ -86,7 +87,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
             </aside>
             <main className="min-w-0 flex-1 px-5 pt-6 pb-32 sm:px-8 lg:py-9 lg:pr-10 lg:pl-7">
               <div className="mb-6 flex items-center justify-between lg:hidden">
-                <Link href="/" aria-label="ReLife, Today"><Wordmark className="h-7" /></Link>
+                <Link href="/" aria-label={`${brand.name}, Today`}><Wordmark className="h-7" /></Link>
                 <div className="flex items-center gap-1"><MockBadge /><ThemeToggle /></div>
               </div>
               {children}

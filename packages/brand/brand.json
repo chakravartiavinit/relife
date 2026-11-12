@@ -1,0 +1,9 @@
+{
+  "$comment": "The one place the product's name, logo and tagline live. To rename: change these values, replace logo/, run `npm run brand`, then `npm run brand:check -- --update`.",
+  "name": "ReLife",
+  "shortName": "ReLife",
+  "tagline": "Level up your real life, one day at a time.",
+  "logo": "logo/relife-logo.png",
+  "publicReady": false,
+  "legacyNames": ["ReLife", "ReLIFE"]
+}

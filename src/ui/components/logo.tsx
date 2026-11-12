@@ -1,8 +1,9 @@
 /* eslint-disable @next/next/no-img-element -- static brand PNGs from public/brand, nothing to optimise */
+import brand from '@relife/brand/brand.json'
 import { cn } from '../cn'
 import { BRAND } from '../brand-files'
 
-// The ReLIFE logo (public/brand, built by scripts/brand.mjs). Black letters in light mode,
+// The logo (public/brand, built by packages/brand/build.mjs). Black letters in light mode,
 // white letters in dark mode; the capsule keeps its colours in both. No image outline: it's a transparent logo.
 const RATIO = BRAND.ratio
 
@@ -10,8 +11,8 @@ const RATIO = BRAND.ratio
 export function Wordmark({ className }: { className?: string; kana?: boolean }) {
   return (
     <span className={cn('relative inline-block h-8', className)} style={{ aspectRatio: RATIO }}>
-      <img src={BRAND['logo-light']} alt="ReLife" className="absolute inset-0 h-full w-full outline-none dark:hidden" />
-      <img src={BRAND['logo-dark']} alt="ReLife" className="absolute inset-0 hidden h-full w-full outline-none dark:block" />
+      <img src={BRAND['logo-light']} alt={brand.name} className="absolute inset-0 h-full w-full outline-none dark:hidden" />
+      <img src={BRAND['logo-dark']} alt={brand.name} className="absolute inset-0 hidden h-full w-full outline-none dark:block" />
     </span>
   )
 }

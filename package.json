@@ -22,7 +22,9 @@
     "test": "tsx --env-file=.env --test src/domain/*.test.ts src/core/*.test.ts src/connectors/shop/*.test.ts src/ai/*.test.ts src/parsers/*.test.ts src/worker/*.test.ts src/connectors/*.test.ts src/rules/*.test.ts packages/contract/src/*.test.ts",
     "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
     "tokens": "node packages/tokens/build.mjs",
-    "contract:check": "npm test -w @relife/contract"
+    "contract:check": "npm test -w @relife/contract",
+    "brand": "node packages/brand/build.mjs",
+    "brand:check": "node packages/brand/check.mjs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.138",
@@ -30,6 +32,7 @@
     "@ai-sdk/openai": "^3.0.137",
     "@ai-sdk/openai-compatible": "^2.0.90",
     "@floating-ui/dom": "^1.8.0",
+    "@relife/brand": "*",
     "@relife/contract": "*",
     "@relife/tokens": "*",
     "ai": "^6.0.323",

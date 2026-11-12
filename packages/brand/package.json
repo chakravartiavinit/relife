@@ -1,0 +1,16 @@
+{
+  "name": "@relife/brand",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Product name, tagline, logo sources and the build that turns them into icons for every surface.",
+  "exports": {
+    "./brand.json": "./brand.json"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "node check.mjs"
+  },
+  "devDependencies": {
+    "sharp": "^0.35.5"
+  }
+}

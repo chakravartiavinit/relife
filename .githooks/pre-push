@@ -3,5 +3,8 @@
 set -e
 echo "pre-push: typecheck" >&2
 npm run --silent typecheck
+echo "pre-push: tokens and brand" >&2
+npm run --silent tokens -- --check
+npm run --silent brand:check
 echo "pre-push: tests" >&2
 npm test --silent > /tmp/relife-prepush.log 2>&1 || { tail -30 /tmp/relife-prepush.log >&2; echo "Tests failed. Push blocked." >&2; exit 1; }
