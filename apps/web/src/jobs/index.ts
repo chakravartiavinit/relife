@@ -91,6 +91,11 @@ export const JOBS: Job[] = [
     return count ? `removed ${count} sync runs older than 30 days` : undefined
   } },
 
+  // Devices: ended pairings, old idempotency keys, long-revoked devices and rate-limit windows.
+  { id: 'prune-devices', schedule: { cron: '50 3 * * *' }, catchUpMinutes: 12 * 60, run: async () => {
+    await (await import('@/core/auth/pairing')).cleanup()
+  } },
+
   // XP and quests: from fresh data, at least every 5 minutes.
   { id: 'xp', schedule: { everyMinutes: 5 }, on: ['data.changed'], run: async () => {
     const [{ refreshXp }, { celebrate }] = await Promise.all([import('@/core/xp'), import('@/bot/ui')])

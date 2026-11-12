@@ -19,6 +19,7 @@ import { RecoveryPanel, SystemQuests } from '@/ui/components/system-quests'
 import type { RecoveryView } from '@/domain/recovery'
 import { GOAL_FOOTNOTE, goalSnapshot } from '@/domain/goals'
 import { OutcomeGoalCard, PausedFinishedList } from '@/ui/components/goals/goal-card'
+import { DevicesGallery } from '@/ui/components/devices/gallery'
 import { GoalReviewCard } from '@/ui/components/goals/goal-review'
 import type { GoalViewData } from '@/ui/components/goals/format'
 
@@ -171,6 +172,10 @@ export default function UiGallery() {
         </div>
       </Section>
 
+      <Section title="Connecting devices">
+        <Suspense fallback={<Skeleton className="h-[420px]" />}><DeviceSamples /></Suspense>
+      </Section>
+
       <Section title="Tour illustrations">
         <IlloGallery />
       </Section>
@@ -183,6 +188,12 @@ export default function UiGallery() {
       </Section>
     </div>
   )
+}
+
+// Counts down to a time, so it renders per request.
+async function DeviceSamples() {
+  await connection()
+  return <DevicesGallery now={Date.now()} />
 }
 
 async function ChartSamples() {

@@ -98,8 +98,12 @@ export function ApproveCard({ device, onResult, className }: { device: WaitingDe
           <Clock className="size-3.5" strokeWidth={1.5} aria-hidden />
           {left === null ? 'Request expires soon' : expired ? 'This request expired. Ask the device to connect again.' : `Request expires in ${mmss(left)}`}
         </span>
-        <Button variant="secondary" onClick={() => answer(false)} disabled={pending || expired}>Deny</Button>
-        <Button variant="primary" onClick={() => answer(true)} disabled={pending || expired}><Check className="size-4" strokeWidth={2} aria-hidden />Approve</Button>
+        {expired ? null : (
+          <>
+            <Button variant="secondary" onClick={() => answer(false)} disabled={pending}>Deny</Button>
+            <Button variant="primary" onClick={() => answer(true)} disabled={pending}><Check className="size-4" strokeWidth={2} aria-hidden />Approve</Button>
+          </>
+        )}
       </div>
     </div>
   )
