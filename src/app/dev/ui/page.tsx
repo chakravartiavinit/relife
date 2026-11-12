@@ -175,7 +175,7 @@ export default function UiGallery() {
       </Section>
 
       <Section title="Today: header, attention, pulse, timeline, rail, first day and all done">
-        <TodayGallery />
+        <Suspense fallback={<Skeleton className="h-[640px] rounded-lg" />}><TodayGallery /></Suspense>
       </Section>
 
       <Section title="Shell pieces">
