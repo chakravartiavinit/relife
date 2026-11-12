@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
 import { and, eq, gte, isNotNull, sql } from 'drizzle-orm'
-import { ArrowUpRight, BellRing, Bot, Swords, Brain, Database, KeyRound, Palette, ShieldCheck, UserRound, type LucideIcon } from 'lucide-react'
+import { ArrowUpRight, Database, KeyRound, ShieldCheck, type LucideIcon } from 'lucide-react'
 import { databaseUrl, db, isMock, schema } from '@/db'
 import { getUser } from '@/core/user'
 import { aiEnabled, modelId, type Task } from '@/ai'
@@ -11,21 +11,12 @@ import { Badge, PageHeader, Skeleton } from '@/ui/components/card'
 import { buttonClass } from '@/ui/components/button'
 import { ProfileForm, ThemePicker } from '@/ui/components/settings-ui'
 import { SettingsRow, SettingsSection } from '@/ui/components/settings-layout'
+import { SettingsRail } from '@/ui/components/settings-rail'
 import { NotificationSettings } from '@/ui/components/notification-settings'
 import { SystemFocus } from '@/ui/components/system-focus'
 import { loadSignals } from '@/core/patterns'
 
 export const metadata: Metadata = { title: 'Settings' }
-
-const SECTIONS: { id: string; label: string; icon: LucideIcon }[] = [
-  { id: 'profile', label: 'Profile', icon: UserRound },
-  { id: 'coaching', label: 'Goals & coaching', icon: Brain },
-  { id: 'system', label: 'The System', icon: Swords },
-  { id: 'notifications', label: 'Notifications', icon: BellRing },
-  { id: 'appearance', label: 'Appearance', icon: Palette },
-  { id: 'ai', label: 'AI', icon: Bot },
-  { id: 'privacy', label: 'Data & privacy', icon: ShieldCheck },
-]
 
 const TASKS: { task: Task; label: string; hint: string }[] = [
   { task: 'parse', label: 'Reading messages', hint: 'Order pages the built-in rules can’t read.' },
@@ -47,18 +38,7 @@ export default function SettingsPage() {
         </>}
       />
       <div className="grid gap-8 lg:grid-cols-[200px_minmax(0,1fr)] xl:gap-12">
-        <nav aria-label="Settings sections" className="hidden lg:block">
-          <ul className="sticky top-9 flex flex-col gap-0.5">
-            {SECTIONS.map(({ id, label, icon: Icon }) => (
-              <li key={id}>
-                <a href={`#${id}`} className="flex h-9 items-center gap-2.5 rounded-md px-2.5 text-[13.5px] text-ink-2 transition-[background-color,color] duration-150 hover:bg-ink/[0.04] hover:text-ink focus-visible:outline-2 focus-visible:outline-pill dark:hover:bg-white/[0.05]">
-                  <Icon className="size-4 text-ink-3" strokeWidth={1.5} aria-hidden />
-                  {label}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
+        <SettingsRail current="settings" />
         <div className="flex max-w-3xl min-w-0 flex-col gap-10">
           <Suspense fallback={<SettingsSkeleton />}>
             <Settings />
@@ -103,7 +83,7 @@ async function Settings() {
 
       <NotificationSettings initial={user.profile.notifications} />
 
-      <SettingsSection id="appearance" title="Appearance" description="Saved in this browser. The sun and moon button in the sidebar switches too.">
+      <SettingsSection id="appearance" title="Appearance" description="Saved to your ReLife, so every device shows the same. The sun and moon button in the sidebar switches too.">
         <SettingsRow label="Theme" hint="System follows your Mac or phone.">
           <ThemePicker />
         </SettingsRow>

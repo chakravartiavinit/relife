@@ -1,6 +1,5 @@
-import type { Metadata, Viewport } from 'next'
-import { Inter, Outfit } from 'next/font/google'
 import brand from '@relife/brand/brand.json'
+import { RootHtml, rootMetadata, rootViewport } from '@/ui/root-html'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { Wordmark } from '@/ui/components/logo'
@@ -9,32 +8,19 @@ import { NavPlaceholder, SystemNavPlaceholder, TabBar } from '@/ui/components/na
 import { NavForUser, SystemNavWithCounts } from '@/ui/components/system-nav-server'
 import { CommandButton, CommandMenu } from '@/ui/components/command-menu'
 import { Tour } from '@/ui/components/tour/tour'
-import { ThemeToggle, THEME_SCRIPT } from '@/ui/components/theme-toggle'
+import { ThemeToggle } from '@/ui/components/theme-toggle'
+import { ThemeFromServer } from '@/ui/components/theme-sync'
 import { ToastProvider } from '@/ui/components/toast'
 import { AppMotion } from '@/ui/components/motion-config'
 import { Celebration } from '@/ui/components/petals'
 import { Celebrations } from '@/ui/components/celebrate'
 import { PaymentToasts } from '@/ui/components/payment-toasts'
 import { LiveRefresh } from '@/ui/components/live-refresh'
+import { WaitingBanner } from '@/ui/components/devices/waiting-banner'
 import { SidebarProfile, SidebarProfileSkeleton } from '@/ui/components/sidebar-profile'
-import './globals.css'
 
-const inter = Inter({ variable: '--font-inter', subsets: ['latin'], display: 'swap' })
-const outfit = Outfit({ variable: '--font-outfit', subsets: ['latin'], weight: ['600', '700', '800', '900'], display: 'swap' })
-
-export const metadata: Metadata = {
-  title: { default: brand.name, template: `%s · ${brand.name}` },
-  description: brand.tagline,
-  appleWebApp: { capable: true, title: brand.shortName, statusBarStyle: 'default' },
-}
-
-export const viewport: Viewport = {
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f7fafc' },
-    { media: '(prefers-color-scheme: dark)', color: '#1a2129' },
-  ],
-  viewportFit: 'cover',
-}
+export const metadata = rootMetadata
+export const viewport = rootViewport
 
 /** Always visible in mock mode so random data is never mistaken for yours. */
 function MockBadge({ wide = false }: { wide?: boolean }) {
@@ -56,11 +42,7 @@ function MockBadge({ wide = false }: { wide?: boolean }) {
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="en" className={`${inter.variable} ${outfit.variable}`} suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
-      </head>
-      <body className="min-h-dvh">
+    <RootHtml>
         <AppMotion>
         <ToastProvider>
           <div className="mx-auto flex min-h-dvh max-w-[1480px]">
@@ -100,9 +82,10 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
           <Celebrations />
           <PaymentToasts />
           <LiveRefresh />
+          <WaitingBanner />
+          <Suspense fallback={null}><ThemeFromServer /></Suspense>
         </ToastProvider>
         </AppMotion>
-      </body>
-    </html>
+    </RootHtml>
   )
 }
