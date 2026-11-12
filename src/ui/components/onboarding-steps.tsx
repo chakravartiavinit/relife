@@ -288,7 +288,9 @@ export function StepRoutines({ v, set, mode, kind, building, setBuilding, starte
   const build = async () => {
     setBuilding(true); setErr(null)
     set('generatedFor', picksSig)
+    // A failed call (network, server) must still end the skeleton and offer Try again.
     const r = await suggestOnboardingRoutines({ prompt: brief(v), areas: v.areas, focus: v.focus, goals: v.goals })
+      .catch(() => ({ ok: false as const, error: 'Couldn’t reach the model. Try again.' }))
     setBuilding(false)
     if (!r.ok) return setErr(r.error)
     set('generated', r.routines)

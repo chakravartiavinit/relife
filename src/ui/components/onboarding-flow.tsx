@@ -16,7 +16,11 @@ import { StepAreas, StepConnect, StepRoutines, StepYou, type Ai, type Set } from
 import { FOCUS, SWAP, stepMotion } from './onboarding-ui'
 import { AT, IMPROVE, LAST, MAX_IMPROVE, STEPS, canonTz, clamp, type Initial, type V } from './onboarding-data'
 import { cn } from '../cn'
+import { CATEGORY } from '../tokens'
 import { EASE_OUT } from '@/ui/beui/lib/ease'
+
+const AREAS_STEP = STEPS.findIndex((s) => s.key === 'areas')
+const ALL_AREAS = Object.keys(CATEGORY) as Category[]
 
 // One-time setup, as a split screen. On the left, one short group of questions at a time: four steps (You,
 // Areas, Connect, Routines), each filled in already so Enter walks straight through. On the right, the player's
@@ -35,6 +39,8 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
   sources: ConnectorItem[]
 }) {
   const [i, setI] = useState(0)
+  // Past the Areas step at least once: only then does setup save the area picks (Skip before it keeps every area).
+  const [pastAreas, setPastAreas] = useState(false)
   const [dir, setDir] = useState(1)
   const [v, setV] = useState<V>({
     ...initial,
@@ -68,6 +74,7 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
     if (draft?.v && typeof draft.i === 'number' && draft.base === base) {
       setV((s) => ({ ...s, ...draft.v }))
       setI(clamp(draft.i, 0, LAST))
+      if (draft.i > AREAS_STEP) setPastAreas(true)
     } else if (fresh && canonTz(tz)) {
       // Only when it really is another zone: browsers call Asia/Kolkata by its old name, Asia/Calcutta.
       setV((s) => (canonTz(s.timezone) === canonTz(tz) ? s : { ...s, timezone: tz }))
@@ -110,6 +117,7 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
   const valid = !check()
   const to = (k: number) => {
     setDir(k > i ? 1 : -1); setI(k); setError(null); setNudge(0)
+    if (k > AREAS_STEP) setPastAreas(true)
     pane.current?.scrollTo({ top: 0 })
   }
   // What setup writes. Running it again sends a setting only when it was changed here, so nothing is overwritten by accident.
@@ -117,7 +125,8 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
     const changed = <K extends 'sleepHours' | 'steps'>(k: K) => (full && (fresh || v[k] !== initial[k]) ? v[k] : undefined)
     const hours = full && (fresh || v.wake !== initial.wake || v.sleep !== initial.sleep)
     return {
-      name: v.name, timezone: v.timezone, baseCurrency: v.baseCurrency.toUpperCase(), areas: v.areas,
+      name: v.name, timezone: v.timezone, baseCurrency: v.baseCurrency.toUpperCase(),
+      areas: full || pastAreas ? v.areas : initial.areas.length ? initial.areas : ALL_AREAS,
       focus: v.focus && v.areas.includes(v.focus) ? v.focus : undefined, improve: picks,
       wake: hours ? v.wake : undefined, sleep: hours ? v.sleep : undefined,
       sleepHours: changed('sleepHours'), steps: changed('steps'), waterMl: full ? v.waterMl : undefined,
