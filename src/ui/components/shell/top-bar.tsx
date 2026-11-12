@@ -6,6 +6,7 @@ import { Suspense, type ReactNode } from 'react'
 import { Plus } from 'lucide-react'
 import { trail } from '@/domain/routes'
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/ui/beui/motion/breadcrumb'
+import { openCapture, prefetchCapture } from '../capture/capture-data'
 import { Wordmark } from '../logo'
 
 // Top bar. Laptop (≥ lg): sticky, 72px, left the breadcrumb, centre the Capture field, right the status trio
@@ -59,8 +60,9 @@ function Crumbs({ date }: { date: ReactNode }) {
 }
 
 /**
- * The one visible "do anything" entry: a button styled as a field. Click or ⌘K opens the command menu (Capture,
- * once it lands). 520px, 44px tall, 40px+ hit area.
+ * The one visible "do anything" entry: a button styled as a field. Click, ⌘K, or just typing opens Capture, and the
+ * first character typed carries into its input. 520px, 44px tall, 40px+ hit area. Hovering or focusing it starts
+ * fetching Capture's suggestions.
  */
 function CaptureField() {
   return (
@@ -69,7 +71,10 @@ function CaptureField() {
       data-tour="command"
       aria-haspopup="dialog"
       aria-keyshortcuts="Meta+K Control+K"
-      onClick={() => window.dispatchEvent(new Event('relife:command'))}
+      onClick={() => openCapture()}
+      onPointerEnter={prefetchCapture}
+      onFocus={prefetchCapture}
+      onKeyDown={(e) => { if (e.key.length === 1 && !e.metaKey && !e.ctrlKey && !e.altKey && e.key !== ' ') { e.preventDefault(); openCapture(e.key) } }}
       className="flex h-11 w-full items-center gap-2.5 rounded-full bg-surface pr-2 pl-4 text-left text-body text-ink-3 shadow-1 transition-[box-shadow,color] duration-150 ease-out-quint hover:text-ink-2 hover:shadow-2 focus-visible:outline-2 focus-visible:outline-pill"
     >
       <span aria-hidden className="grid size-6 shrink-0 place-items-center rounded-full bg-ink text-bg"><Plus className="size-4" strokeWidth={2} /></span>
