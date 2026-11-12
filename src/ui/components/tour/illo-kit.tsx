@@ -90,9 +90,9 @@ export function Txt({ x, y, size = 28, weight = 400, fill = 'var(--ink)', end, m
 }
 
 /** Mono uppercase label, like SystemLabel. */
-export function Mono({ x, y, fill = 'var(--ink-3)', children }: { x: number; y: number; fill?: string; children: React.ReactNode }) {
+export function Mono({ x, y, size = 19, fill = 'var(--ink-3)', children }: { x: number; y: number; size?: number; fill?: string; children: React.ReactNode }) {
   return (
-    <text x={x} y={y} fontSize={19} fontWeight={600} letterSpacing={3} fill={fill} fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace">
+    <text x={x} y={y} fontSize={size} fontWeight={600} letterSpacing={3} fill={fill} fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace">
       {children}
     </text>
   )
@@ -157,6 +157,45 @@ export function Meter({ x, y, w, h, color = 'var(--pill)', value = 1, className 
           style={className ? undefined : { transform: `translateX(${(value - 1) * 100}%)`, transformBox: 'fill-box' }} />
       </g>
     </g>
+  )
+}
+
+/**
+ * The words that go with an illustration: its story as a few short beats, each lighting up and filling (like
+ * story progress) on the picture's own clock, so the viewer reads what happens as it happens. `end` is when
+ * the picture starts to reset; the beats fade back with it. Without motion every beat shows, filled.
+ */
+export type BeatSet = { items: string[]; c: Record<string, string>; css: string }
+export function beats(id: string, seconds: number, end: number, items: [number, string][]): BeatSet {
+  const LIT = 'color:var(--ink)'
+  const DIM = 'color:var(--ink-3)'
+  const FULL = 'transform:translateX(0);opacity:1'
+  const t = timeline(`beats-${id}`, seconds, Object.fromEntries(items.flatMap(([at], k) => {
+    const next = items[k + 1]?.[0] ?? end
+    return [
+      [`l${k}`, { end: LIT, stops: [[at, DIM, 'out'], [at + 0.2, LIT], [end, LIT, 'quint'], [end + 0.3, DIM]] }],
+      // Fills at a constant pace until the next beat starts: it shows how long this part of the story lasts.
+      [`f${k}`, { end: FULL, stops: [[at, 'transform:translateX(-101%);opacity:1'], [next, FULL], [end, FULL, 'quint'], [end + 0.3, 'transform:translateX(0);opacity:0']] }],
+    ]
+  })))
+  return { items: items.map(([, label]) => label), c: t.c, css: `${t.css}@media (prefers-reduced-motion:reduce){.tour-beats *{animation:none!important}}` }
+}
+
+/** The beats as a row of labelled progress segments. Mount it in the same render as its picture so the clocks match. */
+export function Beats({ set, className }: { set: BeatSet; className?: string }) {
+  return (
+    // The picture's own label already says all of this, so screen readers skip the row.
+    <ol aria-hidden className={`tour-beats grid gap-1.5 ${className ?? ''}`} style={{ gridTemplateColumns: `repeat(${set.items.length}, minmax(0, 1fr))` }}>
+      <style dangerouslySetInnerHTML={{ __html: set.css }} />
+      {set.items.map((label, k) => (
+        <li key={label} className="min-w-0">
+          <span className="block h-[3px] overflow-hidden rounded-full bg-ink/[0.08] dark:bg-white/[0.1]">
+            <span className={`block h-full rounded-full bg-pill ${set.c[`f${k}`]}`} />
+          </span>
+          <span className={`mt-1.5 block truncate text-[11px] leading-[14px] font-medium ${set.c[`l${k}`]}`}>{label}</span>
+        </li>
+      ))}
+    </ol>
   )
 }
 

@@ -4,8 +4,8 @@
 // happens, ReLife reacts, the result holds for a beat, then it quietly resets.
 // They are drawn for a 304px plate, where one unit is 0.42px: a few large shapes, text at 24 units or more
 // (10px on screen), and at most a handful of words. The words under the picture do the explaining.
-import { Bell, BellOff, Check, Flame, Moon, Search, Smartphone } from 'lucide-react'
-import { appear, Art, CapsuleMark, Chest, Chip, Cursor, Icon, Illo, Logo, Meter, Mono, Panel, pressAt, timeline, Txt, type Stop } from './illo-kit'
+import { BellOff, Check, Flame, Moon, Search, Smartphone, Sun } from 'lucide-react'
+import { appear, Art, beats, Beats, CapsuleMark, Chest, Chip, Cursor, Icon, Illo, Logo, Meter, Mono, Panel, pressAt, timeline, Txt, type Stop } from './illo-kit'
 
 // ── Small timeline recipes, all in seconds ───────────────────────────────────────────────────────────
 const SHOW = 'opacity:1;transform:translateY(0)'
@@ -63,81 +63,101 @@ function Rays({ cx, cy, r, className, color = 'var(--medal-gold)' }: { cx: numbe
   )
 }
 
-// ── 0 · Welcome: what you do and what syncs turns into XP, and XP levels your character up ─────────────
-const AREA_ROW = [
-  { art: '/routines/heart.png', color: 'var(--cat-health)', v: 0.45 },
-  { art: '/routines/brain.png', color: 'var(--cat-mind)', v: 0.55 },
-  { art: '/routines/learn.png', color: 'var(--cat-skills)', v: 0.5 },
-  { art: '/routines/money.png', color: 'var(--cat-wealth)', v: 0.4 },
-  { art: '/routines/art.png', color: 'var(--cat-hobbies)', v: 0.62 },
-  { art: '/routines/people.png', color: 'var(--cat-relationships)', v: 0.5 },
-]
+/** A number that rolls through states: state k shows from `times[k - 1]` (state 0 from the start) until `times[k]`;
+ * the last one holds until `reset`, then state 0 rolls back in. Old values rise out, new ones rise in. */
+const UP_OUT = 'opacity:0;transform:translateY(-10px)'
+const DOWN_IN = 'opacity:0;transform:translateY(10px)'
+function roll(times: number[], reset: number): Track[] {
+  const n = times.length + 1
+  return Array.from({ length: n }, (_, k): Track => {
+    if (k === 0) return { end: 'opacity:0', stops: [[times[0], SHOW, 'out'], [times[0] + 0.2, UP_OUT], [reset, DOWN_IN, 'out'], [reset + 0.25, SHOW]] }
+    const enter: Stop[] = [[times[k - 1], DOWN_IN, 'out'], [times[k - 1] + 0.25, SHOW]]
+    return k === n - 1
+      ? { end: SHOW, stops: [...enter, [reset, SHOW, 'quint'], [reset + 0.2, 'opacity:0;transform:translateY(0)']] }
+      : { end: 'opacity:0', stops: [...enter, [times[k], SHOW, 'out'], [times[k] + 0.2, UP_OUT]] }
+  })
+}
+/** A chip that flies from where it was earned to where it counts: pops in, travels, and is absorbed on arrival. */
+function flight(t: number, dx: number, dy: number): { move: Track; show: Track } {
+  return {
+    move: { end: `transform:translate(${dx}px,${dy}px)`, stops: [[t + 0.2, 'transform:translate(0,0)', 'move'], [t + 0.75, `transform:translate(${dx}px,${dy}px)`]] },
+    show: {
+      end: 'opacity:0', origin: '50% 50%',
+      stops: [[t, 'opacity:0;transform:scale(.8)', 'out'], [t + 0.2, 'opacity:1;transform:scale(1)'], [t + 0.65, 'opacity:1;transform:scale(1)', 'quint'], [t + 0.8, 'opacity:0;transform:scale(.7)']],
+    },
+  }
+}
+
+// ── 0 · Welcome: what you do and what syncs pays XP, and XP levels your character up ──────────────────
+// One idea, three beats: a check-off, then two synced apps, each fly their XP into the bar; the third fills
+// it and you go from level 3 to 4. The counter under the bar makes every arrival readable as a number.
+const W_RESET = 4.7
+const W_LEVEL = 3.0
+const W_BAR = { x: 352, y: 258, w: 300, h: 24 }
+const W_FILL = [0.6, 0.675, 0.8, 1]
 const INPUTS = [
-  { y: 80, t: 0.2, orb: 0.6, title: 'Gym', sub: 'Checked off', art: '/routines/gym.png' },
-  { y: 188, t: 1.0, orb: 1.4, title: '3 commits', sub: 'From GitHub', logo: '/connectors/github.svg' },
-  { y: 296, t: 1.8, orb: 2.2, title: '8,214 steps', sub: 'From iPhone', art: '/routines/walk.png' },
+  { y: 88, t: 0.2, title: 'Gym', sub: 'Checked off', art: '/routines/gym.png', xp: '+15 XP' },
+  { y: 188, t: 1.0, title: '3 commits', sub: 'From GitHub', logo: '/connectors/github.svg', xp: '+25 XP' },
+  { y: 288, t: 1.8, title: '8,214 steps', sub: 'From iPhone', art: '/routines/walk.png', xp: '+40 XP' },
 ]
-const welcomeLv = swap(3.05, 4.7)
+const XP_CHIP = { w: 108, h: 44 }
+// Each chip starts tucked behind its row, slides out of it and lands on the bar's new fill end.
+const XP_FROM_X = 170
+const W_FLIGHTS = INPUTS.map((s, i) => {
+  const from = { x: XP_FROM_X + XP_CHIP.w / 2, y: s.y + 42 }
+  const to = { x: W_BAR.x + W_FILL[i + 1] * W_BAR.w, y: W_BAR.y + W_BAR.h / 2 }
+  return flight(s.t + 0.35, to.x - from.x, to.y - from.y)
+})
+const arrive = (i: number) => INPUTS[i].t + 0.35 + 0.75
+const W_COUNT = ['120 / 200', '135 / 200', '160 / 200', '200 / 200', '0 / 250']
+const welcomeLv = swap(W_LEVEL, W_RESET)
 const W = timeline('welcome', 5.2, {
-  ...Object.fromEntries(INPUTS.flatMap((s, i) => {
-    const dy = 204 - (s.y + 32)
-    return [
-      [`in${i}`, { end: 'opacity:1;transform:translateX(0)', stops: slideIn(s.t, 4.7) }],
-      [`orbT${i}`, { end: `transform:translate(110px,${dy}px)`, stops: travel(s.orb, 0.5, 110, dy) }],
-      [`orbO${i}`, { end: 'opacity:0', stops: blip(s.orb, 0.55) }],
-    ]
-  })) as Record<string, Track>,
-  // Each arrival tops the bar up; the third fills it and the level ticks over.
+  ...Object.fromEntries(INPUTS.flatMap((s, i) => [
+    [`in${i}`, { end: 'opacity:1;transform:translateX(0)', stops: slideIn(s.t, W_RESET) }],
+    [`fT${i}`, W_FLIGHTS[i].move],
+    [`fO${i}`, W_FLIGHTS[i].show],
+  ])) as Record<string, Track>,
   xp: {
-    end: fillAt(0.06), origin: '0 50%',
-    stops: [...meter(0.42, [[1.05, 0.62], [1.85, 0.81], [2.65, 1]]), [3.05, fillAt(1), 'quint'], [3.2, fillAt(0.06)], [4.7, fillAt(0.06), 'quint'], [5.1, fillAt(0.42)]],
+    end: fillAt(0.04), origin: '0 50%',
+    stops: [...meter(W_FILL[0], INPUTS.map((_, i) => [arrive(i) - 0.05, W_FILL[i + 1]] as [number, number])),
+      [W_LEVEL + 0.1, fillAt(1), 'quint'], [W_LEVEL + 0.3, fillAt(0.04)], [W_RESET, fillAt(0.04), 'out'], [W_RESET + 0.4, fillAt(W_FILL[0])]],
   },
-  hb: { end: 'transform:scaleX(.78)', origin: '0 50%', stops: [...bar(0.45, [[1.05, 0.6], [2.65, 0.78]]), ...barReset(0.45, 0.78, 4.7)] },
-  sb: { end: 'transform:scaleX(.74)', origin: '0 50%', stops: [...bar(0.5, [[1.85, 0.74]]), ...barReset(0.5, 0.74, 4.7)] },
+  ...Object.fromEntries(roll([...INPUTS.map((_, i) => arrive(i)), W_LEVEL + 0.2], W_RESET).map((t, k) => [`n${k}`, t])) as Record<string, Track>,
   lvOld: welcomeLv.old,
   lvNew: welcomeLv.next,
-  chip: { end: 'opacity:1;transform:scale(1)', origin: '50% 50%', stops: appear(3.15, 4.7) },
-  card: { end: 'transform:scale(1)', origin: '50% 50%', stops: pulse(3.05, 1.025) },
-  rays: sparkle(3.05),
+  chip: { end: 'opacity:1;transform:scale(1)', origin: '50% 50%', stops: appear(W_LEVEL + 0.1, W_RESET) },
+  card: { end: 'transform:scale(1)', origin: '50% 50%', stops: pulse(W_LEVEL, 1.025) },
+  rays: sparkle(W_LEVEL),
 })
+export const WELCOME_BEATS = beats('welcome', 5.2, W_RESET, [[0.2, 'You check off'], [1.0, 'Apps sync'], [W_LEVEL, 'You level up']])
 
 export function IlloWelcome() {
   return (
-    <Illo label="A gym check-off, GitHub commits and iPhone steps each send XP into your character card; the bar fills and you level up from 3 to 4." css={W.css} slice>
+    <Illo label="A gym check-off earns 15 XP, GitHub commits 25 and iPhone steps 40. Each flies into your XP bar, which fills from 120 to 200, and you go from level 3 to level 4." css={W.css} slice>
+      <g className={W.c.card}>
+        <Panel x={320} y={95} w={364} h={270} r={32} />
+        <CapsuleMark cx={392} cy={168} w={56} h={90} stroke={4} />
+        <Txt x={464} y={148} size={24} fill="var(--ink-3)">Level</Txt>
+        <Txt x={464} y={204} size={56} weight={700} className={W.c.lvOld}>3</Txt>
+        <Txt x={464} y={204} size={56} weight={700} className={W.c.lvNew}>4</Txt>
+        <Chip x={536} y={124} w={124} h={44} label="Level up" tone="pill" className={W.c.chip} />
+        <Meter {...W_BAR} className={W.c.xp} />
+        <Txt x={352} y={322} size={22} fill="var(--ink-3)">XP</Txt>
+        {W_COUNT.map((n, k) => <Txt key={n} x={652} y={322} size={24} weight={600} end className={W.c[`n${k}`]}>{n}</Txt>)}
+      </g>
+      <Rays cx={392} cy={168} r={50} className={W.c.rays} />
+      {/* Chips sit above the card but under the rows, so each one slides out from behind its row. */}
       {INPUTS.map((s, i) => (
-        <g key={s.title} className={W.c[`in${i}`]}>
-          <Panel x={40} y={s.y} w={210} h={64} r={18} />
-          {s.logo ? <Logo src={s.logo} x={52} y={s.y + 12} size={40} /> : <Art src={s.art!} x={52} y={s.y + 12} size={40} tint="var(--cat-health)" />}
-          <Txt x={104} y={s.y + 29} size={22} weight={600}>{s.title}</Txt>
-          <Txt x={104} y={s.y + 52} size={18} fill="var(--ink-3)">{s.sub}</Txt>
+        <g key={s.title} className={W.c[`fT${i}`]}>
+          <Chip x={XP_FROM_X} y={s.y + 20} {...XP_CHIP} label={s.xp} tone="xp" className={W.c[`fO${i}`]} />
         </g>
       ))}
-      <g className={W.c.card}>
-        <Panel x={290} y={60} w={390} h={330} r={28} />
-        <CapsuleMark cx={346} cy={128} w={46} h={74} stroke={4} />
-        <Txt x={392} y={112} size={22} fill="var(--ink-3)">Level</Txt>
-        <Txt x={392} y={154} size={40} weight={700} className={W.c.lvOld}>3</Txt>
-        <Txt x={392} y={154} size={40} weight={700} className={W.c.lvNew}>4</Txt>
-        <Chip x={530} y={92} w={118} label="Level up" tone="pill" className={W.c.chip} />
-        <Meter x={320} y={196} w={330} h={16} className={W.c.xp} />
-        <Txt x={320} y={240} size={18} weight={600} fill="var(--ink-3)">XP TO NEXT LEVEL</Txt>
-        {AREA_ROW.map((a, i) => {
-          const x = 320 + i * 56
-          const cls = i === 0 ? W.c.hb : i === 2 ? W.c.sb : undefined
-          return (
-            <g key={a.art}>
-              <Art src={a.art} x={x} y={264} size={38} />
-              <rect x={x + 1} y={314} width={36} height={6} rx={3} fill="var(--i-bar)" />
-              <rect x={x + 1} y={314} width={36} height={6} rx={3} fill={a.color} className={cls}
-                style={cls ? undefined : { transform: `scaleX(${a.v})`, transformBox: 'fill-box', transformOrigin: '0 50%' }} />
-            </g>
-          )
-        })}
-      </g>
-      <Rays cx={346} cy={128} r={50} className={W.c.rays} />
       {INPUTS.map((s, i) => (
-        <g key={s.title} className={W.c[`orbO${i}`]}>
-          <g className={W.c[`orbT${i}`]}><Chip x={250} y={s.y + 17} w={64} label="+XP" tone="xp" /></g>
+        <g key={s.title} className={W.c[`in${i}`]}>
+          <Panel x={36} y={s.y} w={250} h={84} r={22} />
+          {s.logo ? <Logo src={s.logo} x={52} y={s.y + 18} size={48} /> : <Art src={s.art!} x={52} y={s.y + 18} size={48} tint="var(--cat-health)" />}
+          <Txt x={116} y={s.y + 38} size={26} weight={600}>{s.title}</Txt>
+          <Txt x={116} y={s.y + 66} size={21} fill="var(--ink-3)">{s.sub}</Txt>
         </g>
       ))}
     </Illo>
@@ -205,6 +225,7 @@ const T = timeline('today', 5.6, {
   tick2: tickIn(3.45),
   stamp: { end: 'opacity:1;transform:scale(1)', origin: '50% 50%', stops: [[3.55, 'opacity:0;transform:scale(1.35)', 'out'], [3.8, 'opacity:1;transform:scale(1)'], [HOLD, 'opacity:1;transform:scale(1)', 'quint'], [HOLD + 0.3, 'opacity:0;transform:scale(1)']] },
 })
+export const TODAY_BEATS = beats('today', 5.6, HOLD, [[0.45, 'Tick what’s due'], [1.15, 'Each pays XP'], [2.45, 'Quest clears']])
 
 export function IlloToday() {
   const y = QUEST_Y
@@ -228,7 +249,7 @@ export function IlloToday() {
       <rect x={68} y={y + 4} width={584} height={116} rx={22} fill="var(--i-pill-fill)" />
       <Art src="/routines/walk.png" x={84} y={y + 26} size={72} tint="var(--pill)" />
       <Txt x={176} y={y + 50} size={32} weight={600}>Walk 8,000</Txt>
-      <Mono x={396} y={y + 48} fill="var(--pill)">[SYSTEM]</Mono>
+      <Mono x={384} y={y + 47} size={22} fill="var(--pill)">[SYSTEM]</Mono>
       <Meter x={176} y={y + 70} w={290} h={14} className={T.c.fill} />
       {(['2,800', '5,600', '8,214'] as const).map((n, i) => (
         <Txt key={n} x={566} y={y + 87} size={26} weight={600} end className={T.c[`c${i}`]}>{n}</Txt>
@@ -239,10 +260,11 @@ export function IlloToday() {
         <rect x={588} y={y + 38} width={48} height={48} rx={14} fill="var(--surface)" />
         <Smartphone x={599} y={y + 49} width={26} height={26} color="var(--pill)" strokeWidth={2} />
       </g>
-      <g transform={`rotate(-6 476 ${y + 36})`}>
+      {/* The stamp lands on the [SYSTEM] tag, clear of the meter and the count. */}
+      <g transform={`rotate(-6 466 ${y + 30})`}>
         <g className={T.c.stamp}>
-          <rect x={388} y={y + 10} width={176} height={52} rx={12} fill="var(--i-good-fill)" stroke="var(--good)" strokeWidth={4} />
-          <text x={476} y={y + 45} fontSize={24} fontWeight={700} letterSpacing={4} textAnchor="middle" fill="var(--good)" fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace">CLEARED</text>
+          <rect x={378} y={y + 4} width={176} height={52} rx={12} fill="var(--i-good-fill)" stroke="var(--good)" strokeWidth={4} />
+          <text x={466} y={y + 39} fontSize={24} fontWeight={700} letterSpacing={4} textAnchor="middle" fill="var(--good)" fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace">CLEARED</text>
         </g>
       </g>
       <Cursor move={T.c.move} press={T.c.press} />
@@ -250,27 +272,39 @@ export function IlloToday() {
   )
 }
 
-// ── 2 · ⌘K: two keys, two words, Enter, and something new has its own tracker ───────────────────────
+// ── 2 · ⌘K: the keys open the palette, two words and Enter, and something new has its own tracker ─────
+// Cause first: the page shows only the trackers and two big keys. Pressing them opens the palette over a
+// light scrim; ReLife reads the words back; Enter closes it and the new tracker drops into the empty place.
 const TYPED = 'coffee 2'
 const LOG_HOLD = 4.8
-const keyDown = (t: number): Stop[] => [[t, 'transform:translateY(0)', 'out'], [t + 0.08, 'transform:translateY(5px)'], [0.7, 'transform:translateY(5px)', 'out'], [0.9, 'transform:translateY(0)']]
+const OPEN = 0.8
+const CLOSE = 2.8
+const keyPress = (t: number): Stop[] => [[t, 'transform:translateY(0)', 'out'], [t + 0.08, 'transform:translateY(6px)'], [OPEN - 0.05, 'transform:translateY(6px)', 'out'], [OPEN + 0.15, 'transform:translateY(0)']]
 const TILE_IN = 'opacity:1;transform:translateY(0) scale(1)'
+const PAL_IN = 'opacity:1;transform:scale(1)'
 const K = timeline('log', 5.4, {
-  k1: { end: 'transform:translateY(0)', stops: keyDown(0.25) },
-  k2: { end: 'transform:translateY(0)', stops: keyDown(0.42) },
-  ring: { end: 'opacity:1', stops: [[0.75, 'opacity:0', 'out'], [1.0, 'opacity:1'], [LOG_HOLD, 'opacity:1', 'quint'], [LOG_HOLD + 0.3, 'opacity:0']] },
-  ph: { end: 'opacity:0', stops: [[1.0, 'opacity:1'], [1.02, 'opacity:0'], [5.2, 'opacity:0'], [5.25, 'opacity:1']] },
+  k1: { end: 'transform:translateY(0)', stops: keyPress(0.3) },
+  k2: { end: 'transform:translateY(0)', stops: keyPress(0.46) },
+  keys: { end: 'opacity:0', origin: '50% 50%', stops: [[OPEN, PAL_IN, 'quint'], [OPEN + 0.15, 'opacity:0;transform:scale(.96)'], [LOG_HOLD + 0.2, 'opacity:0;transform:scale(.96)', 'out'], [LOG_HOLD + 0.5, PAL_IN]] },
+  scrim: { end: 'opacity:0', stops: [[OPEN, 'opacity:0', 'out'], [OPEN + 0.2, 'opacity:1'], [CLOSE, 'opacity:1', 'quint'], [CLOSE + 0.2, 'opacity:0']] },
+  // The palette opens from its top edge, like the real one under the search field, and closes faster than it opened.
+  pal: { end: 'opacity:0', origin: '50% 0%', stops: [[OPEN, 'opacity:0;transform:scale(.96)', 'out'], [OPEN + 0.2, PAL_IN], [CLOSE, PAL_IN, 'quint'], [CLOSE + 0.15, 'opacity:0;transform:scale(.98)']] },
+  ph: { end: 'opacity:0', stops: [[1.05, 'opacity:1'], [1.07, 'opacity:0'], [5.0, 'opacity:0'], [5.02, 'opacity:1']] },
   ...Object.fromEntries([...TYPED].map((_, i) => [`ch${i}`, {
-    end: 'fill-opacity:1', stops: [[1.05 + i * 0.09, 'fill-opacity:0'], [1.06 + i * 0.09, 'fill-opacity:1'], [5.1, 'fill-opacity:1'], [5.12, 'fill-opacity:0']],
+    end: 'fill-opacity:1', stops: [[1.1 + i * 0.09, 'fill-opacity:0'], [1.11 + i * 0.09, 'fill-opacity:1'], [5.0, 'fill-opacity:1'], [5.02, 'fill-opacity:0']],
   }])) as Record<string, Track>,
+  hint: { end: 'opacity:0', stops: [[1.95, 'opacity:1', 'quint'], [2.1, 'opacity:0'], [5.0, 'opacity:0'], [5.02, 'opacity:1']] },
   // ReLife reads the two words back before you commit.
-  sugg: { end: SHOW, stops: [[1.95, 'opacity:0;transform:translateY(10px)', 'out'], [2.25, SHOW], [LOG_HOLD, SHOW, 'quint'], [LOG_HOLD + 0.3, 'opacity:0;transform:translateY(0)']] },
-  enter: { end: 'transform:scale(1)', origin: '50% 50%', stops: [[2.55, 'transform:scale(1)', 'out'], [2.65, 'transform:scale(.88)', 'out'], [2.9, 'transform:scale(1)']] },
+  sugg: { end: 'opacity:0', stops: [[1.95, 'opacity:0;transform:translateY(10px)', 'out'], [2.25, SHOW], [5.0, SHOW], [5.02, 'opacity:0;transform:translateY(10px)']] },
+  enter: { end: 'transform:scale(1)', origin: '50% 50%', stops: [[2.5, 'transform:scale(1)', 'out'], [2.6, 'transform:scale(.86)', 'out'], [2.85, 'transform:scale(1)']] },
   // The new tracker takes the empty place beside the ones you already have.
-  slot: { end: 'opacity:0', stops: [[2.8, 'opacity:1', 'quint'], [2.95, 'opacity:0'], [LOG_HOLD + 0.3, 'opacity:0', 'quint'], [LOG_HOLD + 0.55, 'opacity:1']] },
-  tile: { end: TILE_IN, origin: '50% 50%', stops: [[2.8, 'opacity:0;transform:translateY(16px) scale(.94)', 'out'], [3.15, TILE_IN], [LOG_HOLD, TILE_IN, 'quint'], [LOG_HOLD + 0.3, 'opacity:0;transform:translateY(0) scale(1)']] },
-  isNew: { end: 'opacity:1;transform:scale(1)', origin: '50% 50%', stops: appear(3.25, LOG_HOLD) },
+  slot: { end: 'opacity:0', stops: [[CLOSE + 0.05, 'opacity:1', 'quint'], [CLOSE + 0.2, 'opacity:0'], [LOG_HOLD + 0.3, 'opacity:0', 'quint'], [LOG_HOLD + 0.55, 'opacity:1']] },
+  tile: { end: TILE_IN, origin: '50% 50%', stops: [[CLOSE + 0.05, 'opacity:0;transform:translateY(16px) scale(.94)', 'out'], [CLOSE + 0.45, TILE_IN], [LOG_HOLD, TILE_IN, 'quint'], [LOG_HOLD + 0.3, 'opacity:0;transform:translateY(0) scale(1)']] },
+  isNew: { end: 'opacity:1;transform:scale(1)', origin: '50% 50%', stops: appear(CLOSE + 0.5, LOG_HOLD) },
+  // The app's own confirmation, in the place the keys left: thing first, then what happened.
+  toast: { end: SHOW, stops: [[CLOSE + 0.1, 'opacity:0;transform:translateY(-12px)', 'out'], [CLOSE + 0.45, SHOW], [LOG_HOLD, SHOW, 'quint'], [LOG_HOLD + 0.2, 'opacity:0;transform:translateY(0)']] },
 })
+export const LOG_BEATS = beats('log', 5.4, LOG_HOLD, [[0.3, 'Press ⌘K'], [1.05, 'Type “coffee 2”'], [2.5, 'New tracker']])
 
 const TRACKERS = [
   { x: 60, name: 'Water', value: '1.25 L', art: '/routines/water.png', tint: 'var(--pill)' },
@@ -287,13 +321,15 @@ function Tracker({ x, name, value, art, tint }: { x: number; name: string; value
   )
 }
 
-function Key({ x, y, label, className }: { x: number; y: number; label: string; className?: string }) {
+/** A keycap: a darker base under a face that dips when pressed. */
+function Key({ x, y, size = 48, label, className }: { x: number; y: number; size?: number; label: string; className?: string }) {
+  const r = size * 0.27
   return (
     <g>
-      <rect x={x} y={y + 5} width={48} height={48} rx={13} fill="color-mix(in oklch, var(--ink) 16%, var(--surface-2))" />
+      <rect x={x} y={y + size * 0.1} width={size} height={size} rx={r} fill="color-mix(in oklch, var(--ink) 16%, var(--surface-2))" />
       <g className={className}>
-        <rect x={x} y={y} width={48} height={48} rx={13} fill="var(--surface)" stroke="var(--i-line)" strokeWidth={1.5} />
-        <Txt x={x + 24} y={y + 33} size={26} weight={500} fill="var(--ink-2)" middle>{label}</Txt>
+        <rect x={x} y={y} width={size} height={size} rx={r} fill="var(--surface)" stroke="var(--i-line)" strokeWidth={1.5} />
+        <Txt x={x + size / 2} y={y + size * 0.68} size={size * 0.52} weight={500} fill="var(--ink-2)" middle>{label}</Txt>
       </g>
     </g>
   )
@@ -301,44 +337,66 @@ function Key({ x, y, label, className }: { x: number; y: number; label: string; 
 
 export function IlloLog() {
   return (
-    <Illo label="Press ⌘K and type coffee 2. ReLife reads it back as 2 cups of coffee, and Enter adds a new Coffee tracker beside Water and Steps, showing 2 cups." css={K.css}>
-      <Panel x={60} y={40} w={600} h={96} r={28} />
-      <rect x={60} y={40} width={600} height={96} rx={28} stroke="var(--pill)" strokeWidth={4} className={K.c.ring} />
-      <Icon icon={Search} x={88} y={72} size={32} color="var(--ink-3)" />
-      <Txt x={136} y={100} size={34} fill="var(--ink-3)" className={K.c.ph}>Log or search</Txt>
-      <text x={136} y={100} fontSize={34} fontWeight={500} fill="var(--ink)">
-        {[...TYPED].map((ch, i) => <tspan key={i} className={K.c[`ch${i}`]}>{ch === ' ' ? ' ' : ch}</tspan>)}
-      </text>
-      <Key x={540} y={62} label="⌘" className={K.c.k1} />
-      <Key x={594} y={62} label="K" className={K.c.k2} />
-
-      <g className={K.c.sugg}>
-        <rect x={60} y={160} width={600} height={104} rx={26} fill="var(--i-pill-fill)" />
-        <Art src="/hobbies/coffee.png" x={84} y={180} size={64} />
-        <Txt x={166} y={208} size={32} weight={600}>Coffee</Txt>
-        <Txt x={166} y={242} size={24} fill="var(--pill)">2 cups · new tracker</Txt>
-        <g className={K.c.enter}>
-          <rect x={586} y={188} width={48} height={48} rx={13} fill="var(--surface)" stroke="var(--i-line)" strokeWidth={1.5} />
-          <Txt x={610} y={221} size={26} fill="var(--ink-2)" middle>↵</Txt>
-        </g>
+    <Illo label="Press ⌘K and the palette opens. Type coffee 2: ReLife reads it back as 2 cups of coffee, a new tracker. Enter closes it, a toast confirms Coffee +2, and a Coffee tracker showing 2 cups joins Water and Steps." css={K.css}>
+      {/* The page: two big keys over the trackers you already have. */}
+      <g className={K.c.keys}>
+        <Key x={258} y={110} size={96} label="⌘" className={K.c.k1} />
+        <Key x={366} y={110} size={96} label="K" className={K.c.k2} />
       </g>
-
+      <g className={K.c.toast}>
+        <Panel x={196} y={116} w={328} h={92} r={26} />
+        <Art src="/hobbies/coffee.png" x={216} y={136} size={52} />
+        <Txt x={284} y={158} size={28} weight={600}>Coffee +2</Txt>
+        <Txt x={284} y={190} size={22} fill="var(--ink-3)">2 cups today</Txt>
+        <circle cx={490} cy={162} r={16} fill="var(--good)" />
+        <Check x={480} y={152} width={20} height={20} color="white" strokeWidth={3} />
+      </g>
       {TRACKERS.map((k) => <Tracker key={k.name} {...k} />)}
       <rect x={472} y={296} width={188} height={136} rx={26} stroke="var(--i-line)" strokeWidth={3} strokeDasharray="10 10" className={K.c.slot} />
       <g className={K.c.tile}>
         <Tracker x={472} name="Coffee" value="2 cups" art="/hobbies/coffee.png" tint="var(--cat-wealth)" />
       </g>
       <Chip x={566} y={278} w={82} h={40} label="New" tone="pill" className={K.c.isNew} />
+
+      {/* The palette, over a light scrim. */}
+      <rect width={720} height={460} fill="color-mix(in oklch, var(--ink) 10%, transparent)" className={K.c.scrim} />
+      <g className={K.c.pal}>
+        <Panel x={60} y={40} w={600} h={236} r={28} />
+        <Icon icon={Search} x={88} y={72} size={32} color="var(--ink-3)" />
+        <Txt x={136} y={100} size={34} fill="var(--ink-3)" className={K.c.ph}>Log or search</Txt>
+        <text x={136} y={100} fontSize={34} fontWeight={500} fill="var(--ink)">
+          {[...TYPED].map((ch, i) => <tspan key={i} className={K.c[`ch${i}`]}>{ch === ' ' ? '\u00a0' : ch}</tspan>)}
+        </text>
+        <line x1={60} x2={660} y1={136} y2={136} stroke="var(--i-line)" strokeWidth={2} />
+        <Txt x={360} y={214} size={24} fill="var(--ink-3)" middle className={K.c.hint}>Type what you did</Txt>
+        <g className={K.c.sugg}>
+          <rect x={74} y={150} width={572} height={112} rx={20} fill="var(--i-pill-fill)" />
+          <Art src="/hobbies/coffee.png" x={94} y={174} size={64} />
+          <Txt x={176} y={204} size={32} weight={600}>Coffee</Txt>
+          <Txt x={176} y={238} size={24} fill="var(--pill)">2 cups · new tracker</Txt>
+          <g className={K.c.enter}>
+            <rect x={574} y={182} width={48} height={48} rx={13} fill="var(--surface)" stroke="var(--i-line)" strokeWidth={1.5} />
+            <Txt x={598} y={215} size={26} fill="var(--ink-2)" middle>↵</Txt>
+          </g>
+        </g>
+      </g>
     </Illo>
   )
 }
 
 // ── 3 · Progress: a check-off, your streak and a chest each feed the XP bar until you level up ────────
 const TOKENS = [
-  { cx: 145, title: 'Check-off', sub: '+9 XP', ink: 'var(--cat-wealth)', lit: 0.4, orb: 0.8, dx: 306, label: '+9', tone: 'xp' as const },
-  { cx: 360, title: 'Streak', sub: '×1.3', ink: 'var(--pill)', lit: 1.5, orb: 1.9, dx: 121, label: '×1.3', tone: 'pill' as const },
-  { cx: 575, title: 'Chest', sub: '+50 XP', ink: 'var(--cat-wealth)', lit: 2.6, orb: 3.15, dx: 65, label: '+50', tone: 'xp' as const },
+  // Real numbers: 58 of 120 XP, +9, +3, +50 makes 120. Each chip lands on the bar's new fill end.
+  { cx: 145, title: 'Check-off', sub: '+9 XP', ink: 'var(--cat-wealth)', lit: 0.4, orb: 0.8, label: '+9', tone: 'xp' as const },
+  // The streak multiplies the check-off (9 × 1.3 ≈ 12), so what it adds to the bar is the extra 3.
+  { cx: 360, title: 'Streak', sub: '×1.3 XP', ink: 'var(--pill)', lit: 1.5, orb: 1.9, label: '+3', tone: 'pill' as const },
+  { cx: 575, title: 'Chest', sub: '+50 XP', ink: 'var(--cat-wealth)', lit: 2.6, orb: 3.15, label: '+50', tone: 'xp' as const },
 ]
+const P_BAR = { x: 262, y: 100, w: 378, h: 24 }
+const P_FILL = [58 / 120, 67 / 120, 70 / 120, 1]
+const P_COUNT = ['58 / 120', '67 / 120', '70 / 120', '120 / 120', '0 / 140']
+const P_CHIP_Y = 212
+const pTarget = (i: number) => ({ dx: P_BAR.x + P_FILL[i + 1] * P_BAR.w - TOKENS[i].cx, dy: P_BAR.y + P_BAR.h / 2 - (P_CHIP_Y + 20) })
 const progLv = swap(3.95, HOLD)
 const LID_OPEN = 'transform:rotate(-24deg) translateY(-6px)'
 const P = timeline('progress', 5.6, {
@@ -346,7 +404,7 @@ const P = timeline('progress', 5.6, {
     [`lit${i}`, fade(k.lit, 0.45, 1)],
     [`pop${i}`, { end: 'transform:scale(1)', origin: '50% 50%', stops: pulse(k.lit, 1.05) }],
     // What it is worth flies up into the bar.
-    [`orbT${i}`, { end: at(k.dx, -98), stops: travel(k.orb, 0.5, k.dx, -98) }],
+    [`orbT${i}`, { end: at(pTarget(i).dx, pTarget(i).dy), stops: travel(k.orb, 0.5, pTarget(i).dx, pTarget(i).dy) }],
     [`orbO${i}`, { end: 'opacity:0', stops: blip(k.orb, 0.55) }],
   ])) as Record<string, Track>,
   did: tickIn(0.45),
@@ -354,27 +412,31 @@ const P = timeline('progress', 5.6, {
   chestRays: sparkle(2.95),
   // Each arrival tops the bar up; the chest fills it and the level ticks over.
   xp: {
-    end: fillAt(0.06), origin: '0 50%',
-    stops: [...meter(0.42, [[1.25, 0.5], [2.35, 0.58], [3.6, 1]]), [3.95, fillAt(1), 'quint'], [4.1, fillAt(0.06)], [HOLD, fillAt(0.06), 'quint'], [HOLD + 0.4, fillAt(0.42)]],
+    end: fillAt(0.04), origin: '0 50%',
+    stops: [...meter(P_FILL[0], TOKENS.map((k, i) => [k.orb + 0.45, P_FILL[i + 1]] as [number, number])), [3.95, fillAt(1), 'quint'], [4.1, fillAt(0.04)], [HOLD, fillAt(0.04), 'out'], [HOLD + 0.4, fillAt(P_FILL[0])]],
   },
+  ...Object.fromEntries(roll([...TOKENS.map((k) => k.orb + 0.5), 4.0], HOLD).map((t, k) => [`n${k}`, t])) as Record<string, Track>,
   lvOld: progLv.old,
   lvNew: progLv.next,
   rays: sparkle(3.95),
   card: { end: 'transform:scale(1)', origin: '50% 50%', stops: pulse(3.95, 1.02) },
   up: { end: 'opacity:1;transform:scale(1)', origin: '50% 50%', stops: appear(4.05, HOLD) },
 })
+export const PROGRESS_BEATS = beats('progress', 5.6, HOLD, [[0.4, 'Check off'], [1.5, 'Streak'], [2.6, 'Chest'], [3.95, 'Level up']])
 
 export function IlloProgress() {
   return (
-    <Illo label="A check-off earns 9 XP, your streak multiplies it by 1.3, and an opened chest adds 50 more. Each one flies into the XP bar, which fills, and you go from level 4 to level 5." css={P.css}>
+    <Illo label="A check-off earns 9 XP, your streak adds 3 more and an opened chest 50. Each flies into the XP bar, which fills from 58 to 120, and you go from level 4 to level 5." css={P.css}>
       <g className={P.c.card}>
         <Panel x={50} y={28} w={620} h={176} r={28} />
         <CapsuleMark cx={112} cy={116} w={50} h={80} stroke={4} />
         <Txt x={166} y={96} size={24} fill="var(--ink-3)">Level</Txt>
         <Txt x={166} y={156} size={60} weight={700} className={P.c.lvOld}>4</Txt>
         <Txt x={166} y={156} size={60} weight={700} className={P.c.lvNew}>5</Txt>
-        <Meter x={262} y={124} w={378} h={24} className={P.c.xp} />
-        <Chip x={508} y={60} w={132} h={44} label="Level up" tone="pill" className={P.c.up} />
+        <Meter {...P_BAR} className={P.c.xp} />
+        <Txt x={P_BAR.x} y={164} size={22} fill="var(--ink-3)">XP</Txt>
+        {P_COUNT.map((n, k) => <Txt key={n} x={P_BAR.x + P_BAR.w} y={164} size={24} weight={600} end className={P.c[`n${k}`]}>{n}</Txt>)}
+        <Chip x={P_BAR.x + P_BAR.w - 132} y={44} w={132} h={44} label="Level up" tone="pill" className={P.c.up} />
       </g>
       <Rays cx={112} cy={116} r={58} className={P.c.rays} color="var(--pill)" />
 
@@ -393,7 +455,7 @@ export function IlloProgress() {
       <Rays cx={575} cy={282} r={56} className={P.c.chestRays} />
       {TOKENS.map((k, i) => (
         <g key={k.title} className={P.c[`orbO${i}`]}>
-          <g className={P.c[`orbT${i}`]}><Chip x={k.cx - 42} y={212} w={84} h={40} label={k.label} tone={k.tone} /></g>
+          <g className={P.c[`orbT${i}`]}><Chip x={k.cx - 42} y={P_CHIP_Y} w={84} h={40} label={k.label} tone={k.tone} /></g>
         </g>
       ))}
     </Illo>
@@ -404,11 +466,12 @@ export function IlloProgress() {
 const SIX = ['health', 'mind', 'skills', 'wealth', 'hobbies', 'relationships'].map((a, i) => ({ color: `var(--cat-${a})`, cx: 95 + i * 106 }))
 const CHART_X = (i: number) => 372 + i * 44
 const BARS = [70, 110, 60, 140, 96, 150, 120]
-// Three pages, one after another. `at` = which capsule; `in`/`out` = when its page shows.
+// Three pages, one after another. `at` = which capsule; `in`/`out` = when its page shows. Each page starts to
+// leave as the next arrives, so they cross-fade and the card is never empty; Health comes back as Wealth leaves.
 const PAGES = [
-  { at: 0, in: 0, out: 1.5, name: 'Health', lv: 'Lv 20', value: '7.2h', sub: 'Sleep, 7-day average', color: 'var(--cat-health)', art: '/routines/heart.png', line: [356, 336, 346, 312, 318, 290, 272] },
-  { at: 2, in: 1.8, out: 3.3, name: 'Skills', lv: 'Lv 16', value: '9', sub: 'Commits this week', color: 'var(--cat-skills)', art: '/routines/learn.png' },
-  { at: 3, in: 3.6, out: 5.05, name: 'Wealth', lv: 'Lv 7', value: '₹2,073', sub: 'Spent today', color: 'var(--cat-wealth)', art: '/routines/money.png', line: [282, 300, 276, 312, 334, 322, 356] },
+  { at: 0, in: 0, out: 1.75, name: 'Health', lv: 'Lv 20', value: '7.2h', sub: 'Sleep, 7-day average', color: 'var(--cat-health)', art: '/routines/heart.png', line: [356, 336, 346, 312, 318, 290, 272] },
+  { at: 2, in: 1.8, out: 3.55, name: 'Skills', lv: 'Lv 16', value: '9', sub: 'Commits this week', color: 'var(--cat-skills)', art: '/routines/learn.png' },
+  { at: 3, in: 3.6, out: 5.15, name: 'Wealth', lv: 'Lv 7', value: '₹2,073', sub: 'Spent today', color: 'var(--cat-wealth)', art: '/routines/money.png', line: [282, 300, 276, 312, 334, 322, 356] },
 ]
 const A = timeline('areas', 5.4, {
   // The highlight glides from capsule to capsule (on-screen movement, so ease-in-out) and is home again by the loop.
@@ -420,7 +483,13 @@ const A = timeline('areas', 5.4, {
   cap2: { end: 'transform:scale(1)', origin: '50% 50%', stops: [[1.75, 'transform:scale(1)', 'out'], [2.05, 'transform:scale(1.12)'], [3.3, 'transform:scale(1.12)', 'quint'], [3.6, 'transform:scale(1)']] },
   cap3: { end: 'transform:scale(1)', origin: '50% 50%', stops: [[3.55, 'transform:scale(1)', 'out'], [3.85, 'transform:scale(1.12)'], [5.0, 'transform:scale(1.12)', 'quint'], [5.3, 'transform:scale(1)']] },
   ...Object.fromEntries(PAGES.flatMap((p, i) => [
-    [`page${i}`, { end: i ? 'opacity:0' : SHOW, stops: [[p.in, 'opacity:0;transform:translateY(10px)', 'out'], [p.in + 0.3, SHOW], [p.out, SHOW, 'quint'], [p.out + 0.2, 'opacity:0;transform:translateY(0)']] }],
+    [`page${i}`, {
+      end: i ? 'opacity:0' : SHOW,
+      stops: i
+        ? [[p.in, 'opacity:0;transform:translateY(10px)', 'out'], [p.in + 0.3, SHOW], [p.out, SHOW, 'quint'], [p.out + 0.2, 'opacity:0;transform:translateY(0)']]
+        // The first page is already up when the loop starts, and rises back in as the last one leaves.
+        : [[0, SHOW], [p.out, SHOW, 'quint'], [p.out + 0.2, 'opacity:0;transform:translateY(0)'], [PAGES[2].out, 'opacity:0;transform:translateY(10px)', 'out'], [5.4, SHOW]],
+    }],
     // Its trend draws itself in, in the area's colour.
     [`line${i}`, { end: i ? 'opacity:0;stroke-dashoffset:1' : 'opacity:1;stroke-dashoffset:0', stops: [[p.in + 0.1, 'opacity:1;stroke-dashoffset:1', 'out'], [p.in + 0.8, 'opacity:1;stroke-dashoffset:0'], [p.out, 'opacity:1;stroke-dashoffset:0', 'quint'], [p.out + 0.2, 'opacity:0;stroke-dashoffset:0'], [p.out + 0.25, 'opacity:0;stroke-dashoffset:1']] }],
     [`wash${i}`, { end: i ? 'opacity:0' : 'opacity:1', stops: [[p.in + 0.5, 'opacity:0', 'out'], [p.in + 0.9, 'opacity:1'], [p.out, 'opacity:1', 'quint'], [p.out + 0.2, 'opacity:0']] }],
@@ -431,6 +500,8 @@ const A = timeline('areas', 5.4, {
     return [`bar${i}`, { end: 'opacity:0', origin: '50% 100%', stops: [[t, 'opacity:1;transform:scaleY(0)', 'out'], [t + 0.35, 'opacity:1;transform:scaleY(1)'], [out, 'opacity:1;transform:scaleY(1)', 'quint'], [out + 0.2, 'opacity:0;transform:scaleY(1)'], [out + 0.25, 'opacity:0;transform:scaleY(0)']] }]
   })) as Record<string, Track>,
 })
+
+export const AREAS_BEATS = beats('areas', 5.4, 5.05, [[0, 'Health'], [1.8, 'Skills'], [3.6, 'Wealth']])
 
 export function IlloAreas() {
   return (
@@ -493,6 +564,7 @@ const C = timeline('connect', 5.6, {
   xpA: { end: 'opacity:0', origin: '50% 50%', stops: [[SOURCES[0].t + 0.3, 'opacity:0;transform:scale(.92)', 'out'], [SOURCES[0].t + 0.55, 'opacity:1;transform:scale(1)'], [SOURCES[2].t + 0.3, 'opacity:1;transform:scale(1)', 'quint'], [SOURCES[2].t + 0.45, 'opacity:0;transform:scale(1)']] },
   xpB: { end: 'opacity:1;transform:scale(1)', origin: '50% 50%', stops: appear(SOURCES[2].t + 0.3, HOLD) },
 })
+export const CONNECT_BEATS = beats('connect', 5.6, HOLD, SOURCES.map((s) => [s.t, `${s.name} syncs`] as [number, string]))
 
 export function IlloConnect() {
   const { x, w, y } = DAY
@@ -538,9 +610,14 @@ export function IlloConnect() {
   )
 }
 
-// ── 6 · Reminders: a nudge arrives, Done is tapped there, it counts here; then the night stays quiet ──
+// ── 6 · Reminders: a nudge arrives, Done is tapped there, it counts here; at night a nudge stays quiet ─────
+// Two halves of one promise. Top: the tap on Telegram flies "+1" into Today. Bottom: night falls (sun to moon,
+// 21:00 to 23:30) and the next nudge arrives muted, its bell crossed out, because it is inside quiet hours.
 const SEGMENTS = 8
 const remindCount = swap(2.1, HOLD)
+const NIGHT = 3.3
+const clock = swap(NIGHT, HOLD)
+const plus = flight(1.4, 426, -12)
 const R = timeline('remind', 5.6, {
   // The nudge drops in from the top, like a notification.
   nudge: { end: SHOW, stops: [[0.3, 'opacity:0;transform:translateY(-18px)', 'out'], [0.65, SHOW], [HOLD, SHOW, 'quint'], [HOLD + 0.3, 'opacity:0;transform:translateY(0)']] },
@@ -548,22 +625,28 @@ const R = timeline('remind', 5.6, {
   done: { end: 'transform:scale(1)', origin: '50% 50%', stops: [[1.25, 'transform:scale(1)', 'out'], [1.35, 'transform:scale(.95)', 'out'], [1.55, 'transform:scale(1)']] },
   btns: { end: 'opacity:0', stops: [[1.5, 'opacity:1', 'quint'], [1.65, 'opacity:0'], [HOLD + 0.35, 'opacity:0'], [HOLD + 0.4, 'opacity:1']] },
   logged: { end: 'opacity:1;transform:scale(1)', origin: '50% 50%', stops: [[1.55, 'opacity:0;transform:scale(.96)', 'out'], [1.8, 'opacity:1;transform:scale(1)'], [HOLD + 0.35, 'opacity:1;transform:scale(1)'], [HOLD + 0.4, 'opacity:0;transform:scale(1)']] },
-  // The tap crosses over to ReLife.
-  dotT: { end: at(426, -91), stops: travel(1.6, 0.5, 426, -91) },
-  dotO: { end: 'opacity:0', stops: blip(1.6, 0.55) },
+  // The tap crosses over to ReLife as "+1" and lands on the count.
+  plusT: plus.move,
+  plusO: plus.show,
   seg: { end: 'transform:scaleX(1)', origin: '0 50%', stops: [[2.1, 'transform:scaleX(0)', 'out'], [2.4, 'transform:scaleX(1)'], [HOLD, 'transform:scaleX(1)', 'quint'], [HOLD + 0.3, 'transform:scaleX(0)']] },
   cOld: remindCount.old,
   cNew: remindCount.next,
   tile: { end: 'transform:scale(1)', origin: '50% 50%', stops: pulse(2.1, 1.03) },
-  // Night: the quiet hours fill in on the day and the bell is crossed out.
-  night: { end: 'transform:scaleX(1)', origin: '0 50%', stops: [[3.3, 'transform:scaleX(0)', 'out'], [3.8, 'transform:scaleX(1)'], [HOLD, 'transform:scaleX(1)'], [HOLD + 0.35, 'transform:scaleX(1)'], [HOLD + 0.4, 'transform:scaleX(0)']] },
-  bell: { end: ICON_OUT, origin: '50% 50%', stops: [[3.8, ICON_END, 'out'], [4.0, ICON_OUT], [HOLD + 0.35, ICON_OUT], [HOLD + 0.4, ICON_END]] },
-  bellOff: { end: ICON_END, origin: '50% 50%', stops: [...iconIn(3.8), [HOLD + 0.35, ICON_END], [HOLD + 0.4, ICON_OUT]] },
+  // Night falls on the bottom card.
+  night: { end: 'opacity:1', stops: [[NIGHT, 'opacity:0', 'out'], [NIGHT + 0.4, 'opacity:1'], [HOLD, 'opacity:1', 'quint'], [HOLD + 0.3, 'opacity:0']] },
+  sun: { end: ICON_OUT, origin: '50% 50%', stops: [[NIGHT, ICON_END, 'out'], [NIGHT + 0.2, ICON_OUT], [HOLD + 0.1, ICON_OUT, 'out'], [HOLD + 0.35, ICON_END]] },
+  moon: tickIn(NIGHT + 0.1),
+  tOld: clock.old,
+  tNew: clock.next,
+  // The late nudge slides in, then goes quiet: it dims and its bell is crossed out.
+  late: { end: 'opacity:.5;transform:translateX(0)', stops: [[3.75, 'opacity:0;transform:translateX(-14px)', 'out'], [4.05, 'opacity:1;transform:translateX(0)'], [4.25, 'opacity:1;transform:translateX(0)', 'quint'], [4.5, 'opacity:.5;transform:translateX(0)'], [HOLD, 'opacity:.5;transform:translateX(0)', 'quint'], [HOLD + 0.3, 'opacity:0;transform:translateX(0)']] },
+  mute: tickIn(4.3),
 })
+export const REMIND_BEATS = beats('remind', 5.6, HOLD, [[0.3, 'Nudge'], [1.2, 'Tap Done'], [2.1, 'It counts'], [NIGHT, 'Quiet hours']])
 
 export function IlloRemind() {
   return (
-    <Illo label="A Telegram reminder says Water time. Tapping Done there counts it in ReLife: water goes from 2 to 3 of 8 glasses. Then quiet hours, 23:00 to 07:00, fill in and the bell is crossed out." css={R.css}>
+    <Illo label="A Telegram reminder says Water time. Tapping Done there counts it in ReLife: water goes from 2 to 3 of 8 glasses. Later, at 23:30, inside quiet hours from 23:00 to 07:00, the next nudge arrives muted." css={R.css}>
       <g className={R.c.nudge}>
         <Panel x={40} y={36} w={410} h={236} r={30} />
         <image href="/connectors/telegram.svg" x={64} y={58} width={40} height={40} />
@@ -602,36 +685,41 @@ export function IlloRemind() {
           </g>
         ))}
       </g>
-      <g className={R.c.dotO}><g className={R.c.dotT}><circle cx={152} cy={225} r={10} fill="var(--pill)" /></g></g>
+      <g className={R.c.plusT}><Chip x={120} y={205} w={64} h={40} label="+1" tone="pill" className={R.c.plusO} /></g>
 
+      {/* Evening, then night: quiet hours hold the next nudge. */}
       <g>
         <Panel x={40} y={300} w={640} h={124} r={30} />
-        <Icon icon={Moon} x={68} y={340} size={44} color="var(--cat-mind)" />
-        <Txt x={132} y={356} size={30} weight={600}>Quiet hours</Txt>
-        <Txt x={132} y={390} size={24} fill="var(--ink-3)">23:00 to 07:00</Txt>
-        {/* A day, noon to noon, with the night filled in. */}
-        <rect x={372} y={348} width={216} height={28} rx={14} fill="var(--i-bar)" />
-        <rect x={471} y={348} width={72} height={28} rx={10} fill="var(--cat-mind)" className={R.c.night} />
-        <Icon icon={Bell} x={612} y={344} size={36} color="var(--ink-2)" className={R.c.bell} />
-        <Icon icon={BellOff} x={612} y={344} size={36} color="var(--cat-mind)" className={R.c.bellOff} />
+        <rect x={40} y={300} width={640} height={124} rx={30} fill="color-mix(in oklch, var(--cat-mind) 14%, var(--surface))" className={R.c.night} />
+        <Icon icon={Sun} x={64} y={342} size={40} color="color-mix(in oklch, var(--medal-gold) 80%, var(--ink))" className={R.c.sun} />
+        <Icon icon={Moon} x={64} y={342} size={40} color="var(--cat-mind)" className={R.c.moon} />
+        <Txt x={122} y={356} size={30} weight={700} className={R.c.tOld}>21:00</Txt>
+        <Txt x={122} y={356} size={30} weight={700} className={R.c.tNew}>23:30</Txt>
+        <Txt x={122} y={390} size={22} fill="var(--ink-3)">Quiet 23:00–07:00</Txt>
+        <g className={R.c.late}>
+          <rect x={372} y={326} width={284} height={72} rx={22} fill="var(--surface)" stroke="var(--i-line)" strokeWidth={1.5} />
+          <image href="/connectors/telegram.svg" x={390} y={346} width={32} height={32} />
+          <Txt x={436} y={371} size={24} weight={600} fill="var(--ink-2)">Water time</Txt>
+        </g>
+        <Icon icon={BellOff} x={606} y={346} size={32} color="var(--cat-mind)" className={R.c.mute} />
       </g>
     </Illo>
   )
 }
 
 export const TOUR_ILLOS = [
-  { name: 'Welcome', Illo: IlloWelcome },
-  { name: 'Today', Illo: IlloToday },
-  { name: '⌘K', Illo: IlloLog },
-  { name: 'Progress', Illo: IlloProgress },
-  { name: 'Areas', Illo: IlloAreas },
-  { name: 'Connectors', Illo: IlloConnect },
-  { name: 'Reminders', Illo: IlloRemind },
+  { name: 'Welcome', Illo: IlloWelcome, beats: WELCOME_BEATS },
+  { name: 'Today', Illo: IlloToday, beats: TODAY_BEATS },
+  { name: '⌘K', Illo: IlloLog, beats: LOG_BEATS },
+  { name: 'Progress', Illo: IlloProgress, beats: PROGRESS_BEATS },
+  { name: 'Areas', Illo: IlloAreas, beats: AREAS_BEATS },
+  { name: 'Connectors', Illo: IlloConnect, beats: CONNECT_BEATS },
+  { name: 'Reminders', Illo: IlloRemind, beats: REMIND_BEATS },
 ]
 
 /** Every picture the illustrations load, so the tour can fetch them while the welcome is on screen. */
 export const ILLO_ASSETS = [
-  ...['heart', 'brain', 'learn', 'money', 'art', 'people', 'walk', 'skin', 'water', 'gym'].map((n) => `/routines/${n}.png`),
+  ...['heart', 'learn', 'money', 'walk', 'skin', 'water', 'gym'].map((n) => `/routines/${n}.png`),
   '/hobbies/coffee.png',
   ...['github', 'swiggy', 'telegram'].map((n) => `/connectors/${n}.svg`),
 ]
@@ -641,9 +729,10 @@ export function IlloGallery() {
   return (
     // Same plate as the tour card: 304px wide, 8px inside a radius-20 card, so radius 12.
     <div className="grid grid-cols-[repeat(auto-fill,304px)] gap-6">
-      {TOUR_ILLOS.map(({ name, Illo }) => (
+      {TOUR_ILLOS.map(({ name, Illo, beats: set }) => (
         <figure key={name} className="flex flex-col gap-2">
           <div className="aspect-[720/460] w-[304px] overflow-hidden rounded-md bg-surface-2"><Illo /></div>
+          <Beats set={set} className="px-2" />
           <figcaption className="text-[13px] text-ink-2">{name}</figcaption>
         </figure>
       ))}

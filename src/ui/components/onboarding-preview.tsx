@@ -183,7 +183,8 @@ export function SaveFile({ v, step, done, level, picks, routines, starters }: {
             </ul>
           </Part>
 
-          <Part label="Areas" at={2} step={step} done={done} empty={reached(2) || v.areas.length ? null : 'The parts of life you level up'}>
+          {/* Like every other part, it fills in when its step is reached, so nothing looks chosen before it is. */}
+          <Part label="Areas" at={2} step={step} done={done} empty={reached(2) ? null : 'The parts of life you level up'}>
             <ul className="flex flex-wrap gap-1.5">
               {v.areas.map((c: Category) => {
                 const Icon = AREA_ICON[c]

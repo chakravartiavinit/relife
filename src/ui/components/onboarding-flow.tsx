@@ -195,7 +195,8 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
   return (
     <div className="fixed inset-0 z-[60] grid bg-bg lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
       {/* ── Questions ── */}
-      <div ref={pane} data-onboarding-scroll className="relative flex min-h-0 flex-col overflow-x-hidden overflow-y-auto">
+      {/* The scrollbar's room is kept on every step, so a long step doesn't push the column sideways. */}
+      <div ref={pane} data-onboarding-scroll className="relative flex min-h-0 flex-col overflow-x-hidden overflow-y-auto [scrollbar-gutter:stable]">
         <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-3 bg-bg/85 px-5 pt-[env(safe-area-inset-top)] backdrop-blur-md sm:px-10">
           <Wordmark className="h-6" />
           {!done ? (
@@ -241,7 +242,7 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
             {/* A refused pick shakes the line once. */}
             <motion.p key={nudge} role={error ? 'alert' : undefined} aria-live="polite"
               initial={false} animate={refused ? { x: [0, -5, 5, -3, 3, 0] } : { x: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}
-              className={cn('min-w-0 flex-1 text-[12.5px] leading-[18px] text-pretty tabular-nums', error || refused ? 'font-medium text-bad' : 'text-ink-3')}>
+              className={cn('min-w-0 flex-1 text-[12.5px] leading-[18px] text-pretty tabular-nums', error || refused ? 'font-medium text-bad' : 'text-ink-3 max-sm:flex-none')}>
               {/* On a phone only what's missing shows, so the bar stays one row. */}
               <span className={cn(!(error || refused) && 'max-sm:sr-only')}>{line}</span>
             </motion.p>
@@ -254,7 +255,7 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
               </div>
             ) : (
               <Button variant={quiet ? 'secondary' : 'primary'} size="lg" onClick={next} disabled={pending} aria-disabled={!valid} aria-busy={pending}
-                className="h-10 min-w-[132px] text-[14px] aria-disabled:opacity-50">
+                className={cn('h-10 min-w-[132px] text-[14px] aria-disabled:opacity-50', !(error || refused) && 'max-sm:flex-1')}>
                 {pending ? <><LoaderCircle className="size-4 animate-spin [animation-duration:0.7s]" aria-hidden />Saving…</>
                   : i < LAST ? <>Continue<kbd aria-hidden className="ms-0.5 grid h-5 place-items-center rounded-[5px] bg-white/15 px-1 font-sans text-[11px] max-sm:hidden dark:bg-black/10"><CornerDownLeft className="size-3" strokeWidth={2} /></kbd></>
                   : <>Create my save<ArrowRight className="size-4 rtl:-scale-x-100" strokeWidth={2} /></>}

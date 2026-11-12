@@ -6,6 +6,7 @@ import { ArrowLeft, ArrowRight, Check, X } from 'lucide-react'
 import { Button, buttonClass } from '../button'
 import { cn } from '../../cn'
 import { EASE_OUT, EASE_OUT_STRONG, SPRING_LAYOUT } from '@/ui/beui/lib/ease'
+import { Beats } from './illo-kit'
 import { ILLO_ASSETS, IlloWelcome } from './illos'
 import { TOUR_STEPS, type TourStep } from './steps'
 
@@ -33,6 +34,8 @@ const FOCUS = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visi
 // The step card: 320px wide, with its picture inset 8px. The picture's height is fixed by its shape.
 const CARD_W = 320
 const PLATE_H = 8 + ((CARD_W - 16) * 460) / 720
+/** The beats row under the picture: 12px gap, a 3px track, 6px, one 14px line of text. */
+const BEATS_H = 12 + 3 + 6 + 14
 
 type Rect = { left: number; top: number; width: number; height: number; radius: number }
 /**
@@ -108,7 +111,7 @@ export function Tour() {
   const [wordsRef, wordsH] = useHeight(cardShown, 112)
   const [footRef, footH] = useHeight(cardShown, 68)
   const current = step !== null && step > 0 ? steps[step] ?? null : null
-  const cardH = (current?.Illo ? PLATE_H : 0) + wordsH + footH
+  const cardH = (current?.Illo ? PLATE_H : 0) + (current?.beats ? BEATS_H : 0) + wordsH + footH
 
   const go = (to: number, d: number) => setState({ step: to, dir: d })
   const close = () => {
@@ -246,6 +249,8 @@ export function Tour() {
                 <div aria-hidden className="halftone absolute inset-0 [mask-image:linear-gradient(transparent_55%,black)]" />
                 <IlloWelcome />
               </motion.div>
+              {/* What the picture shows, beat by beat, on the picture's clock (both mount in this render). */}
+              {TOUR_STEPS[0].beats ? <motion.div variants={item}><Beats set={TOUR_STEPS[0].beats} className="mx-2 mt-3" /></motion.div> : null}
               <div className="px-4 pt-6 pb-1 text-center sm:px-6">
                 <motion.h2 variants={item} id="welcome-t" className="font-display text-[24px] leading-[1.2] font-extrabold tracking-[-0.02em] text-balance text-ink">{TOUR_STEPS[0].title}</motion.h2>
                 <motion.p variants={item} id="welcome-d" className="mx-auto mt-2 max-w-[320px] text-[14px] leading-normal text-balance text-ink-2">{TOUR_STEPS[0].body}</motion.p>
@@ -293,6 +298,19 @@ export function Tour() {
                     animate={{ opacity: 1, filter: 'blur(0px)', transition: { duration: 0.3, ease: EASE_OUT_STRONG } }}
                     exit={{ opacity: 0, filter: 'blur(4px)', transition: LEAVE }}>
                     <current.Illo />
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            ) : null}
+            {/* The picture's beats, cross-fading with it. Keyed by step like the picture, so both clocks start together. */}
+            {current.beats ? (
+              <div className="relative mx-4 mt-3 h-[23px]">
+                <AnimatePresence initial={false}>
+                  <motion.div key={step} className="absolute inset-0"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1, transition: { duration: 0.3, ease: EASE_OUT_STRONG } }}
+                    exit={{ opacity: 0, transition: LEAVE }}>
+                    <Beats set={current.beats} />
                   </motion.div>
                 </AnimatePresence>
               </div>
