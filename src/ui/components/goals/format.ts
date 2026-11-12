@@ -13,7 +13,7 @@ export type GoalViewData = {
   baselineValue: number; baselineDate: string; baselineHow: string; baselineObservations: number | null
   targetDate: string; cadence: 'weekly' | 'fortnightly' | 'monthly'; nextReviewOn: string
   actions: { kind: 'schedule' | 'tracker'; id: string }[]
-  version: number; pausedAt: Date | null; finishedAt: Date | null
+  version: number; pausedAt: Date | string | null; finishedAt: Date | string | null
   snapshot: GoalSnapshot | null; sensitive: boolean; actionNames: string[]; trackerArchived: boolean
   /** Local days in the user's time zone. */
   startedOn: string; pausedOn: string | null; finishedOn: string | null
