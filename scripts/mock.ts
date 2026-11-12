@@ -113,6 +113,16 @@ async function main() {
     { slug: 'listening', name: 'Music listening', category: 'hobbies', kind: 'duration', unit: 'min' },
     { slug: 'listening.songs', name: 'Songs played', category: 'hobbies' },
     { slug: 'typing-wpm', name: 'Typing speed', category: 'skills', unit: 'wpm', aggregate: 'last' },
+    // Connector metrics that only show on an area's All metrics tiles (same slugs and defaults as src/parsers/daily.ts).
+    { slug: 'hrv', name: 'HRV', category: 'health', unit: 'ms', aggregate: 'last' },
+    { slug: 'oura.readiness', name: 'Oura readiness', category: 'health', kind: 'number', aggregate: 'last', direction: 'up', target: 85 },
+    { slug: 'whoop.recovery', name: 'WHOOP recovery', category: 'health', kind: 'number', unit: '%', aggregate: 'last', direction: 'up', target: 67 },
+    { slug: 'whoop.strain', name: 'WHOOP strain', category: 'health', kind: 'number', aggregate: 'last' },
+    { slug: 'body.fat', name: 'Body fat', category: 'health', unit: '%', aggregate: 'last', direction: 'down' },
+    { slug: 'hevy.volume', name: 'Weight lifted', category: 'health', kind: 'number', unit: 'kg', direction: 'up', target: 5000 },
+    { slug: 'focus.minutes', name: 'Focus time', category: 'mind', kind: 'duration', unit: 'min', direction: 'up', target: 60 },
+    { slug: 'productive.minutes', name: 'Productive time', category: 'mind', kind: 'duration', unit: 'min', direction: 'up', target: 240 },
+    { slug: 'anki.cards', name: 'Anki cards', category: 'skills', kind: 'number', unit: 'cards', direction: 'up', target: 20 },
   ]
   const trackers = await db.insert(schema.trackers).values(trackerDefs.map((t) => ({ ...t, userId: uid }))).returning()
   const tid = Object.fromEntries(trackers.map((t) => [t.slug, t.id]))
@@ -172,6 +182,24 @@ async function main() {
   const ty = rng(seed ^ 0x7a9e)
   days.forEach((d, i) => {
     if (ty.chance(0.85)) entry('typing-wpm', d, Math.round(ty.normal(52 + (i / DAYS) * 14, 3)), 'manual')
+  })
+  // The rest of the connector metrics, on yet another generator so nothing above changes for a given seed.
+  const k = rng(seed ^ 0xc0ffee)
+  let fat = k.between(19, 21)
+  days.forEach((d, i) => {
+    const wd = weekday(d)
+    const weekend = wd === 0 || wd === 6
+    // Oura: HRV and readiness every morning, with a dip in the last week so the tiles show a change.
+    const dip = i >= DAYS - 7 ? -5 : 0
+    entry('hrv', d, Math.max(25, Math.round(k.normal(52 + dip, 6))), 'oura')
+    entry('oura.readiness', d, Math.min(100, Math.max(40, Math.round(k.normal(80 + dip, 6)))), 'oura')
+    // WHOOP: recovery and strain on the days it was worn.
+    if (k.chance(0.8)) { entry('whoop.recovery', d, Math.min(99, Math.max(15, Math.round(k.normal(64, 16)))), 'whoop'); entry('whoop.strain', d, Math.round(k.between(6, 17) * 10) / 10, 'whoop') }
+    if (k.chance(0.2)) { fat += k.normal(-0.04, 0.15); entry('body.fat', d, fat, 'withings') }
+    if (!weekend && k.chance(0.55)) entry('hevy.volume', d, Math.round(k.normal(5200, 900)), 'hevy')
+    entry('focus.minutes', d, weekend ? 0 : Math.max(0, Math.round(k.normal(95, 40))), 'rescuetime')
+    entry('productive.minutes', d, weekend ? Math.max(0, Math.round(k.normal(60, 40))) : Math.max(0, Math.round(k.normal(270, 70))), 'rescuetime')
+    if (k.chance(0.7)) entry('anki.cards', d, k.int(10, 60), 'anki')
   })
   for (let i = 0; i < entries.length; i += 500) await db.insert(schema.entries).values(entries.slice(i, i + 500))
 
@@ -413,6 +441,10 @@ async function main() {
       },
     },
   })
+
+  // The one-line briefs on the Life hub and every area header: written by the rules, as the daily job would.
+  const { areaBriefs } = await import('@/ai/jobs/area-briefs')
+  await areaBriefs(user, now)
 
   console.log(`Mock data ready in "${dbName}" (seed ${seed}): ${entries.length} entries, ${checks.length} checks, ${txns.length} transactions, ${xp} XP.`)
   await sql.end()
