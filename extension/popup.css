@@ -141,6 +141,9 @@ body[data-view="settings"] #settingsView { translate: 0 0; opacity: 1; visibilit
 }
 .chip::before { content: ""; width: 7px; height: 7px; border-radius: 99px; background: var(--c, var(--ink-3)); }
 .types .chip::before { display: none; }
+/* The five item types sit on one row, equal widths, so none wraps onto a line of its own. */
+.chips.types { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+.types .chip { justify-content: center; padding: 0 4px; }
 .chip:hover { background: var(--surface-3); color: var(--ink); }
 .chip[aria-checked="true"] { background: var(--ink); color: var(--surface); }
 .chip:active { scale: 0.96; }
@@ -181,7 +184,7 @@ body[data-view="settings"] #settingsView { translate: 0 0; opacity: 1; visibilit
 /* Track form: height reveal, so the cards below slide instead of jumping. */
 .reveal { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows 220ms var(--ease-out-strong), opacity 150ms var(--ease-out-quint); }
 .reveal[data-open] { grid-template-rows: 1fr; opacity: 1; }
-.reveal-inner { min-height: 0; overflow: hidden; }
+.reveal-inner { min-height: 0; overflow: hidden; padding: 4px; margin: -4px; }
 .field { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; font-size: 12px; color: var(--ink-2); }
 .field:first-child { margin-top: 0; }
 .field input {

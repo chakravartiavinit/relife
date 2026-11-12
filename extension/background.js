@@ -9,7 +9,7 @@
 // shortcuts and the icon's right-click menu, and caches the popup's Today data so the popup opens instantly.
 
 importScripts('lib.js')
-const { OFFLINE, settings, domainOf, keyOf, under, call } = self.RL
+const { OFFLINE, progressOf, settings, domainOf, keyOf, under, call } = self.RL
 
 const IDLE_SECONDS = 120
 // A player iframe reports every 20 seconds; one silent for longer was closed or navigated away.
@@ -134,7 +134,7 @@ async function sampleNow(reason) {
           const image = url(info.image, 1000), icon = url(info.icon, 1000)
           next.meta.course = defined({
             ...course, title: clip(course.title, 200), url: url(course.url, 500), lesson: clip(lesson, 200),
-            ...(Number.isFinite(info.done) && Number.isFinite(info.total) ? { done: info.done, total: info.total } : {}),
+            ...(progressOf(info.done, info.total) ?? {}),
             ...(image ? { image } : icon ? { icon } : {}),
             // The episode itself, for the watch log: its name, number, length and how far in you are.
             episode: info.media ? episodeOf(info.media) : undefined,

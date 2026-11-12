@@ -74,6 +74,9 @@
 
   const OFFLINE = 'Can’t reach ReLife at this address'
 
+  /** "x of y" progress a page reported, if it's a real count (whole numbers, y above 1); else null. */
+  const progressOf = (done, total) => (Number.isInteger(done) && Number.isInteger(total) && total > 1 && done >= 0 && done <= total ? { done, total } : null)
+
   /** Saves the address and token and tests them; the result is stored as `lastSync` and returned. */
   async function connect(serverText, tokenText) {
     const server = serverText.trim().replace(/\/$/, '') || DEFAULTS.server
@@ -102,6 +105,6 @@
     toastTimer = setTimeout(() => t.removeAttribute('data-show'), 3200)
   }
 
-  self.RL = { DEFAULTS, KINDS, KIND, TYPES, TYPE_LABEL, AREA_COLOR, OFFLINE, settings, domainOf, keyOf, under, esc, hm, ago, num, call, connect, toast }
+  self.RL = { DEFAULTS, KINDS, KIND, TYPES, TYPE_LABEL, AREA_COLOR, OFFLINE, progressOf, settings, domainOf, keyOf, under, esc, hm, ago, num, call, connect, toast }
   if (typeof module === 'object') module.exports = self.RL
 })()

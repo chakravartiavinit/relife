@@ -11,6 +11,7 @@ const RL = require('../../extension/lib.js') as {
   hm: (sec: number) => string
   num: (v: number | null) => string
   esc: (t: string) => string
+  progressOf: (done: unknown, total: unknown) => { done: number; total: number } | null
 }
 
 test('keyOf: a YouTube playlist, else the site and the first two parts of the path', () => {
@@ -40,4 +41,12 @@ test('formatters: hm, num and esc', () => {
   assert.equal(RL.num(2.5), '2.5')
   assert.equal(RL.num(null), '–')
   assert.equal(RL.esc('<b a="x">\'&'), '&lt;b a=&quot;x&quot;&gt;&#39;&amp;')
+})
+
+test('progressOf keeps a lesson count and drops fractional players and loaders', () => {
+  assert.deepEqual(RL.progressOf(7, 42), { done: 7, total: 42 })
+  assert.equal(RL.progressOf(0.4658385093167702, 1), null)
+  assert.equal(RL.progressOf(1, 1), null)
+  assert.equal(RL.progressOf(43, 42), null)
+  assert.equal(RL.progressOf(undefined, 42), null)
 })

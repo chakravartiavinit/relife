@@ -14,7 +14,8 @@
     const bar = document.querySelector('[role="progressbar"][aria-valuenow][aria-valuemax]')
     if (bar) {
       const now = Number(bar.getAttribute('aria-valuenow')), max = Number(bar.getAttribute('aria-valuemax'))
-      if (max > 0 && now >= 0 && now <= max) { out.done = now; out.total = max }
+      // Only a count of lessons: video players and loaders report fractions (0.47 of 1), which aren't progress.
+      if (Number.isInteger(now) && Number.isInteger(max) && max > 1 && now >= 0 && now <= max) { out.done = now; out.total = max }
     }
     // Scanning the page text is costly, so only when asked (opening the popup), not every 20 seconds.
     if (out.done == null && deep) {

@@ -3,7 +3,7 @@
 // Reads from your ReLife (/api/companion and /api/activity?view=1); everything else stays in chrome.storage.
 
 const $ = (id) => document.getElementById(id)
-const { DEFAULTS, KINDS, KIND, TYPES, TYPE_LABEL, AREA_COLOR, domainOf, keyOf, under, esc, hm, ago, num, call, connect, toast } = self.RL
+const { DEFAULTS, KINDS, KIND, TYPES, TYPE_LABEL, AREA_COLOR, domainOf, progressOf, keyOf, under, esc, hm, ago, num, call, connect, toast } = self.RL
 // System quest ranks, as on Today (src/ui/components/system-quests.tsx).
 const RANK_HINT = { E: 'easy', D: 'light', C: 'steady', B: 'hard', A: 'very hard', S: 'rare' }
 
@@ -398,9 +398,11 @@ function suggestName() {
   if ((type === 'show' || type === 'video') && page.series?.title) return page.series.title
   return page.courseTitle || page.heading || page.series?.title || page.title || ''
 }
+/** The page's lesson count, only when it's a real count (pages also report fractional players and loaders). */
+const progress = () => progressOf(page.done, page.total)
 function scopeText() {
   const series = page.series?.url && (type === 'show' || type === 'video')
-  return series ? 'Every episode of this series counts toward it.' : `Every page under ${keyOf(tab.url)} counts toward it${page.total ? ` · ${page.done} of ${page.total} done` : ''}.`
+  return series ? 'Every episode of this series counts toward it.' : `Every page under ${keyOf(tab.url)} counts toward it${progress() ? ` · ${progress().done} of ${progress().total} done` : ''}.`
 }
 function renderTypes() {
   $('types').innerHTML = TYPES.map(([k, l]) => `<button type="button" class="chip" role="radio" aria-checked="${k === type}" data-k="${k}">${l}</button>`).join('')
@@ -436,7 +438,7 @@ $('trackForm').onsubmit = async (e) => {
   const itemUrl = `https://${key}`
   await chrome.storage.local.set({ courses: { ...s.courses, [key]: { title, kind: type, url: itemUrl } } })
   const [host, ...rest] = key.split('/')
-  const course = { domain: host, path: `/${rest.join('/')}`, title, url: itemUrl, kind: type, ...(page.image ? { image: page.image } : page.icon ? { icon: page.icon } : {}), ...(page.total ? { done: page.done, total: page.total } : {}) }
+  const course = { domain: host, path: `/${rest.join('/')}`, title, url: itemUrl, kind: type, ...(page.image ? { image: page.image } : page.icon ? { icon: page.icon } : {}), ...(progress() ?? {}) }
   openTrack(false)
   const r = await chrome.runtime.sendMessage({ type: 'track-course', course }).catch(() => ({ ok: false }))
   const where = type === 'show' ? 'Hobbies → Watching' : 'Skills → Learning'
