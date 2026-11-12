@@ -215,13 +215,25 @@ screenshots use fake data (`npm run dev:mock`).
 ## Phone access
 
 Install [Tailscale](https://tailscale.com) on the Mac and iPhone, then run `tailscale serve --bg 3030` on the
-Mac. Open the `https://<your-mac>.<tailnet>.ts.net` address it prints in Safari and add it to the Home Screen to
-use it as an app. Only your own devices can reach it; nothing is exposed to the internet. ReLife answers only on `127.0.0.1`,
+Mac. Only your own devices can reach it; nothing is exposed to the internet. ReLife answers only on `127.0.0.1`,
 `localhost` and `*.ts.net` addresses; add any other name you open it through (a Cloudflare Tunnel, say) to
-`RELIFE_ALLOWED_HOSTS` in `.env`. Listing a name there also turns off "trust this Mac" (every browser then connects by
-QR or code), and never use a tunnel or proxy that rewrites `Host` to `localhost`: ReLife would take every visitor for
-the Mac itself. Steps and sleep keep flowing
-through the iCloud file even when the Mac is away (see [SHORTCUTS.md](docs/SHORTCUTS.md)).
+`RELIFE_ALLOWED_HOSTS` in `.env`.
+
+**Connect the phone.** On the Mac, open Settings → Devices → Connect a device and scan the code with the phone's
+camera (or type the 8-character code on the phone). Tap Continue, then Share → Add to Home Screen to use ReLife as an
+app. Codes last 2 minutes and work once. The phone stays signed in until you disconnect it in Settings → Devices, and
+every device there can be disconnected on its own. The QR code uses the Tailscale name; if the Mac is reached some other
+way, set `RELIFE_PUBLIC_URL` in `.env` to the address a phone should open. A device that cannot scan (the Mac app, the
+Chrome extension) shows its own code instead: type it under Connect a device, or approve it from the notice that appears.
+
+**This Mac and other browsers.** A browser on the Mac itself, opened at `http://127.0.0.1:3030` or `http://localhost:3030`,
+is signed in without asking. Every other browser connects once, by code. To make this Mac's browsers connect too, turn on
+"Require sign-in on this Mac" in Settings → Devices; naming other hosts in `RELIFE_ALLOWED_HOSTS` (or binding beyond
+127.0.0.1) does the same. Never put a tunnel or proxy in front that rewrites `Host` to `localhost`: ReLife would take every
+visitor for the Mac itself. Locked out, or no browser is signed in yet? Run `npm run signin` in a terminal on the Mac: it
+prints a one-time link and a QR code.
+
+Steps and sleep keep flowing through the iCloud file even when the Mac is away (see [SHORTCUTS.md](docs/SHORTCUTS.md)).
 
 ## License
 

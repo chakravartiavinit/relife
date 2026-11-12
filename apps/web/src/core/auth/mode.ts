@@ -1,5 +1,5 @@
-// RELIFE_MODE: `self-host` (default: one user, "trust this Mac" on loopback) or `cloud` (many users, emailed sign-in codes,
-// loopback trust always off). Cloud email sign-in is not built yet (see ./email.ts).
+// RELIFE_MODE: `self-host` (default: one user, "trust this Mac" on loopback) or `cloud` (many users, loopback trust always off).
+// Cloud sign-in by emailed one-time code is a later phase (plan §6) and is not built: cloud mode signs in by pairing only.
 
 export type Mode = 'self-host' | 'cloud'
 
