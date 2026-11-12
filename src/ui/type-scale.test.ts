@@ -6,7 +6,7 @@ import { join } from 'node:path'
 // Ratchet: text sizes come from the type scale in globals.css (`text-body`, `text-title`, ...), not from
 // `text-[13px]`. The count may only go down. When you convert some, lower MAX_ARBITRARY_TEXT_SIZES to the
 // new count; never raise it. Vendored code (src/ui/beui) and EvilCharts are not counted.
-const MAX_ARBITRARY_TEXT_SIZES = 727
+const MAX_ARBITRARY_TEXT_SIZES = 725
 
 // Files fully on the scale. They must stay at zero.
 const CLEAN: string[] = ['src/ui/components/sheet.tsx', 'src/ui/components/segment-tabs.tsx', 'src/ui/components/peek/peek-link.tsx']

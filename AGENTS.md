@@ -27,14 +27,22 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
 - Look ("ReLife capsule"): ink black, white and the logo's capsule blue, light-first. The signature shapes are
   `CapsuleIcon` (`capsule-icon.tsx`, the tilted pill from the logo, for areas and avatars), `SystemLabel` (mono
   area label in `card.tsx`) and the `.halftone` dot texture in header corners. No other decorative textures.
+- Type: the scale lives in `globals.css` (`text-display`, `text-title`, `text-heading`, `text-body`, `text-small`,
+  `text-caption`, `text-label font-mono uppercase`; big numbers use `num`). New code uses these, not `text-[13px]`;
+  `src/ui/type-scale.test.ts` counts the old arbitrary sizes and fails if the number goes up (lower it when you convert some).
+- Shared primitives: `Sheet` (`sheet.tsx`: bottom sheet on a phone, non-modal 440px right panel on a laptop, starting at
+  `--sheet-top`), `SegmentTabs` (`segment-tabs.tsx`: route-driven pill tabs), `PeekLink`/`openPeek`
+  (`peek/peek-link.tsx`: open `?peek=type:id` without a server trip; `src/domain/peek.ts` parses it). Route map and
+  old-URL redirects: `src/domain/routes.ts`. Each has a section in `/dev/ui`.
 - Motion: CSS easing tokens in `globals.css` (`--ease-out-quint`, `--ease-out-strong`, `--ease-in-out-strong`);
   JS twins in `src/ui/beui/lib/ease.ts` (`EASE_OUT`, `EASE_OUT_STRONG`). Never retype the curves. Audits and
   plans live in `plans/`.
 - `src/app/`: Next.js 16 App Router pages and `actions.ts` (all server actions). Cache Components is
   on: DB reads go in an async child component that calls `await connection()`, wrapped in
   `<Suspense>` with a skeleton sized like the content. See `src/app/page.tsx`.
-- `src/core/`: ingest pipeline, schedules, metrics, quick-log grammar, FX, time zones, connector keys.
-- `src/domain/`: pure TypeScript (recurrence, streaks, FIFO P&L, money formatting). No DB, no React.
+- `src/core/`: ingest pipeline, schedules, metrics, quick-log writes, FX, time zones, connector keys.
+- `src/domain/`: pure TypeScript (recurrence, streaks, FIFO P&L, money formatting, the quick-log grammar, `?peek=`
+  parsing, the route map). No DB, no React.
 - `src/connectors/`, `src/parsers/`, `src/rules/`, `src/ai/jobs/`: the four extension points.
 - `src/worker/`: long-running process (bot, laptop activity, job scheduler). `src/jobs/`: every scheduled job.
   `src/bot/`: Telegram.
@@ -53,7 +61,8 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
   the Laptop activity token (`src/core/companion.ts`). Popup tokens are copied into `extension/popup.css`; keep
   them in step with `globals.css`. Bump `manifest.json`'s version with each change.
 - Vendored UI code: `src/ui/beui/` (beui.dev, installed from the `@beui` registry with imports rewritten
-  to `@/ui/beui`). Change it only to fit ReLife tokens.
+  to `@/ui/beui`). Change it only to fit ReLife tokens. `npx shadcn@latest add @beui/<name> -o` overwrites
+  `lib/ease.ts` with beUI's own curves: restore it (`git checkout src/ui/beui/lib/ease.ts`) after installing.
 - Charts: [EvilCharts](https://evilcharts.com/docs), installed unmodified with `npx shadcn@latest add @evilcharts/recharts-<chart>`
   into `src/components/evilcharts/`. Never edit those files (re-run the add command to update them); adapt in the
   wrappers instead. Pages use the wrappers in `src/ui/components/charts.tsx`, one per kind of number: `TrendArea` (a measure

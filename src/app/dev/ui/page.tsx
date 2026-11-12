@@ -15,6 +15,7 @@ import { BeuiGallery } from '@/ui/components/gallery-beui'
 import { PositionCard } from '@/ui/components/wealth/position-card'
 import { IlloGallery } from '@/ui/components/tour/illos'
 import { ToastGallery } from '@/ui/components/toast'
+import { InstalledBeuiGallery, PeekLinkDemo, SegmentTabsDemo, SheetDemo, TypeScale } from '@/ui/components/gallery-foundations'
 import { RecoveryPanel, SystemQuests } from '@/ui/components/system-quests'
 import type { RecoveryView } from '@/domain/recovery'
 import { GOAL_FOOTNOTE, goalSnapshot } from '@/domain/goals'
@@ -42,6 +43,10 @@ export default function UiGallery() {
   return (
     <div className="flex flex-col gap-8">
       <PageHeader eyebrow="Dev" title="UI gallery" description="Components and states. Check both themes before merging UI changes." />
+
+      <Section title="Type scale">
+        <TypeScale />
+      </Section>
 
       <Section title="Brand">
         <div className="flex flex-wrap items-end gap-10">
@@ -134,7 +139,23 @@ export default function UiGallery() {
         <BeuiGallery />
       </Section>
 
-      <Section title="Toasts">
+      <Section title="Sheet">
+        <SheetDemo />
+      </Section>
+
+      <Section title="Segment tabs">
+        <SegmentTabsDemo />
+      </Section>
+
+      <Section title="Peek link">
+        <PeekLinkDemo />
+      </Section>
+
+      <Section title="beUI: installed for the redesign">
+        <InstalledBeuiGallery />
+      </Section>
+
+      <Section title="Toasts (with Undo)">
         <ToastGallery />
       </Section>
 
