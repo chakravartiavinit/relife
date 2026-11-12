@@ -5,7 +5,7 @@ import { db, schema } from '@/db'
 import { createDevice, type DeviceMeta } from './devices'
 import { publish } from './events'
 import {
-  FAILED_REDEEMS_PER_IP, FAILED_REDEEM_WINDOW_MS, MAX_CODE_ATTEMPTS, MAX_LIVE_OFFERS, MAX_PENDING_REQUESTS, OFFER_TTL_MS,
+  FAILED_REDEEMS_PER_IP, FAILED_REDEEM_WINDOW_MS, MAX_LIVE_OFFERS, MAX_PENDING_REQUESTS, OFFER_TTL_MS,
   POLL_INTERVAL_S, REQUEST_TTL_MS, mode,
 } from './mode'
 import { blockedFor, clearFailures, countFailure } from './ratelimit'
@@ -66,14 +66,16 @@ export type Redeemed = { device: typeof schema.devices.$inferSelect; token: stri
 
 /**
  * The new device redeems an offer with the QR secret or the typed code. One use only: the status flips under a
- * `where status = 'pending'`, so two racing redeems cannot both win. Failures count against the IP (20 per 10 min,
- * then 429 for the rest of the window), and a wrong typed code counts against every live offer (5, then they expire).
+ * `where status = 'pending'`, so two racing redeems cannot both win. Failures count against the caller's bucket (its
+ * address, or its tunnel: 20 per 10 min, then 429 for the rest of the window). A wrong guess never touches anyone's live
+ * offers: spending them would let a stranger who can reach the server expire the owner's codes at will, and 20 guesses
+ * in 10 minutes against 30^8 codes that live 2 minutes is no way in.
  */
 export async function redeem(o: {
-  secret?: string; code?: string; kind?: DeviceKind; name?: string; platform?: string; ip: string; userAgent: string; via: string; now?: Date
+  secret?: string; code?: string; kind?: DeviceKind; name?: string; platform?: string; ip: string; bucket?: string; userAgent: string; via: string; now?: Date
 }): Promise<Redeemed> {
   const now = o.now ?? new Date()
-  const ipKey = `redeem:${o.ip}`
+  const ipKey = `redeem:${o.bucket ?? o.ip}`
   const wait = await blockedFor(ipKey, FAILED_REDEEMS_PER_IP, FAILED_REDEEM_WINDOW_MS)
   if (wait) throw new PairError('rate_limited', 'Too many tries. Wait a few minutes.', wait)
 
@@ -90,14 +92,7 @@ export async function redeem(o: {
     if (isCode(code)) {
       ;[pairing] = await db.select().from(schema.pairings).where(and(eq(schema.pairings.userCode, code), inArray(schema.pairings.method, ['offer', 'cli']), live(now))).limit(1)
     }
-    if (!pairing) {
-      // A wrong guess is a guess against every live offer: five of them and those offers expire.
-      await db.update(schema.pairings).set({ attempts: sql`${schema.pairings.attempts} + 1` })
-        .where(and(inArray(schema.pairings.method, ['offer', 'cli']), live(now)))
-      await db.update(schema.pairings).set({ status: 'expired' })
-        .where(and(inArray(schema.pairings.method, ['offer', 'cli']), eq(schema.pairings.status, 'pending'), sql`${schema.pairings.attempts} >= ${MAX_CODE_ATTEMPTS}`))
-      return fail()
-    }
+    if (!pairing) return fail()
   }
   if (!pairing || pairing.status !== 'pending' || pairing.expiresAt <= now) return fail(`This link has expired or was already used. Make a new one on your ${brand.name}.`)
   if (!pairing.userId) return fail()
@@ -128,10 +123,10 @@ const REQUEST_START_LIMIT = 20
  * IP replaces the old one.
  */
 export async function startRequest(o: {
-  kind: DeviceKind; name: string; platform?: string; ip: string; userAgent: string; baseUrl: string; via: string; now?: Date
+  kind: DeviceKind; name: string; platform?: string; ip: string; bucket?: string; userAgent: string; baseUrl: string; via: string; now?: Date
 }) {
   const now = o.now ?? new Date()
-  const key = `request:${o.ip}`
+  const key = `request:${o.bucket ?? o.ip}`
   const wait = await blockedFor(key, REQUEST_START_LIMIT, FAILED_REDEEM_WINDOW_MS)
   if (wait) throw new PairError('rate_limited', 'Too many requests. Wait a few minutes.', wait)
   await countFailure(key, FAILED_REDEEM_WINDOW_MS)
@@ -202,9 +197,9 @@ export async function requestById(id: string, now = new Date()) {
   return p ?? null
 }
 
-/** The typed code from a device's screen, in the dashboard's "Connect a device" dialog. Wrong tries count against the IP. */
-export async function requestByCode(raw: string, ip: string, now = new Date()) {
-  const key = `approve-code:${ip}`
+/** The typed code from a device's screen, in the dashboard's "Connect a device" dialog. Wrong tries count against the caller's bucket. */
+export async function requestByCode(raw: string, bucket: string, now = new Date()) {
+  const key = `approve-code:${bucket}`
   const wait = await blockedFor(key, FAILED_REDEEMS_PER_IP, FAILED_REDEEM_WINDOW_MS)
   if (wait) throw new PairError('rate_limited', 'Too many tries. Wait a few minutes.', wait)
   const code = normalizeCode(raw)

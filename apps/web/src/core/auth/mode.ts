@@ -18,7 +18,6 @@ export const REQUEST_TTL_MS = 10 * 60_000
 export const POLL_INTERVAL_S = 2
 export const MAX_LIVE_OFFERS = 3
 export const MAX_PENDING_REQUESTS = 5
-export const MAX_CODE_ATTEMPTS = 5
 export const FAILED_REDEEMS_PER_IP = 20
 export const FAILED_REDEEM_WINDOW_MS = 10 * 60_000
 /** Browsers cap cookie life at 400 days. */

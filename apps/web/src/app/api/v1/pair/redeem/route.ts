@@ -1,7 +1,7 @@
 import { PairRedeem, type PairRedeemResult } from '@relife/contract'
 import { redeem, PairError } from '@/core/auth/pairing'
 import { apiError, sameOrigin, sessionCookie } from '@/core/auth/request'
-import { clientIp } from '@/core/auth/trust'
+import { clientIp, limitKey } from '@/core/auth/trust'
 import { toInfo } from '@/core/auth/device-view'
 import { hostName } from '@/core/hosts'
 import { NextResponse } from 'next/server'
@@ -17,7 +17,7 @@ export async function POST(req: Request) {
   const host = req.headers.get('host')
   try {
     const r = await redeem({
-      ...body.data, ip: clientIp(req.headers), userAgent: req.headers.get('user-agent') ?? '', via: host ? hostName(host) : '',
+      ...body.data, ip: clientIp(req.headers), bucket: limitKey(req.headers), userAgent: req.headers.get('user-agent') ?? '', via: host ? hostName(host) : '',
     })
     const native = r.device.kind === 'mac' || r.device.kind === 'extension' || r.device.kind === 'cli'
     const result: PairRedeemResult = native ? { ok: true, device: toInfo(r.device), token: r.token } : { ok: true, device: toInfo(r.device), next: '/' }

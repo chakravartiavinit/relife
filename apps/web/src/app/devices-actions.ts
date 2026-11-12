@@ -11,7 +11,7 @@ import { pairBase } from '@/core/auth/base-url'
 import { listDevices, renameDevice, revokeDevice } from '@/core/auth/devices'
 import { toListItem, toWaiting, type WaitingDevice } from '@/core/auth/device-view'
 import { approveRequest, createOffer, denyRequest, offerStatus, PairError, pendingRequests, requestById, requestByCode } from '@/core/auth/pairing'
-import { clientIp, cookieName, requestOrigin } from '@/core/auth/trust'
+import { cookieName, limitKey, requestOrigin } from '@/core/auth/trust'
 import { requireDevice } from '@/core/auth/viewer'
 import { formatCode } from '@/core/auth/tokens'
 import { revalidatePath } from 'next/cache'
@@ -68,9 +68,9 @@ export async function waitingDevices(): Promise<WaitingDevice[]> {
 /** The code typed into the dialog (what a device is showing): the waiting device it belongs to, or why not. */
 export async function findWaitingByCode(code: string): Promise<{ ok: true; device: WaitingDevice } | { ok: false; error: string }> {
   await requireDevice()
-  const ip = clientIp(await headers())
+  const bucket = limitKey(await headers())
   try {
-    const p = await requestByCode(z.string().max(40).parse(code), ip)
+    const p = await requestByCode(z.string().max(40).parse(code), bucket)
     return p ? { ok: true, device: toWaiting(p) } : { ok: false, error: `No device is showing that code. Check it, or open ${brand.name} on the device again.` }
   } catch (e) {
     if (e instanceof PairError) return { ok: false, error: e.message }

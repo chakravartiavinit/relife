@@ -120,7 +120,6 @@ export const pairings = pgTable('pairings', {
   createdByDeviceId: uuid('created_by_device_id'),
   /** The device created on redeem. */
   deviceId: uuid('device_id'),
-  attempts: integer('attempts').notNull().default(0),
   /** { baseUrl, requesterIp, userAgent, platform, via } */
   meta: meta(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),

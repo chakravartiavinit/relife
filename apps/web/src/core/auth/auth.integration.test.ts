@@ -19,7 +19,7 @@ test('devices, pairing and legacy tokens against PostgreSQL', { skip: !enabled }
   const pairing = await import('./pairing')
   const { hashToken } = await import('./tokens')
   const { scopeAllows } = await import('./trust')
-  const { blockedFor } = await import('./ratelimit')
+  const { blockedFor, clearFailures } = await import('./ratelimit')
 
   const run = crypto.randomUUID().slice(0, 8)
   const [user] = await db.insert(schema.users).values({ name: `Auth test ${run}` }).returning()
@@ -121,17 +121,27 @@ test('devices, pairing and legacy tokens against PostgreSQL', { skip: !enabled }
     for (const o of offers.slice(1)) assert.equal((await pairing.offerStatus(user.id, o.id))?.status, 'pending')
   })
 
-  await t.test('flow A: 5 wrong codes expire the live offers; 20 failures per IP lock that IP out', async () => {
+  await t.test('flow A: wrong codes never expire a live offer; 20 failures per caller lock that caller out', async () => {
     const offer = await pairing.createOffer({ userId: user.id, deviceId: null, baseUrl: null })
     const wrong = offer.userCode.startsWith('2') ? '3AAAAAAA' : '2AAAAAAA'
-    for (let i = 0; i < 5; i++) await assert.rejects(pairing.redeem({ code: wrong, ip: ip(4), ...base }), pairing.PairError)
-    assert.equal((await pairing.offerStatus(user.id, offer.id))?.status, 'expired', 'five guesses and the offer is gone')
-    await assert.rejects(pairing.redeem({ code: offer.userCode, ip: ip(5), ...base }), pairing.PairError)
+    for (let i = 0; i < 12; i++) await assert.rejects(pairing.redeem({ code: wrong, ip: ip(4), ...base }), pairing.PairError)
+    assert.equal((await pairing.offerStatus(user.id, offer.id))?.status, 'pending', 'a stranger guessing cannot spend the owner’s code')
 
-    for (let i = 0; i < 15; i++) await assert.rejects(pairing.redeem({ code: wrong, ip: ip(4), ...base }), pairing.PairError)
-    await assert.rejects(pairing.redeem({ code: wrong, ip: ip(4), ...base }), (e: unknown) => e instanceof pairing.PairError && e.code === 'rate_limited' && (e.retryAfter ?? 0) > 0)
+    for (let i = 0; i < 8; i++) await assert.rejects(pairing.redeem({ code: wrong, ip: ip(4), ...base }), pairing.PairError)
+    await assert.rejects(pairing.redeem({ code: offer.userCode, ip: ip(4), ...base }), (e: unknown) => e instanceof pairing.PairError && e.code === 'rate_limited' && (e.retryAfter ?? 0) > 0, 'even the right code, from the locked caller')
     assert.ok((await blockedFor(`redeem:${ip(4)}`, 20, 10 * MIN)) > 0)
     assert.equal(await blockedFor(`redeem:${ip(6)}`, 20, 10 * MIN), 0, 'another IP is not locked')
+    const ok = await pairing.redeem({ code: offer.userCode, ip: ip(6), ...base })
+    assert.ok(ok.token.startsWith('rlf_'), 'the owner’s own code still works from somewhere else')
+  })
+
+  await t.test('rate limits can be kept per tunnel name (bucket) instead of per address', async () => {
+    await clearFailures('redeem:host:relife.example.com')
+    const offer = await pairing.createOffer({ userId: user.id, deviceId: null, baseUrl: null })
+    const wrong = offer.userCode.startsWith('2') ? '3AAAAAAA' : '2AAAAAAA'
+    for (let i = 0; i < 20; i++) await assert.rejects(pairing.redeem({ code: wrong, ip: 'local', bucket: 'host:relife.example.com', ...base }), pairing.PairError)
+    await assert.rejects(pairing.redeem({ code: wrong, ip: 'local', bucket: 'host:relife.example.com', ...base }), (e: unknown) => e instanceof pairing.PairError && e.code === 'rate_limited')
+    await assert.rejects(pairing.redeem({ code: wrong, ip: 'local', bucket: 'local', ...base }), (e: unknown) => e instanceof pairing.PairError && e.code === 'not_found', 'the Mac’s own browser is not caught in the tunnel’s lock')
   })
 
   const request = (o: Partial<Parameters<typeof pairing.startRequest>[0]> = {}) =>

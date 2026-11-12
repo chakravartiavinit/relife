@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { bindIsLoopback, clientIp, cookieName, isPublicPath, loopbackTrusted, trustPossible, scopeAllows, tokenOf } from './trust'
+import { bindIsLoopback, clientIp, cookieName, limitKey, isPublicPath, loopbackTrusted, trustPossible, scopeAllows, tokenOf } from './trust'
 
 const h = (o: Record<string, string>) => ({ get: (n: string) => o[n.toLowerCase()] ?? null })
 
@@ -26,7 +26,9 @@ test('loopback trust: what Next itself adds to a direct request does not count',
 })
 
 test('client ip comes from X-Forwarded-For only behind a known proxy', () => {
-  assert.equal(clientIp(h({ host: 'mac.tail1.ts.net', 'x-forwarded-for': '100.64.0.7, 10.0.0.1' }), { mode: 'self-host' }), '100.64.0.7')
+  assert.equal(clientIp(h({ host: 'mac.tail1.ts.net', 'x-forwarded-for': '100.64.0.7' }), { mode: 'self-host' }), '100.64.0.7')
+  assert.equal(clientIp(h({ host: 'mac.tail1.ts.net', 'x-forwarded-for': '9.9.9.9, 100.64.0.7' }), { mode: 'self-host' }), '100.64.0.7', 'the hop our proxy wrote, not one the client made up')
+  assert.equal(clientIp(h({ host: 'mac.tail1.ts.net', 'x-forwarded-for': '9.9.9.9, 100.64.0.7, 127.0.0.1' }), { mode: 'self-host' }), '100.64.0.7', 'this machine is skipped')
   assert.equal(clientIp(h({ host: '127.0.0.1:3030', 'x-forwarded-for': '9.9.9.9' }), { mode: 'self-host' }), 'local')
   assert.equal(clientIp(h({ host: 'relife.example.com', 'x-forwarded-for': '9.9.9.9' }), { mode: 'cloud' }), '9.9.9.9')
   assert.equal(clientIp(h({ host: 'mac.tail1.ts.net', 'x-forwarded-for': '<script>' }), { mode: 'self-host' }), 'local')
@@ -67,4 +69,12 @@ test('loopback trust is off once other hosts are allowed or the server listens b
   assert.ok(!loopbackTrusted(direct, { mode: 'self-host', env: { HOSTNAME: '0.0.0.0' } }), 'a container that binds every address')
   for (const bind of ['127.0.0.1', 'localhost', '::1', '[::1]', '127.0.0.2']) assert.ok(bindIsLoopback({ RELIFE_BIND: bind }), bind)
   assert.ok(trustPossible({}) && !trustPossible({ RELIFE_ALLOWED_HOSTS: 'x.example' }))
+})
+
+test('rate limits are kept per address, per Mac, or per tunnel name: never one shared bucket', () => {
+  assert.equal(limitKey(h({ host: 'mac.tail1.ts.net', 'x-forwarded-for': '100.64.0.7' }), { mode: 'self-host' }), '100.64.0.7')
+  assert.equal(limitKey(h({ host: '127.0.0.1:3030' }), { mode: 'self-host' }), 'local')
+  assert.equal(limitKey(h({ host: 'relife.example.com', 'x-forwarded-for': '9.9.9.9' }), { mode: 'self-host' }), 'host:relife.example.com', 'an untrusted tunnel is its own bucket, whatever it claims')
+  assert.notEqual(limitKey(h({ host: 'a.example.com' }), { mode: 'self-host' }), limitKey(h({ host: 'b.example.com' }), { mode: 'self-host' }))
+  assert.equal(limitKey(h({ host: 'relife.example.com', 'x-forwarded-for': '9.9.9.9' }), { mode: 'cloud' }), '9.9.9.9')
 })

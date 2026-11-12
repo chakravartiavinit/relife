@@ -77,12 +77,29 @@ export function isPageNavigation(method: string, h: Headers) {
   return site !== 'cross-site' && (mode === 'navigate' || dest === 'document') && (mode ?? 'navigate') === 'navigate' && (dest ?? 'document') === 'document'
 }
 
-/** A known proxy puts the real address in X-Forwarded-For: Tailscale (`*.ts.net`) in self-host, any host in cloud. */
+/**
+ * A known proxy puts the real address in X-Forwarded-For: Tailscale (`*.ts.net`) in self-host, any host in cloud. The
+ * client can write that header too and the proxy adds to it, so the address is the rightmost hop that is not this
+ * machine (the one our own proxy wrote), never the first. 'local' when there is none to trust.
+ */
 export function clientIp(h: Headers, opts: { mode?: Mode } = {}) {
   const host = h.get('host')
   const proxied = (opts.mode ?? mode()) === 'cloud' || (!!host && hostName(host).endsWith('.ts.net'))
-  const first = proxied ? h.get('x-forwarded-for')?.split(',')[0]?.trim() : undefined
-  return first && /^[0-9a-f:.]{2,45}$/i.test(first) ? first : 'local'
+  if (!proxied) return 'local'
+  const hops = (h.get('x-forwarded-for') ?? '').split(',').map((x) => x.trim()).filter(Boolean)
+  const hop = hops.reverse().find((x) => !LOOPBACK_IPS.has(x))
+  return hop && /^[0-9a-f:.]{2,45}$/i.test(hop) ? hop : 'local'
+}
+
+/**
+ * What a failed code or a request is counted against. A known address, else this Mac ('local'), else the tunnel name
+ * the request came through: a visitor through a Cloudflare Tunnel (whose address we do not trust) shares a limit with
+ * that tunnel only, not with the Mac's own browser.
+ */
+export function limitKey(h: Headers, opts: { mode?: Mode } = {}) {
+  const ip = clientIp(h, opts)
+  const host = h.get('host')
+  return ip !== 'local' || !host || isLoopbackHost(host) ? ip : `host:${hostName(host)}`
 }
 
 /** Plain-HTTP loopback cannot use the `__Host-` prefix (it needs Secure). Mock mode gets its own name: cookies ignore ports. */
