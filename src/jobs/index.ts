@@ -126,6 +126,12 @@ export const JOBS: Job[] = [
     const { classifySites } = await import('@/ai/jobs/classify-sites')
     return (await classifySites(await getUser())) ?? undefined
   } },
+  // The one-liner under every area title and Life tile. Rules write it, so it runs without a model; a model (parse) rewords it when set.
+  { id: 'ai:area-briefs', schedule: { cron: '30 6 * * *' }, catchUpMinutes: 6 * 60, on: ['data.changed'], run: async () => {
+    await loadKeys()
+    const { areaBriefs } = await import('@/ai/jobs/area-briefs')
+    return await areaBriefs(await getUser())
+  } },
   // Runs without a model too: outcome goal reviews use a rule-based template (src/domain/goals.ts).
   { id: 'ai:weekly-review', schedule: { cron: '0 21 * * 0' }, catchUpMinutes: 12 * 60, run: async () => {
     await loadKeys()
