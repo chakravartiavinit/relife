@@ -170,6 +170,30 @@
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-outfit), var(--font-inter), ui-sans-serif, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+
+  /* Type scale. Use these instead of text-[Npx]: `text-title font-display`, `text-label font-mono uppercase`. */
+  --text-display: 34px;
+  --text-display--line-height: 40px;
+  --text-display--font-weight: 800;
+  --text-display--letter-spacing: -0.03em;
+  --text-title: 24px;
+  --text-title--line-height: 30px;
+  --text-title--font-weight: 700;
+  --text-title--letter-spacing: -0.02em;
+  --text-heading: 17px;
+  --text-heading--line-height: 24px;
+  --text-heading--font-weight: 600;
+  --text-body: 14px;
+  --text-body--line-height: 20px;
+  --text-small: 13px;
+  --text-small--line-height: 18px;
+  --text-caption: 12px;
+  --text-caption--line-height: 16px;
+  --text-label: 11px;
+  --text-label--line-height: 14px;
+  --text-label--font-weight: 600;
+  --text-label--letter-spacing: 0.08em;
 
   /* Concentric radius scale: outer = inner + padding */
   --radius-xs: 6px;
@@ -184,6 +208,7 @@
   --shadow-3: var(--elev-3);
   --shadow-inset: var(--elev-inset);
   --color-glass: var(--glass);
+  --color-scrim: var(--scrim);
 
   --ease-out-quint: cubic-bezier(0.2, 0, 0, 1);         /* UI state changes: hover, press, toggles */
   --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);    /* entrances and chart reveals */
@@ -406,3 +431,14 @@ details[open]::details-content { opacity: 1; }
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 10px, #000 calc(100% - 28px), transparent);
   mask-image: linear-gradient(to bottom, transparent 0, #000 10px, #000 calc(100% - 28px), transparent);
 }
+
+/* Big numbers (KPI values, totals): display face, bold, digits that line up. */
+@utility num {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Where the desktop Sheet panel starts from the top of the viewport. The shell's top bar sets this to
+   its height plus the 12px inset, so the panel sits below it. */
+:root { --sheet-top: 12px; }

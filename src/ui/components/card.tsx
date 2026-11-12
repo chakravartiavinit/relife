@@ -103,7 +103,7 @@ export function PageHeader({ title, description, actions, eyebrow }: {
 /** A small mono label in the System's voice: ▮ HEALTH. Used above page and area titles. */
 export function SystemLabel({ color = 'var(--pill)', children }: { color?: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2 font-mono text-[11.5px] font-semibold tracking-[0.14em] uppercase" style={{ color: `color-mix(in oklch, ${color} 70%, var(--ink))` }}>
+    <div className="flex items-center gap-2 font-mono text-label uppercase" style={{ color: `color-mix(in oklch, ${color} 70%, var(--ink))` }}>
       <span aria-hidden className="h-3 w-1.5 rounded-full" style={{ background: color }} />
       {children}
     </div>
