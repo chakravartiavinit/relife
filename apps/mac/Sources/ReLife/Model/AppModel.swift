@@ -263,7 +263,7 @@ final class AppModel {
         }
     }
 
-    var appIsInFront: Bool { NSApp.isActive && NSApp.keyWindow != nil }
+    var appIsInFront: Bool { !Headless.isActive && NSApp.isActive && NSApp.keyWindow != nil }
 
     // MARK: - Actions
 

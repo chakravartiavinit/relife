@@ -9,13 +9,14 @@ import SwiftUI
 //   APP_SNAPSHOT=<dir> ReLife           save a PNG of every page, state, panel and Settings tab in light and dark mode, then quit
 //   APP_SEED=1 ReLife                   fill an empty /tmp store with a sample character and quests (tools/snap.sh)
 //   ReLife --selftest                   run the self-test on a /tmp store and quit with 0 or 1 (tools/selftest.sh)
+//   APP_HEADLESS=1 ...                  with --selftest or APP_RENDER: run with no NSApplication, so a machine with no logged-in user (CI) works
+//   APP_RENDER=<dir> ReLife             like APP_SNAPSHOT, but drawn with ImageRenderer: no screen or permission needed (CI)
 //   APP_GRID=1 ReLife                   draw the 8 pt grid and the layout probes over the window
 //   relife://pair?server=…&s=…          connect to a server from a dashboard link
 //   relife://log?text=water%20250       quick log from Raycast or a script
 //   relife://open?path=/wealth          open a dashboard page
 //   relife://today                      show the Today page
 
-@main
 struct ReLifeApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @State private var model = AppModel.shared
@@ -87,6 +88,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Started from a terminal, the process is not a foreground app yet.
         NSApp.setActivationPolicy(.regular)
         AppModel.shared.start()
+        // The self-test needs no window, so it runs from here (a machine with no screen can run it too).
+        SelfTest.runIfRequested(model: AppModel.shared)
+        HeadlessSnapshot.runIfRequested(model: AppModel.shared)
         let center = NotificationCenter.default
         for name in [NSWindow.didBecomeKeyNotification, NSWindow.willCloseNotification, NSWindow.didMiniaturizeNotification] {
             observers.append(center.addObserver(forName: name, object: nil, queue: .main) { _ in

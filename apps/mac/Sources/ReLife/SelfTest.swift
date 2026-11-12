@@ -38,8 +38,10 @@ enum SelfTest {
         check("the badge counts what is left", model.badge == .count(6), "\(model.badge)")
         check("the badge says unreachable when offline", BadgeState.make(view: model.view, reachable: false, trackingPaused: false) == .unreachable)
 
-        // The quick log shortcut registers (Carbon, no permission).
-        check("the global shortcut registers", model.hotKey.register(code: Prefs.hotKeyCode, modifiers: Prefs.hotKeyModifiers))
+        // The quick log shortcut registers (Carbon, no permission). Needs an app, so not in a headless run.
+        if !Headless.isActive {
+            check("the global shortcut registers", model.hotKey.register(code: Prefs.hotKeyCode, modifiers: Prefs.hotKeyModifiers))
+        }
         check("the shortcut reads Control-Option-Space", HotKeyCenter.describe(code: 49, modifiers: 4096 | 2048) == "⌃⌥Space")
 
         // The Keychain keeps a token and gives it back.
@@ -100,7 +102,6 @@ enum SelfTest {
     /// an open sheet refuses terminate, and the run would wait forever.
     static func finish(code: Int32) {
         exitCode = code
-        for window in NSApp.windows { if let sheet = window.attachedSheet { window.endSheet(sheet) } }
-        NSApp.terminate(nil)
+        Headless.finish(code: code)
     }
 }
