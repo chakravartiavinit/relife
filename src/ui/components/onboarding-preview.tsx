@@ -2,16 +2,17 @@
 
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
-import { Check, Moon, Star, Sun } from 'lucide-react'
+import { Check, Moon, Sun } from 'lucide-react'
 import type { Category } from '@/db/schema'
 import type { Template } from '@/core/onboarding'
 import { CATEGORY } from '../tokens'
-import { CapsuleMark } from './logo'
+import { AppLogo } from './app-logo'
+import type { ConnectorItem } from './connector-market'
 import { AREA_ICON, CapsuleIcon } from './capsule-icon'
 import { RoutineArt } from './routine-art'
 import { cn } from '../cn'
 import { EASE_OUT, EASE_OUT_STRONG } from '@/ui/beui/lib/ease'
-import { IMPROVE, TONES, city, firstName, litres, nfIN, toMin, type Level, type V } from './onboarding-data'
+import { AT, IMPROVE, city, firstName, litres, nfIN, toMin, type V } from './onboarding-data'
 
 // The right half of setup: the player's save file, filling in as they answer. Each step owns one part
 // of it; that part carries a capsule-blue ring while its step is open, and parts not reached yet hold a
@@ -74,31 +75,31 @@ export function DayBar({ wake, sleep, compact }: { wake: string; sleep: string; 
           <Sun className="absolute top-1/2 left-0 size-3.5 -translate-x-1/2 -translate-y-1/2 text-[color-mix(in_oklch,var(--medal-gold)_80%,var(--ink))]" strokeWidth={2} />
         </div>
       </div>
-      {compact ? null : <div className="mt-1.5 flex justify-between text-[11px] leading-4 text-ink-3 tabular-nums"><span>12 pm</span><span>6 pm</span><span>12 am</span><span>6 am</span><span>12 pm</span></div>}
+      {compact ? null : <div className="mt-1.5 flex justify-between text-label text-ink-3 tabular-nums"><span>12 pm</span><span>6 pm</span><span>12 am</span><span>6 am</span><span>12 pm</span></div>}
     </div>
   )
 }
 
 /** One part of the save file. `at` is the step that fills it. */
-function Part({ label, at, step, done, empty, children }: {
-  label: string; at: number; step: number; done: boolean; empty: string | null; children: React.ReactNode
+function Part({ label, at, step, empty, children }: {
+  label: string; at: number; step: number; empty: string | null; children: React.ReactNode
 }) {
-  const now = !done && step === at
-  const ahead = !done && step < at
+  const now = step === at
+  const ahead = step < at
   return (
     // Concentric: radius 16 part, 12px padding, radius 4 inner bits.
     <section aria-label={label} data-now={now || undefined}
       className={cn('relative rounded-[16px] p-3 transition-[background-color,box-shadow,opacity] duration-300 ease-[var(--ease-out-strong)]',
         now ? 'bg-pill-wash shadow-[0_0_0_1.5px_var(--pill)]' : 'bg-transparent', ahead && 'opacity-60')}>
-      <p className="mb-2 flex items-center justify-between gap-2 font-mono text-[10.5px] leading-4 font-semibold tracking-[0.14em] text-ink-3 uppercase">
+      <p className="mb-2 flex items-center justify-between gap-2 font-mono text-label text-ink-3 uppercase">
         {label}
         <AnimatePresence initial={false}>
-          {now ? <motion.span key="now" {...appear} className="rounded-full bg-pill px-1.5 font-sans text-[10px] tracking-normal text-white normal-case">Editing</motion.span> : null}
+          {now ? <motion.span key="now" {...appear} className="rounded-full bg-pill px-1.5 font-sans text-label tracking-normal text-white normal-case">Editing</motion.span> : null}
         </AnimatePresence>
       </p>
       <AnimatePresence mode="popLayout" initial={false}>
         {empty ? (
-          <motion.p key="empty" {...appear} className="rounded-[8px] border border-dashed border-hairline px-3 py-2.5 text-[12.5px] leading-[18px] text-ink-3">{empty}</motion.p>
+          <motion.p key="empty" {...appear} className="rounded-[8px] border border-dashed border-hairline px-3 py-2.5 text-caption text-ink-3">{empty}</motion.p>
         ) : (
           <motion.div key="full" {...appear}>{children}</motion.div>
         )}
@@ -108,26 +109,27 @@ function Part({ label, at, step, done, empty, children }: {
 }
 
 /** The player's save file as it will look, built from the answers so far. */
-export function SaveFile({ v, step, done, level, picks, routines, starters }: {
-  v: V; step: number; done: boolean; level: Level | null
+export function SaveFile({ v, step, picks, routines, starters, sources }: {
+  v: V; step: number
   /** Training picks valid for the chosen areas, in priority order. */
   picks: string[]
   /** Ids of the ticked routines in the list on screen. */
   routines: string[]
   starters: Template[]
+  /** The rows on the Connect step, with their live state. */
+  sources: ConnectorItem[]
 }) {
   const name = firstName(v.name)
   const letter = (name[0] ?? '?').toUpperCase()
-  const focus = v.focus && v.areas.includes(v.focus) ? v.focus : v.areas[0]
-  const tone = TONES.find((t) => t.key === v.tone) ?? TONES[1]
   const picked = [...starters, ...v.generated].filter((t) => routines.includes(t.id))
-  const reached = (k: number) => done || step >= k
+  const reached = (k: number) => step >= k
+  const on = sources.filter((c) => c.connected)
+  const later = sources.filter((c) => !c.connected)
   const target: Record<string, string> = {
     'tracker:sleep.hours': `Sleep ${v.sleepHours} h or more`,
     'tracker:steps': `Walk ${nfIN.format(v.steps)} steps`,
     'tracker:drink-water': `Drink ${litres(v.waterMl)}`,
   }
-  const pct = level ? Math.max(0.04, level.progress) : 0.04
 
   // Keep the part being edited in view when the preview is taller than the window.
   const root = useRef<HTMLDivElement>(null)
@@ -146,28 +148,78 @@ export function SaveFile({ v, step, done, level, picks, routines, starters }: {
             <CapsuleIcon letter={letter} size="md" />
           </motion.span>
           <div className="min-w-0 flex-1">
-            <p className="font-mono text-[10.5px] leading-4 font-semibold tracking-[0.14em] text-pill-ink uppercase">Save file</p>
-            <p className={cn('truncate font-display text-[22px] leading-[1.15] font-extrabold tracking-[-0.02em]', name ? 'text-ink' : 'text-ink-3')}>{name || 'Your name'}</p>
-            <p className="mt-1 flex items-center gap-2 text-[12px] leading-5 text-ink-3">
-              <span className="inline-flex h-5 items-center rounded-full bg-ink px-1.5 text-[11px] font-bold text-bg tabular-nums">Lv {level?.level ?? 1}</span>
-              <span className="font-semibold text-ink">{level?.title ?? 'Awakened'}</span>
+            <p className="font-mono text-label text-pill-ink uppercase">Save file</p>
+            <p className={cn('truncate font-display text-title', name ? 'text-ink' : 'text-ink-3')}>{name || 'Your name'}</p>
+            <p className="mt-1 flex items-center gap-2 text-caption text-ink-3">
+              <span className="inline-flex h-5 items-center rounded-full bg-ink px-1.5 text-label font-bold text-bg tabular-nums">Lv 1</span>
+              <span className="font-semibold text-ink">Awakened</span>
               <span className="truncate">· {city(v.timezone)} · {v.baseCurrency.toUpperCase()}</span>
             </p>
           </div>
         </div>
         <div className="mt-4 h-2 overflow-hidden rounded-full bg-surface-2 shadow-[inset_0_0_0_1px_var(--hairline)]">
-          {/* Slides instead of scaling, so the round end stays round. A sliver shows even at zero. */}
-          <motion.div className="h-full rounded-full bg-pill" initial={false} animate={{ x: `${(pct - 1) * 100}%` }} transition={{ duration: 0.9, ease: EASE_OUT_STRONG, delay: done ? 0.3 : 0 }} />
+          {/* A sliver shows even at zero. */}
+          <div className="h-full w-[4%] rounded-full bg-pill" />
         </div>
-        <p className="mt-1.5 flex justify-between text-[11.5px] leading-4 text-ink-3 tabular-nums">
-          <span>{done ? 'Saved' : 'Not saved yet'}</span>
-          <span>{level ? `${Math.round(level.progress * 100)}% to Level ${level.level + 1}` : 'Starts at Level 1'}</span>
-        </p>
+        <p className="mt-1.5 flex justify-between text-caption text-ink-3 tabular-nums"><span>Saves when you finish</span><span>Starts at Level 1</span></p>
       </div>
 
       <Fluid>
         <div className="flex flex-col gap-1 border-t border-divider p-2">
-          <Part label="Your day" at={1} step={step} done={done} empty={reached(1) ? null : 'Your hours and what a good day looks like'}>
+          <Part label="Areas" at={AT.areas} step={step} empty={reached(AT.areas) ? null : 'The parts of life you level up'}>
+            <ul className="flex flex-wrap gap-1.5">
+              {v.areas.map((c: Category) => {
+                const Icon = AREA_ICON[c]
+                return (
+                  <motion.li key={c} layout="position" transition={SPRING} className="inline-flex h-7 items-center gap-1.5 rounded-full bg-surface-2 ps-1 pe-2.5 text-caption font-medium text-ink">
+                    <span aria-hidden className="grid size-5 place-items-center rounded-full" style={{ color: `color-mix(in oklch, ${CATEGORY[c].color} 80%, var(--ink))`, background: `color-mix(in oklch, ${CATEGORY[c].color} 16%, transparent)` }}>
+                      <Icon className="size-3" strokeWidth={2} />
+                    </span>
+                    {CATEGORY[c].label}
+                  </motion.li>
+                )
+              })}
+            </ul>
+          </Part>
+
+          <Part label="Sources" at={AT.connect} step={step} empty={reached(AT.connect) ? (sources.length ? null : 'Nothing to connect for these areas') : 'Apps and devices that fill in your numbers'}>
+            <ul className="flex flex-col gap-1">
+              <AnimatePresence initial={false}>
+                {on.map((c) => (
+                  <motion.li key={c.id} layout="position" {...appear} className="flex items-center gap-2.5 rounded-[8px] bg-good/10 p-2">
+                    <AppLogo id={c.id} category={c.category} size="xs" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-caption font-semibold text-ink">{c.name}</span>
+                      <span className="block truncate text-caption text-ink-3">{c.category ? `${CATEGORY[c.category].label} › ` : ''}{c.provides.slice(0, 2).join(' and ')}</span>
+                    </span>
+                    <Check aria-hidden className="size-4 shrink-0 text-good" strokeWidth={2.5} />
+                  </motion.li>
+                ))}
+              </AnimatePresence>
+            </ul>
+            {later.length ? (
+              <p className={cn('rounded-[8px] border border-hairline px-3 py-2 text-caption text-ink-3', on.length > 0 && 'mt-1')}>
+                {later.map((c) => c.name).join(', ')}: not yet
+              </p>
+            ) : null}
+          </Part>
+
+          <Part label="The System · daily quests" at={AT.areas} step={step}
+            empty={picks.length ? null : reached(AT.connect) ? 'The System picks whatever is slipping most' : 'Up to three things to train first'}>
+            <ol className="flex flex-col gap-1">
+              {picks.map((id, k) => {
+                const o = IMPROVE.find((x) => x.id === id)!
+                return (
+                  <motion.li key={id} layout="position" transition={SPRING} className="flex h-8 items-center gap-2 text-caption">
+                    <span className="grid size-5 shrink-0 place-items-center rounded-full bg-pill text-label font-bold text-white tabular-nums">{k + 1}</span>
+                    <span className="min-w-0 flex-1 truncate font-medium text-ink">{target[id] ?? o.quest}</span>
+                  </motion.li>
+                )
+              })}
+            </ol>
+          </Part>
+
+          <Part label="Your day" at={AT.routines} step={step} empty={reached(AT.routines) ? null : 'Your hours and what a good day looks like'}>
             <DayBar wake={v.wake} sleep={v.sleep} compact />
             <ul className="mt-2 grid grid-cols-3 gap-1.5 text-center">
               {[
@@ -176,64 +228,15 @@ export function SaveFile({ v, step, done, level, picks, routines, starters }: {
                 ...(v.areas.includes('health') ? [{ k: 'Water', val: litres(v.waterMl) }] : [{ k: 'Up at', val: v.wake }]),
               ].map((t) => (
                 <li key={t.k} className="rounded-[8px] bg-surface-2 px-2 py-1.5">
-                  <span className="block text-[10.5px] leading-4 text-ink-3">{t.k}</span>
-                  <span className="block text-[13px] leading-5 font-semibold text-ink tabular-nums">{t.val}</span>
+                  <span className="block text-label text-ink-3">{t.k}</span>
+                  <span className="block text-small font-semibold text-ink tabular-nums">{t.val}</span>
                 </li>
               ))}
             </ul>
           </Part>
 
-          {/* Like every other part, it fills in when its step is reached, so nothing looks chosen before it is. */}
-          <Part label="Areas" at={2} step={step} done={done} empty={reached(2) ? null : 'The parts of life you level up'}>
-            <ul className="flex flex-wrap gap-1.5">
-              {v.areas.map((c: Category) => {
-                const Icon = AREA_ICON[c]
-                const first = c === focus && v.areas.length > 1
-                return (
-                  <motion.li key={c} layout="position" transition={SPRING} className="inline-flex h-7 items-center gap-1.5 rounded-full bg-surface-2 ps-1 pe-2.5 text-[12px] font-medium text-ink">
-                    <span aria-hidden className="grid size-5 place-items-center rounded-full" style={{ color: `color-mix(in oklch, ${CATEGORY[c].color} 80%, var(--ink))`, background: `color-mix(in oklch, ${CATEGORY[c].color} 16%, transparent)` }}>
-                      <Icon className="size-3" strokeWidth={2} />
-                    </span>
-                    {CATEGORY[c].label}
-                    {first ? <Star aria-label="first" className="size-3 fill-[var(--medal-gold)] text-[var(--medal-gold)]" strokeWidth={2} /> : null}
-                  </motion.li>
-                )
-              })}
-            </ul>
-          </Part>
-
-          <Part label="The System · daily quests" at={2} step={step} done={done}
-            empty={picks.length ? null : reached(3) ? 'The System picks whatever is slipping most' : 'Up to three things to train first'}>
-            <ol className="flex flex-col gap-1">
-              {picks.map((id, k) => {
-                const o = IMPROVE.find((x) => x.id === id)!
-                return (
-                  <motion.li key={id} layout="position" transition={SPRING} className="flex h-8 items-center gap-2 text-[12.5px]">
-                    <span className="grid size-5 shrink-0 place-items-center rounded-full bg-pill text-[10.5px] font-bold text-white tabular-nums">{k + 1}</span>
-                    <span className="min-w-0 flex-1 truncate font-medium text-ink">{target[id] ?? o.quest}</span>
-                  </motion.li>
-                )
-              })}
-            </ol>
-          </Part>
-
-          <Part label="Voice" at={3} step={step} done={done} empty={reached(3) ? null : 'How ReLife talks to you, and what you’re working toward'}>
-            <div className="flex items-start gap-2.5 rounded-[12px] bg-surface p-2 shadow-1">
-              <CapsuleMark className="size-7 shrink-0 rounded-[6px]" />
-              <div className="min-w-0 flex-1">
-                <p className="flex items-baseline justify-between gap-3 text-[11.5px] leading-4"><span className="font-semibold text-ink">ReLife</span><span className="text-ink-3">now</span></p>
-                <AnimatePresence mode="popLayout" initial={false}>
-                  <motion.p key={tone.key} {...appear} className="mt-0.5 text-[12.5px] leading-[17px] text-pretty text-ink-2">{tone.example}</motion.p>
-                </AnimatePresence>
-              </div>
-            </div>
-            {v.goals.trim() ? (
-              <p className="mt-2 line-clamp-2 border-s-2 border-pill ps-2.5 text-[12.5px] leading-[18px] text-ink-2 italic">{v.goals.trim()}</p>
-            ) : null}
-          </Part>
-
-          <Part label="Today’s quest log" at={4} step={step} done={done}
-            empty={picked.length ? null : reached(4) ? 'No routines yet. Add them anytime in Plan.' : 'A few routines, each with a reminder and a streak'}>
+          <Part label="Today’s routines" at={AT.routines} step={step}
+            empty={picked.length ? null : reached(AT.routines) ? 'No routines yet. Add them anytime in Plan.' : 'Next step: a few routines, each with a reminder and a streak'}>
             <ul className="flex flex-col gap-1">
               <AnimatePresence initial={false}>
                 {picked.slice(0, 4).map((t) => (
@@ -241,38 +244,30 @@ export function SaveFile({ v, step, done, level, picks, routines, starters }: {
                     <span aria-hidden className="grid size-7 shrink-0 place-items-center rounded-[8px]" style={{ background: `color-mix(in oklch, ${CATEGORY[t.area].color} 14%, transparent)` }}>
                       <RoutineArt name={t.name} kind={t.kind} area={t.area} className="size-[18px]" />
                     </span>
-                    <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-ink">{t.name}</span>
-                    <span className="shrink-0 text-[11.5px] text-ink-3 tabular-nums">{t.rule.times[0]}</span>
+                    <span className="min-w-0 flex-1 truncate text-caption font-medium text-ink">{t.name}</span>
+                    <span className="shrink-0 text-caption text-ink-3 tabular-nums">{t.rule.times[0]}</span>
                     <span aria-hidden className="size-4 shrink-0 rounded-full shadow-[inset_0_0_0_1.5px_var(--hairline)]" />
                   </motion.li>
                 ))}
               </AnimatePresence>
             </ul>
-            {picked.length > 4 ? <p className="mt-1 text-[11.5px] text-ink-3 tabular-nums">+{picked.length - 4} more</p> : null}
+            {picked.length > 4 ? <p className="mt-1 text-caption text-ink-3 tabular-nums">+{picked.length - 4} more</p> : null}
           </Part>
         </div>
       </Fluid>
-
-      <AnimatePresence initial={false}>
-        {done ? (
-          <motion.p key="saved" {...appear} className="flex items-center justify-center gap-1.5 border-t border-divider py-3 text-[12.5px] font-medium text-good">
-            <Check className="size-4" strokeWidth={2} />Save file created
-          </motion.p>
-        ) : null}
-      </AnimatePresence>
     </div>
   )
 }
 
 /** On a phone the preview shrinks to one line: the capsule, the name and the level. */
-export function SaveStrip({ v, level }: { v: V; level: Level | null }) {
+export function SaveStrip({ v }: { v: V }) {
   const name = firstName(v.name)
   return (
     <div className="flex items-center gap-3 rounded-[16px] bg-surface px-3 py-2.5 shadow-1">
       <CapsuleIcon letter={(name[0] ?? '?').toUpperCase()} size="sm" className="ms-1" />
       <div className="min-w-0 flex-1">
-        <p className={cn('truncate text-[14px] leading-5 font-semibold', name ? 'text-ink' : 'text-ink-3')}>{name || 'Your name'}</p>
-        <p className="text-[12px] leading-4 text-ink-3">Lv {level?.level ?? 1} · {level?.title ?? 'Awakened'}</p>
+        <p className={cn('truncate text-body font-semibold', name ? 'text-ink' : 'text-ink-3')}>{name || 'Your name'} · Lv 1 Awakened</p>
+        <p className="truncate text-caption text-ink-3">{city(v.timezone)} · {v.baseCurrency.toUpperCase()} · not saved yet</p>
       </div>
       <ul aria-label="Areas" className="flex -space-x-1">
         {v.areas.map((c) => (

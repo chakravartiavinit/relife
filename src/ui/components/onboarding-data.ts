@@ -1,26 +1,33 @@
 import type { Category } from '@/db/schema'
 import type { SuggestedRoutine } from '@/ai/routines'
 
-// Shared by setup (/welcome): the questions in onboarding-flow.tsx and the live save-file preview in
-// onboarding-preview.tsx read the same answers, options and time helpers.
+// Shared by setup (/welcome): the questions (onboarding-flow.tsx, onboarding-steps.tsx) and the live save-file
+// preview (onboarding-preview.tsx) read the same answers, options and time helpers.
 
-/** Five steps, each a short group of related questions. The order matters: goals come before routines,
- * so the AI builds routines from everything said so far. */
+/** Four steps, each a short group of related questions. Goals and tone are not asked here: the Coach drafts a goal
+ * from the picks later, and tone starts at Balanced (the coach notes in Settings carry the voice). */
 export const STEPS = [
   { key: 'you', label: 'You' },
-  { key: 'day', label: 'Day' },
-  { key: 'focus', label: 'Focus' },
-  { key: 'voice', label: 'Voice' },
+  { key: 'areas', label: 'Areas' },
+  { key: 'connect', label: 'Connect' },
   { key: 'routines', label: 'Routines' },
 ] as const
 export const LAST = STEPS.length - 1
+/** Step positions by name. */
+export const AT = { you: 0, areas: 1, connect: 2, routines: 3 } as const
 
-export const TONES = [
-  { key: 'gentle', label: 'Gentle', example: 'Nice work on sleep this week. Try lights out 15 minutes earlier?' },
-  { key: 'balanced', label: 'Balanced', example: 'Sleep is up, spending too. One change: cook twice this week.' },
-  { key: 'blunt', label: 'Blunt', example: 'Food delivery is 32% over. Delete Zomato for two weeks.' },
-] as const
-export type Tone = (typeof TONES)[number]['key']
+/** One line per area on its tile. */
+export const AREA_BLURB: Record<Category, string> = {
+  health: 'Sleep, steps, water, medicines',
+  mind: 'Mood, focus, screen time',
+  skills: 'Code, learning, problems',
+  wealth: 'Spending and portfolio',
+  hobbies: 'Practice and play',
+  relationships: 'Keeping in touch',
+}
+
+/** Not asked in setup any more: it keeps its saved value (Balanced on a first run); the coach notes in Settings carry the voice. */
+export type Tone = 'gentle' | 'balanced' | 'blunt'
 
 /** What The System can train, as signal ids from core/patterns. */
 export const IMPROVE: { id: string; area: Category; label: string; art: string; quest: string }[] = [
@@ -49,12 +56,16 @@ export type Initial = {
   tone: Tone; goals: string; constraints: string
 }
 export type V = Initial & {
-  templates: string[]; generated: SuggestedRoutine[]; prompt: string
+  templates: string[]; generated: SuggestedRoutine[]
   /** Which routine list is showing. Not chosen yet: AI when a model is connected, else the starter list. */
   routineMode: 'ai' | 'starter' | null
+  /** What the AI list was built from (areas and picks), so changing them on an earlier step builds it again. */
+  generatedFor: string
+  /** The suggested starters are ticked once, the first time the starter list shows. */
+  starterSeeded: boolean
+  /** The sleep target follows the night they describe until they pick one themselves. */
   sleepTouched: boolean
 }
-export type Level = { level: number; title: string; progress: number }
 
 // Browsers list some zones under old names (Asia/Calcutta), so compare and accept by what Intl resolves.
 export const canonTz = (tz: string) => { try { return new Intl.DateTimeFormat('en', { timeZone: tz }).resolvedOptions().timeZone } catch { return null } }
@@ -68,6 +79,11 @@ export const nightHours = (sleep: string, wake: string) => ((toMin(wake) - toMin
 export const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x))
 /** A sleep target that fits the night: time in bed less half an hour to fall asleep, to the half hour. */
 export const fitSleep = (night: number) => clamp(Math.round((night - 0.5) * 2) / 2, 5, 10)
+
+/** The currency's own sign, "₹" for INR. */
+export const currencySign = (code: string) => {
+  try { return new Intl.NumberFormat('en', { style: 'currency', currency: code, currencyDisplay: 'narrowSymbol' }).formatToParts(0).find((p) => p.type === 'currency')?.value ?? code } catch { return code }
+}
 
 export const nfIN = new Intl.NumberFormat('en-IN')
 export const litres = (ml: number) => `${+(ml / 1000).toFixed(2)} L`
