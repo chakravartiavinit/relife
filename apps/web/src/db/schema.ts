@@ -2,6 +2,7 @@ import {
   pgTable, uuid, text, timestamp, numeric, boolean, jsonb, date, integer, uniqueIndex, index, customType,
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
+import { DEVICE_KINDS, SCOPES, type DeviceKind, type Scope } from '@relife/contract'
 import type { NotifyCategory, NotifyPrefs } from '@/domain/notify'
 import type { Agg, Op, QuestStatus, Rank, SystemKind } from '@/domain/system'
 import type { RecoveryPayload } from '@/domain/recovery'
@@ -59,6 +60,10 @@ export type UserProfile = {
   day?: { wake: string; sleep: string }
   /** ISO time the Today setup checklist was hidden. */
   setupHiddenAt?: string
+  /** Account-wide look, shared by every device (the browser keeps a localStorage copy so the first paint has no flash). */
+  prefs?: { theme?: 'light' | 'dark' | 'system' }
+  /** Self-host: ask every browser on this Mac to connect too, instead of trusting loopback ("Require sign-in on this Mac"). */
+  requireSignIn?: boolean
 }
 
 export const users = pgTable('users', {
@@ -66,8 +71,75 @@ export const users = pgTable('users', {
   name: text('name').notNull(),
   timezone: text('timezone').notNull().default('Asia/Kolkata'),
   baseCurrency: text('base_currency').notNull().default('INR'),
+  /** Cloud sign-in address. Optional in self-host. */
+  email: text('email'),
   profile: jsonb('profile').$type<UserProfile>().notNull().default({}),
   ...stamps(),
+}, (t) => [uniqueIndex('users_email').on(t.email)]) // an index, not .unique(): push adds it to a filled table without asking to truncate
+
+// ── Devices and pairing (src/core/auth/) ─────────────────────────────────────────────────────────
+
+export { DEVICE_KINDS, SCOPES, type DeviceKind, type Scope }
+
+/** Everything signed in to a ReLife: a browser tab, the phone app, the Mac app, the extension. Holds a hashed, revocable token. */
+export const devices = pgTable('devices', {
+  id: id(),
+  userId: userId(),
+  kind: text('kind').$type<DeviceKind>().notNull(),
+  name: text('name').notNull(),
+  scopes: text('scopes').array().$type<Scope[]>().notNull(),
+  tokenHash: bytea('token_hash').notNull(),
+  /** Host used at pairing: "127.0.0.1", "mac.tailnet.ts.net". */
+  via: text('via'),
+  /** { appVersion, platform, userAgent, legacy, watcher } */
+  meta: meta(),
+  lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  ...stamps(),
+}, (t) => [uniqueIndex('devices_token_hash').on(t.tokenHash), index('devices_user').on(t.userId)])
+
+export type PairingMethod = 'offer' | 'request' | 'email' | 'cli'
+export type PairingStatus = 'pending' | 'approved' | 'redeemed' | 'denied' | 'expired'
+
+/** One row per pairing, either direction: an offer (a signed-in screen shows a QR) or a request (the new device shows a code). */
+export const pairings = pgTable('pairings', {
+  id: id(),
+  /** Null until approved (requests). */
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  method: text('method').$type<PairingMethod>().notNull(),
+  /** sha256 of the QR or link secret, the poll secret or the emailed code. */
+  secretHash: bytea('secret_hash').notNull(),
+  /** 8 characters, Crockford base32, shown as XXXX-XXXX. */
+  userCode: text('user_code'),
+  kind: text('kind').$type<DeviceKind>(),
+  deviceName: text('device_name'),
+  scopes: text('scopes').array().$type<Scope[]>().notNull(),
+  status: text('status').$type<PairingStatus>().notNull().default('pending'),
+  /** The dashboard that made the offer or approved the request. */
+  createdByDeviceId: uuid('created_by_device_id'),
+  /** The device created on redeem. */
+  deviceId: uuid('device_id'),
+  attempts: integer('attempts').notNull().default(0),
+  /** { baseUrl, requesterIp, userAgent, platform, via } */
+  meta: meta(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  ...stamps(),
+}, (t) => [uniqueIndex('pairings_secret').on(t.secretHash), index('pairings_code').on(t.userCode)])
+
+/** A client-made key per write: the stored response is replayed on a retry, so a quick log is not counted twice. */
+export const idempotency = pgTable('idempotency', {
+  deviceId: uuid('device_id').notNull(),
+  key: text('key').notNull(),
+  response: jsonb('response').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [uniqueIndex('idempotency_pk').on(t.deviceId, t.key)])
+
+/** Fixed-window counters per key ("redeem:<ip>"), updated with one upsert so the limit holds across web instances. */
+export const rateLimits = pgTable('rate_limits', {
+  key: text('key').primaryKey(),
+  windowStart: timestamp('window_start', { withTimezone: true }).notNull(),
+  count: integer('count').notNull(),
 })
 
 export const trackers = pgTable('trackers', {
