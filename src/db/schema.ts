@@ -5,6 +5,7 @@ import { sql } from 'drizzle-orm'
 import type { NotifyCategory, NotifyPrefs } from '@/domain/notify'
 import type { Agg, Op, QuestStatus, Rank, SystemKind } from '@/domain/system'
 import type { RecoveryPayload } from '@/domain/recovery'
+import type { CoachMessagePayload } from '@/domain/coach-thread'
 import type {
   GoalActionLink, GoalCadence, GoalDecision, GoalDirection, GoalDraft, GoalFields, GoalMeasureKind, GoalProposal,
   GoalReviewPoint, GoalSnapshot, GoalStatus,
@@ -627,3 +628,18 @@ export const briefs = pgTable('briefs', {
   why: jsonb('why').$type<BriefWhy>().notNull(),
   ...stamps(),
 }, (t) => [uniqueIndex('briefs_user_scope_date').on(t.userId, t.scope, t.localDate)])
+
+/**
+ * The Ask conversation: one thread shared by the app and Telegram. A question and its answer are two rows. Kept 180
+ * days (the `coach-messages-prune` job); "Clear conversation" deletes them all. Writes fail soft, so an answer is
+ * still returned if this table is missing.
+ */
+export const coachMessages = pgTable('coach_messages', {
+  id: id(),
+  userId: userId(),
+  role: text('role').$type<'user' | 'assistant'>().notNull(),
+  text: text('text').notNull(),
+  channel: text('channel').$type<'app' | 'telegram'>().notNull().default('app'),
+  payload: jsonb('payload').$type<CoachMessagePayload>().notNull().default({}),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index('coach_messages_user_created').on(t.userId, t.createdAt)])

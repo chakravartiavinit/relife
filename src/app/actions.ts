@@ -14,6 +14,7 @@ import { localDate } from '@/core/time'
 import { buildRRule, WEEKDAYS } from '@/domain/recurrence'
 import { acceptInsight, dismissInsight } from '@/core/insights'
 import type { XpNews } from '@/core/xp'
+import type { AskResult } from '@/ai/ask'
 
 // Local single-user app: the server binds to 127.0.0.1 / Tailscale, and every action scopes
 // writes to getUser(). When multi-user lands, getUser() becomes the session check.
@@ -260,20 +261,49 @@ export async function archiveTracker(id: string) {
   refresh()
 }
 
-/** Re-categorize a transaction and remember the rule for that merchant / UPI id. */
-export async function recategorize(transactionId: string, category: string, remember: boolean) {
+/** What `undoRecategorize` needs to put a merchant back: the payments that were waiting, and whether a rule was written. */
+export type RecategorizeUndo = { ids: string[]; pattern: string | null }
+
+/**
+ * Re-categorize a transaction and, with `remember`, write the rule for that merchant / UPI id and move its other
+ * payments too. Returns what it changed so the caller can offer Undo.
+ */
+export async function recategorize(transactionId: string, category: string, remember: boolean): Promise<RecategorizeUndo> {
   category = z.string().trim().min(1).max(60).parse(category)
   const user = await getUser()
-  const [t] = await db.update(schema.transactions).set({ category })
+  const [before] = await db.select().from(schema.transactions)
     .where(and(eq(schema.transactions.id, transactionId), eq(schema.transactions.userId, user.id)))
-    .returning()
-  const pattern = (t?.upiId ?? t?.merchant ?? '').toLowerCase().trim()
-  if (t && remember && pattern) {
-    await db.insert(schema.merchantRules).values({ userId: user.id, pattern, merchant: t.merchant ?? pattern, category })
+  const undo: RecategorizeUndo = { ids: [], pattern: null }
+  if (!before) return undo
+  const pattern = (before.upiId ?? before.merchant ?? '').toLowerCase().trim()
+  const same = before.upiId ? eq(schema.transactions.upiId, before.upiId) : eq(schema.transactions.merchant, before.merchant ?? '')
+  // The payments that are waiting for a category now; undo puts exactly these back.
+  const waiting = remember && pattern
+    ? await db.select({ id: schema.transactions.id }).from(schema.transactions)
+      .where(and(eq(schema.transactions.userId, user.id), same, eq(schema.transactions.category, 'Uncategorized')))
+    : before.category === 'Uncategorized' ? [{ id: before.id }] : []
+  undo.ids = waiting.map((w) => w.id)
+  await db.update(schema.transactions).set({ category })
+    .where(and(eq(schema.transactions.id, transactionId), eq(schema.transactions.userId, user.id)))
+  if (remember && pattern) {
+    await db.insert(schema.merchantRules).values({ userId: user.id, pattern, merchant: before.merchant ?? pattern, category })
       .onConflictDoUpdate({ target: [schema.merchantRules.userId, schema.merchantRules.pattern], set: { category } })
     // Apply to other transactions from the same merchant.
-    const same = t.upiId ? eq(schema.transactions.upiId, t.upiId) : eq(schema.transactions.merchant, t.merchant ?? '')
     await db.update(schema.transactions).set({ category }).where(and(eq(schema.transactions.userId, user.id), same))
+    undo.pattern = pattern
+  }
+  refresh()
+  return undo
+}
+
+/** Undo a `recategorize`: the rule it wrote goes, and the payments that were waiting go back to waiting. */
+export async function undoRecategorize(undo: RecategorizeUndo) {
+  const parsed = z.object({ ids: z.array(z.string().uuid()).max(5000), pattern: z.string().max(200).nullable() }).parse(undo)
+  const user = await getUser()
+  if (parsed.pattern) await db.delete(schema.merchantRules).where(and(eq(schema.merchantRules.userId, user.id), eq(schema.merchantRules.pattern, parsed.pattern)))
+  if (parsed.ids.length) {
+    await db.update(schema.transactions).set({ category: 'Uncategorized' })
+      .where(and(eq(schema.transactions.userId, user.id), inArray(schema.transactions.id, parsed.ids)))
   }
   refresh()
 }
@@ -300,6 +330,22 @@ export async function resolveInsight(id: string, decision: 'accept' | 'dismiss')
   const user = await getUser()
   if (decision === 'accept') await acceptInsight(user, id)
   else await dismissInsight(user, id)
+  refresh()
+}
+
+/** Undo a dismiss from Needs you: back to pending, only within RESTORE_MINUTES of dismissing it. */
+export async function restoreInsight(id: string) {
+  z.string().uuid().parse(id)
+  const { restoreInsight: restore } = await import('@/core/insights')
+  const ok = await restore(await getUser(), id)
+  refresh()
+  return { ok }
+}
+
+/** Coach: clear the Ask conversation (the app and Telegram share it). */
+export async function clearConversation() {
+  const { clearCoachMessages } = await import('@/core/coach-messages')
+  await clearCoachMessages(await getUser())
   refresh()
 }
 
@@ -546,11 +592,11 @@ export async function disconnectIntegration(id: string) {
   refresh()
 }
 
-export async function ask(question: string): Promise<{ answer: string; error?: string }> {
+export async function ask(question: string): Promise<AskResult> {
   const q = question.trim().slice(0, 1000)
   if (!q) return { answer: '', error: 'Ask a question about your data.' }
   const { askData } = await import('@/ai/ask')
-  const r = await askData(q)
+  const r = await askData(q, { channel: 'app' })
   refresh()
   return r
 }

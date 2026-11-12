@@ -91,6 +91,13 @@ export const JOBS: Job[] = [
     return count ? `removed ${count} sync runs older than 30 days` : undefined
   } },
 
+  // The Ask conversation (app and Telegram share one) is kept 180 days.
+  { id: 'coach-messages-prune', schedule: { cron: '50 3 * * *' }, catchUpMinutes: 12 * 60, run: async () => {
+    const { pruneCoachMessages } = await import('@/core/coach-messages')
+    const n = await pruneCoachMessages(await getUser())
+    return n ? `removed ${n} messages older than 180 days` : undefined
+  } },
+
   // XP and quests: from fresh data, at least every 5 minutes.
   { id: 'xp', schedule: { everyMinutes: 5 }, on: ['data.changed'], run: async () => {
     const [{ refreshXp }, { celebrate }] = await Promise.all([import('@/core/xp'), import('@/bot/ui')])
