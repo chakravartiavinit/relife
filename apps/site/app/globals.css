@@ -123,6 +123,9 @@ img, svg { display: block; max-width: 100%; }
 .wl-done { display: flex; gap: 14px; align-items: flex-start; padding: 18px; border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--elev-1); }
 .wl-done .ic { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: color-mix(in oklch, var(--good) 14%, var(--surface)); color: var(--good); }
 .wl-done h3 { font-size: 17px; font-weight: 650; }
+.wl-done h3:focus { outline: none; }
+.wl-turnstile { margin-top: 12px; display: flex; justify-content: center; }
+.wl-turnstile:empty { display: none; }
 .wl-done p { margin-top: 2px; font-size: 14.5px; color: var(--ink-2); overflow-wrap: anywhere; }
 .wl-done button { margin-top: 8px; padding: 0; border: 0; background: none; font-size: 14px; font-weight: 600; color: var(--pill-ink); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 

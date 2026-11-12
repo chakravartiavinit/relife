@@ -2,7 +2,7 @@
 
 import { Check, Copy, Mail, MessageCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 
 async function post(path: string, token: string) {
   const res = await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token }) })
@@ -60,17 +60,28 @@ export function LeaveButton({ token }: { token: string }) {
   const [ask, setAsk] = useState(false)
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
+  const trigger = useRef<HTMLButtonElement>(null)
+  const stay = useRef<HTMLButtonElement>(null)
+  const opened = useRef(false)
+  const id = useId()
+
+  // Focus moves into the confirmation on the safe choice, and back to the link that opened it when it closes.
+  useEffect(() => {
+    if (ask) { opened.current = true; stay.current?.focus() }
+    else if (opened.current) { opened.current = false; trigger.current?.focus() }
+  }, [ask])
+
   const leave = async () => {
     setBusy(true); setFailed(false)
     try { await post('/api/waitlist/leave', token); router.replace(`/w/${encodeURIComponent(token)}?left=1`); router.refresh() } catch { setFailed(true); setBusy(false) }
   }
-  if (!ask) return <button type="button" onClick={() => setAsk(true)}>Leave the waitlist</button>
+  if (!ask) return <button ref={trigger} type="button" onClick={() => setAsk(true)}>Leave the waitlist</button>
   return (
-    <div className="confirm" role="alertdialog" aria-label="Leave the waitlist">
-      <p>This deletes your email and your place in line. Leave?</p>
+    <div className="confirm" role="alertdialog" aria-labelledby={id} onKeyDown={(e) => { if (e.key === 'Escape' && !busy) setAsk(false) }}>
+      <p id={id}>This deletes your email and your place in line. Leave?</p>
       <div style={{ display: 'flex', gap: 8 }}>
         <button type="button" className="btn ink sm" onClick={leave} disabled={busy} style={{ textDecoration: 'none', color: '#fff' }}>{busy ? 'Leaving…' : 'Yes, leave'}</button>
-        <button type="button" className="btn secondary sm" onClick={() => setAsk(false)} style={{ textDecoration: 'none' }}>Stay</button>
+        <button ref={stay} type="button" className="btn secondary sm" onClick={() => setAsk(false)} style={{ textDecoration: 'none' }}>Stay</button>
       </div>
       {failed ? <p className="ink-2" role="alert">Couldn&apos;t leave right now. Try again.</p> : null}
     </div>

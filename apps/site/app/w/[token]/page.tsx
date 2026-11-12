@@ -45,7 +45,7 @@ export default async function StatusPage({ params, searchParams }: { params: Pro
               <p className="sub num">Confirmed people ahead of you: {n(s.ahead!)}</p>
               <ReferralBox url={`${siteUrl}/?ref=${s.refCode}`} name={NAME} />
               <p className="stats">
-                <span>Each friend who confirms moves you up <b>{SPOTS_PER_REFERRAL}</b> spots</span>
+                <span>Each friend who confirms moves you up to <b>{SPOTS_PER_REFERRAL}</b> places</span>
                 <span>Friends joined: <b>{n(s.referralCount)}</b></span>
               </p>
               <div className="leave">

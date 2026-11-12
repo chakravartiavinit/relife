@@ -45,8 +45,8 @@ export function welcomeEmail(to: string, token: string, refCode: string): Email 
   const ref = referralUrl(refCode)
   return {
     to, subject: `You're on the ${brand.name} waitlist`, headers: unsubscribe(token),
-    text: `You're confirmed.\n\nYour spot: ${link}\nYour referral link: ${ref}\nEach friend who confirms moves you up ${SPOTS_PER_REFERRAL} spots.\n\nWhat happens next: we invite people in order, in small batches, with an email like this one. Nothing else.`,
-    html: layout("You're on the list", p(`Your spot and your referral link are below. Each friend who confirms moves you up ${SPOTS_PER_REFERRAL} spots.`)
+    text: `You're confirmed.\n\nYour spot: ${link}\nYour referral link: ${ref}\nEach friend who confirms moves you up to ${SPOTS_PER_REFERRAL} places.\n\nWhat happens next: we invite people in order, in small batches, with an email like this one. Nothing else.`,
+    html: layout("You're on the list", p(`Your spot and your referral link are below. Each friend who confirms moves you up to ${SPOTS_PER_REFERRAL} places.`)
       + p(`Referral link: <a href="${ref}">${esc(ref)}</a>`)
       + p('What happens next: we invite people in order, in small batches, with an email like this one. Nothing else.'), { label: 'See my spot', href: link }),
   }

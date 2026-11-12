@@ -1,11 +1,11 @@
 import type { Metadata, Viewport } from 'next'
-import { Analytics } from '@vercel/analytics/next'
 import { Inter, Outfit } from 'next/font/google'
+import { SiteAnalytics } from '@/components/analytics'
 import { DESCRIPTION, NAME, publicReady, siteUrl, TITLE } from '@/lib/site'
 import './globals.css'
 
-const inter = Inter({ variable: '--font-inter', subsets: ['latin'], display: 'swap' })
-// Only the hero display weight is preloaded; the other weights load when used.
+// Only the hero display font (Outfit) is preloaded; Inter loads when the text needs it and swaps in.
+const inter = Inter({ variable: '--font-inter', subsets: ['latin'], display: 'swap', preload: false })
 const outfit = Outfit({ variable: '--font-outfit', subsets: ['latin'], display: 'swap' })
 
 export const metadata: Metadata = {
@@ -24,11 +24,11 @@ export const viewport: Viewport = { width: 'device-width', initialScale: 1, them
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${outfit.variable}`}>
+    <html lang="en" data-scroll-behavior="smooth" className={`${inter.variable} ${outfit.variable}`}>
       <body>
         <a href="#main" className="skip">Skip to content</a>
         {children}
-        {process.env.VERCEL ? <Analytics /> : null}
+        {process.env.VERCEL ? <SiteAnalytics /> : null}
       </body>
     </html>
   )

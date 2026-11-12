@@ -2,9 +2,9 @@
 
 import brand from '@relife/brand/brand.json'
 import { Check } from 'lucide-react'
-import Script from 'next/script'
-import { useActionState, useEffect, useId, useState } from 'react'
+import { useActionState, useEffect, useId, useRef, useState } from 'react'
 import { joinAction, type JoinState } from '@/app/actions'
+import { Turnstile } from './turnstile'
 
 const AREAS: [string, string, string][] = [
   ['health', 'Health', 'var(--cat-health)'], ['mind', 'Mind', 'var(--cat-mind)'], ['skills', 'Skills', 'var(--cat-skills)'],
@@ -49,6 +49,9 @@ export function WaitlistForm({ expanded = false, tone = 'hero' }: { expanded?: b
   const [email, setEmail] = useState('')
   const [seen, setSeen] = useState<JoinState>()
   const [attr, setAttr] = useState<Record<string, string>>({})
+  const doneHeading = useRef<HTMLHeadingElement>(null)
+  const emailInput = useRef<HTMLInputElement>(null)
+  const changeEmail = useRef(false)
 
   // Referral code and campaign tags travel with the form. The page itself stays static.
   useEffect(() => {
@@ -67,15 +70,22 @@ export function WaitlistForm({ expanded = false, tone = 'hero' }: { expanded?: b
   const error = MESSAGES[state.status]
   const errId = `${id}-err`
 
+  // Keyboard and screen-reader users follow the result: to the confirmation when the signup is done,
+  // back into the email field when they chose to change it.
+  useEffect(() => {
+    if (done) doneHeading.current?.focus()
+    else if (changeEmail.current) { changeEmail.current = false; emailInput.current?.focus() }
+  }, [done])
+
   if (done) {
     return (
       <div className="wl" id={tone === 'hero' ? 'waitlist' : undefined}>
         <div className="wl-done" role="status">
           <span className="ic"><Check size={22} strokeWidth={2.5} /></span>
           <div>
-            <h3>Check your inbox to confirm your spot.</h3>
+            <h3 ref={doneHeading} tabIndex={-1}>Check your inbox to confirm your spot.</h3>
             <p>We sent a link to {state.email}.</p>
-            <button type="button" onClick={() => setSeen(state)}>Wrong email? Change it</button>
+            <button type="button" onClick={() => { changeEmail.current = true; setSeen(state) }}>Wrong email? Change it</button>
           </div>
         </div>
       </div>
@@ -88,7 +98,7 @@ export function WaitlistForm({ expanded = false, tone = 'hero' }: { expanded?: b
         <div className="wl-field">
           <label htmlFor={`${id}-email`} className="sr-only">Email</label>
           <input
-            id={`${id}-email`} name="email" type="email" autoComplete="email" inputMode="email" required placeholder="you@email.com"
+            ref={emailInput} id={`${id}-email`} name="email" type="email" autoComplete="email" inputMode="email" required placeholder="you@email.com"
             className="wl-input" value={email} onChange={(e) => setEmail(e.target.value)}
             aria-invalid={state.status === 'invalid' || state.status === 'disposable' ? true : undefined} aria-describedby={error ? errId : undefined}
           />
@@ -107,7 +117,7 @@ export function WaitlistForm({ expanded = false, tone = 'hero' }: { expanded?: b
       {/* Honeypot: people never see or tab to it */}
       <div className="hp" aria-hidden><label>Company<input name="company" tabIndex={-1} autoComplete="off" /></label></div>
       {Object.entries(attr).map(([k, v]) => (v ? <input key={k} type="hidden" name={k} value={v} /> : null))}
-      {TURNSTILE_KEY ? (<><Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="lazyOnload" /><div className="cf-turnstile" data-sitekey={TURNSTILE_KEY} /></>) : null}
+      {TURNSTILE_KEY ? <Turnstile siteKey={TURNSTILE_KEY} resetKey={state} /> : null}
 
       <p className="wl-consent">We&apos;ll email you about {brand.name}&apos;s launch. Nothing else. Leave any time. <a href="/privacy">Privacy</a></p>
     </form>
