@@ -2,6 +2,7 @@
 
 import brand from '@relife/brand/brand.json'
 import type { ApiError } from '@relife/contract'
+import { safeNext as safe } from '@/core/auth/next'
 
 // The pairing calls a visitor's browser makes before it has a session (/signin and /pair). The cookie comes back on the response.
 
@@ -17,5 +18,5 @@ export async function postJson<T>(path: string, body: unknown): Promise<{ ok: tr
   }
 }
 
-/** A `next` address from the query: a path on this site only, never another origin. */
-export const safeNext = (n: string | null | undefined) => (n && n.startsWith('/') && !n.startsWith('//') && !n.includes('\\') ? n : '/')
+/** A `next` address from the query: a path on this site only, never another origin (core/auth/next.ts). The server render has no location; a path resolves the same against any origin. */
+export const safeNext = (n: string | null | undefined) => safe(n, typeof location === 'undefined' ? 'http://localhost' : location.origin)

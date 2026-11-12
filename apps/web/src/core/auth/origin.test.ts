@@ -38,3 +38,9 @@ test('only the cookie name for the request protocol is read, never the other', (
   assert.deepEqual(tokenOf(h({ host: '127.0.0.1:3030', cookie: 'relife=rlf_b_plain' })), { token: 'rlf_b_plain', via: 'cookie' })
   assert.equal(tokenOf(h({ host: '127.0.0.1:3030', cookie: '__Host-relife=x' })), null)
 })
+
+test('a cookie that is not valid percent-encoding is no token', () => {
+  assert.equal(sessionCookieOf(h({ host: '127.0.0.1:3030', cookie: 'relife=%E0%A4%A' })), undefined)
+  assert.equal(tokenOf(h({ host: '127.0.0.1:3030', cookie: 'relife=%' })), null)
+  assert.equal(sessionCookieOf(h({ host: '127.0.0.1:3030', cookie: 'relife=rlf_b_a%2Db' })), 'rlf_b_a-b')
+})

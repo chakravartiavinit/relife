@@ -124,15 +124,21 @@ export function readCookie(header: string | null, name: string) {
   return undefined
 }
 
-/** The session cookie of a request: only the name its own protocol allows (`__Host-` over HTTPS, the plain one over HTTP), never the other. */
-export const sessionCookieOf = (h: Headers) => readCookie(h.get('cookie'), cookieName(isSecureRequest(h)))
+/** A cookie value as the token it holds; a value that is not valid percent-encoding is no token. */
+function decodeCookie(v: string | undefined) {
+  if (!v) return undefined
+  try { return decodeURIComponent(v) } catch { return undefined }
+}
+
+/** The session token in a request's cookie: only the name its own protocol allows (`__Host-` over HTTPS, the plain one over HTTP), never the other. */
+export const sessionCookieOf = (h: Headers) => decodeCookie(readCookie(h.get('cookie'), cookieName(isSecureRequest(h))))
 
 /** The session token a request carries: bearer first, then the cookie. */
 export function tokenOf(h: Headers) {
   const bearer = h.get('authorization')?.match(/^Bearer\s+(\S+)$/i)?.[1]
   if (bearer) return { token: bearer, via: 'bearer' as const }
   const c = sessionCookieOf(h)
-  return c ? { token: decodeURIComponent(c), via: 'cookie' as const } : null
+  return c ? { token: c, via: 'cookie' as const } : null
 }
 
 /** `full` opens everything. `companion` and `ingest` open only themselves. */

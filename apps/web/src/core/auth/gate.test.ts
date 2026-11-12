@@ -152,3 +152,17 @@ test('the cookie is read under the one name the request protocol allows', async 
   const wrongName = await gate(req('/goals', { host: 'mac.tail1.ts.net', headers: { cookie: `relife=${GOOD}`, 'x-forwarded-proto': 'https', 'x-forwarded-for': '100.64.0.7' } }), deps())
   assert.equal(kind(wrongName), 'redirect /signin')
 })
+
+test('a malformed cookie is no session, not a crash', async () => {
+  const r = await gate(req('/goals', { headers: { cookie: 'relife=%E0%A4%A' } }), deps({ requireSignIn: true }))
+  assert.equal(kind(r), 'redirect /signin')
+  assert.equal((await gate(req('/api/v1/me', { headers: { cookie: 'relife=%' } }), deps({ requireSignIn: true }))).status, 401)
+})
+
+test('the sign-in redirect never carries an address that leaves the site', async () => {
+  for (const path of ['//evil.example/x', '/%5Cevil.example']) {
+    const r = await gate(req(path, { headers: NAV }), deps({ requireSignIn: true }))
+    const next = new URL(r.headers.get('location')!).searchParams.get('next')
+    assert.ok(next === null || (next.startsWith('/') && !next.startsWith('//')), `${path} -> ${next}`)
+  }
+})

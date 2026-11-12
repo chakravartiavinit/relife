@@ -1,6 +1,7 @@
 import brand from '@relife/brand/brand.json'
 import { NextResponse, type NextRequest } from 'next/server'
 import { allowedHost } from '../hosts'
+import { safeNext } from './next'
 import { getUser } from '../user'
 import { findByToken, touchIfDue } from './devices'
 import { mintLoopbackDevice, requireSignIn } from './loopback'
@@ -54,12 +55,12 @@ export async function gate(req: NextRequest, deps: GateDeps = realDeps): Promise
   const cookie = sessionCookieOf(req.headers)
   let reason: 'revoked' | 'expired' | undefined
   if (cookie) {
-    const found = await deps.findByToken(decodeURIComponent(cookie))
+    const found = await deps.findByToken(cookie)
     if (found.ok && scopeAllows(found.device.scopes, 'full')) {
       const res = NextResponse.next()
       // Stay signed in: re-set the cookie (a fresh Max-Age) whenever last_seen is refreshed.
       if (await deps.touchIfDue(found.device).catch(() => false)) {
-        const c = sessionCookie(decodeURIComponent(cookie), req.headers)
+        const c = sessionCookie(cookie, req.headers)
         res.cookies.set(c.name, c.value, c.options)
       }
       return res
@@ -85,7 +86,8 @@ export async function gate(req: NextRequest, deps: GateDeps = realDeps): Promise
         : apiError(401, 'unauthorized', `Sign in to ${brand.name} first.`, { legacy: LEGACY_BODY.has(pathname) })
   }
   const to = new URL('/signin', req.url)
-  if (pathname !== '/') to.searchParams.set('next', pathname + search)
+  const next = safeNext(pathname + search, req.nextUrl.origin)
+  if (next !== '/') to.searchParams.set('next', next)
   if (reason) to.searchParams.set('reason', reason)
   return NextResponse.redirect(to)
 }
