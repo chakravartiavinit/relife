@@ -34,7 +34,7 @@ async function Goals() {
   return (
     <div>
       <div className="mb-4 flex justify-end">
-        <NewGoalButton today={data.today} picker={data.picker} activeCount={data.activeCount} listenToUrl />
+        <NewGoalButton today={data.today} picker={data.picker} activeCount={data.activeCount} listenToUrl drafts={drafts.map((d) => ({ insightId: d.id, draft: d.payload.goalDraft! }))} />
       </div>
       {/* DOM order: Review due → Active → Drafts → Paused and finished. On wide screens review and drafts sit in the right column. */}
       <div className={cn('grid gap-6', hasAside && 'lg:grid-cols-[minmax(0,1fr)_340px] lg:grid-rows-[auto_1fr_auto]')}>
