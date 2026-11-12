@@ -47,6 +47,11 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
   never redraw the logo.
 - Name: the app is ReLife (it was briefly called Savepoint). Internal identifiers use `relife` too (database
   names, `relife:*` events and storage keys, the iCloud inbox path).
+- Browser extension: `extension/` (MV3, plain scripts, no build step). Shared helpers in `extension/lib.js`; its icons
+  come from `node scripts/extension-icons.mjs` (add a Lucide name there). It talks to `/api/activity` (time) and
+  `/api/companion` (the popup's Today tab: character, quests, routine checks, goal adds, quick log), both behind
+  the Laptop activity token (`src/core/companion.ts`). Popup tokens are copied into `extension/popup.css`; keep
+  them in step with `globals.css`. Bump `manifest.json`'s version with each change.
 - Vendored UI code: `src/ui/beui/` (beui.dev, installed from the `@beui` registry with imports rewritten
   to `@/ui/beui`). Change it only to fit ReLife tokens.
 - Charts: [EvilCharts](https://evilcharts.com/docs), installed unmodified with `npx shadcn@latest add @evilcharts/recharts-<chart>`
