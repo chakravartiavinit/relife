@@ -9,12 +9,12 @@ import { MedalDisc } from './xp'
 import { cn } from '../cn'
 import { AREA_ICON, CapsuleIcon } from './capsule-icon'
 import { Ticker } from './ticker'
+import { AREA_HREF } from './nav'
 
-// The character sheet at the top of Today and Progress: who you are in the game (level, title, XP),
-// your streak, and your areas as stats. One component so the two pages always agree.
+// The character sheet at the top of Progress: who you are in the game (level, title, XP),
+// your streak, and your areas as stats.
 
 type Summary = Awaited<ReturnType<typeof xpSummary>>
-const AREA_HREF: Record<Category, string> = { health: '/health', mind: '/mind', skills: '/skills', wealth: '/wealth', hobbies: '/hobbies', relationships: '/people' }
 
 export function CharacterBanner({ s, name, heading, eyebrow, streak, freezes, areas, children }: {
   s: Summary

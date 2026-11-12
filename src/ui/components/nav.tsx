@@ -1,3 +1,4 @@
+import type { Category } from '@/db/schema'
 import { Brain, Code, HeartPulse, LayoutGrid, MonitorSmartphone, Palette, Sparkles, Sunrise, Target, UserRound, Users, Wallet, type LucideIcon } from 'lucide-react'
 
 // The destinations, as data. The sidebar, the tab bar and the Go-to list read it (`src/ui/components/shell/`).
@@ -40,7 +41,7 @@ export const LIFE_HUB = NAV[1].items[0]
 export const LIFE_CHILDREN = NAV[1].items.slice(1)
 
 /** Area pages the user did not pick in setup stay out of the list (until you are on one). Time is not an area. */
-export const AREA_HREF: Record<string, string> = { health: '/health', mind: '/mind', skills: '/skills', wealth: '/wealth', hobbies: '/hobbies', relationships: '/people' }
+export const AREA_HREF: Record<Category, string> = { health: '/health', mind: '/mind', skills: '/skills', wealth: '/wealth', hobbies: '/hobbies', relationships: '/people' }
 
 /** The Life children to show: `areas` (from onboarding) hides the area pages the user didn't pick; empty shows all. */
 export function visibleLifeChildren(areas: string[] | undefined, path: string) {
