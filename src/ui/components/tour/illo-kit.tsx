@@ -90,9 +90,9 @@ export function Txt({ x, y, size = 28, weight = 400, fill = 'var(--ink)', end, m
 }
 
 /** Mono uppercase label, like SystemLabel. */
-export function Mono({ x, y, fill = 'var(--ink-3)', children }: { x: number; y: number; fill?: string; children: React.ReactNode }) {
+export function Mono({ x, y, size = 19, fill = 'var(--ink-3)', children }: { x: number; y: number; size?: number; fill?: string; children: React.ReactNode }) {
   return (
-    <text x={x} y={y} fontSize={19} fontWeight={600} letterSpacing={3} fill={fill} fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace">
+    <text x={x} y={y} fontSize={size} fontWeight={600} letterSpacing={3} fill={fill} fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace">
       {children}
     </text>
   )
