@@ -526,6 +526,18 @@ export async function chooseQuestRecovery(input: unknown) {
   }
 }
 
+/** Settings → Areas: which areas show in Life, quests and suggestions. Hiding one keeps its data. */
+export async function saveAreas(ids: string[]) {
+  const user = await getUser()
+  const parsed = z.array(z.enum(CATEGORIES)).min(1).safeParse(ids)
+  if (!parsed.success) return { ok: false as const, error: 'Keep at least one area.' }
+  await db.update(schema.users).set({ profile: { ...(await freshProfile(user.id)), areas: parsed.data } }).where(eq(schema.users.id, user.id))
+  const { clearUserCache } = await import('@/core/user')
+  clearUserCache()
+  refresh()
+  return { ok: true as const }
+}
+
 /** Settings → The System: which stats to train first. */
 export async function saveSystemFocus(ids: string[]) {
   const user = await getUser()
