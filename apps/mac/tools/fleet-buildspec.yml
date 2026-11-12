@@ -1,0 +1,25 @@
+# Builds, tests and snapshots ReLife for Mac on a remote macOS machine (the sandbox is Linux, with no Xcode).
+# Used with the ios-build tools: upload apps/mac as the source, start with this buildspec, then download
+# relife-out.zip (build.log, kit-tests.log, grid-lint.log, selftest.log, snap.log and every snapshot PNG).
+version: 0.2
+phases:
+  build:
+    commands:
+      - |
+        set +e
+        mkdir -p out
+        run() { name=$1; shift; perl -e 'alarm shift; exec @ARGV' "$@" > "out/$name.log" 2>&1; echo "$name exit $?" | tee -a out/summary.txt; }
+        sw_vers >> out/summary.txt; xcodebuild -version >> out/summary.txt; swift --version >> out/summary.txt 2>&1
+        run build 900 ./build.sh
+        run kit-tests 600 swift test --scratch-path "$HOME/Library/Developer/ReLife/test-build"
+        run grid-lint 120 tools/grid-lint.sh
+        run selftest 240 tools/selftest.sh
+        run snap 600 tools/snap.sh
+        for f in build kit-tests grid-lint selftest snap; do echo "=== $f"; head -c 6000 "out/$f.log"; done
+        cp /tmp/ReLife-shots/*.png /tmp/ReLife-shots/*.json out/ 2>/dev/null
+        ls out | wc -l >> out/summary.txt
+        cd out && zip -qr ../relife-out.zip . && cd ..
+artifacts:
+  files:
+    - relife-out.zip
+  discard-paths: yes

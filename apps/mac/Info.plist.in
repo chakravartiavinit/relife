@@ -14,4 +14,8 @@
 <key>LSApplicationCategoryType</key><string>public.app-category.productivity</string>
 <key>NSHighResolutionCapable</key><true/>
 <key>NSPrincipalClass</key><string>NSApplication</string>
+<key>CFBundleURLTypes</key><array><dict>
+<key>CFBundleURLName</key><string>com.relife.mac</string>
+<key>CFBundleURLSchemes</key><array><string>relife</string></array>
+</dict></array>
 </dict></plist>

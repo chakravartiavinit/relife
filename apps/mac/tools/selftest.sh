@@ -3,5 +3,6 @@
 set -u
 rm -rf ~/Library/Saved\ Application\ State/com.relife.mac.savedState
 store=/tmp/ReLife-self.store
+defaults delete com.relife.mac.test 2>/dev/null
 rm -f $store $store-shm $store-wal
 APP_STORE=$store ~/Applications/ReLife.app/Contents/MacOS/ReLife --selftest

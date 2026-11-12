@@ -138,7 +138,7 @@ public enum QueueFlusher {
     /// Sends the queue in order. Stops at the first write that needs a later retry (order is kept)
     /// and at a dead token. A rejected write is dropped and the flush goes on.
     public static func flush(_ ops: [QueuedOp], now: Date, force: Bool,
-                             send: (QueuedOp) async throws -> Void) async -> FlushReport {
+                             send: @Sendable (QueuedOp) async throws -> Void) async -> FlushReport {
         var report = FlushReport()
         let (toSend, expired) = plan(ops, now: now, force: force)
         report.expired = expired.map(\.id)

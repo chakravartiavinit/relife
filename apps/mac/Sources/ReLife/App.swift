@@ -1,86 +1,153 @@
 import AppKit
+import ReLifeKit
 import SwiftData
 import SwiftUI
 
-// ReLife
-//   ReLife                      the app
-//   APP_STORE=<file> ReLife     use another database (tests, experiments)
-//   APP_SNAPSHOT=<dir> ReLife   save a PNG of every sidebar page and Settings tab in light and dark mode, then quit
-//   APP_SEED=1 ReLife           fill an empty /tmp store with sample items (tools/snap.sh)
-//   ReLife --selftest           run the self-test on a /tmp store and quit with 0 or 1 (tools/selftest.sh)
-//   APP_ACCENT=<id> ReLife      run with another accent from Theme.all (UI/Theme.swift)
-//   APP_GRID=1 ReLife           draw the 8 pt grid and the layout probes over the window
+// ReLife for Mac: a client of one ReLife server (local or cloud). It does not run the server.
+//   ReLife                              the app
+//   APP_STORE=<file> ReLife             use another database and keep settings and the token in memory (tests, experiments)
+//   APP_SNAPSHOT=<dir> ReLife           save a PNG of every page, state, panel and Settings tab in light and dark mode, then quit
+//   APP_SEED=1 ReLife                   fill an empty /tmp store with a sample character and quests (tools/snap.sh)
+//   ReLife --selftest                   run the self-test on a /tmp store and quit with 0 or 1 (tools/selftest.sh)
+//   APP_GRID=1 ReLife                   draw the 8 pt grid and the layout probes over the window
+//   relife://pair?server=…&s=…          connect to a server from a dashboard link
+//   relife://log?text=water%20250       quick log from Raycast or a script
+//   relife://open?path=/wealth          open a dashboard page
+//   relife://today                      show the Today page
 
 @main
 struct ReLifeApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
-    @State private var model = AppModel(container: Store.makeContainer())
+    @State private var model = AppModel.shared
+    @AppStorage("menubar.show", store: Prefs.defaults) private var showMenuBar = true
 
     var body: some Scene {
         Window("ReLife", id: "main") {
             ContentView()
                 .environment(model)
-                .themed()
+                .tint(Tokens.pill)
                 .overlay { if GridOverlay.enabled { GridOverlay() } }
-                .frame(minWidth: 760, minHeight: 480)
         }
         .modelContainer(model.container)
         .defaultSize(width: 1100, height: 720)
         .windowToolbarStyle(.unified)
-        .commands {
-            SidebarCommands()
-            ToolbarCommands()
-            CommandGroup(replacing: .newItem) {
-                Button("New Item") { model.addItem() }
-                    .keyboardShortcut("n")
-            }
+        .commands { AppCommands(model: model) }
+
+        MenuBarExtra(isInserted: $showMenuBar) {
+            MenuBarView()
+                .environment(model)
+                .tint(Tokens.pill)
+        } label: {
+            MenuBarLabel()
+                .environment(model)
         }
+        .menuBarExtraStyle(.window)
 
         Settings {
             SettingsView()
                 .environment(model)
-                .themed()
+                .tint(Tokens.pill)
         }
         .windowResizability(.contentSize)
     }
 }
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        // Started from a terminal, the process is not a foreground app yet.
-        NSApp.setActivationPolicy(.regular)
-        NSApp.activate()
-    }
+/// Every action has a menu item and a shortcut. SwiftUI commands do not observe `@Observable` models, so
+/// titles here stay static.
+struct AppCommands: Commands {
+    var model: AppModel
 
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
-
-    /// The self-test's result becomes the exit code, after a normal quit.
-    func applicationWillTerminate(_ notification: Notification) {
-        if SelfTest.requested { exit(SelfTest.exitCode) }
+    var body: some Commands {
+        SidebarCommands()
+        ToolbarCommands()
+        CommandGroup(replacing: .newItem) {
+            Button("Quick Log…") { model.showQuickLog() }
+                .keyboardShortcut("l")
+            Button("Open Today") { model.showMainWindow(page: .today) }
+                .keyboardShortcut("o")
+            Button("Refresh") { Task { await model.refresh(force: true) } }
+                .keyboardShortcut("r")
+        }
+        CommandGroup(after: .sidebar) {
+            Divider()
+            Button("Today") { model.showMainWindow(page: .today) }.keyboardShortcut("1")
+            Button("Progress") { model.showMainWindow(page: .progress) }.keyboardShortcut("2")
+            Button("Activity") { model.showMainWindow(page: .activity) }.keyboardShortcut("3")
+            Divider()
+            Button("Open ReLife in Browser") { model.openDashboard() }.keyboardShortcut("d", modifiers: [.command, .shift])
+            Button("Pause or Resume Activity Tracking") { model.setTrackingPaused(!model.trackingPaused) }
+        }
     }
 }
 
-/// Where the data lives: ~/Library/Application Support/ReLife/ReLife.store
-enum Store {
-    /// True when APP_STORE points somewhere else (tests, snapshots, seed data).
-    static var isOverridden: Bool {
-        !(ProcessInfo.processInfo.environment["APP_STORE"] ?? "").isEmpty
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    private var observers: [NSObjectProtocol] = []
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // Started from a terminal, the process is not a foreground app yet.
+        NSApp.setActivationPolicy(.regular)
+        AppModel.shared.start()
+        let center = NotificationCenter.default
+        for name in [NSWindow.didBecomeKeyNotification, NSWindow.willCloseNotification, NSWindow.didMiniaturizeNotification] {
+            observers.append(center.addObserver(forName: name, object: nil, queue: .main) { _ in
+                // After the window finished closing or opening.
+                DispatchQueue.main.async { MainActor.assumeIsolated { DockPolicy.update() } }
+            })
+        }
+        if Self.launchedAtLogin, Prefs.onboarded {
+            // Opened by the login item: stay in the menu bar and keep the window closed.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                MainActor.assumeIsolated {
+                    AppModel.shared.mainWindow?.close()
+                    DockPolicy.update()
+                }
+            }
+        } else {
+            NSApp.activate()
+        }
     }
 
-    static var url: URL {
-        if let path = ProcessInfo.processInfo.environment["APP_STORE"], !path.isEmpty {
-            return URL(fileURLWithPath: path)
-        }
-        let dir = URL.applicationSupportDirectory.appending(path: "ReLife", directoryHint: .isDirectory)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appending(path: "ReLife.store")
+    /// The login item launch passes 'lgit' in the open event (keyAELaunchedAsLogInItem).
+    private static var launchedAtLogin: Bool {
+        let event = NSAppleEventManager.shared().currentAppleEvent
+        return event?.paramDescriptor(forKeyword: 0x7072_6474)?.enumCodeValue == 0x6C67_6974
     }
 
-    static func makeContainer() -> ModelContainer {
-        do {
-            return try ModelContainer(for: Item.self, configurations: ModelConfiguration(url: url))
-        } catch {
-            fatalError("Could not open the database at \(url.path): \(error)")
-        }
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag { AppModel.shared.showMainWindow() }
+        return true
     }
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls { AppModel.shared.handle(url: url) }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        AppModel.shared.watcher.stop()
+        if SelfTest.requested { exit(SelfTest.exitCode) }
+    }
+
+    /// The Dock menu: the same actions as the menu bar window (os-integrations: every feature three ways).
+    func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
+        let menu = NSMenu()
+        let items: [(String, Selector)] = [
+            ("Quick Log…", #selector(quickLog)),
+            ("Open Today", #selector(openToday)),
+            ("Open ReLife in Browser", #selector(openBrowser)),
+            ("Pause or Resume Activity Tracking", #selector(toggleTracking)),
+        ]
+        for (title, action) in items {
+            let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+            item.target = self
+            menu.addItem(item)
+        }
+        return menu
+    }
+
+    @objc private func quickLog() { AppModel.shared.showQuickLog() }
+    @objc private func openToday() { AppModel.shared.showMainWindow(page: .today) }
+    @objc private func openBrowser() { AppModel.shared.openDashboard() }
+    @objc private func toggleTracking() { AppModel.shared.setTrackingPaused(!AppModel.shared.trackingPaused) }
 }
