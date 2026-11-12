@@ -4,6 +4,8 @@
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 /* A wide but short window (a 13" laptop): onboarding tightens its spacing here so each step still fits. */
 @custom-variant short (@media (min-width: 64rem) and (max-height: 52.5rem));
+/* The shell's saved sidebar state, on <html> before first paint (shell/sidebar-script.ts): no layout flash. */
+@custom-variant rail (html[data-sidebar="rail"] &);
 
 /*
  * ReLife design tokens: the ReLIFE capsule. Ink black, clean white and capsule blue, light-first,
@@ -439,6 +441,16 @@ details[open]::details-content { opacity: 1; }
   font-variant-numeric: tabular-nums;
 }
 
-/* Where the desktop Sheet panel starts from the top of the viewport. The shell's top bar sets this to
-   its height plus the 12px inset, so the panel sits below it. */
-:root { --sheet-top: 12px; }
+/* Where the desktop Sheet panel starts from the top of the viewport: the shell's top bar (72px) plus the 12px
+   inset, so the panel sits below it. On a phone the sheet is a bottom sheet and ignores it. */
+:root { --sheet-top: 12px; --topbar-h: 72px; --tabbar-h: calc(64px + max(20px, env(safe-area-inset-bottom))); }
+@media (min-width: 1024px) { :root { --sheet-top: calc(var(--topbar-h) + 12px); } }
+
+/* Sidebar, before hydration: a saved rail is drawn at once from <html data-sidebar>, ignoring the width and label
+   state React has not caught up with yet. `data-sidebar-ready` (set shortly after load) hands control back to
+   the spring so collapsing animates. */
+html[data-sidebar="rail"]:not([data-sidebar-ready]) aside[data-slot="sidebar"] { width: var(--sidebar-width-icon) !important; }
+html[data-sidebar="rail"]:not([data-sidebar-ready]) [data-slot="sidebar-label"] { opacity: 0 !important; }
+
+/* The Life group's area list unfolds with a height reveal so the rows below slide rather than jump. */
+html[data-life="closed"] .nav-sub[data-open] { grid-template-rows: 0fr; opacity: 0; }

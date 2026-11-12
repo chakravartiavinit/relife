@@ -2,6 +2,7 @@
 // beui.dev/components/motion/animated-sidebar
 
 import { ChevronRight } from "lucide-react";
+import Link from "next/link";
 import {
   AnimatePresence,
   type HTMLMotionProps,
@@ -39,6 +40,9 @@ type SidebarState = "expanded" | "collapsed";
 type SidebarSide = "left" | "right";
 type SidebarVariant = "sidebar" | "floating" | "inset";
 type SidebarCollapsible = "offcanvas" | "icon" | "none";
+
+// ReLife: in-app links go through next/link (client navigation, prefetch).
+const MotionLink = motion.create(Link);
 
 const MOBILE_QUERY = "(max-width: 767px)";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
@@ -510,6 +514,8 @@ export interface AnimatedSidebarProps
   collapsible?: SidebarCollapsible;
   ariaLabel?: string;
   panelClassName?: string;
+  /** ReLife: false renders nothing below `md`. The phone has its own tab bar, not this drawer. */
+  mobile?: boolean;
 }
 
 export const AnimatedSidebar = forwardRef<HTMLElement, AnimatedSidebarProps>(
@@ -519,6 +525,7 @@ export const AnimatedSidebar = forwardRef<HTMLElement, AnimatedSidebarProps>(
       variant = "sidebar",
       collapsible = "icon",
       ariaLabel: ariaLabelProp,
+      mobile = true,
       children,
       className,
       panelClassName,
@@ -538,6 +545,7 @@ export const AnimatedSidebar = forwardRef<HTMLElement, AnimatedSidebarProps>(
         : "var(--sidebar-width)";
 
     if (context.isMobile) {
+      if (!mobile) return null;
       return (
         <MobileSidebar
           ariaLabel={ariaLabel}
@@ -851,7 +859,7 @@ export const AnimatedSidebarMenu = forwardRef<
       as="ul"
       inset={0}
       pillClassName="rounded-xl bg-muted/70"
-      pillContainerClassName="inset-y-auto top-0 h-9"
+      pillContainerClassName="inset-y-auto top-0 h-10"
       data-slot="sidebar-menu"
       className={cn("flex w-full min-w-0 list-none flex-col gap-0.5", className)}
     >
@@ -995,7 +1003,7 @@ export function AnimatedSidebarMenuSubButton({
   );
 
   return href ? (
-    <motion.a
+    <MotionLink
       href={href}
       target={target}
       rel={
@@ -1011,7 +1019,7 @@ export function AnimatedSidebarMenuSubButton({
       className={interactiveClassName}
     >
       {content}
-    </motion.a>
+    </MotionLink>
   ) : (
     <motion.button
       type="button"
@@ -1088,7 +1096,7 @@ export function AnimatedSidebarMenuButton({
         <motion.span
           layoutId={context.layoutId}
           transition={context.reduce ? { duration: 0 } : SPRING_LAYOUT}
-          className="absolute inset-0 rounded-xl bg-muted"
+          className="absolute inset-0 rounded-md bg-surface shadow-1"
         />
       ) : null}
       {icon ? (
@@ -1113,6 +1121,7 @@ export function AnimatedSidebarMenuButton({
               : LABEL_ENTER_TRANSITION
         }
         aria-hidden={panel.collapsed}
+        data-slot="sidebar-label"
         className={cn(
           "relative z-10 min-w-0 flex-1 truncate",
           panel.collapsed && "pointer-events-none",
@@ -1153,7 +1162,7 @@ export function AnimatedSidebarMenuButton({
   );
 
   return href ? (
-    <motion.a
+    <MotionLink
       href={href}
       target={target}
       rel={
@@ -1172,7 +1181,7 @@ export function AnimatedSidebarMenuButton({
       className={interactiveClassName}
     >
       {content}
-    </motion.a>
+    </MotionLink>
   ) : (
     <motion.button
       type="button"
