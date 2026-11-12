@@ -611,3 +611,19 @@ export const streakFreezes = pgTable('streak_freezes', {
   localDate: date('local_date').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [uniqueIndex('streak_freezes_user_date').on(t.userId, t.localDate)])
+
+/**
+ * The one-line summary under each area title, Today's header and Life tiles (scope `today`, an area, `time`),
+ * once per scope per local day. Written by the `ai:area-briefs` job (rules first, a model rewords it when one is
+ * set); pages only read it. `why` holds the numbers it was built from, shown by the "Why?" Peek.
+ */
+export type BriefWhy = { facts: { label: string; value: string; peek?: string }[]; source: 'rules' | 'ai'; model?: string; hash: string }
+export const briefs = pgTable('briefs', {
+  id: id(),
+  userId: userId(),
+  scope: text('scope').$type<'today' | Category | 'time'>().notNull(),
+  localDate: date('local_date').notNull(),
+  text: text('text').notNull(),
+  why: jsonb('why').$type<BriefWhy>().notNull(),
+  ...stamps(),
+}, (t) => [uniqueIndex('briefs_user_scope_date').on(t.userId, t.scope, t.localDate)])
