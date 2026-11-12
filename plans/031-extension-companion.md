@@ -10,8 +10,8 @@ Status: DONE
 - Toolbar badge: open quests left, `✓` when done, `off` when paused, `!` when offline. Can be turned off.
 - Shortcuts: `Alt+Shift+R` opens the popup, `Alt+Shift+P` pauses. Icon menu: pause, send now, open ReLife.
 - Options page (`options.html`): connection, sync status with Send now, excluded sites, tracked items, shortcuts.
-- Unsent stretches moved from session to local storage, so a browser restart keeps them. Old queues are migrated
-  on update.
+- Unsent stretches moved from session to local storage, so a browser restart keeps them (capped at 2,000 on
+  every write). Chrome clears session storage on update, so anything unsent before 0.6 isn't carried over.
 - Every authorised extension request marks the `extension` heartbeat; Activity's setup card shows when it was last seen.
 
 ## Motion
