@@ -67,6 +67,14 @@ Outcome goals (`src/domain/goals.ts`, `src/core/goals.ts`, page `/plan`) close t
 - AI drafts: "Suggest a draft" asks the plan model for one goal from the profile goals text, using only listed tracker slugs and routine IDs. Drafts never carry a baseline. `checkGoalDraft` rejects medical, body, weight, calorie and medication content, health outcomes other than steps, unknown references and out-of-range dates. A draft is a pending insight; only saving it in the Goals form starts a goal (generic accept, Insights and Telegram cannot).
 - Daily quests rank validated candidates linked to an active goal first (`prefer` in `questCandidates`/`selectQuests`). Linking only reorders: every check, the sensitive-measure exclusion, the 3-quest cap and the recovery pause still apply. Goals add no XP.
 
+## Ask history and Needs you
+
+- Ask is one conversation for the app and Telegram, stored in `coach_messages` (role, text, channel, `payload`: `sources`, `insightIds`, `error`). Messages are kept 180 days (`coach-messages-prune`, daily 03:50); Clear conversation deletes them all. A failed call is saved as an error answer, so Retry works from the thread.
+- `askData` sends the last 6 messages (at most 2,000 characters, a failed answer dropped with its question) so "and last month?" works. Sources come from the tools the model really called, never from the model's own text: a tracker with a slug opens its metric Peek, a merchant opens the merchant Peek, the rest are labels. Missing days stay missing.
+- The coach changes nothing from Ask. A routine it proposes is a pending `plan` insight shown under the answer with Approve and Dismiss; AI-generated medicine schedules stay excluded.
+- Needs you is the one queue of decisions and data to sort (recovery, alerts, the weekly review, goal drafts, proposals, nudges, messages ReLife could not read, payments with no category). A nudge leaves the queue and the Coach badge after 3 days (it stays in History). Uncategorised payments count once per merchant. Dismiss can be undone for 10 minutes (`restoreInsight`; a recovery choice cannot be dismissed). Goal drafts have no generic Approve: Review draft opens the goal form and the baseline is still the user's.
+- Telegram "Open in ReLife" buttons appear only when `RELIFE_PUBLIC_URL` is set.
+
 ## Model and tool boundaries
 
 - Calls use bounded per-task profiles: chat 120s total/30s per step; parse 180s/90s; plan 120s/60s; site classification 45s/45s. Each profile bounds output tokens, with larger parse/plan budgets for structured output and reasoning. At most one SDK retry is allowed.

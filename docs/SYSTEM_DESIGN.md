@@ -179,6 +179,8 @@ sync_runs        connector_id, started_at, finished_at, ok, error, events_count
 insights         kind (nudge|review|plan|alert), title, body, payload jsonb,
                  status (pending|accepted|dismissed|done), source_run_id
 plans            goal, horizon, status, insight_id        (free-text plans from accepted plan insights)
+coach_messages   role (user|assistant), text, channel (app|telegram), payload jsonb {sources, insightIds, error},
+                 created_at   (the Ask conversation; kept 180 days by the coach-messages-prune job)
 goals            title, reason, area, status (active|paused|finished), measure_kind (tracker|check_in),
                  tracker_id, measure_name, unit, direction (increase|decrease|range), target / range_low / range_high,
                  baseline_value, baseline_date, baseline_how, target_date, cadence, next_review_on,
@@ -286,8 +288,8 @@ Life             hub: every area this week, one click each (/life)
 Time             laptop time from the extension and the Mac watcher (/time)
 Plan             Goals (up to 3 outcome goals: baseline → now → target, linked actions) · Routines · Trackers ·
                  Review (weekly decisions)  (/plan, /plan/routines, /plan/trackers, /plan/review)
-Coach            ask your data · decisions (reviews, suggestions, plans) · data to sort (failed parses,
-                 merchant categorization)  (/coach, ?filter=decisions|data)
+Coach            Needs you (decisions + data to sort, one queue) · Ask your data (one thread shared with
+                 Telegram) · Patterns · History  (/coach, /coach/patterns, /coach/history, ?filter=decisions|data)
 You              Progress · Connections · Notifications · Settings (profile, LLM models, theme)  (/you, /you/*)
 ⌘K               log anything, jump anywhere, ask your data
 ```
