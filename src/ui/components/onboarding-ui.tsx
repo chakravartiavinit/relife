@@ -36,7 +36,9 @@ export const PICKED = 'bg-pill-wash shadow-[0_0_0_1.5px_var(--pill)]'
 export const CONTROL = 'h-10 text-base sm:text-body'
 // The region pickers, at the same height and look as the name field.
 export const PICKER = 'h-10 rounded-md bg-surface px-3 text-base shadow-1 focus-visible:shadow-[0_0_0_2px_var(--pill)] aria-expanded:shadow-[0_0_0_2px_var(--pill)] sm:text-body'
-export const LINK = cn('relative rounded-sm text-small font-medium text-ink underline decoration-ink/25 underline-offset-[3px] transition-[text-decoration-color] duration-150 ease-out-quint after:absolute after:-inset-x-2 after:-inset-y-2.5 hover:decoration-ink', FOCUS)
+// A 32px pill with a 40px hit area.
+export const PILL_HIT = "relative after:absolute after:-inset-y-1 after:inset-x-0 after:content-['']"
+export const LINK = cn('relative rounded-sm text-small font-medium text-ink underline decoration-ink/25 underline-offset-[3px] transition-[text-decoration-color] duration-150 ease-out-quint after:absolute after:-inset-x-2 after:-inset-y-3 hover:decoration-ink', FOCUS)
 
 /** The question: a small step label, a title and one line of help, each on its own beat. */
 export function Title({ step, title, body }: { step: number; title: string; body?: string }) {

@@ -23,7 +23,7 @@ import { AdaptiveStepper, AdaptiveStepperDecrement, AdaptiveStepperIncrement, Ad
 import {
   AREA_BLURB, IMPROVE, MAX_IMPROVE, canonTz, clamp, currencySign, fitSleep, nfIN, nightHours, type V,
 } from './onboarding-data'
-import { Group, IDLE, LINK, PICKED, PICKER, SWAP, Tick, Title, choice, item } from './onboarding-ui'
+import { Group, IDLE, LINK, PICKED, PICKER, PILL_HIT, SWAP, Tick, Title, choice, item } from './onboarding-ui'
 import { RoutineArt } from './routine-art'
 import { cn } from '../cn'
 
@@ -317,10 +317,10 @@ export function StepRoutines({ v, set, mode, kind, building, setBuilding, starte
       <motion.div variants={item} className="rounded-lg bg-surface shadow-1">
         <Line icon={Sun} label="Your day">
           <span className="flex items-center gap-2">
-            <Select variant="pill" aria-label="Wake up" value={v.wake} onChange={(e) => move('wake', e.target.value)}>
+            <Select variant="pill" className={PILL_HIT} aria-label="Wake up" value={v.wake} onChange={(e) => move('wake', e.target.value)}>
               {hours('wake').map((t) => <option key={t} value={t}>Up {t}</option>)}
             </Select>
-            <Select variant="pill" aria-label="Bedtime" value={v.sleep} onChange={(e) => move('sleep', e.target.value)}>
+            <Select variant="pill" className={PILL_HIT} aria-label="Bedtime" value={v.sleep} onChange={(e) => move('sleep', e.target.value)}>
               {hours('sleep').map((t) => <option key={t} value={t}>Bed {t}</option>)}
             </Select>
           </span>
