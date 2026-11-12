@@ -1,0 +1,27 @@
+{
+  "today": "2026-11-12",
+  "name": "Aarav",
+  "character": {
+    "level": 1,
+    "title": "Newcomer",
+    "total": 0,
+    "floor": 0,
+    "next": 100,
+    "progress": 0,
+    "todayXp": 0,
+    "streak": 0,
+    "best": 0,
+    "doneToday": false,
+    "freezes": 0
+  },
+  "quests": [],
+  "routines": [],
+  "goals": [],
+  "done": 0,
+  "total": 0,
+  "left": 0,
+  "focus": {
+    "seconds": 0,
+    "byKind": []
+  }
+}

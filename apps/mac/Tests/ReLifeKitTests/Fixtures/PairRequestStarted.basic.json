@@ -1,0 +1,8 @@
+{
+  "id": "a1b2c3d4-e5f6-4a78-8b9c-0d1e2f3a4b5c",
+  "userCode": "K7M2-9QXD",
+  "pollSecret": "Wm1kU0FoUjJXQ2NqT0xwUnZ0dEx2bUJqUXRkT2hI",
+  "approveUrl": "http://127.0.0.1:3030/pair/approve?r=a1b2c3d4-e5f6-4a78-8b9c-0d1e2f3a4b5c",
+  "expiresAt": "2026-11-12T12:40:00.000Z",
+  "interval": 2
+}
