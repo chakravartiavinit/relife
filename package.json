@@ -16,7 +16,7 @@
     "mock:seed": "tsx --env-file=.env scripts/mock.ts",
     "seed:demo": "tsx --env-file=.env scripts/seed-demo.ts",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --env-file=.env --test src/domain/*.test.ts src/core/*.test.ts src/connectors/shop/*.test.ts src/ai/*.test.ts src/parsers/*.test.ts src/worker/*.test.ts src/connectors/*.test.ts src/rules/*.test.ts src/ui/*.test.ts",
+    "test": "tsx --env-file=.env --test src/domain/*.test.ts src/core/*.test.ts src/connectors/shop/*.test.ts src/ai/*.test.ts src/parsers/*.test.ts src/worker/*.test.ts src/connectors/*.test.ts src/rules/*.test.ts src/bot/*.test.ts src/ui/*.test.ts",
     "prepare": "git config core.hooksPath .githooks 2>/dev/null || true"
   },
   "dependencies": {

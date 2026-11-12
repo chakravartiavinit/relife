@@ -521,7 +521,7 @@ export const notifications = pgTable('notifications', {
   userId: userId(),
   category: text('category').$type<NotifyCategory>().notNull(),
   text: text('text').notNull(),
-  buttons: jsonb('buttons').$type<{ text: string; data: string }[][]>(),
+  buttons: jsonb('buttons').$type<({ text: string; data: string } | { text: string; url: string })[][]>(),
   /** What it is about ("reminder:<id>", "insight:<id>"), to stop repeats once it's dealt with elsewhere. */
   ref: text('ref'),
   status: text('status').$type<'queued' | 'sent' | 'answered' | 'done' | 'skipped'>().notNull().default('queued'),
