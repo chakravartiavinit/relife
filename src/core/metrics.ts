@@ -93,7 +93,8 @@ export async function activeDays(user: User, from: string) {
 
 /**
  * Typed-in (manual) entries from the last `days` local days, one per tracker per day, with the local hour each was
- * last written. Capture ranks these into "what you usually log around now" (`rankCaptureSuggestions`).
+ * last written. Trackers that keep the latest value (weight, typing speed) are left out: repeating their usual
+ * value is not a log you want one tap for. Capture ranks these into "what you usually log around now" (`rankCaptureSuggestions`).
  */
 export async function manualLogHistory(user: User, days: number, now = new Date()): Promise<ManualLog[]> {
   const from = addDays(localDate(now, user.timezone), -(days - 1))
@@ -102,6 +103,6 @@ export async function manualLogHistory(user: User, days: number, now = new Date(
     day: schema.entries.localDate, value: schema.entries.value, at: schema.entries.updatedAt,
   }).from(schema.entries)
     .innerJoin(schema.trackers, eq(schema.trackers.id, schema.entries.trackerId))
-    .where(and(eq(schema.entries.userId, user.id), eq(schema.entries.source, 'manual'), isNull(schema.trackers.archivedAt), gte(schema.entries.localDate, from)))
+    .where(and(eq(schema.entries.userId, user.id), eq(schema.entries.source, 'manual'), isNull(schema.trackers.archivedAt), eq(schema.trackers.aggregate, 'sum'), gte(schema.entries.localDate, from)))
   return rows.map(({ at, value, ...r }) => ({ ...r, value: Number(value), hour: localHour(at, user.timezone) }))
 }
