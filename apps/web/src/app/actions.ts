@@ -457,6 +457,17 @@ export async function saveSystemFocus(ids: string[]) {
   return { ok: true as const }
 }
 
+/** Appearance, kept on the server so every device shows the same (the browser keeps a localStorage copy for a flash-free first paint). */
+export async function saveTheme(choice: 'light' | 'dark' | 'system') {
+  const theme = z.enum(['light', 'dark', 'system']).parse(choice)
+  const user = await getUser()
+  const profile = await freshProfile(user.id)
+  await db.update(schema.users).set({ profile: { ...profile, prefs: { ...profile.prefs, theme } } }).where(eq(schema.users.id, user.id))
+  const { clearUserCache } = await import('@/core/user')
+  clearUserCache()
+  return { ok: true as const }
+}
+
 /** Settings → Notifications: quiet hours and per-category delivery. The worker reads it each minute. */
 export async function saveNotifications(input: unknown) {
   const { NOTIFY_CATEGORIES } = await import('@/domain/notify')
