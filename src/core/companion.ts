@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'node:crypto'
 import { eq } from 'drizzle-orm'
+import type { TodayView } from '@relife/contract'
 import { db, schema } from '@/db'
 import { companionPlan } from '@/domain/companion'
 import { streaks } from '@/domain/streaks'
@@ -14,7 +15,7 @@ import type { User } from './user'
 import { xpSummary } from './xp'
 
 // The browser extension's side of ReLife: its token check, its "last seen" mark, and the Today tab's data
-// (character, today's quests and routines). Routes: /api/activity (time) and /api/companion (Today).
+// (character, today's quests and routines). The shapes are in @relife/contract (TodayView). Routes: /api/activity (time) and /api/companion (Today).
 
 /** The bearer token matches ACTIVITY_TOKEN (Connectors → Laptop activity), compared in constant time. */
 export function extensionAuthorized(req: Request) {
@@ -44,7 +45,7 @@ export async function extensionLastSeen() {
 }
 
 /** Everything the popup's Today tab shows, in one request. Read-only. */
-export async function companionView(user: User, now = new Date()) {
+export async function companionView(user: User, now = new Date()): Promise<TodayView> {
   const today = localDate(now, user.timezone)
   const [xp, agenda, trackers, active, freezes, system, screen] = await Promise.all([
     xpSummary(user, now),
