@@ -15,11 +15,9 @@ function assertBrandReady() {
 }
 
 export default (phase: string): NextConfig => {
-  if (phase === PHASE_PRODUCTION_BUILD) assertBrandReady()
+  if (phase === PHASE_PRODUCTION_BUILD && process.argv.includes('build')) assertBrandReady() // not for `next typegen`, which reuses this phase
   return {
     poweredByHeader: false,
-    // Reading the workspace packages from the repo root keeps `@relife/*` resolvable under Turbopack.
-    turbopack: { root: new URL('../..', import.meta.url).pathname },
     images: { formats: ['image/avif', 'image/webp'] },
   }
 }
