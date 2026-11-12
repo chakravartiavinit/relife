@@ -1,9 +1,10 @@
+import { cache } from 'react'
 import { and, eq, inArray, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { pendingInsight } from './needs-you'
 import type { User } from './user'
 import { trackerDays, transactionsBetween, isSpend } from './metrics'
-import { dayAgenda, type DueItem, type ScheduleMeta } from './schedules'
+import { dayAgenda, upcomingPayments, type DueItem, type ScheduleMeta } from './schedules'
 import { loadPortfolio, contractCoin } from './portfolio'
 import { addDays, localDate } from './time'
 import { formatMoney } from '@/domain/money'
@@ -96,3 +97,10 @@ export type Briefing = Awaited<ReturnType<typeof loadBriefing>>
 
 /** 135 → "2h 15m", 40 → "40m". */
 export const minutes = (m: number | null) => (m == null ? '–' : m >= 60 ? `${Math.floor(m / 60)}h${Math.round(m % 60) ? ` ${Math.round(m % 60)}m` : ''}` : `${Math.round(m)}m`)
+
+/** The briefing and the payments it was built from, once per request: the attention strip, the money card and the pulse share them. */
+export const loadTodayBriefing = cache(async (user: User) => {
+  const now = new Date()
+  const payments = await upcomingPayments(user, now)
+  return { payments, briefing: await loadBriefing(user, payments, now) }
+})
