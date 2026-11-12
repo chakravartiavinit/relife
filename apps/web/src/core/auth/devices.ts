@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, sql } from 'drizzle-orm'
+import { and, desc, eq, isNull, lt, or, sql } from 'drizzle-orm'
 import type { DeviceKind, Scope } from '@relife/contract'
 import { db, schema } from '@/db'
 import { env } from '../env'
@@ -54,7 +54,7 @@ export async function touchIfDue(device: Device, now = new Date()) {
     .set({ lastSeenAt: now, ...(legacy ? {} : { expiresAt: new Date(now.getTime() + DEVICE_TTL_MS) }) })
     .where(and(
       eq(schema.devices.id, device.id), isNull(schema.devices.revokedAt),
-      sql`(${schema.devices.lastSeenAt} is null or ${schema.devices.lastSeenAt} < ${new Date(now.getTime() - TOUCH_EVERY_MS)})`,
+      or(isNull(schema.devices.lastSeenAt), lt(schema.devices.lastSeenAt, new Date(now.getTime() - TOUCH_EVERY_MS))),
     )).returning({ id: schema.devices.id })
   device.lastSeenAt = now // the cached row learns it too
   return rows.length > 0
@@ -101,8 +101,8 @@ const LEGACY: { env: string; kind: DeviceKind; scope: Scope; name: string }[] = 
 /**
  * The shared ACTIVITY_TOKEN and INGEST_TOKEN become one device row each (`meta.legacy`, no expiry, scope `companion`
  * or `ingest`), so old extensions and Shortcuts keep working through the same checks as everything else. Run when keys
- * are loaded. A row the owner removed stays removed (matched by hash, revoked ones included); a changed token retires
- * the old row; a cleared token revokes it.
+ * are loaded. A row the owner removed stays removed (it is revoked, and matched by its hash); a changed or cleared token
+ * deletes the old row.
  */
 export async function syncLegacyTokens(userId: string, get: (name: string) => string | undefined = env) {
   for (const l of LEGACY) {
@@ -112,11 +112,11 @@ export async function syncLegacyTokens(userId: string, get: (name: string) => st
     ))
     const hash = value ? hashToken(value) : null
     for (const d of mine) {
-      if (d.revokedAt || (hash && d.tokenHash.equals(hash))) continue
-      await db.update(schema.devices).set({ revokedAt: new Date() }).where(eq(schema.devices.id, d.id))
+      if (hash && d.tokenHash.equals(hash)) continue
+      await db.delete(schema.devices).where(eq(schema.devices.id, d.id)) // a retired token: nothing left to keep
       forgetDevice(d.id)
     }
-    if (!hash || mine.some((d) => d.tokenHash.equals(hash))) continue
+    if (!hash || mine.some((d) => d.tokenHash.equals(hash))) continue // none, or already there (revoked included)
     const [clash] = await db.select({ id: schema.devices.id }).from(schema.devices).where(eq(schema.devices.tokenHash, hash)).limit(1)
     if (clash) continue
     await db.insert(schema.devices).values({

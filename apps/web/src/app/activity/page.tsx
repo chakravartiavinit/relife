@@ -9,8 +9,8 @@ import { LibraryGrid } from '@/ui/components/library'
 import { KindTag, SiteKind } from '@/ui/components/site-kind'
 import { getUser } from '@/core/user'
 import { env } from '@/core/env'
-import { activitySummary } from '@/core/activity'
-import { extensionLastSeen } from '@/core/companion'
+import { activitySummary, laptopEnabled } from '@/core/activity'
+import { extensionLastSeen } from '@/core/auth/devices'
 import { addDays, formatDay, localDate } from '@/core/time'
 import { KIND_INFO, type ActivityKind } from '@/domain/activity'
 import { Card, CardHeader, KpiStrip, PageHeader, Skeleton } from '@/ui/components/card'
@@ -57,9 +57,9 @@ async function Activity() {
     activitySummary(user, from, today),
     db.select().from(schema.learningItems).where(and(eq(schema.learningItems.userId, user.id), ne(schema.learningItems.status, 'done')))
       .orderBy(desc(schema.learningItems.lastActiveAt)),
-    extensionLastSeen(),
+    extensionLastSeen(user.id),
   ])
-  const connected = !!env('ACTIVITY_TOKEN')
+  const connected = await laptopEnabled(user.id)
 
   if (!s.rows) return <Setup connected={connected} seen={seen} />
 

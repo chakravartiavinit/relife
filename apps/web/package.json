@@ -15,7 +15,8 @@
     "mock:seed": "tsx --env-file=../../.env scripts/mock.ts",
     "seed:demo": "tsx --env-file=../../.env scripts/seed-demo.ts",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --env-file=../../.env --test src/domain/*.test.ts src/core/*.test.ts src/connectors/shop/*.test.ts src/ai/*.test.ts src/parsers/*.test.ts src/worker/*.test.ts src/connectors/*.test.ts src/rules/*.test.ts"
+    "test": "tsx --env-file=../../.env --test src/domain/*.test.ts src/core/*.test.ts src/core/auth/*.test.ts src/connectors/shop/*.test.ts src/ai/*.test.ts src/parsers/*.test.ts src/worker/*.test.ts src/connectors/*.test.ts src/rules/*.test.ts",
+    "test:auth": "RELIFE_MOCK=1 RELIFE_AUTH_INTEGRATION=1 tsx --env-file=../../.env --test src/core/auth/auth.integration.test.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.138",

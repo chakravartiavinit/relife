@@ -100,6 +100,17 @@ export async function applySecrets(userId: string) {
     }
   }
   setKeys(keys)
+  await syncLegacyOnce(userId)
+}
+
+// ACTIVITY_TOKEN and INGEST_TOKEN become device rows (src/core/auth/devices.ts). Keys load often, so only a change is synced.
+let legacySeen = ''
+async function syncLegacyOnce(userId: string) {
+  const { env } = await import('./env')
+  const fingerprint = `${userId}|${env('ACTIVITY_TOKEN') ?? ''}|${env('INGEST_TOKEN') ?? ''}`
+  if (fingerprint === legacySeen) return
+  await (await import('./auth/devices')).syncLegacyTokens(userId)
+  legacySeen = fingerprint
 }
 
 /** Which fields already have a value, for the dialog. Secret values never leave the server. */

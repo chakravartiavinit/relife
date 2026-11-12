@@ -7,6 +7,7 @@ import { Suspense } from 'react'
 import { desc, eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { getUser } from '@/core/user'
+import { laptopEnabled } from '@/core/activity'
 import { trackerDays } from '@/core/metrics'
 import { addDays, localDate } from '@/core/time'
 import { formatNumber } from '@/domain/money'
@@ -40,11 +41,12 @@ async function Skills() {
   const user = await getUser()
   const today = localDate(new Date(), user.timezone)
   const from = addDays(today, -89)
-  const [data, items, skillTrackers] = await Promise.all([
+  const [data, items, skillTrackers, laptopOn] = await Promise.all([
     trackerDays(user, from, today, { slugs: ['github.commits', 'github.prs', 'github.reviews', 'learning.minutes'] }),
     db.select().from(schema.learningItems).where(eq(schema.learningItems.userId, user.id))
       .orderBy(desc(schema.learningItems.updatedAt)),
     trackerDays(user, from, today, { category: 'skills' }),
+    laptopEnabled(user.id),
   ])
   // Competitive programming: problems solved across sites, and each site's rating with its 30-day change.
   const solved = skillTrackers.find((t) => t.tracker.slug === 'cp.solved')?.days ?? new Map<string, number>()
@@ -102,7 +104,7 @@ async function Skills() {
     { name: 'WakaTime', logo: 'WakaTime', connected: !!env('WAKATIME_API_KEY') || codeMin.size > 0, value: hm(sumLast(codeMin, 7)), change: undefined, sub: 'coding, 7 days' },
     { name: 'Duolingo', logo: 'Duolingo', connected: !!env('DUOLINGO_USERNAME') || langXp.size > 0, value: formatNumber(sumLast(langXp, 7)), change: undefined, sub: 'XP, 7 days' },
     { name: 'Monkeytype', logo: 'Monkeytype', connected: !!env('MONKEYTYPE_APE_KEY') || typeMin.size > 0, value: wpm == null ? '–' : formatNumber(wpm, 0), change: undefined, sub: 'wpm, latest' },
-    { name: 'Laptop activity', logo: '', connected: !!env('ACTIVITY_TOKEN'), value: hm(sumLast(learningMin, 7) + sumLast(workMin, 7)), change: undefined, sub: 'learning + deep work, 7 days' },
+    { name: 'Laptop activity', logo: '', connected: laptopOn, value: hm(sumLast(learningMin, 7) + sumLast(workMin, 7)), change: undefined, sub: 'learning + deep work, 7 days' },
   ]
   return (
     <div className="flex flex-col gap-6">

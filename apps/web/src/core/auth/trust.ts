@@ -11,8 +11,21 @@ const LOOPBACK = new Set(['127.0.0.1', 'localhost', '[::1]'])
 export const isLoopbackHost = (host: string | null) => !!host && LOOPBACK.has(hostName(host))
 
 /** Set by a proxy or tunnel in front of ReLife. A request carrying any of them did not come straight from this Mac. */
-const PROXY_HEADERS = ['x-forwarded-for', 'forwarded', 'tailscale-user-login', 'cf-connecting-ip', 'x-real-ip', 'x-forwarded-host']
-export const hasProxyHeaders = (h: Headers) => PROXY_HEADERS.some((n) => h.get(n) !== null)
+const PROXY_HEADERS = ['forwarded', 'tailscale-user-login', 'cf-connecting-ip', 'x-real-ip']
+const LOOPBACK_IPS = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1'])
+
+/**
+ * Next adds `X-Forwarded-For: 127.0.0.1` and `X-Forwarded-Host: <Host>` to a request that came straight from this Mac, so
+ * their mere presence says nothing. They count only when they say something else: a client address that isn't loopback
+ * (`tailscale serve` puts the tailnet address there), or a forwarded host that differs from Host.
+ */
+export function hasProxyHeaders(h: Headers) {
+  if (PROXY_HEADERS.some((n) => h.get(n) !== null)) return true
+  const xff = h.get('x-forwarded-for')
+  if (xff && xff.split(',').some((ip) => !LOOPBACK_IPS.has(ip.trim()))) return true
+  const fwdHost = h.get('x-forwarded-host')
+  return !!fwdHost && fwdHost.trim().toLowerCase() !== (h.get('host') ?? '').trim().toLowerCase()
+}
 
 /**
  * "Trust this Mac": a loopback Host and no proxy headers get a browser device without asking. `tailscale serve`

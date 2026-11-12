@@ -12,9 +12,17 @@ test('loopback trust: a loopback Host with no proxy headers, self-host only', ()
 })
 
 test('loopback trust: any proxy header refuses, even with a loopback Host', () => {
-  for (const name of ['x-forwarded-for', 'forwarded', 'tailscale-user-login', 'cf-connecting-ip']) {
+  for (const name of ['x-forwarded-for', 'forwarded', 'tailscale-user-login', 'cf-connecting-ip', 'x-real-ip']) {
     assert.ok(!loopbackTrusted(h({ host: 'localhost:3030', [name]: '1.2.3.4' }), { mode: 'self-host' }), name)
   }
+  assert.ok(!loopbackTrusted(h({ host: 'localhost:3030', 'x-forwarded-for': '127.0.0.1, 100.64.0.7' }), { mode: 'self-host' }), 'a non-loopback hop anywhere in the chain')
+  assert.ok(!loopbackTrusted(h({ host: 'localhost:3030', 'x-forwarded-host': 'evil.example' }), { mode: 'self-host' }), 'a different forwarded host')
+})
+
+test('loopback trust: what Next itself adds to a direct request does not count', () => {
+  const direct = h({ host: '127.0.0.1:3030', 'x-forwarded-for': '127.0.0.1', 'x-forwarded-host': '127.0.0.1:3030', 'x-forwarded-port': '3030', 'x-forwarded-proto': 'http' })
+  assert.ok(loopbackTrusted(direct, { mode: 'self-host' }))
+  assert.ok(loopbackTrusted(h({ host: '[::1]:3030', 'x-forwarded-for': '::1' }), { mode: 'self-host' }))
 })
 
 test('client ip comes from X-Forwarded-For only behind a known proxy', () => {

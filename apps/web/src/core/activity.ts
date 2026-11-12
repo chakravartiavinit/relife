@@ -11,6 +11,22 @@ import type { User } from './user'
 // Laptop activity: stretches of focused time from the browser extension and the Mac watcher. Stored raw
 // for 90 days, rolled up into daily screen.* trackers so patterns, XP, the coach and the System see them.
 
+/** Laptop activity is on when it is connected on Connectors (the connection's `enabled` flag), not when a token is set. */
+export async function laptopEnabled(userId: string) {
+  const [row] = await db.select({ enabled: schema.connections.enabled }).from(schema.connections)
+    .where(and(eq(schema.connections.userId, userId), eq(schema.connections.connectorId, 'laptop'))).limit(1)
+  return !!row?.enabled
+}
+
+/** A Mac app that sent app time in the last 3 minutes does the watching; the worker's watcher stands down so time isn't counted twice. */
+export async function macAppWatching(userId: string, now = new Date()) {
+  const [row] = await db.select({ id: schema.devices.id }).from(schema.devices).where(and(
+    eq(schema.devices.userId, userId), eq(schema.devices.kind, 'mac'), sql`${schema.devices.revokedAt} is null`,
+    sql`${schema.devices.meta}->>'watcher' = 'true'`, gte(schema.devices.lastSeenAt, new Date(now.getTime() - 3 * 60_000)),
+  )).limit(1)
+  return !!row
+}
+
 export type SegmentInput = {
   /** Client-made id; the same id again updates the stretch as it grows. */
   id: string
