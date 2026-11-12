@@ -3,6 +3,7 @@ import { db, schema } from '@/db'
 import type { ProposedAction } from '@/db/schema'
 import { ensureTracker } from './ingest'
 import { localDate } from './time'
+import { RESTORE_MINUTES } from '@/domain/needs-you'
 import type { User } from './user'
 
 type NewInsight = Omit<typeof schema.insights.$inferInsert, 'userId'>
@@ -45,9 +46,6 @@ export async function dismissInsight(user: User, id: string) {
     .where(and(eq(schema.insights.id, id), eq(schema.insights.userId, user.id)))
   return true
 }
-
-/** How long after dismissing a card Undo still brings it back. */
-export const RESTORE_MINUTES = 10
 
 /** Undo a dismiss: back to pending, only while it is recent. Recovery choices were never dismissable, so they stay out. */
 export async function restoreInsight(user: User, id: string, now = new Date()) {
