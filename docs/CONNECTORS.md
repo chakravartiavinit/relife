@@ -97,7 +97,8 @@ Two local trackers feed one timeline (Activity page):
 
 - **Chrome extension** (`apps/extension/`, see its README): time on each site, YouTube video and course page while
   the tab is in front and you're active or a video plays. It posts to `POST /api/activity` with the token you set
-  on Connectors → Laptop activity (`ACTIVITY_TOKEN`).
+  with a device token: connect it from Settings → Devices (QR or code), or paste the old `ACTIVITY_TOKEN`, which keeps
+  working as a device named "Chrome extension (old token)".
 - **Mac apps**: the worker checks the app in front every 15 seconds with `lsappinfo` (no permission prompt) and
   the idle time with `ioreg`. App names only, no window titles. Browsers are skipped because the extension covers
   them. Set `ACTIVITY_APPS=off` to turn it off.

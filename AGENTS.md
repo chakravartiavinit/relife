@@ -43,7 +43,7 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
   plans live in `plans/`.
 - `apps/web/src/app/`: Next.js 16 App Router pages and `actions.ts` (all server actions). Cache Components is
   on: DB reads go in an async child component that calls `await connection()`, wrapped in
-  `<Suspense>` with a skeleton sized like the content. See `apps/web/src/app/page.tsx`.
+  `<Suspense>` with a skeleton sized like the content. See `apps/web/src/app/(app)/page.tsx`.
 - `apps/web/src/core/`: ingest pipeline, schedules, metrics, quick-log grammar, FX, time zones, connector keys.
 - `apps/web/src/domain/`: pure TypeScript (recurrence, streaks, FIFO P&L, money formatting). No DB, no React.
 - `apps/web/src/connectors/`, `apps/web/src/parsers/`, `apps/web/src/rules/`, `apps/web/src/ai/jobs/`: the four extension points.
