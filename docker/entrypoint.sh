@@ -1,5 +1,5 @@
 #!/bin/sh
-# The one command of the ReLife image: `relife <web|worker|migrate|signin|demo>`. Compose passes the environment
+# The one command of the image: `relife <web|worker|migrate|signin|demo>`. Compose passes the environment
 # (there is no .env file in the image), so none of these read one.
 set -e
 cd /app/apps/web

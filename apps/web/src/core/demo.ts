@@ -8,7 +8,7 @@ import type { Device } from './auth/devices'
 type Env = Record<string, string | undefined>
 
 export const DEMO_MESSAGE = 'Demo: changes are off'
-export const DEMO_HEADER = 'X-ReLife-Demo'
+export const DEMO_HEADER = 'x-relife-demo'
 
 export const isDemo = (env: Env = process.env) => env.RELIFE_DEMO === '1'
 

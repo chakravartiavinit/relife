@@ -1,5 +1,5 @@
 #!/bin/sh
-# Installs ReLife with Docker: clones the repo, writes .env, starts it, prints your first sign-in code.
+# Installs the app with Docker: clones the repo, writes .env, starts it, prints your first sign-in code.
 #   curl -fsSL https://raw.githubusercontent.com/chakravartiavinit/relife/main/install.sh | sh
 # Environment: RELIFE_DIR (default ~/relife), RELIFE_REPO. Never overwrites an existing .env.
 set -eu
@@ -50,7 +50,7 @@ else
   if [ -z "$timezone" ] && [ -L /etc/localtime ]; then timezone=$(readlink /etc/localtime | sed 's|.*/zoneinfo/||'); fi
 
   say ""
-  say "Where will you open ReLife?"
+  say "Where will you open it?"
   say "  1) On this computer only (localhost)"
   say "  2) Over Tailscale (recommended for your phone: run 'tailscale serve --bg 3030' afterwards)"
   say "  3) On my home network (a LAN address)"
@@ -82,7 +82,7 @@ else
   say "Wrote $DIR/.env"
 fi
 
-say "Building and starting ReLife (the first build takes a few minutes)..."
+say "Building and starting (the first build takes a few minutes)..."
 docker compose up -d --build
 
 say "Waiting for the web app..."
@@ -95,5 +95,5 @@ done
 
 say ""
 docker compose exec web relife signin
-say "ReLife is running. Open http://127.0.0.1:3030 (or the address you chose) and go to /pair."
+say "It is running. Open http://127.0.0.1:3030 (or the address you chose) and go to /pair."
 say "More: $DIR/docs/SELF_HOSTING.md"
