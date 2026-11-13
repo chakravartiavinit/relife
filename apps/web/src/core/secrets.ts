@@ -21,22 +21,31 @@ export function envDefault(key: string) {
 }
 
 let cachedKey: Buffer | undefined
+/** Set once a check found no saved keys: only then may key() write a new key file. */
+let mayCreateKey = false
+let warned = false
 const keyFile = () => dataDir('secret.key')
+const hasSavedKeys = async () => !!(await db.select({ id: schema.connections.id }).from(schema.connections)
+  .where(isNotNull(schema.connections.secretsEncrypted)).limit(1))[0]
 
 /**
- * Call before anything that may need the key. A missing key file next to saved keys means the data folder was lost or
- * moved; making a new key then would silently turn every saved key into "not saved". Fail with a clear message instead.
- * `hasSaved` is injectable for tests.
+ * Why the key can't be used, or null. A missing key file next to saved keys means the data folder was lost or moved;
+ * making a new key then would silently turn every saved key into "not saved", so key() refuses to create one until a
+ * check found nothing saved. `hasSaved` and `file` are injectable for tests.
  */
-export async function assertKeyReady(
-  hasSaved: () => Promise<boolean> = async () => !!(await db.select({ id: schema.connections.id }).from(schema.connections)
-    .where(isNotNull(schema.connections.secretsEncrypted)).limit(1))[0],
-  file = keyFile(),
-) {
-  if (cachedKey || process.env.RELIFE_SECRET_KEY || existsSync(file)) return
+export async function keyProblem(hasSaved = hasSavedKeys, file = keyFile()): Promise<string | null> {
+  if (cachedKey || process.env.RELIFE_SECRET_KEY || existsSync(file)) return null
   if (await hasSaved()) {
-    throw new Error(`Saved connector keys exist, but their encryption key ${file} is missing. Restore it from a backup (or set RELIFE_SECRET_KEY / RELIFE_DATA_DIR to where it is). ReLife will not create a new key: it would make every saved key unreadable.`)
+    return `Saved connector keys exist, but their encryption key ${file} is missing. Restore it from a backup (or set RELIFE_SECRET_KEY / RELIFE_DATA_DIR to where it is). ReLife will not create a new key: it would make every saved key unreadable.`
   }
+  mayCreateKey = true
+  return null
+}
+
+/** Before writing encrypted keys: throws keyProblem()'s message. */
+export async function assertKeyReady(hasSaved = hasSavedKeys, file = keyFile()) {
+  const problem = await keyProblem(hasSaved, file)
+  if (problem) throw new Error(problem)
 }
 function key() {
   if (cachedKey) return cachedKey
@@ -48,6 +57,7 @@ function key() {
   }
   const file = keyFile()
   if (!existsSync(file)) {
+    if (!mayCreateKey) throw new Error(`${file} is missing`)
     mkdirSync(dataDir(), { recursive: true })
     // The worker and the web app can both get here on first run: 'wx' lets one win, the other reads its key.
     try {
@@ -85,7 +95,10 @@ function stored(row: { secretsEncrypted: Buffer | null }) {
  * read as unset, even when .env has them; .env values only fill blanks for connected ones.
  */
 export async function applySecrets(userId: string) {
-  await assertKeyReady()
+  // A missing key must not take the app down: saved keys read as not saved (connections fall back to .env), and
+  // Connect explains the problem. Logged once.
+  const problem = await keyProblem()
+  if (problem && !warned) { warned = true; console.error('[secrets]', problem) }
   const rows = await db.select().from(schema.connections)
     .where(and(eq(schema.connections.userId, userId), eq(schema.connections.enabled, true)))
     .orderBy(asc(schema.connections.updatedAt)) // later connections win shared keys like LLM_DEFAULT
@@ -104,7 +117,6 @@ export async function applySecrets(userId: string) {
 
 /** Which fields already have a value, for the dialog. Secret values never leave the server. */
 export async function savedFields(userId: string) {
-  await assertKeyReady()
   const rows = await db.select().from(schema.connections).where(eq(schema.connections.userId, userId))
   return new Map(rows.map((r) => [r.connectorId, stored(r)]))
 }
@@ -152,7 +164,8 @@ function cleanField(id: string, f: SetupField, raw: unknown): { v?: string; erro
 
 /** Validate dialog input and connect. Blank fields keep the saved value or fall back to .env. */
 export async function connect(userId: string, id: string, input: Record<string, unknown>): Promise<SaveResult> {
-  await assertKeyReady()
+  const problem = await keyProblem()
+  if (problem) return { ok: false, error: problem }
   const spec = integration(id)
   if (!spec) return { ok: false, error: 'Unknown connector.' }
   // Malformed input is refused before anything is sent to the service.
@@ -220,7 +233,6 @@ const OAUTH_KEY = '__oauth'
 export type OAuthTokens = { access: string; refresh?: string; expiresAt?: number }
 
 export async function oauthTokens(userId: string, id: string): Promise<OAuthTokens | null> {
-  await assertKeyReady()
   const [row] = await db.select().from(schema.connections)
     .where(and(eq(schema.connections.userId, userId), eq(schema.connections.connectorId, id)))
   const raw = row ? stored(row)[OAUTH_KEY] : undefined
