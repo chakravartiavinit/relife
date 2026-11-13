@@ -13,7 +13,10 @@ echo "$staged" | while IFS= read -r f; do
   case "$f" in
     .env.example) ;;
     .env|.env.*|*/.env|*/.env.*) echo "$f: env files hold secrets" ;;
-    data/*|apps/*/data/*) echo "$f: data/ holds the encryption key for saved connector keys" ;;
+    data/*) echo "$f: data/ holds the encryption key for saved connector keys" ;;
+    # `*` crosses slashes in a case pattern, so only apps/<name>/data/ counts (not apps/web/src/core/data/, the code).
+    apps/*/data/*) case "${f#apps/*/}" in data/*) echo "$f: data/ holds the encryption key for saved connector keys" ;; esac ;;
+    backups/*|*relife-backup-*|*relife-export-*) echo "$f: a backup or export holds your data and keys" ;;
     *.pem|*.key|*.p12|*.dump|*.sql.gz|service-account*.json) echo "$f: key or database dump" ;;
     node_modules/*|*/node_modules/*|.next/*|.next-mock/*|apps/*/.next/*|apps/*/.next-mock/*|apps/mac/.build/*|coverage/*) echo "$f: build output" ;;
     *.DS_Store|*.log) echo "$f: OS or log file" ;;
