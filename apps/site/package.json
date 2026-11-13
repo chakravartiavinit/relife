@@ -1,0 +1,39 @@
+{
+  "name": "@relife/site",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Marketing landing page and waitlist. Own database, never the user-data one.",
+  "scripts": {
+    "dev": "next dev -H 127.0.0.1 -p 3040",
+    "build": "next build",
+    "build:preview": "SITE_ALLOW_UNREADY_BRAND=1 next build",
+    "start": "next start -H 127.0.0.1 -p 3040",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "tsx --test lib/*.test.ts",
+    "db:push": "drizzle-kit push",
+    "waitlist:export": "tsx --env-file-if-exists=.env.local scripts/export.ts",
+    "waitlist:stats": "tsx --env-file-if-exists=.env.local scripts/stats.ts",
+    "brand:sync": "node scripts/sync-brand.mjs"
+  },
+  "dependencies": {
+    "@relife/brand": "*",
+    "@relife/tokens": "*",
+    "@vercel/analytics": "^1.5.0",
+    "drizzle-orm": "^0.45.4",
+    "lucide-react": "^1.69.0",
+    "next": "16.4.5",
+    "postgres": "^4.1.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.11",
+    "playwright-core": "^1.65.0",
+    "tsx": "^4.23.15",
+    "typescript": "^5"
+  }
+}
