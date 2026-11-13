@@ -5,6 +5,7 @@ import { ACHIEVEMENTS, type AchievementStats } from '@/achievements'
 import { areaLevelFor, levelFor, medalFor, nextTitle, scoreDay, titleFor, type Area, type DayInput } from '@/domain/xp'
 import { streaks } from '@/domain/streaks'
 import { loadAdherence } from '@/core/adherence'
+import { lockUser } from './recovery'
 import { activeDays, isSpend, trackerDays, transactionsBetween } from './metrics'
 import { addDays, daysBetween, localDate } from './time'
 import type { User } from './user'
@@ -113,6 +114,8 @@ export async function scoreRange(user: User, from: string, to: string, now = new
   }
 
   await db.transaction(async (tx) => {
+    // Two rescoring runs at once (a log and the worker) would delete and re-insert the same rows: take turns.
+    await lockUser(tx, user.id)
     await tx.delete(schema.xpEvents).where(and(
       eq(schema.xpEvents.userId, user.id), gte(schema.xpEvents.localDate, from), lte(schema.xpEvents.localDate, to),
       inArray(schema.xpEvents.kind, ['consistency', 'standard']), ne(schema.xpEvents.source, 'balance'),

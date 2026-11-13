@@ -1,9 +1,11 @@
 // The quick-log grammar, shared by ⌘K / Capture (client) and Telegram (server). Pure: no DB, no React.
 //   "water 250"          → add 250 to tracker "water"
 //   "mood 4"             → tracker "mood" (scale trackers keep the last value)
-//   "spent 120 chai"     → manual expense of ₹120, merchant "chai"
-//   "spent 15 usd claude"
+//   "spent 120 chai"     → manual expense of 120 in the default currency (the user's base currency), merchant "chai"
+//   "spent 15 usd claude"  → any ISO code (or USDT) after the amount sets the currency
 //   "read 30 min"        → tracker "read" value 30 (unit word ignored)
+
+import { isIsoCurrency } from './money'
 
 export type QuickLog =
   | { type: 'entry'; slug: string; value: number }
@@ -14,14 +16,15 @@ export const UNIT_WORDS = new Set(['ml', 'l', 'min', 'mins', 'minutes', 'h', 'hr
 /** Trackers where a new value replaces today's value instead of adding to it. */
 export const LAST_VALUE = new Set(['mood', 'energy', 'weight', 'sleep', 'sleep.hours', 'screen-time'])
 
-export function parseQuickLog(text: string): QuickLog | null {
+/** `defaultCurrency` is what a spend without a code is in: the user's base currency. */
+export function parseQuickLog(text: string, defaultCurrency = 'INR'): QuickLog | null {
   const t = text.trim().replace(/\s+/g, ' ')
-  const spend = /^(?:spent|spend|paid|₹)\s*₹?\s*(\d+(?:\.\d+)?)\s*(?:([a-z]{3})\b)?\s*(.*)$/i.exec(t)
+  const spend = /^(?:spent|spend|paid|₹)\s*₹?\s*(\d+(?:\.\d+)?)\s*(?:([a-z]{3,4})\b)?\s*(.*)$/i.exec(t)
   if (spend) {
     const cur = spend[2]?.toUpperCase()
-    const isCur = cur && /^(INR|USD|EUR|GBP|AED|SGD|USDT)$/.test(cur)
+    const isCur = cur && (cur === 'USDT' || (cur.length === 3 && isIsoCurrency(cur)))
     const note = (isCur ? spend[3] : [spend[2], spend[3]].filter(Boolean).join(' ')).trim()
-    return { type: 'spend', amount: Number(spend[1]), currency: isCur ? cur! : 'INR', note: note || 'Manual' }
+    return { type: 'spend', amount: Number(spend[1]), currency: isCur ? cur! : /^(?:[a-z]+\s*)?₹/i.test(t) ? 'INR' : defaultCurrency, note: note || 'Manual' }
   }
   const m = /^([a-z][\w .-]*?)\s+(-?\d+(?:\.\d+)?)\s*([a-z]+)?$/i.exec(t)
   if (m && (!m[3] || UNIT_WORDS.has(m[3].toLowerCase()))) {

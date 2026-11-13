@@ -8,12 +8,13 @@ import { db, schema } from '@/db'
 import { CATEGORIES } from '@/db/schema'
 import { getUser } from '@/core/user'
 import { recategorizeTxns, undoRecategorizeTxns, type RecategorizeUndo } from '@/core/recategorize'
-import { addGoalProgress, setCheck } from '@/core/schedules'
+import { addGoalProgress, setCheck, undoLastGoalStep } from '@/core/schedules'
 import { applyQuickLogWithUndo, parseQuickLog, slugify, undoQuickLogWrite } from '@/core/quicklog'
 import type { QuickLogUndo } from '@/domain/quicklog'
 import { persist, processOne } from '@/core/ingest'
 import { localDate } from '@/core/time'
-import { buildRRule, WEEKDAYS } from '@/domain/recurrence'
+import { buildRRule, MAX_PER_DAY, WEEKDAYS } from '@/domain/recurrence'
+import { isIsoCurrency } from '@/domain/money'
 import { acceptInsight, dismissInsight } from '@/core/insights'
 import type { XpNews } from '@/core/xp'
 import type { AskResult } from '@/ai/ask'
@@ -28,6 +29,9 @@ const logValue = z.number().finite().min(-1_000_000).max(1_000_000)
 const ymd = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((d) => !Number.isNaN(Date.parse(`${d}T00:00:00Z`)), 'Invalid date')
 const isoTime = z.string().max(40).refine((d) => !Number.isNaN(Date.parse(d)), 'Invalid time')
 const slugArg = z.string().trim().min(1).max(80)
+const idArg = z.string().uuid()
+const HHMM = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+const currencyArg = z.string().trim().toUpperCase().refine(isIsoCurrency, 'Use a currency code like INR or USD')
 
 /** Rescore today's XP after a log. Never lets a scoring problem block the log itself. */
 async function xpAfterLog(user: Awaited<ReturnType<typeof getUser>>): Promise<XpNews> {
@@ -41,6 +45,7 @@ async function xpAfterLog(user: Awaited<ReturnType<typeof getUser>>): Promise<Xp
 }
 
 export async function toggleCheck(scheduleId: string, occurrenceIso: string, status: 'done' | 'skipped' | null, value?: number): Promise<XpNews> {
+  idArg.parse(scheduleId)
   isoTime.parse(occurrenceIso)
   z.enum(['done', 'skipped']).nullable().parse(status)
   logValue.optional().parse(value)
@@ -51,10 +56,22 @@ export async function toggleCheck(scheduleId: string, occurrenceIso: string, sta
   return news
 }
 
-export async function addToGoal(scheduleId: string, amount: number): Promise<XpNews> {
-  const n = logValue.parse(amount)
+/** Adds a step to a quantity goal. `undo` takes back exactly this step, once: send it to `undoQuickLog`. */
+export async function addToGoal(scheduleId: string, amount: number): Promise<XpNews & { undo: QuickLogUndo }> {
+  idArg.parse(scheduleId)
+  const n = logValue.refine((v) => v > 0, 'A step is more than zero').parse(amount)
   const user = await getUser()
-  await addGoalProgress(user, scheduleId, n)
+  const undo = await addGoalProgress(user, scheduleId, n)
+  const news = await xpAfterLog(user)
+  refresh()
+  return { ...news, undo }
+}
+
+/** Takes back the latest step logged today on a quantity goal (Peek's Undo button). Each call removes one step. */
+export async function undoGoalStep(scheduleId: string): Promise<XpNews> {
+  idArg.parse(scheduleId)
+  const user = await getUser()
+  await undoLastGoalStep(user, scheduleId)
   const news = await xpAfterLog(user)
   refresh()
   return news
@@ -62,6 +79,7 @@ export async function addToGoal(scheduleId: string, amount: number): Promise<XpN
 
 /** A quantity goal's daily target (water: 3,000 ml). Scoped to the user; refreshes Today. */
 export async function setGoalTarget(scheduleId: string, target: number) {
+  idArg.parse(scheduleId)
   const t = z.number().positive().max(1_000_000).parse(target)
   const user = await getUser()
   await db.update(schema.schedules).set({ target: t })
@@ -71,16 +89,17 @@ export async function setGoalTarget(scheduleId: string, target: number) {
 
 /** Applies a typed quick log. `undo` is the token the toast's Undo button sends back to `undoQuickLog`. */
 export async function quickLog(text: string): Promise<{ ok: boolean; message: string; news?: XpNews; undo?: QuickLogUndo }> {
-  const q = parseQuickLog(z.string().max(200).parse(text))
-  if (!q) return { ok: false, message: 'Try “water 250”, “mood 4” or “spent 120 chai”' }
+  const t = z.string().max(200).parse(text)
   const user = await getUser()
+  const q = parseQuickLog(t, user.baseCurrency)
+  if (!q) return { ok: false, message: 'Try “water 250”, “mood 4” or “spent 120 chai”' }
   const { message, undo } = await applyQuickLogWithUndo(user, q)
   const news = await xpAfterLog(user)
   refresh()
   return { ok: true, message, news, undo }
 }
 
-const manualRef = z.string().regex(/^manual:\d{10,16}$/)
+const manualRef = z.string().regex(/^manual:\d{10,16}(?:-[0-9a-f]{8})?$/)
 const undoToken = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('entry'), slug: slugArg, date: ymd, ref: manualRef }),
   z.object({ kind: z.literal('set'), slug: slugArg, date: ymd, prev: logValue.nullable() }),
@@ -105,20 +124,20 @@ const scheduleForm = z.object({
   freq: z.enum(['daily', 'weekly', 'monthly', 'yearly']),
   interval: z.coerce.number().int().min(1).max(365).default(1),
   times: z.string().trim().default('09:00'),
-  start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  until: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal('').transform(() => undefined)),
+  start: ymd,
+  until: ymd.optional().or(z.literal('').transform(() => undefined)),
   bymonthday: z.coerce.number().int().min(1).max(31).optional().or(z.literal('').transform(() => undefined)),
   bymonth: z.coerce.number().int().min(1).max(12).optional().or(z.literal('').transform(() => undefined)),
-  remindOffsetMin: z.coerce.number().int().min(0).default(0),
+  remindOffsetMin: z.coerce.number().int().min(0).max(1440).default(0),
   target: z.coerce.number().positive().optional().or(z.literal('').transform(() => undefined)),
   unit: z.string().trim().max(20).optional(),
   amount: z.coerce.number().nonnegative().optional().or(z.literal('').transform(() => undefined)),
-  currency: z.string().trim().toUpperCase().max(5).optional(),
+  currency: currencyArg.optional().or(z.literal('').transform(() => undefined)),
   dose: z.string().trim().max(40).optional(),
   stock: z.coerce.number().int().min(0).optional().or(z.literal('').transform(() => undefined)),
   step: z.coerce.number().positive().optional().or(z.literal('').transform(() => undefined)),
   notes: z.string().trim().max(500).optional(),
-})
+}).refine((f) => !f.until || f.until >= f.start, { message: 'The end date is before the start date', path: ['until'] })
 
 export type FormState = { ok: boolean; error?: string } | null
 
@@ -127,8 +146,9 @@ export async function saveSchedule(_prev: FormState, form: FormData): Promise<Fo
   const parsed = scheduleForm.safeParse(raw)
   if (!parsed.success) return { ok: false, error: parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ') }
   const f = parsed.data
-  const times = f.times.split(/[,\s]+/).filter((t) => /^\d{1,2}:\d{2}$/.test(t)).map((t) => t.padStart(5, '0'))
-  if (!times.length) return { ok: false, error: 'Add at least one time, like 08:00' }
+  const times = f.times.split(/[,\s]+/).filter(Boolean).map((t) => (/^\d:\d{2}$/.test(t) ? `0${t}` : t))
+  if (!times.length || !times.every((t) => HHMM.safeParse(t).success)) return { ok: false, error: 'Add times like 08:00, separated by commas' }
+  if (times.length > MAX_PER_DAY) return { ok: false, error: `At most ${MAX_PER_DAY} times a day` }
   const byweekday = form.getAll('byweekday').map(String).filter((d): d is (typeof WEEKDAYS)[number] => (WEEKDAYS as readonly string[]).includes(d))
   const rrule = buildRRule({
     freq: f.freq, interval: f.interval, times, start: f.start, until: f.until,
@@ -164,12 +184,15 @@ export async function saveSchedule(_prev: FormState, form: FormData): Promise<Fo
 }
 
 export async function setScheduleActive(id: string, active: boolean) {
+  idArg.parse(id)
+  z.boolean().parse(active)
   const user = await getUser()
   await db.update(schema.schedules).set({ active }).where(and(eq(schema.schedules.id, id), eq(schema.schedules.userId, user.id)))
   refresh()
 }
 
 export async function deleteSchedule(id: string) {
+  idArg.parse(id)
   const user = await getUser()
   await db.delete(schema.schedules).where(and(eq(schema.schedules.id, id), eq(schema.schedules.userId, user.id)))
   refresh()
@@ -189,11 +212,20 @@ export async function createTracker(_prev: FormState, form: FormData): Promise<F
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message }
   const user = await getUser()
   const f = parsed.data
-  await db.insert(schema.trackers).values({
-    userId: user.id, slug: slugify(f.name), name: f.name, category: f.category, kind: f.kind,
+  const slug = slugify(f.name)
+  if (!slug) return { ok: false, error: 'Use letters or numbers in the name.' }
+  const t = schema.trackers
+  // A tracker with this name that was archived comes back with the new settings; a live one is left alone.
+  const [row] = await db.insert(t).values({
+    userId: user.id, slug, name: f.name, category: f.category, kind: f.kind,
     unit: f.unit || null, target: f.target ?? null, direction: f.direction,
     aggregate: f.kind === 'scale' ? 'last' : 'sum',
-  }).onConflictDoNothing()
+  }).onConflictDoUpdate({
+    target: [t.userId, t.slug],
+    set: { name: f.name, category: f.category, kind: f.kind, unit: f.unit || null, target: f.target ?? null, direction: f.direction, aggregate: f.kind === 'scale' ? 'last' : 'sum', archivedAt: null },
+    setWhere: sql`${t.archivedAt} is not null`,
+  }).returning({ id: t.id })
+  if (!row) return { ok: false, error: 'You already track that. Pick another name.' }
   refresh()
   return { ok: true }
 }
@@ -221,6 +253,7 @@ export async function createHobby(_prev: FormState, form: FormData): Promise<For
 
 /** Log practice minutes for a hobby. Returns XP news for the toast and celebrations. */
 export async function logPractice(slug: string, minutes: number) {
+  slugArg.parse(slug)
   const user = await getUser()
   const m = z.number().int().min(1).max(720).parse(minutes)
   await persist(user, {
@@ -259,6 +292,7 @@ export async function setTrackerTarget(slug: string, target: number | null) {
 }
 
 export async function archiveTracker(id: string) {
+  idArg.parse(id)
   const user = await getUser()
   await db.update(schema.trackers).set({ archivedAt: new Date() })
     .where(and(eq(schema.trackers.id, id), eq(schema.trackers.userId, user.id)))
@@ -272,7 +306,9 @@ export type { RecategorizeUndo } from '@/core/recategorize'
  * payments too. Returns what it changed so the caller can offer Undo.
  */
 export async function recategorize(transactionId: string, category: string, remember: boolean): Promise<RecategorizeUndo> {
+  idArg.parse(transactionId)
   category = z.string().trim().min(1).max(60).parse(category)
+  z.boolean().parse(remember)
   const undo = await recategorizeTxns(await getUser(), transactionId, category, remember)
   refresh()
   return undo
@@ -293,9 +329,10 @@ export async function undoRecategorize(undo: RecategorizeUndo) {
 
 /** Re-read raw messages. Returns how they came out, so the Inbox can say "Saved" or "Still waiting". */
 export async function retryRawEvents(ids: string[]) {
+  const wanted = z.array(idArg).max(5000).parse(ids).slice(0, 200)
   const user = await getUser()
-  const rows = ids.length ? await db.select().from(schema.rawEvents)
-    .where(and(inArray(schema.rawEvents.id, ids.slice(0, 200)), eq(schema.rawEvents.userId, user.id))) : []
+  const rows = wanted.length ? await db.select().from(schema.rawEvents)
+    .where(and(inArray(schema.rawEvents.id, wanted), eq(schema.rawEvents.userId, user.id))) : []
   const out = { parsed: 0, ignored: 0, failed: 0 }
   for (const row of rows) out[await processOne(user, row)]++
   refresh()
@@ -303,6 +340,7 @@ export async function retryRawEvents(ids: string[]) {
 }
 
 export async function ignoreRawEvent(id: string) {
+  idArg.parse(id)
   const user = await getUser()
   await db.update(schema.rawEvents).set({ status: 'ignored' })
     .where(and(eq(schema.rawEvents.id, id), eq(schema.rawEvents.userId, user.id)))
@@ -310,6 +348,8 @@ export async function ignoreRawEvent(id: string) {
 }
 
 export async function resolveInsight(id: string, decision: 'accept' | 'dismiss') {
+  idArg.parse(id)
+  z.enum(['accept', 'dismiss']).parse(decision)
   const user = await getUser()
   if (decision === 'accept') await acceptInsight(user, id)
   else await dismissInsight(user, id)
@@ -337,7 +377,7 @@ const learningForm = z.object({
   provider: z.string().trim().max(60).optional(),
   url: z.string().trim().url().refine(isWebUrl, 'Use an http(s) link').optional().or(z.literal('').transform(() => undefined)),
   cost: z.coerce.number().nonnegative().optional().or(z.literal('').transform(() => undefined)),
-  currency: z.string().trim().toUpperCase().max(5).optional(),
+  currency: currencyArg.optional().or(z.literal('').transform(() => undefined)),
   progressTotal: z.coerce.number().int().positive().optional().or(z.literal('').transform(() => undefined)),
   targetDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal('').transform(() => undefined)),
 })
@@ -357,24 +397,26 @@ export async function createLearningItem(_prev: FormState, form: FormData): Prom
 }
 
 export async function updateLearningProgress(id: string, input: { done?: number; minutes?: number; status?: 'active' | 'paused' | 'done' }) {
+  idArg.parse(id)
   const delta = z.object({
     done: z.number().int().min(-1000).max(1000).optional(),
     minutes: z.number().int().min(1).max(720).optional(),
     status: z.enum(['active', 'paused', 'done']).optional(),
   }).parse(input)
   const user = await getUser()
-  const [item] = await db.select().from(schema.learningItems)
-    .where(and(eq(schema.learningItems.id, id), eq(schema.learningItems.userId, user.id)))
+  // One UPDATE from the stored numbers, so two quick taps add up instead of the second overwriting the first.
+  const L = schema.learningItems
+  const done = sql`greatest(0, ${L.progressDone} + ${delta.done ?? 0})`
+  const [item] = await db.update(L).set({
+    progressDone: sql`case when ${L.progressTotal} is not null then least(${L.progressTotal}, ${done}) else ${done} end`,
+    ...(delta.minutes ? {
+      minutesLogged: sql`${L.minutesLogged} + ${delta.minutes}`,
+      // Kept apart from tracked time, which the extension recomputes from your activity.
+      meta: sql`jsonb_set(${L.meta}, '{manualMinutes}', to_jsonb(coalesce((${L.meta}->>'manualMinutes')::numeric, 0) + ${delta.minutes}))`,
+    } : {}),
+    status: delta.status ?? sql`case when ${L.progressTotal} is not null and ${L.progressDone} + ${delta.done ?? 0} >= ${L.progressTotal} then 'done' else ${L.status} end`,
+  }).where(and(eq(L.id, id), eq(L.userId, user.id))).returning({ id: L.id })
   if (!item) return
-  const progressDone = Math.max(0, item.progressDone + (delta.done ?? 0))
-  const meta = (item.meta ?? {}) as { manualMinutes?: number }
-  await db.update(schema.learningItems).set({
-    progressDone: item.progressTotal ? Math.min(item.progressTotal, progressDone) : progressDone,
-    minutesLogged: item.minutesLogged + (delta.minutes ?? 0),
-    // Kept apart from tracked time, which the extension recomputes from your activity.
-    meta: { ...meta, manualMinutes: (meta.manualMinutes ?? 0) + (delta.minutes ?? 0) },
-    status: delta.status ?? (item.progressTotal && progressDone >= item.progressTotal ? 'done' : item.status),
-  }).where(eq(schema.learningItems.id, id))
   if (delta.minutes) {
     await persist(user, {
       kind: 'entry', tracker: 'learning.minutes', date: localDate(new Date(), user.timezone), value: delta.minutes,
@@ -395,6 +437,7 @@ const libraryEdit = z.object({
 
 /** Library card ⋯ → Edit: name, type, total lessons or episodes, status. */
 export async function updateLibraryItem(id: string, input: unknown) {
+  idArg.parse(id)
   const user = await getUser()
   const v = libraryEdit.parse(input)
   await db.update(schema.learningItems).set({ ...v, updatedAt: new Date() })
@@ -403,6 +446,7 @@ export async function updateLibraryItem(id: string, input: unknown) {
 }
 
 export async function removeLibraryItem(id: string) {
+  idArg.parse(id)
   const user = await getUser()
   await db.delete(schema.learningItems).where(and(eq(schema.learningItems.id, id), eq(schema.learningItems.userId, user.id)))
   refresh()
@@ -435,6 +479,7 @@ export async function createPerson(_prev: FormState, form: FormData): Promise<Fo
 }
 
 export async function markContacted(id: string) {
+  idArg.parse(id)
   const user = await getUser()
   await db.update(schema.people).set({ lastContactedAt: new Date() })
     .where(and(eq(schema.people.id, id), eq(schema.people.userId, user.id)))
@@ -473,7 +518,6 @@ async function freshProfile(userId: string) {
   return u?.profile ?? {}
 }
 
-const HHMM = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)
 const deliverySchema = z.object({
   mode: z.enum(['off', 'once', 'repeat']),
   everyMin: z.number().int().min(5).max(24 * 60),
@@ -569,8 +613,13 @@ export async function saveNotifications(input: unknown) {
 
 /** "Sync now": the same job the worker runs on its schedule, so two syncs of one app never overlap. */
 export async function syncNow(connectorId: string): Promise<{ ok: boolean; events: number; error?: string }> {
-  const { runNow, parseNow } = await import('@/jobs')
-  const r = await runNow(`sync:${connectorId}`)
+  const id = z.string().min(1).max(60).parse(connectorId)
+  const { runNow, parseNow, JOBS } = await import('@/jobs')
+  // Only a connector's own sync job, and only while it is connected: not any job id the client makes up.
+  const job = JOBS.find((j) => j.id === `sync:${id}`)
+  if (!job) return { ok: false, events: 0, error: 'Unknown app.' }
+  if (job.enabled && !(await job.enabled())) return { ok: false, events: 0, error: 'Connect this app first.' }
+  const r = await runNow(job.id)
   if (!r) return { ok: false, events: 0, error: 'Already syncing. It finishes on its own; check back in a minute.' }
   if (r.ok) await parseNow() // show the new data right away
   refresh()
@@ -614,7 +663,7 @@ export async function disconnectIntegration(id: string) {
 }
 
 export async function ask(question: string): Promise<AskResult> {
-  const q = question.trim().slice(0, 1000)
+  const q = z.string().parse(question).trim().slice(0, 1000)
   if (!q) return { answer: '', error: 'Ask a question about your data.' }
   const { askData } = await import('@/ai/ask')
   const r = await askData(q, { channel: 'app' })

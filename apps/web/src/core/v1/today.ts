@@ -46,7 +46,7 @@ export async function postAction(req: Request, o: Opts = {}) {
         await addGoalProgress(a.user, act.scheduleId, act.amount)
         message = 'Added.'
       } else {
-        const q = parseQuickLog(act.text)
+        const q = parseQuickLog(act.text, a.user.baseCurrency)
         if (!q) return apiError(422, 'bad_request', 'Try “water 250”, “mood 4” or “spent 120 chai”', o)
         message = await applyQuickLog(a.user, q)
       }

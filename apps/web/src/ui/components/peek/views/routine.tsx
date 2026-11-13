@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { Check, Pause, Pencil, Play, Plus, SkipForward, Undo2 } from 'lucide-react'
-import { addToGoal, setScheduleActive, toggleCheck } from '@/app/actions'
+import { addToGoal, setScheduleActive, toggleCheck, undoGoalStep } from '@/app/actions'
 import type { RoutinePeek } from '@/core/peek/types'
 import { amountText } from '@/domain/capture'
 import { CATEGORY } from '@/ui/tokens'
@@ -49,7 +49,7 @@ export function RoutinePeekView({ data: r }: { data: RoutinePeek }) {
             <Capsule className="mt-3" value={quantity.value} max={quantity.target} color={color} label={`${r.name} today`} />
             <div className="mt-3 flex gap-2">
               <Button disabled={pending} onClick={() => run(async () => { announceXp(toast, await addToGoal(r.id, quantity.step)) })}><Plus className="size-4" strokeWidth={2} aria-hidden />{amountText(quantity.step, r.unit ?? '')}</Button>
-              {quantity.value > 0 ? <Button variant="ghost" disabled={pending} onClick={() => run(async () => { await addToGoal(r.id, -quantity.step) })}>Undo {amountText(quantity.step, r.unit ?? '')}</Button> : null}
+              {quantity.value > 0 ? <Button variant="ghost" disabled={pending} onClick={() => run(async () => { await undoGoalStep(r.id) })}>Undo {amountText(quantity.step, r.unit ?? '')}</Button> : null}
             </div>
           </div>
         ) : r.occurrences.length ? (

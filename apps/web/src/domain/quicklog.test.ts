@@ -18,6 +18,12 @@ test('quick log edge cases', () => {
   assert.deepEqual(parseQuickLog('₹80 auto'), { type: 'spend', amount: 80, currency: 'INR', note: 'auto' })
   assert.deepEqual(parseQuickLog('spent 40'), { type: 'spend', amount: 40, currency: 'INR', note: 'Manual' })
   assert.equal(parseQuickLog('water 250 gallons'), null)
+  assert.deepEqual(parseQuickLog('spent 40', 'USD'), { type: 'spend', amount: 40, currency: 'USD', note: 'Manual' })
+  assert.deepEqual(parseQuickLog('spent 12 coffee', 'EUR'), { type: 'spend', amount: 12, currency: 'EUR', note: 'coffee' })
+  assert.deepEqual(parseQuickLog('₹80 auto', 'USD'), { type: 'spend', amount: 80, currency: 'INR', note: 'auto' }, 'the rupee sign means INR')
+  assert.deepEqual(parseQuickLog('spent 9 jpy lunch', 'INR'), { type: 'spend', amount: 9, currency: 'JPY', note: 'lunch' }, 'any ISO code')
+  assert.deepEqual(parseQuickLog('spent 5 usdt tea'), { type: 'spend', amount: 5, currency: 'USDT', note: 'tea' })
+  assert.deepEqual(parseQuickLog('spent 5 abc tea', 'GBP'), { type: 'spend', amount: 5, currency: 'GBP', note: 'abc tea' }, 'not a code: part of the note')
   assert.equal(parseQuickLog(''), null)
 })
 
