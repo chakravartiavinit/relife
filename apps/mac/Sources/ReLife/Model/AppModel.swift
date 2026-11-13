@@ -589,12 +589,12 @@ final class AppModel {
         NSApp.activate()
     }
 
-    func showQuickLog() {
+    func showQuickLog(text: String = "") {
         guard isSignedIn else {
             showMainWindow()
             return
         }
-        quickLog.show(model: self)
+        quickLog.show(model: self, text: text)
     }
 
     /// `relife://` links: pair, log, open, today.
@@ -604,7 +604,9 @@ final class AppModel {
         case let .pair(server, secret):
             confirmPair(server: server, secret: secret)
         case let .log(text):
-            log(text)
+            // Any web page (after the browser's prompt) or local process can open a link, so a link never writes on
+            // its own: it opens Quick Log with the text filled in, and Return saves it.
+            showQuickLog(text: text)
         case let .open(path):
             openDashboard(path: path)
         case .today:

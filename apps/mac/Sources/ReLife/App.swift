@@ -13,7 +13,7 @@ import SwiftUI
 //   APP_RENDER=<dir> <app>             like APP_SNAPSHOT, but drawn with ImageRenderer: no screen or permission needed (CI)
 //   APP_GRID=1 <app>                   draw the 8 pt grid and the layout probes over the window
 //   relife://pair?server=…&s=…          connect to a server from a dashboard link
-//   relife://log?text=water%20250       quick log from Raycast or a script
+//   relife://log?text=water%20250       open Quick Log with the text filled in (Return saves; links never write alone)
 //   relife://open?path=/wealth          open a dashboard page
 //   relife://today                      show the Today page
 

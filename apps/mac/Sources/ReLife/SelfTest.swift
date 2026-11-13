@@ -77,10 +77,11 @@ enum SelfTest {
         check("a flush with no server keeps the write", model.queueCount == 1)
         check("and counts the attempt", ((try? model.container.mainContext.fetch(FetchDescriptor<PendingOp>())) ?? []).first?.attempts == 1)
 
-        // Quick log through the URL scheme.
-        model.handle(url: URL(string: "relife://log?text=water%20250")!)
+        // Quick log (a relife://log link only fills the Quick Log panel; Return calls this).
+        check("relife://log parses to a quick log", RelifeLink(url: URL(string: "relife://log?text=water%20250")!) == .log(text: "water 250"))
+        model.log("water 250")
         try? await Task.sleep(for: .seconds(1.5))
-        check("relife://log queues a quick log", model.queueCount == 2, "queue \(model.queueCount)")
+        check("a quick log is queued", model.queueCount == 2, "queue \(model.queueCount)")
         check("a bad link does nothing", RelifeLink(url: URL(string: "relife://open?path=//evil")!) == nil)
 
         // The activity watcher never records the app itself.
