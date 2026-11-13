@@ -69,7 +69,7 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
   (`apps/web/src/core/companion.ts`); the request and response shapes are in `packages/contract`.
 - Vendored UI code: `apps/web/src/ui/beui/` (beui.dev, installed from the `@beui` registry with imports rewritten
   to `@/ui/beui`). Change it only to fit ReLife tokens.
-- Charts: [EvilCharts](https://evilcharts.com/docs), installed unmodified with `npx shadcn@latest add @evilcharts/recharts-<chart>`
+- Charts: [EvilCharts](https://evilcharts.com/docs), installed unmodified with `npx shadcn@latest add @evilcharts/recharts-<chart>` (run it in `apps/web`, where `components.json` is)
   into `apps/web/src/components/evilcharts/`. Never edit those files (re-run the add command to update them); adapt in the
   wrappers instead. Pages use the wrappers in `apps/web/src/ui/components/charts.tsx`, one per kind of number: `TrendArea` (a measure
   over time), `DailyBars` (a count per day), `RankedBars` (a ranking), `ShareDonut` (shares of a whole),
