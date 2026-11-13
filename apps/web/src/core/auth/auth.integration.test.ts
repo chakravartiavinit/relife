@@ -79,6 +79,13 @@ test('devices, pairing and legacy tokens against PostgreSQL', { skip: !enabled }
     assert.ok(a.ok && (await devices.revokeDevice(user.id, a.device.id)))
     await devices.syncLegacyTokens(user.id, (n) => tokens[n])
     assert.deepEqual(await devices.findByToken(tokens.ACTIVITY_TOKEN!), { ok: false, reason: 'revoked' })
+    // Cleared and later configured again (or unreadable while the key file was missing): still revoked.
+    const revokedToken = tokens.ACTIVITY_TOKEN
+    tokens.ACTIVITY_TOKEN = undefined
+    await devices.syncLegacyTokens(user.id, (n) => tokens[n])
+    tokens.ACTIVITY_TOKEN = revokedToken
+    await devices.syncLegacyTokens(user.id, (n) => tokens[n])
+    assert.deepEqual(await devices.findByToken(tokens.ACTIVITY_TOKEN!), { ok: false, reason: 'revoked' })
 
     // A changed or cleared token retires the old one.
     tokens.INGEST_TOKEN = undefined

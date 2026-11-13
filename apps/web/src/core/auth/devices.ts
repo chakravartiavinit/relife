@@ -118,6 +118,9 @@ export async function syncLegacyTokens(userId: string, get: (name: string) => st
     const hash = value ? hashToken(value) : null
     for (const d of mine) {
       if (hash && d.tokenHash.equals(hash)) continue
+      // A revoked row stays as a tombstone: if the same token comes back (re-pasted, or keys unreadable for a while and
+      // then restored), the unique hash keeps it revoked instead of inserting it as a new, working device.
+      if (d.revokedAt) continue
       await db.delete(schema.devices).where(eq(schema.devices.id, d.id)) // a retired token: nothing left to keep
       forgetDevice(d.id)
     }
