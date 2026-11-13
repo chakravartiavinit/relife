@@ -16,13 +16,17 @@ export const UNIT_WORDS = new Set(['ml', 'l', 'min', 'mins', 'minutes', 'h', 'hr
 /** Trackers where a new value replaces today's value instead of adding to it. */
 export const LAST_VALUE = new Set(['mood', 'energy', 'weight', 'sleep', 'sleep.hours', 'screen-time'])
 
+const COMMON_CURRENCIES = new Set(['INR', 'USD', 'EUR', 'GBP', 'JPY', 'AED', 'SGD', 'AUD', 'CAD', 'CHF', 'CNY', 'HKD', 'NZD', 'THB', 'SAR', 'QAR'])
+
 /** `defaultCurrency` is what a spend without a code is in: the user's base currency. */
 export function parseQuickLog(text: string, defaultCurrency = 'INR'): QuickLog | null {
   const t = text.trim().replace(/\s+/g, ' ')
   const spend = /^(?:spent|spend|paid|₹)\s*₹?\s*(\d+(?:\.\d+)?)\s*(?:([a-z]{3,4})\b)?\s*(.*)$/i.exec(t)
   if (spend) {
     const cur = spend[2]?.toUpperCase()
-    const isCur = cur && (cur === 'USDT' || (cur.length === 3 && isIsoCurrency(cur)))
+    // A lower-case word is a code only when it is a common currency (or the user's own): "cup", "all" and "pen" are ISO
+    // codes too, and "spent 200 cup coffee" is a note. Typed in capitals, any ISO code counts.
+    const isCur = cur && (cur === 'USDT' || cur === defaultCurrency.toUpperCase() || COMMON_CURRENCIES.has(cur) || (spend[2] === cur && cur.length === 3 && isIsoCurrency(cur)))
     const note = (isCur ? spend[3] : [spend[2], spend[3]].filter(Boolean).join(' ')).trim()
     return { type: 'spend', amount: Number(spend[1]), currency: isCur ? cur! : /^(?:[a-z]+\s*)?₹/i.test(t) ? 'INR' : defaultCurrency, note: note || 'Manual' }
   }
