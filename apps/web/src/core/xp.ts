@@ -3,7 +3,6 @@ import { db, schema } from '@/db'
 import { CATEGORIES } from '@/db/schema'
 import { ACHIEVEMENTS, type AchievementStats } from '@/achievements'
 import { areaLevelFor, levelFor, medalFor, nextTitle, scoreDay, titleFor, type Area, type DayInput } from '@/domain/xp'
-import { streaks } from '@/domain/streaks'
 import { loadAdherence } from '@/core/adherence'
 import { lockUser } from './recovery'
 import { activeDays, isSpend, trackerDays, transactionsBetween } from './metrics'
@@ -113,9 +112,13 @@ export async function scoreRange(user: User, from: string, to: string, now = new
     }
   }
 
-  await db.transaction(async (tx) => {
+  const stale = await db.transaction(async (tx) => {
     // Two rescoring runs at once (a log and the worker) would delete and re-insert the same rows: take turns.
     await lockUser(tx, user.id)
+    // A fresh start (setup) that committed while this run computed its rows moved xpSince: these rows are stale
+    // and would bring back XP the fresh start just wiped. Write nothing; the next rescore uses the new start.
+    const [u] = await tx.select({ since: sql<string | null>`${schema.users.profile}->>'xpSince'` }).from(schema.users).where(eq(schema.users.id, user.id))
+    if ((u?.since ?? undefined) !== (since ?? undefined)) return true
     await tx.delete(schema.xpEvents).where(and(
       eq(schema.xpEvents.userId, user.id), gte(schema.xpEvents.localDate, from), lte(schema.xpEvents.localDate, to),
       inArray(schema.xpEvents.kind, ['consistency', 'standard']), ne(schema.xpEvents.source, 'balance'),
@@ -124,7 +127,9 @@ export async function scoreRange(user: User, from: string, to: string, now = new
       eq(schema.xpEvents.userId, user.id), gte(schema.xpEvents.localDate, from), lte(schema.xpEvents.localDate, to), eq(schema.xpEvents.source, 'streak'),
     ))
     for (let i = 0; i < rows.length; i += 500) await tx.insert(schema.xpEvents).values(rows.slice(i, i + 500)).onConflictDoNothing()
+    return false
   })
+  if (stale) return
   await awardBalance(user, from, to)
 }
 
@@ -154,46 +159,59 @@ export async function totalXp(user: User) {
   return r.n
 }
 
-/** Everything the achievement checks need, in a few queries. */
+/**
+ * Everything the achievement checks need, aggregated in SQL (two statements, nothing per-row crosses the wire except
+ * one array of days per XP source). Runs on every log, so it must not grow with the history.
+ */
 export async function achievementStats(user: User, now = new Date()): Promise<AchievementStats> {
   const today = localDate(now, user.timezone)
-  const [events, active, [totals], xp] = await Promise.all([
-    db.select({ d: schema.xpEvents.localDate, source: schema.xpEvents.source, kind: schema.xpEvents.kind, amount: schema.xpEvents.amount })
-      .from(schema.xpEvents).where(and(eq(schema.xpEvents.userId, user.id), ne(schema.xpEvents.kind, 'achievement'))),
-    activeDays(user, user.profile.xpSince ?? addDays(today, -800)),
-    db.select({
-      commits: sql<number>`coalesce(sum(${schema.entries.value}) filter (where ${schema.trackers.slug} = 'github.commits'), 0)::float`,
-      learning: sql<number>`coalesce(sum(${schema.entries.value}) filter (where ${schema.trackers.slug} = 'learning.minutes'), 0)::float`,
-    }).from(schema.entries).innerJoin(schema.trackers, eq(schema.trackers.id, schema.entries.trackerId))
-      .where(and(eq(schema.entries.userId, user.id), gte(schema.entries.localDate, user.profile.xpSince ?? '1970-01-01'))),
-    totalXp(user),
+  const u = user.id
+  const from = user.profile.xpSince ?? addDays(today, -800)
+  const [sourceRows, [agg]] = await Promise.all([
+    db.execute<{ source: string; days: string[] }>(sql`
+      select source, array_agg(distinct local_date::text) as days from xp_events
+      where user_id = ${u} and kind <> 'achievement' group by source`),
+    db.execute<{ plan_days: string[] | null; comebacks: number; best: number; commits: number; learning: number; xp: number }>(sql`
+      select
+        (select array_agg(local_date::text) from (select local_date from xp_events
+          where user_id = ${u} and kind = 'consistency' group by local_date having sum(amount) >= 99) p) as plan_days,
+        -- Came back after 3+ days with no XP: gaps between consecutive days that earned XP.
+        (select count(*)::int from (select local_date - lag(local_date) over (order by local_date) as gap from (
+          select distinct local_date from xp_events where user_id = ${u} and kind <> 'achievement') x) g where gap > 3) as comebacks,
+        -- Longest run of consecutive active days (gaps and islands).
+        (select coalesce(max(n), 0)::int from (select count(*) as n from (
+          select d, d - (row_number() over (order by d))::int as grp from (
+            select c.local_date as d from checks c join schedules s on s.id = c.schedule_id
+              where s.user_id = ${u} and c.status = 'done' and c.local_date >= ${from}
+            union
+            select local_date from entries where user_id = ${u} and local_date >= ${from}
+              and (source = 'manual' or (source = 'github' and value > 0))
+            union
+            select local_date from streak_freezes where user_id = ${u} and local_date >= ${from}) a) b group by grp) r) as best,
+        (select coalesce(sum(e.value), 0)::float from entries e join trackers t on t.id = e.tracker_id
+          where e.user_id = ${u} and t.slug = 'github.commits' and e.local_date >= ${user.profile.xpSince ?? '1970-01-01'}) as commits,
+        (select coalesce(sum(e.value), 0)::float from entries e join trackers t on t.id = e.tracker_id
+          where e.user_id = ${u} and t.slug = 'learning.minutes' and e.local_date >= ${user.profile.xpSince ?? '1970-01-01'}) as learning,
+        (select coalesce(sum(amount), 0)::int from xp_events where user_id = ${u}) as xp`),
   ])
-  const sources = new Map<string, Set<string>>()
-  const planByDay = new Map<string, number>()
-  for (const e of events) {
-    if (!sources.has(e.source)) sources.set(e.source, new Set())
-    sources.get(e.source)!.add(e.d)
-    if (e.kind === 'consistency') planByDay.set(e.d, (planByDay.get(e.d) ?? 0) + e.amount)
-  }
-  const xpDays = [...new Set(events.map((e) => e.d))].sort()
-  let comebacks = 0
-  for (let i = 1; i < xpDays.length; i++) if (daysBetween(xpDays[i - 1], xpDays[i]) > 3) comebacks++
+  const sources = new Map<string, Set<string>>(sourceRows.map((r) => [r.source, new Set(r.days)]))
   return {
     sources,
-    fullPlanDays: new Set([...planByDay].filter(([, v]) => v >= 99).map(([d]) => d)),
-    streakBest: streaks(active, today).best,
-    commitsTotal: Number(totals?.commits ?? 0),
-    learningMinutesTotal: Number(totals?.learning ?? 0),
+    fullPlanDays: new Set(agg.plan_days ?? []),
+    streakBest: agg.best,
+    commitsTotal: Number(agg.commits),
+    learningMinutesTotal: Number(agg.learning),
     balanceWeeks: sources.get('balance')?.size ?? 0,
-    level: levelFor(xp).level,
-    comebacks,
+    level: levelFor(agg.xp).level,
+    comebacks: agg.comebacks,
   }
 }
 
 /** Unlock anything newly earned. Returns what was unlocked now, for the unlock animation. */
 export async function checkAchievements(user: User, now = new Date()) {
-  const stats = await achievementStats(user, now)
   const have = new Set((await db.select({ key: schema.achievements.key }).from(schema.achievements).where(eq(schema.achievements.userId, user.id))).map((r) => r.key))
+  if (ACHIEVEMENTS.every((a) => have.has(a.key))) return []
+  const stats = await achievementStats(user, now)
   const today = localDate(now, user.timezone)
   const unlocked: Unlocked[] = []
   for (const a of ACHIEVEMENTS) {
