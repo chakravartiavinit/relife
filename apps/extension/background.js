@@ -242,8 +242,37 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (['token', 'server', 'paused', 'badge', 'lastSync', 'companion'].some((k) => k in changes)) void renderBadge()
   if ('paused' in changes) void renderMenus()
   // A new address or token: what the badge counts came from the old one.
+  if ('server' in changes) void syncContentScript()
   if ('token' in changes || 'server' in changes) void chrome.storage.local.remove('companion').then(() => refreshCompanion(true))
 })
+
+// ── Page details (the content script), only where the user allowed it ────────────────────────────
+
+// content.js reads a page's title, channel, video state and course hints. It is not in the manifest: Chrome would then
+// ask for every website at install. Sites are allowed from the options page (optional host permissions); this registers
+// the script for exactly the sites allowed, and never for the address of the server it connects to.
+const SCRIPT_ID = 'page-details'
+let scriptChain = Promise.resolve()
+
+/** Registers content.js for every origin the user has allowed beyond the install-time ones. Runs one at a time. */
+function syncContentScript() {
+  scriptChain = scriptChain.then(async () => {
+    const { server } = await settings()
+    const fixed = chrome.runtime.getManifest().host_permissions ?? []
+    // The server's own pattern (asked for when it isn't this computer) is for fetching, not for reading pages.
+    const own = (() => { try { return self.RL.hostPattern(server) } catch { return null } })()
+    const { origins = [] } = await chrome.permissions.getAll()
+    const matches = origins.filter((o) => /^https?:/.test(o) && !fixed.includes(o) && o !== own)
+    const excludeMatches = (() => { try { return [`${new URL(server).origin}/*`] } catch { return [] } })()
+    const had = (await chrome.scripting.getRegisteredContentScripts({ ids: [SCRIPT_ID] })).length > 0
+    if (had) await chrome.scripting.unregisterContentScripts({ ids: [SCRIPT_ID] })
+    if (!matches.length) return
+    await chrome.scripting.registerContentScripts([{ id: SCRIPT_ID, js: ['content.js'], matches, excludeMatches, runAt: 'document_idle', allFrames: true, persistAcrossSessions: true }])
+  }).catch((e) => console.warn('page details script', e))
+  return scriptChain
+}
+chrome.permissions.onAdded.addListener(() => void syncContentScript())
+chrome.permissions.onRemoved.addListener(() => void syncContentScript())
 
 // ── Shortcuts and the icon's right-click menu ────────────────────────────────────────────────────
 
@@ -333,12 +362,16 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   return msg.type === 'flush' || msg.type === 'track-course' || msg.type === 'site-kind'
 })
 
-chrome.runtime.onStartup.addListener(() => { void renderBadge(); void refreshCompanion(true) })
+chrome.runtime.onStartup.addListener(() => { void syncContentScript(); void renderBadge(); void refreshCompanion(true) })
 
 // After an install or update, send every course you've chosen, so ones saved before an update (or while
 // ReLife was off) still reach it. Creating a course twice just updates it.
-chrome.runtime.onInstalled.addListener(() => void serial(async () => {
+chrome.runtime.onInstalled.addListener((details) => void serial(async () => {
   createMenus()
+  void syncContentScript()
+  // 0.8 made site access opt-in: Chrome drops the old all-sites grant on update, so page details (and access to a
+  // server on another computer) may now be off. Open the settings page once so the user sees it and can turn them on.
+  if (details.reason === 'update' && /^0\.[0-7]\./.test(details.previousVersion ?? '')) void chrome.runtime.openOptionsPage()
   const { courses = {}, pendingCourses = [] } = await chrome.storage.local.get(['courses', 'pendingCourses'])
   const all = Object.entries(courses).map(([key, c]) => {
     const [domain, ...rest] = key.split('/')

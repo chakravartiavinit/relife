@@ -1,6 +1,6 @@
 // Types for the extension's shared globals (lib.js hangs everything off self.RL; the worker loads it with importScripts).
 // The files are plain scripts at runtime; tsconfig's moduleDetection "force" only makes the type checker treat each as its own scope.
-import type { ActivityBatchInput, TodayAction, TodayActionResult, TodayResponse, TodayView } from '@relife/contract'
+import type { ActivityBatchInput, PairPoll, PairRequestStarted, TodayAction, TodayActionResult, TodayResponse, TodayView } from '@relife/contract'
 
 export interface Settings {
   server: string
@@ -30,6 +30,9 @@ export interface Stored extends Partial<Settings> {
   frames?: any
 }
 
+/** One check on a pairing request: the server's answer, or `slow` (asked too soon) or `error` (couldn't ask). */
+export type PairStatus = PairPoll | { status: 'slow' } | { status: 'error'; error?: string }
+
 export interface CallResult<T = unknown> { ok: boolean; status: number; data: T | null }
 export interface LastSync { at: number; ok: boolean; status: number; error?: string }
 
@@ -53,6 +56,14 @@ export interface ReLifeShared {
   call<T = any>(s: Settings, path: string, init?: RequestInit): Promise<CallResult<T>>
   connect(server: string, token: string): Promise<LastSync>
   toast(text: string, tone?: string): void
+  /** Text from the address field → "http://host:port" (the default when empty, null when it isn't an address). */
+  serverOf(text: string): string | null
+  /** The match pattern Chrome asks the user to allow for this address. */
+  hostPattern(server: string): string
+  /** True when the extension may reach this address; asks the user for any other than this computer's, so call it from a click. */
+  allowServer(server: string): Promise<boolean>
+  pairStart(server: string): Promise<{ started?: PairRequestStarted; error?: string }>
+  pairPoll(server: string, started: PairRequestStarted): Promise<PairStatus>
 }
 
 declare global {

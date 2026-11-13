@@ -3,7 +3,7 @@
 
 /** DOM glue: elements are looked up by id and used as whatever they are, so this stays untyped. The data is what is typed. */
 const $ = /** @type {(id: string) => any} */ ((id) => document.getElementById(id))
-const { DEFAULTS, TYPE_LABEL, settings, domainOf, esc, ago, connect, toast } = self.RL
+const { DEFAULTS, TYPE_LABEL, settings, domainOf, esc, ago, connect, toast, serverOf, hostPattern, allowServer, pairStart, pairPoll } = self.RL
 const icon = (name) => self.ICON[name] ?? ''
 for (const el of /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-icon]'))) el.innerHTML = icon(el.dataset.icon)
 
@@ -28,6 +28,7 @@ async function renderSync() {
   $('paused').checked = !!s.paused
   $('paused').disabled = !s.token
   $('badge').checked = s.badge !== false
+  $('pairBtn').textContent = s.token ? 'Connect again' : 'Connect'
 }
 
 function renderExclude() {
@@ -115,10 +116,103 @@ $('sendNow').onclick = async () => {
 
 $('editKeys').onclick = () => chrome.tabs.create({ url: 'chrome://extensions/shortcuts' })
 
+const failText = (r) => (r.status ? `${r.error}.` : 'Can’t reach a server at that address. Is it running?')
+
+// ── Page details: opt-in access to websites ─────────────────────────────────────────────────────
+
+// Chrome asks the user; background.js registers the content script once the access is granted.
+const ALL_SITES = { origins: ['http://*/*', 'https://*/*'] }
+
+async function renderPages() {
+  $('pages').checked = await chrome.permissions.contains(ALL_SITES)
+}
+
+$('pages').onchange = async () => {
+  if ($('pages').checked) {
+    // Called first in the click, so Chrome still counts it as the user's action.
+    const ok = await chrome.permissions.request(ALL_SITES).catch(() => false)
+    toast(ok ? 'Page details are on. Reload open tabs to include them.' : 'Chrome didn’t give access, so page details stay off.', ok ? 'good' : 'bad')
+  } else {
+    const fixed = chrome.runtime.getManifest().host_permissions ?? []
+    const { origins = [] } = await chrome.permissions.getAll()
+    await chrome.permissions.remove({ origins: origins.filter((o) => /^https?:/.test(o) && !fixed.includes(o) && !isServerPattern(o)) })
+    // A server on another computer may have been reachable only through the all-sites access just removed.
+    const lost = await chrome.permissions.contains({ origins: [hostPattern(s.server)] }).then((ok) => !ok).catch(() => false)
+    toast(lost ? 'Page details are off. Press Connect again so Chrome lets the extension reach your server.' : 'Page details are off.', lost ? 'bad' : 'good')
+  }
+  await renderPages()
+}
+const isServerPattern = (o) => { try { return o === hostPattern(s.server) } catch { return false } }
+chrome.permissions.onAdded.addListener(() => void renderPages())
+chrome.permissions.onRemoved.addListener(() => void renderPages())
+
+// ── Connection: pairing (a code to type in the app) or a pasted token ───────────────────────────
+
+/** @type {{ stop: () => void } | null} */
+let pairing = null
+
+function showPairing(on) {
+  $('pairing').hidden = !on
+  $('pairForm').hidden = on
+}
+
+/** Starts a pairing request and waits, on this page (the popup closes when you go to the app), until the app approves it. */
+async function pair(server) {
+  const { started, error } = await pairStart(server)
+  if (!started) { toast(error ?? 'Couldn’t start connecting.', 'bad'); $('pairBtn').disabled = false; return }
+  let stopped = false
+  let timer
+  pairing = { stop: () => { stopped = true; clearTimeout(timer); pairing = null; showPairing(false); $('pairBtn').disabled = false } }
+  $('pairCode').textContent = `${started.userCode.slice(0, 4)}-${started.userCode.slice(4)}`
+  $('pairOpen').href = started.approveUrl
+  $('pairStatus').textContent = 'Waiting for you to type this code in the app.'
+  showPairing(true)
+
+  const end = Date.parse(started.expiresAt)
+  let failures = 0
+  let wait = Math.max(2, started.interval) * 1000
+  const tick = async () => {
+    if (stopped) return
+    if (Date.now() > end) { pairing?.stop(); toast('That code expired. Press Connect for a new one.', 'bad'); return }
+    const r = await pairPoll(server, started)
+    if (stopped) return
+    failures = r.status === 'error' ? failures + 1 : 0
+    if (r.status === 'slow') wait += 1000
+    if (r.status === 'denied') { pairing?.stop(); toast('The request was denied in the app.', 'bad'); return }
+    if (r.status === 'expired') { pairing?.stop(); toast('That code expired. Press Connect for a new one.', 'bad'); return }
+    if (failures >= 5) { pairing?.stop(); toast('error' in r && r.error ? `${r.error}.` : 'Lost the connection.', 'bad'); return }
+    if (r.status === 'approved') {
+      const token = 'token' in r ? r.token : undefined
+      pairing?.stop()
+      if (!token) { toast('The server approved this browser but sent no sign-in. Try again.', 'bad'); return }
+      const result = await connect(server, token)
+      $('token').value = token
+      toast(result.ok ? 'Connected.' : failText(result), result.ok ? 'good' : 'bad')
+      return
+    }
+    timer = setTimeout(() => void tick(), wait)
+  }
+  timer = setTimeout(() => void tick(), wait)
+}
+
+$('pairForm').onsubmit = async (e) => {
+  e.preventDefault()
+  const server = serverOf($('server').value)
+  if (!server) { toast('That doesn’t look like an address. Try http://127.0.0.1:3030.', 'bad'); return }
+  $('pairBtn').disabled = true
+  // First await in the click: another computer's address needs Chrome's yes, which counts as the user's action only here.
+  if (!(await allowServer(server))) { toast('Chrome needs your OK to reach that address.', 'bad'); $('pairBtn').disabled = false; return }
+  await pair(server)
+}
+$('pairCancel').onclick = () => pairing?.stop()
+
 $('setupForm').onsubmit = async (e) => {
   e.preventDefault()
-  const r = await connect($('server').value, $('token').value)
-  toast(r.ok ? 'Connected to ReLife.' : r.status ? `${r.error}.` : 'Can’t reach ReLife at that address. Is it running?', r.ok ? 'good' : 'bad')
+  const server = serverOf($('server').value)
+  if (!server) { toast('That doesn’t look like an address. Try http://127.0.0.1:3030.', 'bad'); return }
+  if (!(await allowServer(server))) { toast('Chrome needs your OK to reach that address.', 'bad'); return }
+  const r = await connect(server, $('token').value)
+  toast(r.ok ? 'Connected to ReLife.' : failText(r), r.ok ? 'good' : 'bad')
 }
 
 // Live: the popup, the background worker or another settings tab may change things while this is open.
@@ -137,6 +231,7 @@ setInterval(() => void renderSync(), 30_000)
 ;(async () => {
   $('version').textContent = `Version ${chrome.runtime.getManifest().version}`
   await render()
+  await renderPages()
   $('server').value = s.server
   $('token').value = s.token
   await renderKeys()

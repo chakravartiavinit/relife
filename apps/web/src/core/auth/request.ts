@@ -65,6 +65,15 @@ export function sameOrigin(h: { get(n: string): string | null }) {
 }
 
 /**
+ * The Chrome extension's pages and worker send `Origin: chrome-extension://<32 letters>` on a POST, which is never the
+ * server's Host. The pairing routes accept it (the extension is a native client: it gets a token, never a cookie).
+ */
+export const fromExtension = (h: { get(n: string): string | null }) => /^chrome-extension:\/\/[a-p]{32}$/.test(h.get('origin') ?? '')
+
+/** The pairing routes' check: this site's own pages, native clients (no Origin) and the extension. */
+export const pairOriginAllowed = (h: { get(n: string): string | null }) => sameOrigin(h) || fromExtension(h)
+
+/**
  * A write that rides on the session cookie must come from this site. SameSite=Lax does not stop a cross-origin
  * `text/plain` POST from a page on another port of this Mac (same site), and a browser attaches the cookie to it. Origin,
  * when sent, has to match Host, and Sec-Fetch-Site, when sent, has to say same-origin (or none: the user typed it).
