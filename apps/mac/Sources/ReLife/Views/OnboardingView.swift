@@ -165,7 +165,7 @@ private struct WhereStep: View {
             return
         } else {
             guard let url = ServerAddress.parse(address) else {
-                addressError = "Enter an address like 192.168.1.5:3030 or relife.home."
+                addressError = "Enter an address like https://my-mac.tailnet-name.ts.net (a Tailscale address) or localhost:3030."
                 return
             }
             server = url

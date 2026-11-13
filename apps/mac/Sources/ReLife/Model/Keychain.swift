@@ -4,7 +4,8 @@ import Security
 /// Where the device token lives. The real one is the Keychain; snapshots and the self-test use memory.
 protocol TokenStore {
     func load(account: String) -> String?
-    func save(_ token: String, account: String)
+    /// False when the token could not be stored.
+    @discardableResult func save(_ token: String, account: String) -> Bool
     func delete(account: String)
 }
 
@@ -29,12 +30,13 @@ struct KeychainTokenStore: TokenStore {
         return String(data: data, encoding: .utf8)
     }
 
-    func save(_ token: String, account: String) {
+    @discardableResult
+    func save(_ token: String, account: String) -> Bool {
         delete(account: account)
         var q = query(account)
         q[kSecValueData as String] = Data(token.utf8)
         q[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        SecItemAdd(q as CFDictionary, nil)
+        return SecItemAdd(q as CFDictionary, nil) == errSecSuccess
     }
 
     func delete(account: String) {
@@ -46,6 +48,7 @@ final class MemoryTokenStore: TokenStore {
     private var items: [String: String] = [:]
 
     func load(account: String) -> String? { items[account] }
-    func save(_ token: String, account: String) { items[account] = token }
+    @discardableResult
+    func save(_ token: String, account: String) -> Bool { items[account] = token; return true }
     func delete(account: String) { items[account] = nil }
 }
