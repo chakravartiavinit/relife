@@ -713,7 +713,7 @@ export const TOUR_ILLOS = [
   { name: '⌘K', Illo: IlloLog, beats: LOG_BEATS },
   { name: 'Progress', Illo: IlloProgress, beats: PROGRESS_BEATS },
   { name: 'Areas', Illo: IlloAreas, beats: AREAS_BEATS },
-  { name: 'Connectors', Illo: IlloConnect, beats: CONNECT_BEATS },
+  { name: 'Connections', Illo: IlloConnect, beats: CONNECT_BEATS },
   { name: 'Reminders', Illo: IlloRemind, beats: REMIND_BEATS },
 ]
 

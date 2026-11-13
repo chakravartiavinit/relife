@@ -2,10 +2,10 @@
 
 import { Switch } from '@/ui/beui/motion/switch'
 import { useActionState, useEffect, useId, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Plus, Repeat, X } from 'lucide-react'
 import { saveSchedule } from '@/app/actions'
-import { CATEGORIES } from '@/db/schema'
+import { CATEGORIES, type Category } from '@/db/schema'
 import { CATEGORY } from '@/ui/tokens'
 import { Button } from '../button'
 import { Field, Input, Select, Textarea } from '../form'
@@ -38,9 +38,9 @@ const DAYS = [['MO', 'Mon'], ['TU', 'Tue'], ['WE', 'Wed'], ['TH', 'Thu'], ['FR',
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const REMIND = [[0, 'At the time'], [10, '10 min before'], [30, '30 min before'], [60, '1 hour before'], [1440, '1 day before']] as const
 
-export function blankSchedule(today: string): ScheduleInitial {
+export function blankSchedule(today: string, category: Category = 'health'): ScheduleInitial {
   return {
-    name: '', kind: 'routine', category: 'health', freq: 'daily', interval: 1, times: ['09:00'], byweekday: [],
+    name: '', kind: 'routine', category, freq: 'daily', interval: 1, times: ['09:00'], byweekday: [],
     start: today, remindOffsetMin: 0,
   }
 }
@@ -250,10 +250,14 @@ function ScheduleForm({ initial, onDone }: { initial: ScheduleInitial; onDone: (
   )
 }
 
-/** "New routine" button; also opens itself for `/habits?new=1`. */
-export function NewScheduleButton({ today, autoOpen = false }: { today: string; autoOpen?: boolean }) {
-  const [open, setOpen] = useState(autoOpen)
+/** "New routine" button; also open while the URL is `/plan/routines?new=1` (state from the URL, so a kept-alive page never shows a stale dialog). */
+export function NewScheduleButton({ today, listenToUrl = false, category }: { today: string; listenToUrl?: boolean; /** Start the form on this area (an area's Routines tab). `?category=` does the same for the URL. */ category?: Category }) {
+  const [open, setOpen] = useState(false)
   const router = useRouter()
+  const pathname = usePathname()
+  const params = useSearchParams()
+  const fromUrl = listenToUrl && pathname === '/plan/routines' && params.get('new') === '1'
+  const urlCategory = CATEGORIES.find((c) => c === params.get('category'))
   return (
     <>
       <Button variant="primary" onClick={() => setOpen(true)}>
@@ -261,11 +265,11 @@ export function NewScheduleButton({ today, autoOpen = false }: { today: string; 
         New routine
       </Button>
       <ScheduleDialog
-        open={open}
-        initial={blankSchedule(today)}
+        open={open || fromUrl}
+        initial={blankSchedule(today, category ?? (fromUrl ? urlCategory : undefined))}
         onClose={() => {
           setOpen(false)
-          if (autoOpen) router.replace('/habits', { scroll: false })
+          if (fromUrl) router.replace(pathname, { scroll: false })
         }}
       />
     </>

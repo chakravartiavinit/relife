@@ -1,6 +1,7 @@
 import { resolve } from 'node:path'
 import { loadEnvConfig } from '@next/env'
 import type { NextConfig } from 'next'
+import { LEGACY_REDIRECTS } from './src/domain/routes'
 
 // The server runs from apps/web; .env and data/ live at the repo root. Load .env once here, with the same loader Next
 // uses (not a runtime process.env change). Next has already loaded apps/web's own (empty) env by now, so force a reload.
@@ -15,6 +16,10 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: repoRoot,
   partialPrefetching: true,
   // Server-only heavy packages stay as plain Node requires instead of being bundled.
+  // Old URLs keep working. 307 (not permanent), so no browser caches a mapping we may still change.
+  async redirects() {
+    return LEGACY_REDIRECTS.map((r) => ({ ...r, permanent: false }))
+  },
   devIndicators: { position: 'bottom-right' },
   serverExternalPackages: ['ccxt', 'grammy', 'postgres', 'playwright-core'],
   // data/ is private runtime state (keys, Chrome profiles, caches): never part of a build.

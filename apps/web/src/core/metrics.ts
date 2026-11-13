@@ -1,7 +1,9 @@
 import { and, eq, gt, gte, inArray, isNull, lte, or, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import type { Category } from '@/db/schema'
+import type { ManualLog } from '@/domain/capture'
 import { convert } from './fx'
+import { addDays, localDate, localHour } from './time'
 import type { User } from './user'
 
 export type Tracker = typeof schema.trackers.$inferSelect
@@ -43,6 +45,26 @@ export async function trackerDays(user: User, from: string, to: string, opts: { 
     }
     return { tracker: t, days, verifiedDays, verified }
   })
+}
+
+/**
+ * Where each tracker's values in [from, to] came from (`oura`, `manual`...) and the newest note (Last.fm's top
+ * artist, Steam's top game: the entry's note, or the `artist` / `game` its sync stored), for the All metrics tiles.
+ */
+export async function trackerFacts(user: User, from: string, to: string, trackerIds: string[]) {
+  if (!trackerIds.length) return new Map<string, { sources: string[]; note: string | null }>()
+  const text = sql`coalesce(${schema.entries.note}, ${schema.entries.meta}->>'artist', ${schema.entries.meta}->>'game')`
+  const rows = await db.select({
+    trackerId: schema.entries.trackerId,
+    sources: sql<string[]>`array_agg(distinct ${schema.entries.source})`,
+    note: sql<string | null>`(array_agg(${text} order by ${schema.entries.localDate} desc, ${schema.entries.updatedAt} desc) filter (where ${text} is not null))[1]`,
+  }).from(schema.entries).where(and(
+    eq(schema.entries.userId, user.id),
+    inArray(schema.entries.trackerId, trackerIds),
+    gte(schema.entries.localDate, from),
+    lte(schema.entries.localDate, to),
+  )).groupBy(schema.entries.trackerId)
+  return new Map(rows.map((r) => [r.trackerId, { sources: r.sources, note: r.note }]))
 }
 
 export type Txn = typeof schema.transactions.$inferSelect & { base: number }
@@ -87,4 +109,20 @@ export async function activeDays(user: User, from: string) {
       .where(and(eq(schema.streakFreezes.userId, user.id), gte(schema.streakFreezes.localDate, from))),
   ])
   return new Set([...checks, ...entries, ...frozen].map((r) => r.d))
+}
+
+/**
+ * Typed-in (manual) entries from the last `days` local days, one per tracker per day, with the local hour each was
+ * last written. Trackers that keep the latest value (weight, typing speed) are left out: repeating their usual
+ * value is not a log you want one tap for. Capture ranks these into "what you usually log around now" (`rankCaptureSuggestions`).
+ */
+export async function manualLogHistory(user: User, days: number, now = new Date()): Promise<ManualLog[]> {
+  const from = addDays(localDate(now, user.timezone), -(days - 1))
+  const rows = await db.select({
+    slug: schema.trackers.slug, name: schema.trackers.name, unit: schema.trackers.unit, area: schema.trackers.category,
+    day: schema.entries.localDate, value: schema.entries.value, at: schema.entries.updatedAt,
+  }).from(schema.entries)
+    .innerJoin(schema.trackers, eq(schema.trackers.id, schema.entries.trackerId))
+    .where(and(eq(schema.entries.userId, user.id), eq(schema.entries.source, 'manual'), isNull(schema.trackers.archivedAt), eq(schema.trackers.aggregate, 'sum'), gte(schema.entries.localDate, from)))
+  return rows.map(({ at, value, ...r }) => ({ ...r, value: Number(value), hour: localHour(at, user.timezone) }))
 }

@@ -25,27 +25,136 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
 
 ## Layout
 
-- Pages: Today (`/`, the quest log: things to do now), Goals (`/goals`, up to 3 outcome goals with a baseline, linked actions and weekly review decisions; `/goals/[id]` and `/goals/review`), Activity (`/activity`, laptop time from `apps/extension/` and
-  the Mac watcher), Progress (`/profile`, the character sheet: level, streak,
-  week, consistency, achievements, XP; `/overview` redirects here), Habits, Insights, and six areas (Health, Mind, Skills, Wealth,
-  Hobbies, People) that share one template (`AreaHeader` → `KpiStrip` → cards). Inbox, Connectors and Settings sit in the sidebar footer.
-  Navigation lives in `apps/web/src/ui/components/nav.tsx`. The game look comes from three banners: `CharacterBanner`
-  (`hud.tsx`, Today and Progress), `AreaHeader` (area pages) and `PageHeader` (everything else). Routine
+- Pages: Today (`/`: header, Check first, Life pulse, then the day's plan and a rail of Quests, Goals and Money), Life (`/life`, the hub: a brief and one tile per area plus Time,
+  then "This week, area by area"), seven areas, Plan (`/plan`, tabs:
+  Goals (up to 3 outcome goals with a baseline, linked actions and weekly review decisions), `/plan/routines`,
+  `/plan/trackers`, `/plan/review`; details at `/plan/goals/[id]` and `/plan/trackers/[slug]`), Coach (`/coach`: Needs you and
+  Ask side by side, `/coach/patterns`, `/coach/history`; `?filter=decisions|data`, `?ask=`, `?view=ask`) and You (`/you`, tabs: Progress (the character
+  sheet: level, streak, week, consistency, achievements, XP), `/you/connections`, `/you/notifications`, `/you/settings`).
+  Old URLs (`/goals`, `/habits`, `/insights`, `/inbox`, `/profile`, `/connectors`, `/settings`, `/activity`,
+  `/relationships`, ...) redirect (307) through `LEGACY_REDIRECTS` in `apps/web/src/domain/routes.ts`; never link to them.
+  Navigation data (`NAV`, `isActive`) lives in `apps/web/src/ui/components/nav.tsx`; the shell is in `apps/web/src/ui/components/shell/`: a
+  collapsible desktop `Sidebar` (240px, or a 72px icon rail; the choice is stored in `localStorage` `relife:sidebar`
+  and put on `<html data-sidebar>` before paint by `sidebar-script.ts`, ⌘\ toggles it), the desktop `TopBar`
+  (breadcrumb from `trail()`, Capture field, sync dot, Coach bell, level avatar), the phone `PhoneTopBar` and
+  `TabBar` (a raised `+`; both open Capture). Everything the shell shows besides the page
+  (Coach count, sync dot, level ring, area dots) comes from `loadShellStatus` in `apps/web/src/core/shell.ts`: one SQL
+  statement plus `xpLevel` and `buildDayPlan`, wrapped in React `cache`, read by each piece in its own Suspense
+  island (`shell-status.tsx`). The needs-you rules (merchant grouping, nudges expire after 3 days) are in
+  `apps/web/src/domain/needs-you.ts`. The game look comes from three banners: `CharacterBanner`
+  (`hud.tsx`, Progress on You only; Today has the lighter `TodayHeader`), `AreaHeader` (`area/area-header.tsx`, every area page) and `PageHeader` (everything else). Routine
   pictures come from `apps/web/src/ui/routine-icons.ts`.
+- Areas: the `AREAS` registry (`apps/web/src/core/areas/index.ts`, one file per area next to it) is the one list of Health, Mind,
+  Skills, Wealth, Hobbies, People (`/people`, DB category `relationships`) and Time: title, colour, tabs, pinned metrics,
+  connector ids and the four headline numbers (`kpis`, shared by the area header, the Life tiles, the brief's facts and Today).
+  Health, Mind, Skills, Hobbies and People share the `apps/web/src/app/[area]/` template (`layout.tsx` → `AreaLayout`: `AreaHeader` →
+  `AreaTabs` (Overview · Trends · Routines · Sources; counts stream in) → `AreaKpis` → the tab body; an unknown slug is a
+  `notFound()`, because Cache Components does not allow `dynamicParams = false`). Each area's own Overview cards live in
+  `apps/web/src/ui/areas/` (`OVERVIEWS`) inside `OverviewShell`; Trends, Routines and Sources are the shared `area-*.tsx` in
+  `apps/web/src/ui/components/area/`. `AllMetrics` draws a `MetricTile` for every tracker of the area from every source (nothing is
+  filtered by slug, so connector metrics like HRV or readiness show up on their own); `summarizeTracker` in
+  `apps/web/src/domain/metric-tile.ts` is the tested maths. Wealth (`apps/web/src/app/wealth/`: Overview · Spending · Portfolio ·
+  Subscriptions · Sources) and Time (`apps/web/src/app/time/`) have their own folders on the same `AreaLayout` (Wealth with
+  `kpis={false}`: each tab keeps its numbers). Every KPI item, tile and "Why?" opens a Peek: a metric where the number has
+  one, else `brief:<scope>` (`KpiStrip` items take `peek`, `peekAll` sets one for a whole strip).
+- Briefs: one line per scope (`today`, each category, `time`) in the `briefs` table, written by the `ai:area-briefs` job
+  (`apps/web/src/ai/jobs/area-briefs.ts`, daily 06:30 and on `data.changed`). The rules in `apps/web/src/domain/briefs.ts` (pure, tested) write
+  every line from `gatherBriefFacts` (`apps/web/src/core/briefs.ts`); a hash of the facts plus a 2-hour throttle decide when to rewrite,
+  and an AI reword (one `generate('parse', 'briefs.area')` call, lines over 110 characters rejected) is optional: with no
+  model the rule line stays. `latestBrief` is the reader (null before `db:push` or any data, the UI then shows the static
+  description), and the brief Peek shows the facts the line came from and whether rules or a model wrote it.
+- Capture (`apps/web/src/ui/components/capture/`, mounted once in `layout.tsx`): ⌘K, the top-bar field (it also opens on the first key typed into it and carries that key over), the tab-bar `+` and the `relife:command` event (`openCapture()` in `capture-data.ts`)
+  all open it: a centred palette on a laptop, the `Sheet` at its half detent on a phone with the input at the bottom. Empty it
+  shows Due now (check-off), Quick log chips (water +250, usual manual logs), mood faces (until logged today), Spent and Go to; typed it
+  previews the quick-log grammar (`apps/web/src/domain/quicklog.ts`), then Open and "Ask your coach" (⌘↵, `/coach?ask=`). Suggestions come from
+  `GET /api/capture` (`loadCapture` in `apps/web/src/core/capture.ts`: `buildDayPlan` + `manualLogHistory` + the pure `rankCaptureSuggestions`
+  in `apps/web/src/domain/capture.ts`) and are prefetched on hover/focus. Every result toasts with Undo: `quickLog` returns an undo token that
+  `undoQuickLog` validates and reverses; check-offs undo with `toggleCheck(…, null)`, goal steps with `addToGoal(id, -step)`.
+  `CaptureView` is presentational (`/dev/ui` draws it from fixtures); `capture.tsx` owns the actions.
+- Peek: any number or row can open a detail panel (`?peek=type:id`; types in `apps/web/src/domain/peek.ts`: metric, routine, goal,
+  txn, merchant, insight, connector, person, quest, sync, brief). `PeekHost` (`peek/peek-host.tsx`, mounted in the layout
+  under Suspense) reads the param, fetches `GET /api/peek?ref=` (loaders in `apps/web/src/core/peek/`, one file per type, payload
+  types in `apps/web/src/core/peek/types.ts`, plain JSON) and draws `PeekView` in the `Sheet`: a non-modal panel on a laptop, so
+  clicking another number swaps it, and a modal sheet on a phone. Opening pushes one history entry and swapping replaces
+  it, so Back and Esc close it. Views are presentational (`views/*.tsx`; `/dev/ui` "Peek views" draws each from
+  `apps/web/src/ui/fixtures/peek.ts`). A shared component that changes data under an open peek calls `usePeekChanged()` after
+  its action so the peek refetches. `MetricDetail` is shared with `/plan/trackers/[slug]`; `setTrackerTarget` sets a
+  tracker's target. Add a `peek` to a `Kpi` to make a tile open one; the sync dot opens `sync:status`. To add a type:
+  a loader, a payload type, a view, a `peekHeading` case, a fixture.
+- Coach (`apps/web/src/app/coach/`, `apps/web/src/ui/components/coach/`): `/coach` is `CoachPanes` (Needs you | Ask on a laptop; a segmented
+  control on a phone, mirrored to `?view=ask` with `replaceState`; `?ask=` from Capture's ⌘↵ forces Ask). **Needs you** is one
+  typed queue (`NeedsYouItem` in `apps/web/src/domain/needs-you.ts`, loaded and ranked by `loadNeedsYou` in `apps/web/src/core/needs-you.ts`):
+  recovery, alerts, the weekly review, goal drafts, proposals, nudges, messages ReLife could not read and payments to
+  sort (one item per merchant). `NeedsYouPanel` draws the chips (All · Decisions · Data, `?filter=`), `NeedsYouList` the
+  rows (`needs-you-row.tsx`, one `QueueItem` shell per kind). An action collapses its row to "✓ what happened · Undo" at once
+  and the list puts it back with an error toast if the server action throws; Undo exists for dismiss (`restoreInsight`,
+  only within `RESTORE_MINUTES` = 10) and for a category (`undoRecategorize`). Nothing is added without a tap. The shell badge
+  (`loadShellStatus`) and the list share `pendingInsight()`, `UNREAD_FILTER` and `NUDGE_TTL_DAYS` (a nudge leaves the queue
+  and the badge after 3 days and stays in History); `needs-you.integration.test.ts` checks the two agree. **Ask** is one
+  conversation shared by the app and Telegram in `coach_messages` (`apps/web/src/core/coach-messages.ts`; kept 180 days, the
+  `coach-messages-prune` job deletes older rows; "Clear conversation" deletes all). `askData(q, { channel })` saves the
+  question and the answer with `payload.sources` (Peek chips built from the tool calls, `sourcesFromSteps` in
+  `apps/web/src/domain/coach-thread.ts`) and `payload.insightIds` (routines `propose_schedule` made, shown inline with Approve and
+  Dismiss), and passes the last 6 messages (2,000 characters) to the model so follow-ups work. `AskThread` draws it with beUI
+  `message`, `message-scroller` and `prompt-input`; without a model the composer is off, the Connect card shows and saved
+  history stays readable. History (`/coach/history`) has decisions, active plans and the Waiting / Skipped messages; Patterns
+  is `PatternsCard` with "Ask why" (`/coach?ask=`). Writes fail soft: a missing `coach_messages` table (before `npm run
+  db:push`) never loses the answer.
+- Telegram: `/ask` and plain text write to the same thread (`channel: 'telegram'`); `/help` and `/status` end with "N things
+  need you in ReLife → Coach" (`needsYouLine` in `apps/web/src/bot/messages.ts`, the badge's count). Buttons that open the app
+  (`openInReLife` in `apps/web/src/bot/ui.ts`) exist only when the optional `RELIFE_PUBLIC_URL` is set (read with `env()`); without it
+  messages stay text-only.
+- Today (`apps/web/src/app/page.tsx`, parts in `apps/web/src/ui/components/today/`): each section is its own Suspense island with a skeleton of its final
+  size, sharing cached loaders (`loadDayPlan`, `loadShellStatus`, `loadTodayBriefing`, `loadPulse`). `TodayHeader` (greeting, the
+  `today` brief or the rule-based `planLine` with Why?, streak chip), `AttentionStrip` ("Check first": up to 3 time-sensitive items from
+  `loadBriefing().attention`, nudges left out because Coach's count, `loadShellStatus().needsYou.total`, is one chip), `PulseRow` (the
+  areas and Time, each the first headline number of its `AreaDef.kpis`; `core/pulse.ts`), then `Plan` (the all-day `Goals compact` rows and
+  `Agenda timeline`) beside the rail (`Quests`, `GoalsCard`, `MoneyToday`). The rules are pure in `apps/web/src/domain/day-plan.ts` (periods, Now line,
+  greeting, goal pace, state). Every check-off and goal step toasts with Undo (`toggleCheck(…, null)`, `addToGoal(id, -step)`); rows,
+  numbers and quests open Peeks. States: first day (nothing earned and setup open: `SetupCard` replaces Check first, Life pulse and Money,
+  `GoalsCard` shows its empty line), nothing planned (EmptyState with Add a routine and Capture) and all done (`DayComplete` with its
+  chest, `TomorrowCard`, the briefing becomes the recap). `/dev/ui` "Today" draws all of them from `apps/web/src/ui/fixtures/today.ts`.
+- Plan (`apps/web/src/app/plan/(tabs)/`, parts in `apps/web/src/ui/components/goals/` and `habits/`): **Goals** (`OutcomeGoalCard`: the title and the Now number open the goal Peek; a status badge from `goalPace` (Ahead, On pace, Behind pace) with an ink pace tick on the capsule; a "N slots free" well; the rail holds the weekly review card, the coach draft and Paused and finished). **New goal** is two steps in one dialog (`CreateSteps` in `goal-form.tsx`): pick a coach draft, a tracker with at least 7 recorded days (baseline prefilled from its 28-day average) or a check-in, then the form; open state stays URL-derived (`/plan?new=1`), and the toast reads "Goal started · First review Sun 15 Nov". **Routines** (`PlanRoutines`) opens with today's check-off from `loadDayPlan` (`Goals compact` for water, then `Agenda timeline`; Undo toasts like Today), then the routine list, each name a `PeekLink routine:<id>`; the tab label carries today's `done/total`. **Trackers** (`TrackersGrid`) is a `MetricTile` grid by area from `summarizeTracker`, with quiet and no-data trackers folded. **Review** (`ReviewFlow` in `review-flow.tsx`): a step list (Deciding, Up next, what was decided), one `GoalReviewCard` at a time with a four-card radiogroup, a "What changes" preview and Save (Finish asks twice). "Decide later" only moves on. With nothing due, `ReviewNow` starts one through `reviewGoalNowAction`.
+- You (`apps/web/src/app/you/`): Progress keeps `CharacterBanner` as the hero (the one page where the game layer is the frame); on a phone Achievements come before Consistency, and "How XP works" is folded. **Connections** starts with `YourSources` (`connections-status.tsx`: failing sources pinned as `FixRow` with the fix as the primary button, then a table with health, last sync, items synced and a sync icon; the rules `needsFix` and `isInline` are pure, in `apps/web/src/domain/connections.ts`), then `SuggestedForYou` (unconnected sources for `profile.areas`; a username-only source carries its own field, checked on submit by the connector's `check`), then the searchable catalogue. A new key connection ends on `ConnectSuccess` (where the numbers will show up); a rejected key keeps the field and shows the connector's message with "Check again". `?oauth=<id>` on `/you/connections` still toasts the sign-in result. **Notifications** adds `NotificationChannel` (Telegram state, the 7-day sent / held / dropped counts from `weeklyNotifications`, and "Send a test message": `sendTestMessage` goes through `notify(user, 'events', …)`, so the user's own delivery choice, quiet hours and cap apply and the result says when they hold it back). **Settings** gained Areas (`saveAreas`) and the worker heartbeat.
+- Setup (`/welcome`, `apps/web/src/ui/components/onboarding-*.tsx`): four steps, You · Areas · Connect · Routines (`STEPS` in
+  `onboarding-data.ts`), as a split screen: the questions on the left (`onboarding-flow.tsx` holds the state, the footer and
+  the draft in `sessionStorage` `relife:setup-draft:v2`; the four steps are in `onboarding-steps.tsx`, their shared look in
+  `onboarding-ui.tsx`) and the save file building itself on the right (`onboarding-preview.tsx`; one line on a phone).
+  **You** is the name (beUI `input`) and a region card (time zone, currency, each with Change). **Areas** is the six area tiles
+  and up to three "Improve first" picks. **Connect** offers up to six sources for the picked areas (`pickSources` in
+  `apps/web/src/domain/onboarding.ts`, tested: a username first, then a key, then sign-in and browser-login ones as "Later", spread
+  across areas, Telegram last): a username-only source connects in the row (`InlineUsernameConnect`, checked on submit), a
+  key source opens the connect dialog (`ConnectorDialog`), and the rows stay put while a source connects. **Routines** has
+  the usual wake and bed times, the sleep, steps and water targets (beUI `adaptive-stepper`) and the routines to start with:
+  when an AI model is set `suggestOnboardingRoutines` builds them from what was said (a skeleton while it works, three ticked;
+  on failure the starter list stands in), else the templates in `apps/web/src/core/onboarding.ts` with the suggested few ticked.
+  Voice, goals and constraints are not asked: `tone` keeps its saved value (Balanced on a first run, the coach notes in
+  Settings carry the voice). "Start Level 1" calls `finishOnboarding` and lands on `/`, where the first-day `SetupCard` carries
+  what is left (it counts any connected data source, so the Connect step feeds it). "Skip for now" saves a name and region if
+  they are filled, then does the same. Today redirects here until `profile.onboardedAt` is set; "Run setup again" (Settings)
+  sends only what was changed. `/dev/ui` "Setup" draws every step and the preview from fixtures.
 - Look ("ReLife capsule"): ink black, white and the logo's capsule blue, light-first. The signature shapes are
   `CapsuleIcon` (`capsule-icon.tsx`, the tilted pill from the logo, for areas and avatars), `SystemLabel` (mono
   area label in `card.tsx`) and the `.halftone` dot texture in header corners. No other decorative textures.
+- Type: the scale lives in `globals.css` (`text-display`, `text-title`, `text-heading`, `text-body`, `text-small`,
+  `text-caption`, `text-label font-mono uppercase`; big numbers use `num`). New code uses these, not `text-[13px]`;
+  `apps/web/src/ui/type-scale.test.ts` counts the old arbitrary sizes and fails if the number goes up (lower it when you convert some).
+- Shared primitives: `Sheet` (`sheet.tsx`: bottom sheet on a phone, non-modal 440px right panel on a laptop, starting at
+  `--sheet-top`), `SegmentTabs` (`segment-tabs.tsx`: route-driven pill tabs), `PeekLink`/`openPeek`
+  (`peek/peek-link.tsx`: open `?peek=type:id` without a server trip; `apps/web/src/domain/peek.ts` parses it). Route map and
+  old-URL redirects: `apps/web/src/domain/routes.ts`. Each has a section in `/dev/ui`.
 - Tokens: colors, shadows, radii and easing live in `packages/tokens/tokens.json`; `npm run tokens` regenerates
   `packages/tokens/tokens.css`/`theme.css`, `apps/extension/tokens.css` and the Mac app's `Tokens.swift` (pre-push runs
   `npm run tokens -- --check`). Derived values and the Tailwind color mapping stay in `apps/web/src/app/globals.css`.
 - Motion: CSS easing tokens (`--ease-out-quint`, `--ease-out-strong`, `--ease-in-out-strong`, from `tokens.json`);
   JS twins in `apps/web/src/ui/beui/lib/ease.ts` (`EASE_OUT`, `EASE_OUT_STRONG`, read from the package). Never retype the curves. Audits and
-  plans live in `plans/`.
+  plans live in `plans/`. Scoped features waiting to be built are parked in `docs/FEATURES.md`.
 - `apps/web/src/app/`: Next.js 16 App Router pages and `actions.ts` (all server actions). Cache Components is
   on: DB reads go in an async child component that calls `await connection()`, wrapped in
   `<Suspense>` with a skeleton sized like the content. See `apps/web/src/app/page.tsx`.
-- `apps/web/src/core/`: ingest pipeline, schedules, metrics, quick-log grammar, FX, time zones, connector keys.
-- `apps/web/src/domain/`: pure TypeScript (recurrence, streaks, FIFO P&L, money formatting). No DB, no React.
+- `apps/web/src/core/`: ingest pipeline, schedules, metrics, quick-log writes, FX, time zones, connector keys, today's plan (`day-plan.ts`), shell status (`shell.ts`).
+- `apps/web/src/domain/`: pure TypeScript (recurrence, streaks, FIFO P&L, money formatting, the quick-log grammar, `?peek=`
+  parsing, the route map). No DB, no React.
 - `apps/web/src/connectors/`, `apps/web/src/parsers/`, `apps/web/src/rules/`, `apps/web/src/ai/jobs/`: the four extension points.
 - `apps/web/src/worker/`: long-running process (bot, laptop activity, job scheduler). `apps/web/src/jobs/`: every scheduled job.
   `apps/web/src/bot/`: Telegram.
@@ -68,7 +177,8 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
   character, quests, routine checks, goal adds, quick log), both behind the Laptop activity token
   (`apps/web/src/core/companion.ts`); the request and response shapes are in `packages/contract`.
 - Vendored UI code: `apps/web/src/ui/beui/` (beui.dev, installed from the `@beui` registry with imports rewritten
-  to `@/ui/beui`). Change it only to fit ReLife tokens.
+  to `@/ui/beui`). Change it only to fit ReLife tokens. `npx shadcn@latest add @beui/<name> -o` overwrites
+  `lib/ease.ts` with beUI's own curves: restore it (`git checkout apps/web/src/ui/beui/lib/ease.ts`) after installing.
 - Charts: [EvilCharts](https://evilcharts.com/docs), installed unmodified with `npx shadcn@latest add @evilcharts/recharts-<chart>` (run it in `apps/web`, where `components.json` is)
   into `apps/web/src/components/evilcharts/`. Never edit those files (re-run the add command to update them); adapt in the
   wrappers instead. Pages use the wrappers in `apps/web/src/ui/components/charts.tsx`, one per kind of number: `TrendArea` (a measure
@@ -104,7 +214,10 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
   and the web, remembers next runs across restarts, catches up missed cron runs and backs off after failures.
   New connectors get a `sync:<id>` job automatically and sync as soon as they're connected.
 - **New AI job:** `apps/web/src/ai/jobs/<id>.ts`, added to `JOBS` in `apps/web/src/jobs/index.ts`. Use `model(task)`
-  from `apps/web/src/ai` and log through `apps/web/src/ai/run.ts`.
+  from `apps/web/src/ai` and log through `apps/web/src/ai/run.ts`. Write the rule-based answer first and let the model only reword it
+  (`ai:area-briefs` is the pattern). A new table needs `npm run db:push` for the main and the mock database before restarting.
+- **New area or area tab:** add it to `AREAS` (and `ROUTES` in `apps/web/src/domain/routes.ts` if it has a new URL), give it `kpis`,
+  `pinned` and `connectors`; the template, the Life tile and the brief pick it up. Add its Overview cards to `apps/web/src/ui/areas/`.
 - **Outcome goals:** rules in `apps/web/src/domain/goals.ts` (tested), wiring in `apps/web/src/core/goals.ts`, UI in `apps/web/src/ui/components/goals/`.
   Separate from `plans`. Every write locks the user row and checks `version`; the AI only drafts and proposes (see docs/AI_COACH.md).
 - **Odd fields:** put them in the `meta` JSON column; promote to a real column only when queried.
@@ -114,7 +227,7 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
 - Per-day values are keyed by the user's local date (`core/time.localDate`), never UTC dates.
 - Money is stored in its original currency; convert at read time with `core/fx.convert`.
 - Re-running any sync or parse must be safe: dedupe on `(source, externalId)` / `externalRef`.
-- Nothing syncs until the user connects it on /connectors. Keys typed there are stored encrypted in
+- Nothing syncs until the user connects it on /you/connections. Keys typed there are stored encrypted in
   `connections.secrets_encrypted` and loaded into a key map (`core/secrets.ts`); `.env` only fills blanks.
 - Keys can also come from a dotsafe vault: `npm run dev:vault` runs the app under `dotsafe run`, which injects
   them as environment variables (see docs/CONNECTORS.md). Never print or log their values.

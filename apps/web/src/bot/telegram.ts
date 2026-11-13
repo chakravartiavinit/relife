@@ -12,8 +12,8 @@ import { formatTime } from '@/core/time'
 import { getUser } from '@/core/user'
 import { aiEnabled } from '@/ai/models'
 import { askData } from '@/ai/ask'
-import { HELP, HELP_BUTTONS, goalStep, questsView, reminderAnswered, reminderMessage, statusView, todayView, unpackOcc } from './messages'
-import { MOOD, chestOpenedText, head, status, withXp } from './ui'
+import { goalStep, helpView, questsView, reminderAnswered, reminderMessage, statusView, todayView, unpackOcc } from './messages'
+import { MOOD, chestOpenedText, head, openInReLife, status, withXp } from './ui'
 import { env } from '@/core/env'
 
 const SNOOZE = [{ min: 15, label: '15 min' }, { min: 60, label: '1 hour' }, { min: 180, label: '3 hours' }]
@@ -31,7 +31,7 @@ export function startBot(): Bot | null {
     if (allowed && chat === allowed) return next()
     if (!allowed && ctx.message?.text?.startsWith('/start')) {
       await ctx.reply(
-        `Your chat id is <code>${esc(chat)}</code>.\nPaste it into Telegram → Manage on the ReLife Connectors page.`,
+        `Your chat id is <code>${esc(chat)}</code>.\nPaste it into Telegram → Manage in ReLife, under You › Connections.`,
         { parse_mode: 'HTML' },
       )
     }
@@ -49,7 +49,7 @@ export function startBot(): Bot | null {
   const moodPicker = (ctx: Context) => reply(ctx, head('🙂', 'How are you feeling?', 'From 😣 awful to 😄 great. You can change it later today.'),
     [MOOD.map((m) => ({ text: m.face, data: `m:${m.v}` }))])
 
-  bot.command(['start', 'help'], (ctx) => reply(ctx, HELP, HELP_BUTTONS))
+  bot.command(['start', 'help'], async (ctx) => { const v = await helpView(await getUser()); return reply(ctx, v.text, v.buttons) })
   bot.command('today', async (ctx) => { const v = await todayView(await getUser()); return reply(ctx, v.text, v.buttons) })
   bot.command('quests', async (ctx) => { const v = await questsView(await getUser()); return reply(ctx, v.text, v.buttons) })
   bot.command('status', async (ctx) => { const v = await statusView(await getUser()); return reply(ctx, v.text, v.buttons) })
@@ -83,17 +83,19 @@ export function startBot(): Bot | null {
 
   const ask = async (ctx: Context, q: string, replyTo?: number) => {
     await ctx.replyWithChatAction('typing')
-    const r = await askData(q)
-    return reply(ctx, r.error ? `⚠️ ${esc(r.error)}` : `💬 ${esc(r.answer)}`, undefined, replyTo)
+    // The question and the answer land in the same thread the app's Coach page shows.
+    const r = await askData(q, { channel: 'telegram' })
+    return reply(ctx, r.error ? `⚠️ ${esc(r.error)}` : `💬 ${esc(r.answer)}`, openInReLife('/coach', 'See the conversation'), replyTo)
   }
   bot.command('ask', (ctx) => ask(ctx, ctx.match, ctx.message?.message_id))
 
   bot.on('message:text', async (ctx) => {
     const text = ctx.message.text
-    if (text.startsWith('/')) return reply(ctx, HELP, HELP_BUTTONS)
+    if (text.startsWith('/')) { const v = await helpView(await getUser()); return reply(ctx, v.text, v.buttons) }
     if (parseQuickLog(text)) return log(ctx, text)
     if (aiEnabled('chat')) return ask(ctx, text, ctx.message.message_id)
-    return reply(ctx, HELP, HELP_BUTTONS)
+    const v = await helpView(await getUser())
+    return reply(ctx, v.text, v.buttons)
   })
 
   // Any tap on a notification counts as a response, so it stops repeating.
