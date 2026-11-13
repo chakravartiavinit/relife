@@ -137,7 +137,7 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
   old-URL redirects: `src/domain/routes.ts`. Each has a section in `/dev/ui`.
 - Motion: CSS easing tokens in `globals.css` (`--ease-out-quint`, `--ease-out-strong`, `--ease-in-out-strong`);
   JS twins in `src/ui/beui/lib/ease.ts` (`EASE_OUT`, `EASE_OUT_STRONG`). Never retype the curves. Audits and
-  plans live in `plans/`.
+  plans live in `plans/`. Scoped features waiting to be built are parked in `docs/FEATURES.md`.
 - `src/app/`: Next.js 16 App Router pages and `actions.ts` (all server actions). Cache Components is
   on: DB reads go in an async child component that calls `await connection()`, wrapped in
   `<Suspense>` with a skeleton sized like the content. See `src/app/page.tsx`.
