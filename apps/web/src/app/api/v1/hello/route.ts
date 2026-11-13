@@ -21,6 +21,6 @@ export async function GET(req: Request) {
       name = u?.name.split(' ')[0] ?? null
     }
   }
-  const hello: Hello = { app: 'relife', apiVersion: 1, version: pkg.version, mode: mode(), name, minClient: { extension: '0.7.0', mac: '1.0.0' } }
+  const hello: Hello = { app: 'relife', apiVersion: 1, version: pkg.version, mode: mode(), name, minClient: { extension: '0.7.0', mac: '0.1.0' } }
   return Response.json(hello, { headers: { 'Cache-Control': 'no-store' } })
 }
