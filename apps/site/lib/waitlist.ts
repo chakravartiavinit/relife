@@ -8,7 +8,7 @@ import { isDisposable } from './disposable'
 import { emailDriver } from './email'
 import { logError } from './log'
 import { isSelfReferral } from './referral'
-import { EMAIL_LIMITS, IP_LIMITS, isLimited } from './rate-limit'
+import { EMAIL_LIMITS, IP_LIMITS, ipGroup, isLimited } from './rate-limit'
 import type { JoinInput } from './validation'
 
 const DAY = 24 * 60 * 60_000
@@ -19,7 +19,7 @@ const attemptTimes = async (where: SQL) =>
 
 /** The one write path for the signup form. Returns what to tell the visitor; the email is always "check your inbox". */
 export async function joinWaitlist(input: JoinInput, ip: string): Promise<JoinResult> {
-  const ipHash = hmac(ip)
+  const ipHash = hmac(ipGroup(ip))
   if (isLimited(await attemptTimes(and(eq(waitlistAttempts.ipHash, ipHash), eq(waitlistAttempts.kind, 'submit'))!), IP_LIMITS)) return 'rate_limited'
   await db().insert(waitlistAttempts).values({ ipHash, kind: 'submit' })
   if (isDisposable(input.email)) return 'disposable'
@@ -29,10 +29,18 @@ export async function joinWaitlist(input: JoinInput, ip: string): Promise<JoinRe
   // Over the per-email send limit: look the same as success, send nothing (no enumeration, no mail bombing).
   if (existing && isLimited(await attemptTimes(eq(waitlistAttempts.emailHash, emailHash)), EMAIL_LIMITS)) return 'sent'
 
+  // A confirmed member's link is the one in their welcome mail. Issuing a new token here would kill it, and anyone
+  // can type someone else's address, so for confirmed rows nothing is rotated: they just get a mail without a link.
+  if (existing?.status === 'confirmed') {
+    await db().insert(waitlistAttempts).values({ ipHash, emailHash, kind: 'send' })
+    await emailDriver().send(alreadyConfirmedEmail(existing.email, existing.refCode))
+    return 'sent'
+  }
+
   const token = newToken()
   let row: Signup
   if (existing) {
-    // A re-submit only rotates the link. It never touches who referred the row (set once, at creation) and it keeps
+    // A re-submit of a pending address only rotates the link. It never touches who referred the row (set once, at creation) and it keeps
     // chips someone already chose, so typing another person's pending address can't change their signup.
     // The rotation is one conditional UPDATE: only one request per 2 minutes gets to issue a link, so parallel
     // submits can't each email a token and leave one of them dead.
@@ -52,7 +60,7 @@ export async function joinWaitlist(input: JoinInput, ip: string): Promise<JoinRe
     row = created
   }
   await db().insert(waitlistAttempts).values({ ipHash, emailHash, kind: 'send' })
-  await emailDriver().send(row.status === 'confirmed' ? alreadyConfirmedEmail(row.email, token) : confirmEmail(row.email, token))
+  await emailDriver().send(confirmEmail(row.email, token))
   return 'sent'
 }
 
@@ -138,9 +146,9 @@ export async function leaveWaitlist(token: string): Promise<boolean> {
   return !!gone
 }
 
-/** Daily cron: stale pending rows (7 days) and old rate-limit rows (24 h). */
+/** Daily cron: pending rows whose last confirm link is 7 days old and old rate-limit rows (24 h). */
 export async function cleanup() {
-  const pending = await db().delete(t).where(and(eq(t.status, 'pending'), lt(t.createdAt, new Date(Date.now() - 7 * DAY)))).returning({ id: t.id })
+  const pending = await db().delete(t).where(and(eq(t.status, 'pending'), lt(t.tokenIssuedAt, new Date(Date.now() - 7 * DAY)))).returning({ id: t.id })
   const attempts = await db().delete(waitlistAttempts).where(lt(waitlistAttempts.at, new Date(Date.now() - DAY))).returning({ id: waitlistAttempts.id })
   return { pending: pending.length, attempts: attempts.length }
 }
