@@ -9,13 +9,13 @@ const areaColor = (area: string) => CATEGORY[area as Category]?.color ?? 'var(--
 const TONE = { good: 'var(--good)', bad: 'var(--bad)', neutral: 'var(--ink-3)' }
 
 /** What changed this week and what moves together, across every area. Statistics only; the coach explains them. */
-export function PatternsCard({ patterns: p }: { patterns: Patterns }) {
+export function PatternsCard({ patterns: p, title = 'Patterns across your life' }: { patterns: Patterns; title?: string }) {
   const empty = !p.links.length && !p.changes.length
   return (
     <Card>
       <CardHeader
         icon={<Waypoints className="size-4" strokeWidth={2} />}
-        title="Patterns across your life"
+        title={title}
         description={empty ? undefined : `From ${p.signals} daily numbers over the last 90 days. Patterns, not proof.`}
       />
       {empty ? (

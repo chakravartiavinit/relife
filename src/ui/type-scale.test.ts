@@ -6,7 +6,7 @@ import { join } from 'node:path'
 // Ratchet: text sizes come from the type scale in globals.css (`text-body`, `text-title`, ...), not from
 // `text-[13px]`. The count may only go down. When you convert some, lower MAX_ARBITRARY_TEXT_SIZES to the
 // new count; never raise it. Vendored code (src/ui/beui) and EvilCharts are not counted.
-const MAX_ARBITRARY_TEXT_SIZES = 700
+const MAX_ARBITRARY_TEXT_SIZES = 675
 
 // Files fully on the scale. They must stay at zero.
 // The shell (sidebar, top bar, tab bar and their status pieces) is fully on the scale.

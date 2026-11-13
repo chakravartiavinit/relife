@@ -17,9 +17,8 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
 
 ## Layout
 
-- Pages: Today (`/`, the quest log: things to do now), Life (`/life`, the hub: every area this week, one click each),
-  six areas (Health, Mind, Skills, Wealth, Hobbies, People at `/people`) that share one template (`AreaHeader` →
-  `KpiStrip` → cards), Time (`/time`, laptop time from `extension/` and the Mac watcher), Plan (`/plan`, tabs:
+- Pages: Today (`/`, the quest log: things to do now), Life (`/life`, the hub: a brief and one tile per area plus Time,
+  then "This week, area by area"), seven areas, Plan (`/plan`, tabs:
   Goals (up to 3 outcome goals with a baseline, linked actions and weekly review decisions), `/plan/routines`,
   `/plan/trackers`, `/plan/review`; details at `/plan/goals/[id]` and `/plan/trackers/[slug]`), Coach (`/coach`: ask,
   decisions, and the data ReLife couldn't sort; `?filter=decisions|data`) and You (`/you`, tabs: Progress (the character
@@ -35,8 +34,27 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
   statement plus `xpLevel` and `buildDayPlan`, wrapped in React `cache`, read by each piece in its own Suspense
   island (`shell-status.tsx`). The needs-you rules (merchant grouping, nudges expire after 3 days) are in
   `src/domain/needs-you.ts`. The game look comes from three banners: `CharacterBanner`
-  (`hud.tsx`, Today and Progress), `AreaHeader` (area pages) and `PageHeader` (everything else). Routine
+  (`hud.tsx`, Today and Progress), `AreaHeader` (`area/area-header.tsx`, every area page) and `PageHeader` (everything else). Routine
   pictures come from `src/ui/routine-icons.ts`.
+- Areas: the `AREAS` registry (`src/core/areas/index.ts`, one file per area next to it) is the one list of Health, Mind,
+  Skills, Wealth, Hobbies, People (`/people`, DB category `relationships`) and Time: title, colour, tabs, pinned metrics,
+  connector ids and the four headline numbers (`kpis`, shared by the area header, the Life tiles, the brief's facts and Today).
+  Health, Mind, Skills, Hobbies and People share the `src/app/[area]/` template (`layout.tsx` → `AreaLayout`: `AreaHeader` →
+  `AreaTabs` (Overview · Trends · Routines · Sources; counts stream in) → `AreaKpis` → the tab body; an unknown slug is a
+  `notFound()`, because Cache Components does not allow `dynamicParams = false`). Each area's own Overview cards live in
+  `src/ui/areas/` (`OVERVIEWS`) inside `OverviewShell`; Trends, Routines and Sources are the shared `area-*.tsx` in
+  `src/ui/components/area/`. `AllMetrics` draws a `MetricTile` for every tracker of the area from every source (nothing is
+  filtered by slug, so connector metrics like HRV or readiness show up on their own); `summarizeTracker` in
+  `src/domain/metric-tile.ts` is the tested maths. Wealth (`src/app/wealth/`: Overview · Spending · Portfolio ·
+  Subscriptions · Sources) and Time (`src/app/time/`) have their own folders on the same `AreaLayout` (Wealth with
+  `kpis={false}`: each tab keeps its numbers). Every KPI item, tile and "Why?" opens a Peek: a metric where the number has
+  one, else `brief:<scope>` (`KpiStrip` items take `peek`, `peekAll` sets one for a whole strip).
+- Briefs: one line per scope (`today`, each category, `time`) in the `briefs` table, written by the `ai:area-briefs` job
+  (`src/ai/jobs/area-briefs.ts`, daily 06:30 and on `data.changed`). The rules in `src/domain/briefs.ts` (pure, tested) write
+  every line from `gatherBriefFacts` (`src/core/briefs.ts`); a hash of the facts plus a 2-hour throttle decide when to rewrite,
+  and an AI reword (one `generate('parse', 'briefs.area')` call, lines over 110 characters rejected) is optional: with no
+  model the rule line stays. `latestBrief` is the reader (null before `db:push` or any data, the UI then shows the static
+  description), and the brief Peek shows the facts the line came from and whether rules or a model wrote it.
 - Capture (`src/ui/components/capture/`, mounted once in `layout.tsx`): ⌘K, the top-bar field (it also opens on the first key typed into it and carries that key over), the tab-bar `+` and the `relife:command` event (`openCapture()` in `capture-data.ts`)
   all open it: a centred palette on a laptop, the `Sheet` at its half detent on a phone with the input at the bottom. Empty it
   shows Due now (check-off), Quick log chips (water +250, usual manual logs), mood faces (until logged today), Spent and Go to; typed it
@@ -129,7 +147,10 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
   and the web, remembers next runs across restarts, catches up missed cron runs and backs off after failures.
   New connectors get a `sync:<id>` job automatically and sync as soon as they're connected.
 - **New AI job:** `src/ai/jobs/<id>.ts`, added to `JOBS` in `src/jobs/index.ts`. Use `model(task)`
-  from `src/ai` and log through `src/ai/run.ts`.
+  from `src/ai` and log through `src/ai/run.ts`. Write the rule-based answer first and let the model only reword it
+  (`ai:area-briefs` is the pattern). A new table needs `npm run db:push` for the main and the mock database before restarting.
+- **New area or area tab:** add it to `AREAS` (and `ROUTES` in `src/domain/routes.ts` if it has a new URL), give it `kpis`,
+  `pinned` and `connectors`; the template, the Life tile and the brief pick it up. Add its Overview cards to `src/ui/areas/`.
 - **Outcome goals:** rules in `src/domain/goals.ts` (tested), wiring in `src/core/goals.ts`, UI in `src/ui/components/goals/`.
   Separate from `plans`. Every write locks the user row and checks `version`; the AI only drafts and proposes (see docs/AI_COACH.md).
 - **Odd fields:** put them in the `meta` JSON column; promote to a real column only when queried.

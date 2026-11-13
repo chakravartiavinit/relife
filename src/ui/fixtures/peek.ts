@@ -73,5 +73,5 @@ export const PEEK_FIXTURES: Record<PeekData['type'], PeekData> = {
       { id: 'gmail', name: 'Gmail receipts', category: 'wealth', status: 'ok', ago: '12 min ago', error: null, failures: 0 },
     ],
   },
-  brief: { type: 'brief', scope: 'health', line: null, facts: [{ label: 'Sleep, 7-day avg', value: '6.7 h', peek: 'metric:sleep.hours' }, { label: 'Steps today', value: '4,210' }], source: null, model: null },
+  brief: { type: 'brief', scope: 'health', line: 'Sleep is 40 min under your usual, and 3 of 5 routines are done today.', facts: [{ label: 'Sleep, 7 days', value: '6h 10m vs usual 6h 50m', peek: 'metric:sleep.hours' }, { label: 'Routines, 7 days', value: '82%' }, { label: 'Steps today', value: '4,210' }], source: 'rules', model: null },
 }

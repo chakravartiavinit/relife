@@ -12,7 +12,7 @@ import type { User } from './user'
 // Scores days into xp_events and unlocks achievements. Days older than yesterday are final: the worker
 // only rescores today and yesterday (and back-fills once when there is no XP yet).
 
-const BALANCE_XP = 50
+export const BALANCE_XP = 50
 /** Steps from the phone and each wearable (one tracker per device, so they don't add up). */
 const STEPS = ['steps', 'oura.steps', 'withings.steps']
 const TRACKERS = [
