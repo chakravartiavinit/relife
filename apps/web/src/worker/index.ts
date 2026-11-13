@@ -13,6 +13,9 @@ import { env } from '@/core/env'
 
 // The worker runs the bot, laptop activity and the job scheduler (src/jobs): syncs, parsing, reminders, rules, AI.
 
+// A stray rejected promise must not take the worker (and the web app, which runs beside it) down.
+process.on('unhandledRejection', (reason) => console.error('[worker] unhandled rejection:', reason))
+
 async function main() {
   // Re-read every minute: Settings saves (time zone, notifications, the System's focus) happen in the web app,
   // whose cache clear never reaches this process.

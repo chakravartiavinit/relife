@@ -2,6 +2,7 @@ import { Output } from 'ai'
 import { z } from 'zod'
 import { aiEnabled, model } from './models'
 import { generate } from './run'
+import { mask } from './mask'
 import type { ShopOrder } from '@/connectors/shop/extract'
 import { toDate } from '@/connectors/shop/extract'
 
@@ -27,7 +28,7 @@ export async function ordersFromText(platform: string, text: string, today: stri
     model: model('parse'),
     output: Output.object({ schema }),
     system: `You read the order history page of ${platform}. List every order shown with its date and the total paid. Today is ${today}; resolve relative dates like "Yesterday" or "2 Nov" against it. Never invent orders or amounts; skip anything unclear.`,
-    prompt: text.slice(0, 16_000),
+    prompt: mask(text.slice(0, 16_000)),
   })
   return (res.output?.orders ?? []).flatMap((o) => {
     const at = toDate(o.date)

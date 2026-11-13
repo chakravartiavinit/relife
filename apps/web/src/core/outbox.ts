@@ -11,6 +11,8 @@ import type { User } from './user'
 
 type Row = typeof schema.notifications.$inferSelect
 
+const MAX_SEND_ATTEMPTS = 5
+
 /** Queue a message and try to send it right away. `once` turns repeats off for this one (summaries). */
 export async function notify(user: User, category: NotifyCategory, msg: { text: string; buttons?: Button[][]; ref?: string; once?: boolean }) {
   // Without Telegram there's nowhere to send it; queuing would only flood the chat once it's connected.
@@ -106,13 +108,21 @@ export async function flushOutbox(user: User, now = new Date()) {
     if (d.quiet && quietLeft) { await db.update(N).set({ sendAfter: new Date(now.getTime() + quietLeft * 60_000) }).where(eq(N.id, row.id)); continue }
     if (d.maxPerDay != null && (sentToday.get(row.category) ?? 0) >= d.maxPerDay) { await setStatus(row.id, 'skipped'); continue }
     if (!(await stillOpen(row.ref))) { await setStatus(row.id, 'done'); continue }
-    // Claim it first, so the minute tick and an immediate flush never both send it.
-    const [claimed] = await db.update(N).set({ sends: 1, lastSentAt: now }).where(and(eq(N.id, row.id), eq(N.sends, 0))).returning()
+    // Claim it first, so the minute tick and an immediate flush never both send it. `sends` is 0 for a fresh row
+    // and -n after n failed attempts (it only counts as sent at 1 or more).
+    const [claimed] = await db.update(N).set({ sends: 1, lastSentAt: now }).where(and(eq(N.id, row.id), eq(N.sends, row.sends), lte(N.sends, 0))).returning()
     if (!claimed) continue
     const { text, buttons } = await render(user, row)
     const mid = await sendMessage(text, { buttons })
+    if (mid == null) {
+      // Not sent (Telegram down, bad token, offline): try again in a minute, a few times, then give up.
+      const attempts = 1 - row.sends
+      if (attempts >= MAX_SEND_ATTEMPTS) await setStatus(row.id, 'skipped', { sends: 0 })
+      else await setStatus(row.id, 'queued', { sends: -attempts, sendAfter: new Date(now.getTime() + 60_000) })
+      continue
+    }
     sentToday.set(row.category, (sentToday.get(row.category) ?? 0) + 1)
-    const repeats = d.mode === 'repeat' && !!mid && !!buttons?.length && !row.ref?.startsWith('once:')
+    const repeats = d.mode === 'repeat' && !!buttons?.length && !row.ref?.startsWith('once:')
     await setStatus(row.id, repeats ? 'sent' : 'done', { messageId: mid })
   }
 

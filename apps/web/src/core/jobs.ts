@@ -1,6 +1,6 @@
 import { Cron } from 'croner'
 import { hostname } from 'node:os'
-import { eq, sql as dsql } from 'drizzle-orm'
+import { and, eq, sql as dsql } from 'drizzle-orm'
 import { db, schema, sql } from '@/db'
 
 // The job engine: anything that runs on a schedule or on an event. Jobs are declared in src/jobs; this
@@ -39,7 +39,11 @@ const CHANNEL = 'relife_jobs'
 const HOST = hostname()
 const WHO = `${HOST}:${process.pid}`
 const MAX_BACKOFF_MS = 6 * 3_600_000
-const CONCURRENCY = 4 // ponytail: one global cap; per-kind limits (e.g. browser syncs) if Chrome load hurts
+// Syncs can hold a lease for an hour, so they get their own small limit: they never use up the slots of
+// heartbeat, reminders, outbox, parse and XP.
+const CONCURRENCY = 4
+const SYNC_CONCURRENCY = 2
+const isSync = (id: string) => id.startsWith('sync:')
 
 /** When a job should next run, from `from`, given how many runs in a row failed. Pure. */
 export function nextRun(job: Job, from: Date, tz: string, failures = 0): Date {
@@ -83,7 +87,8 @@ export async function runJob(job: Job, tz: string): Promise<{ ok: boolean; resul
     nextRunAt: nextRun(job, started, tz, failures),
     // A request that arrived while running stays, so the job runs once more with what came in meanwhile.
     requestedAt: dsql`case when ${schema.jobs.requestedAt} > ${started.toISOString()}::timestamptz then ${schema.jobs.requestedAt} else null end`,
-  }).where(eq(schema.jobs.id, job.id))
+  // Only while this run still holds its lease: one that outlived it must not clear a newer holder's lock.
+  }).where(and(eq(schema.jobs.id, job.id), eq(schema.jobs.lockedBy, WHO), eq(schema.jobs.lockedUntil, lease.lockedUntil!)))
   return { ok, result }
 }
 
@@ -130,15 +135,19 @@ export function startScheduler(jobs: Job[], timeZone: () => string, log = consol
       const states = new Map((await db.select().from(schema.jobs)).map((s) => [s.id, s]))
       const now = new Date()
       const tz = timeZone()
+      const syncs = () => [...running].filter(isSync).length
       for (const job of jobs) {
-        if (running.size >= CONCURRENCY) break
         if (running.has(job.id)) continue
+        if (isSync(job.id) ? syncs() >= SYNC_CONCURRENCY : running.size - syncs() >= CONCURRENCY) continue
         const state = states.get(job.id)
         const d = due(job, state, now, tz)
         if (d.skipTo) await db.insert(schema.jobs).values({ id: job.id, nextRunAt: d.skipTo }).onConflictDoUpdate({ target: schema.jobs.id, set: { nextRunAt: d.skipTo } })
         if (!d.run || state?.lockedUntil && state.lockedUntil > now) continue
         if (job.enabled && !(await job.enabled())) {
-          if (state?.requestedAt) await db.update(schema.jobs).set({ requestedAt: null }).where(eq(schema.jobs.id, job.id))
+          // Look again at the next scheduled time, not every tick (an on-demand request still runs it at once).
+          const next = nextRun(job, now, tz)
+          await db.insert(schema.jobs).values({ id: job.id, nextRunAt: next })
+            .onConflictDoUpdate({ target: schema.jobs.id, set: { nextRunAt: next, ...(state?.requestedAt ? { requestedAt: null } : {}) } })
           continue
         }
         running.add(job.id)

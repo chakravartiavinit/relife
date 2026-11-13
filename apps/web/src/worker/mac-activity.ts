@@ -39,12 +39,12 @@ export function startMacActivity(user: User) {
     await recordSegments(user, [{ id: o.id, source: 'mac', app: o.app, start: o.start.toISOString(), end: o.last.toISOString() }])
   }
   const tick = async () => {
-    if (env('ACTIVITY_APPS')?.trim().toLowerCase() === 'off' || !(await laptopEnabled(user.id)) || (await macAppWatching(user.id))) {
-      // Off, not connected, or the Mac app is watching (it sends app time itself): close what is open.
-      if (open) { const o = open; open = null; await save(o) }
-      return
-    }
     try {
+      if (env('ACTIVITY_APPS')?.trim().toLowerCase() === 'off' || !(await laptopEnabled(user.id)) || (await macAppWatching(user.id))) {
+        // Off, not connected, or the Mac app is watching (it sends app time itself): close what is open.
+        if (open) { const o = open; open = null; await save(o) }
+        return
+      }
       const [app, idle] = await Promise.all([frontApp(), idleSeconds()])
       const now = new Date()
       const away = idle > IDLE_AFTER
@@ -63,11 +63,11 @@ export function startMacActivity(user: User) {
     } catch (e) {
       if (!warned) {
         warned = true
-        console.warn('[mac-activity] could not read the front app:', e instanceof Error ? e.message : e)
+        console.warn('[mac-activity] tick failed:', e instanceof Error ? e.message : e)
       }
     }
   }
-  const timer = setInterval(() => void tick(), TICK)
-  void tick()
-  return () => { clearInterval(timer); if (open) void save(open) }
+  const timer = setInterval(() => void tick().catch(() => {}), TICK) // tick handles its own errors
+  void tick().catch(() => {})
+  return () => { clearInterval(timer); if (open) save(open).catch((e) => console.warn('[mac-activity] final save failed:', e instanceof Error ? e.message : e)) }
 }
