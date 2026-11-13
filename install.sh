@@ -19,9 +19,11 @@ if [ "$major" -lt 2 ] || { [ "$major" -eq 2 ] && [ "$minor" -lt 24 ]; }; then
   die "Docker Compose $compose_version is too old. Install 2.24 or newer."
 fi
 
-# Questions go through the terminal, so this works when the script itself comes from a pipe.
+# Questions go through the terminal, so this works when the script itself comes from a pipe. With no terminal
+# (a CI job, `docker exec` without -t) every question takes its default.
+if ( : </dev/tty ) 2>/dev/null; then have_tty=1; else have_tty=0; fi
 ask() { # ask "question" default -> answer
-  if [ -r /dev/tty ] && [ -w /dev/tty ]; then
+  if [ "$have_tty" = 1 ]; then
     printf '%s [%s] ' "$1" "$2" >/dev/tty
     read -r answer </dev/tty || answer=""
   else
