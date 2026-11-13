@@ -407,6 +407,26 @@
   .mote { animation: none; }
 }
 
+/* The day-complete card: five capsule pieces fall once (1.4s) over the card. Gone under reduced motion. */
+@keyframes day-confetti {
+  from { translate: 0 -14px; rotate: 0deg; opacity: 0; }
+  15% { opacity: 1; }
+  to { translate: var(--dx) 72px; rotate: var(--rot); opacity: 0; }
+}
+.confetti {
+  position: absolute;
+  top: 0;
+  width: 8px;
+  height: 15px;
+  border-radius: 9999px;
+  opacity: 0;
+  pointer-events: none;
+  animation: day-confetti 1.4s var(--ease-out-strong) var(--d) 1 both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .confetti { display: none; }
+}
+
 /* <details> content fades in with its rotating chevron. Opacity only, so it needs no reduced-motion
    variant; browsers without ::details-content simply open instantly. */
 details::details-content {

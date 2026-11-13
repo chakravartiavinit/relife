@@ -19,6 +19,7 @@ import { CaptureGallery } from '@/ui/components/capture/capture-gallery'
 import { PeekGallery } from '@/ui/components/peek/peek-gallery'
 import { CoachGallery } from '@/ui/components/coach/coach-gallery'
 import { AreaGallery } from '@/ui/components/area/area-gallery'
+import { TodayGallery } from '@/ui/components/today/today-gallery'
 import { InstalledBeuiGallery, PeekLinkDemo, SegmentTabsDemo, SheetDemo, ShellDemo, TypeScale } from '@/ui/components/gallery-foundations'
 import { RecoveryPanel, SystemQuests } from '@/ui/components/system-quests'
 import type { RecoveryView } from '@/domain/recovery'
@@ -171,6 +172,10 @@ export default function UiGallery() {
       <Section title="Coach: Needs you, Ask and no model">
         {/* The rows format a routine's rhythm with the current date, so this streams in. */}
         <Suspense fallback={<Skeleton className="h-[480px] rounded-lg" />}><CoachGallery /></Suspense>
+      </Section>
+
+      <Section title="Today: header, attention, pulse, timeline, rail, first day and all done">
+        <Suspense fallback={<Skeleton className="h-[640px] rounded-lg" />}><TodayGallery /></Suspense>
       </Section>
 
       <Section title="Shell pieces">

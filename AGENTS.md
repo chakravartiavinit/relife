@@ -17,7 +17,7 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
 
 ## Layout
 
-- Pages: Today (`/`, the quest log: things to do now), Life (`/life`, the hub: a brief and one tile per area plus Time,
+- Pages: Today (`/`: header, Check first, Life pulse, then the day's plan and a rail of Quests, Goals and Money), Life (`/life`, the hub: a brief and one tile per area plus Time,
   then "This week, area by area"), seven areas, Plan (`/plan`, tabs:
   Goals (up to 3 outcome goals with a baseline, linked actions and weekly review decisions), `/plan/routines`,
   `/plan/trackers`, `/plan/review`; details at `/plan/goals/[id]` and `/plan/trackers/[slug]`), Coach (`/coach`: Needs you and
@@ -34,7 +34,7 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
   statement plus `xpLevel` and `buildDayPlan`, wrapped in React `cache`, read by each piece in its own Suspense
   island (`shell-status.tsx`). The needs-you rules (merchant grouping, nudges expire after 3 days) are in
   `src/domain/needs-you.ts`. The game look comes from three banners: `CharacterBanner`
-  (`hud.tsx`, Today and Progress), `AreaHeader` (`area/area-header.tsx`, every area page) and `PageHeader` (everything else). Routine
+  (`hud.tsx`, Progress on You only; Today has the lighter `TodayHeader`), `AreaHeader` (`area/area-header.tsx`, every area page) and `PageHeader` (everything else). Routine
   pictures come from `src/ui/routine-icons.ts`.
 - Areas: the `AREAS` registry (`src/core/areas/index.ts`, one file per area next to it) is the one list of Health, Mind,
   Skills, Wealth, Hobbies, People (`/people`, DB category `relationships`) and Time: title, colour, tabs, pinned metrics,
@@ -96,6 +96,16 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
   need you in ReLife → Coach" (`needsYouLine` in `src/bot/messages.ts`, the badge's count). Buttons that open the app
   (`openInReLife` in `src/bot/ui.ts`) exist only when the optional `RELIFE_PUBLIC_URL` is set (read with `env()`); without it
   messages stay text-only.
+- Today (`src/app/page.tsx`, parts in `src/ui/components/today/`): each section is its own Suspense island with a skeleton of its final
+  size, sharing cached loaders (`loadDayPlan`, `loadShellStatus`, `loadTodayBriefing`, `loadPulse`). `TodayHeader` (greeting, the
+  `today` brief or the rule-based `planLine` with Why?, streak chip), `AttentionStrip` ("Check first": up to 3 time-sensitive items from
+  `loadBriefing().attention`, nudges left out because Coach's count, `loadShellStatus().needsYou.total`, is one chip), `PulseRow` (the
+  areas and Time, each the first headline number of its `AreaDef.kpis`; `core/pulse.ts`), then `Plan` (the all-day `Goals compact` rows and
+  `Agenda timeline`) beside the rail (`Quests`, `GoalsCard`, `MoneyToday`). The rules are pure in `src/domain/day-plan.ts` (periods, Now line,
+  greeting, goal pace, state). Every check-off and goal step toasts with Undo (`toggleCheck(…, null)`, `addToGoal(id, -step)`); rows,
+  numbers and quests open Peeks. States: first day (nothing earned and setup open: `SetupCard` replaces Check first, Life pulse and Money,
+  `GoalsCard` shows its empty line), nothing planned (EmptyState with Add a routine and Capture) and all done (`DayComplete` with its
+  chest, `TomorrowCard`, the briefing becomes the recap). `/dev/ui` "Today" draws all of them from `src/ui/fixtures/today.ts`.
 - Look ("ReLife capsule"): ink black, white and the logo's capsule blue, light-first. The signature shapes are
   `CapsuleIcon` (`capsule-icon.tsx`, the tilted pill from the logo, for areas and avatars), `SystemLabel` (mono
   area label in `card.tsx`) and the `.halftone` dot texture in header corners. No other decorative textures.

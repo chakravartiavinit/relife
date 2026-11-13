@@ -3,7 +3,8 @@ import { CATEGORIES, type Category } from '@/db/schema'
 import type { User } from '@/core/user'
 import { dayAgenda, type ScheduleMeta } from '@/core/schedules'
 import { trackerDays } from '@/core/metrics'
-import { formatTime, localDate } from '@/core/time'
+import { addDays, formatTime, localDate } from '@/core/time'
+import { xpShare } from '@/domain/day-plan'
 import { CATEGORY } from '@/ui/tokens'
 import type { AgendaRow, GoalRow } from '@/ui/components/agenda'
 
@@ -71,10 +72,22 @@ export async function buildDayPlan(user: User, now = new Date()): Promise<DayPla
   for (const g of goals) { const c = catOf.get(g.scheduleId)!; byCat[c].total++; if (g.value >= g.target) byCat[c].done++ }
   const total = rows.length + goals.length
   // Each routine's share of today's 100 plan XP, shown as its quest reward.
-  for (const r of rows) r.xp = Math.round(100 / total)
+  for (const r of rows) r.xp = xpShare(total)
   const done = Object.values(byCat).reduce((s, c) => s + c.done, 0)
   return { today, rows, goals, byCat, overdue: rows.filter((r) => r.status === 'missed'), next: rows.find((r) => r.status === 'pending'), total, done }
 }
 
 /** One plan per request: the shell's area dots and the page share it. */
 export const loadDayPlan = cache((user: User) => buildDayPlan(user))
+
+export type TomorrowRow = { time: string; name: string; kind: AgendaRow['kind']; area: string; color: string }
+
+/** Tomorrow's first routines (quantity goals like water are all-day and left out), for the end-of-day card. */
+export async function loadTomorrow(user: User, limit = 2, now = new Date()): Promise<TomorrowRow[]> {
+  const agenda = await dayAgenda(user, addDays(localDate(now, user.timezone), 1), now)
+  return agenda
+    .filter((i) => !['subscription', 'bill', 'renewal'].includes(i.schedule.kind) && !(i.schedule.meta as ScheduleMeta).trackerSlug)
+    .sort((a, b) => a.occurrence.getTime() - b.occurrence.getTime())
+    .slice(0, limit)
+    .map((i) => ({ time: formatTime(i.occurrence, user.timezone), name: i.schedule.name, kind: i.schedule.kind, area: i.schedule.category, color: CATEGORY[i.schedule.category].color }))
+}
