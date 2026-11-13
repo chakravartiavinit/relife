@@ -23,6 +23,7 @@
     "test": "npm test --workspaces --if-present",
     "tokens": "node packages/tokens/build.mjs",
     "brand": "node packages/brand/build.mjs",
+    "brand:swift": "node packages/brand/swift.mjs",
     "brand:check": "node packages/brand/check.mjs",
     "contract:check": "npm test -w @relife/contract",
     "prepare": "git config core.hooksPath .githooks 2>/dev/null || true"

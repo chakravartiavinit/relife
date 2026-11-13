@@ -12,6 +12,8 @@
   "apps/extension/popup.css": 2,
   "apps/extension/popup.html": 9,
   "apps/extension/popup.js": 20,
+  "apps/mac/Package.swift": 2,
+  "apps/mac/Sources/ReLifeKit/API/Client.swift": 1,
   "apps/web/scripts/service.sh": 3,
   "apps/web/src/ai/context.ts": 1,
   "apps/web/src/app/api/activity/route.ts": 2,

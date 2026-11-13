@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "node build.mjs",
+    "swift": "node swift.mjs",
     "check": "node check.mjs"
   },
   "devDependencies": {
