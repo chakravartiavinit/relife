@@ -113,6 +113,16 @@ async function main() {
     { slug: 'listening', name: 'Music listening', category: 'hobbies', kind: 'duration', unit: 'min' },
     { slug: 'listening.songs', name: 'Songs played', category: 'hobbies' },
     { slug: 'typing-wpm', name: 'Typing speed', category: 'skills', unit: 'wpm', aggregate: 'last' },
+    // Connector metrics that only show on an area's All metrics tiles (same slugs and defaults as src/parsers/daily.ts).
+    { slug: 'hrv', name: 'HRV', category: 'health', unit: 'ms', aggregate: 'last' },
+    { slug: 'oura.readiness', name: 'Oura readiness', category: 'health', kind: 'number', aggregate: 'last', direction: 'up', target: 85 },
+    { slug: 'whoop.recovery', name: 'WHOOP recovery', category: 'health', kind: 'number', unit: '%', aggregate: 'last', direction: 'up', target: 67 },
+    { slug: 'whoop.strain', name: 'WHOOP strain', category: 'health', kind: 'number', aggregate: 'last' },
+    { slug: 'body.fat', name: 'Body fat', category: 'health', unit: '%', aggregate: 'last', direction: 'down' },
+    { slug: 'hevy.volume', name: 'Weight lifted', category: 'health', kind: 'number', unit: 'kg', direction: 'up', target: 5000 },
+    { slug: 'focus.minutes', name: 'Focus time', category: 'mind', kind: 'duration', unit: 'min', direction: 'up', target: 60 },
+    { slug: 'productive.minutes', name: 'Productive time', category: 'mind', kind: 'duration', unit: 'min', direction: 'up', target: 240 },
+    { slug: 'anki.cards', name: 'Anki cards', category: 'skills', kind: 'number', unit: 'cards', direction: 'up', target: 20 },
   ]
   const trackers = await db.insert(schema.trackers).values(trackerDefs.map((t) => ({ ...t, userId: uid }))).returning()
   const tid = Object.fromEntries(trackers.map((t) => [t.slug, t.id]))
@@ -172,6 +182,24 @@ async function main() {
   const ty = rng(seed ^ 0x7a9e)
   days.forEach((d, i) => {
     if (ty.chance(0.85)) entry('typing-wpm', d, Math.round(ty.normal(52 + (i / DAYS) * 14, 3)), 'manual')
+  })
+  // The rest of the connector metrics, on yet another generator so nothing above changes for a given seed.
+  const k = rng(seed ^ 0xc0ffee)
+  let fat = k.between(19, 21)
+  days.forEach((d, i) => {
+    const wd = weekday(d)
+    const weekend = wd === 0 || wd === 6
+    // Oura: HRV and readiness every morning, with a dip in the last week so the tiles show a change.
+    const dip = i >= DAYS - 7 ? -5 : 0
+    entry('hrv', d, Math.max(25, Math.round(k.normal(52 + dip, 6))), 'oura')
+    entry('oura.readiness', d, Math.min(100, Math.max(40, Math.round(k.normal(80 + dip, 6)))), 'oura')
+    // WHOOP: recovery and strain on the days it was worn.
+    if (k.chance(0.8)) { entry('whoop.recovery', d, Math.min(99, Math.max(15, Math.round(k.normal(64, 16)))), 'whoop'); entry('whoop.strain', d, Math.round(k.between(6, 17) * 10) / 10, 'whoop') }
+    if (k.chance(0.2)) { fat += k.normal(-0.04, 0.15); entry('body.fat', d, fat, 'withings') }
+    if (!weekend && k.chance(0.55)) entry('hevy.volume', d, Math.round(k.normal(5200, 900)), 'hevy')
+    entry('focus.minutes', d, weekend ? 0 : Math.max(0, Math.round(k.normal(95, 40))), 'rescuetime')
+    entry('productive.minutes', d, weekend ? Math.max(0, Math.round(k.normal(60, 40))) : Math.max(0, Math.round(k.normal(270, 70))), 'rescuetime')
+    if (k.chance(0.7)) entry('anki.cards', d, k.int(10, 60), 'anki')
   })
   for (let i = 0; i < entries.length; i += 500) await db.insert(schema.entries).values(entries.slice(i, i + 500))
 
@@ -268,6 +296,15 @@ async function main() {
     if (dom === 25) tx(d, 12, -10_000, 'Zerodha', 'Investments')
   }
   await db.insert(schema.transactions).values(txns)
+  // Payments ReLife could not sort (Coach, Data to sort): two merchants, fixed values so a seed stays repeatable.
+  const waiting = (d: string, hh: number, mm: number, amount: number, merchant: string, upiId: string, n: number) =>
+    ({ userId: uid, accountId: acct['axis:4821'], at: at(d, hh, mm), localDate: d, amount, currency: 'INR', merchant, upiId, category: 'Uncategorized', source: 'mock', externalRef: `mock-sort-${n}` })
+  await db.insert(schema.transactions).values([
+    waiting(addDays(today, -2), 20, 14, -449, 'Blinkit', 'blinkit@icici', 1),
+    waiting(addDays(today, -6), 21, 40, -260, 'Blinkit', 'blinkit@icici', 2),
+    waiting(addDays(today, -9), 19, 5, -180, 'Blinkit', 'blinkit@icici', 3),
+    waiting(addDays(today, -1), 13, 22, -1180, 'Kalyan Silks', 'kalyansilks@okhdfc', 4),
+  ])
 
   const prices = { BTC: r.between(95_000, 112_000), ETH: r.between(3300, 4200), SOL: r.between(150, 220), USDT: 1 }
   await db.insert(schema.holdings).values([
@@ -319,11 +356,22 @@ async function main() {
     { userId: uid, name: 'Kabir', relation: 'College friend', contactEveryDays: 60, lastContactedAt: null },
   ])
 
-  await db.insert(schema.insights).values([
+  const seededInsights = await db.insert(schema.insights).values([
     { userId: uid, kind: 'nudge', title: 'Food delivery is up 32% this month', body: 'Most orders land between 9 and 11pm. Try a 9pm cut-off on Zomato and Swiggy for two weeks.', status: 'pending' },
     { userId: uid, kind: 'plan', title: 'Add a wind-down routine at 10:30pm', body: 'You sleep 50 minutes more on nights you journal. A fixed wind-down could make that the default.', status: 'pending', payload: { actions: [{ type: 'schedule', name: 'Wind down', kind: 'routine', category: 'health', rrule: buildRRule({ freq: 'daily', times: ['22:30'], start: today }) }] } },
     { userId: uid, kind: 'alert', title: 'Vitamin D3 runs out in 9 days', body: 'Reorder before the 15th to avoid a gap.', status: 'pending' },
     { userId: uid, kind: 'review', title: 'Weekly review', body: 'Commits up, sleep steady, two calls to family. Rohan is overdue.', status: 'accepted', createdAt: ago(7) },
+  ]).returning()
+
+  // The Ask conversation (Coach › Ask): a short thread with sources, one asked from Telegram. Fixed times, no rng.
+  const minsAgo = (m: number) => new Date(now.getTime() - m * 60_000)
+  await db.insert(schema.coachMessages).values([
+    { userId: uid, role: 'user', channel: 'app', text: 'How did I sleep this week?', createdAt: minsAgo(3 * 1440 + 12) },
+    { userId: uid, role: 'assistant', channel: 'app', text: 'You averaged 6.9 h, 24 minutes less than your usual 7.3 h. Thursday was the short night at 5.4 h.\n\nYou slept longer on the two nights you journaled.', payload: { sources: [{ label: 'Sleep · last 7 days', peek: 'metric:sleep.hours' }, { label: 'Journal' }] }, createdAt: minsAgo(3 * 1440 + 11) },
+    { userId: uid, role: 'user', channel: 'telegram', text: 'What did I spend on Zepto in October?', createdAt: minsAgo(1440 + 95) },
+    { userId: uid, role: 'assistant', channel: 'telegram', text: 'You spent about ₹6,800 on Zepto in October across 23 orders, 18% more than September. 14 of the orders were after 21:00.', payload: { sources: [{ label: 'Zepto · 1–31 Oct', peek: 'merchant:Zepto' }, { label: 'Spending by merchant' }] }, createdAt: minsAgo(1440 + 94) },
+    { userId: uid, role: 'user', channel: 'app', text: 'Is there a routine that would help me wind down?', createdAt: minsAgo(40) },
+    { userId: uid, role: 'assistant', channel: 'app', text: 'A fixed wind-down at 22:30 could help. You sleep about 50 minutes more on nights you journal, so I suggested a daily routine. Nothing changes until you approve it in Needs you.', payload: { sources: [{ label: 'Sleep · last 28 days', peek: 'metric:sleep.hours' }], insightIds: seededInsights.filter((i) => i.kind === 'plan').map((i) => i.id) }, createdAt: minsAgo(39) },
   ])
 
   await db.insert(schema.rawEvents).values([
@@ -413,6 +461,33 @@ async function main() {
       },
     },
   })
+
+  // Two weeks of laptop time (what the browser extension and Mac watcher record), for the Time page and the hub tile.
+  const lt = rng(seed ^ 0x71e)
+  const sites: { domain: string; app?: string; kind: 'learning' | 'work' | 'entertainment' | 'social' | 'communication'; source: 'browser' | 'mac' }[] = [
+    { domain: 'github.com', kind: 'work', source: 'browser' }, { domain: 'developer.mozilla.org', kind: 'learning', source: 'browser' },
+    { domain: 'leetcode.com', kind: 'learning', source: 'browser' }, { domain: 'youtube.com', kind: 'entertainment', source: 'browser' },
+    { domain: 'x.com', kind: 'social', source: 'browser' }, { domain: 'slack.com', kind: 'communication', source: 'browser' },
+    { domain: '', app: 'Visual Studio Code', kind: 'work', source: 'mac' },
+  ]
+  const stretches: (typeof schema.activity.$inferInsert)[] = []
+  for (let i = 13; i >= 0; i--) {
+    const d = addDays(today, -i)
+    const wd = weekday(d)
+    const n = wd === 0 || wd === 6 ? lt.int(3, 6) : lt.int(8, 14)
+    for (let j = 0; j < n; j++) {
+      const site = lt.pick(sites)
+      const start = wallToUtc(new Date(`${d}T${String(lt.int(8, 21)).padStart(2, '0')}:${String(lt.int(0, 5) * 10).padStart(2, '0')}:00Z`), tz)
+      const seconds = lt.int(8, 70) * 60
+      if (start.getTime() + seconds * 1000 > now.getTime()) continue
+      stretches.push({ userId: uid, source: site.source, app: site.app ?? null, domain: site.domain || null, kind: site.kind, startedAt: start, endedAt: new Date(start.getTime() + seconds * 1000), seconds, localDate: d, ref: `mock:${d}:${j}` })
+    }
+  }
+  await db.insert(schema.activity).values(stretches)
+
+  // The one-line briefs on the Life hub and every area header: written by the rules, as the daily job would.
+  const { areaBriefs } = await import('@/ai/jobs/area-briefs')
+  await areaBriefs(user, now)
 
   console.log(`Mock data ready in "${dbName}" (seed ${seed}): ${entries.length} entries, ${checks.length} checks, ${txns.length} transactions, ${xp} XP.`)
   await sql.end()

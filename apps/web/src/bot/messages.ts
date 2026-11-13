@@ -12,7 +12,8 @@ import { utcToWall } from '@/core/time'
 import { xpSummary } from '@/core/xp'
 import { freezesHeld } from '@/core/quests'
 import { questLine, questLog } from './system-ui'
-import { bar, currentStreak, head, pct } from './ui'
+import { loadShellStatus } from '@/core/shell'
+import { bar, currentStreak, head, openInReLife, pct } from './ui'
 
 const KIND_ICON: Record<Schedule['kind'], string> = { routine: '🔁', medicine: '💊', subscription: '💳', bill: '🧾', renewal: '📄' }
 
@@ -170,7 +171,7 @@ const AREA_LABEL = { health: 'HEALTH', mind: 'MIND', skills: 'SKILLS', wealth: '
 
 /** /status: the player's status window, Solo Leveling style. */
 export async function statusView(user: User, now = new Date()): Promise<{ text: string; buttons: Button[][] }> {
-  const [s, streak, freezes, board] = await Promise.all([xpSummary(user, now), currentStreak(user, now), freezesHeld(user), systemBoard(user, now)])
+  const [s, streak, freezes, board, needs] = await Promise.all([xpSummary(user, now), currentStreak(user, now), freezesHeld(user), systemBoard(user, now), needsYouLine(user)])
   const dailies = board.quests.filter((q) => q.kind === 'daily')
   const rows = s.areas.map((a) => `${AREA_LABEL[a.area].padEnd(8)} Lv ${String(a.level).padStart(2)}  ${bar(a.progress, 6)}${a.medal ? `  ${a.medal.label}` : ''}`)
   const text = [
@@ -183,8 +184,21 @@ export async function statusView(user: User, now = new Date()): Promise<{ text: 
     `🔥 ${streak > 1 ? `${streak}-day streak` : 'No streak yet'} · 🧊 ${freezes}/2 freezes`,
     dailies.length ? `⚔️ Daily quests ${dailies.filter((q) => q.status === 'cleared').length}/${dailies.length} cleared` : '',
     s.nextTitle ? `\n<i>Next title: ${esc(s.nextTitle.title)} at level ${s.nextTitle.level}.</i>` : '',
+    needs ? `\n${needs}` : '',
   ].filter(Boolean).join('\n')
-  return { text, buttons: OPEN_SYSTEM }
+  return { text, buttons: [...OPEN_SYSTEM, ...(needs ? openInReLife('/coach', 'Open Coach') : [])] }
+}
+
+/** "3 things need you in ReLife → Coach": the same count as the app's Coach badge, or '' when nothing waits. */
+export async function needsYouLine(user: User): Promise<string> {
+  const n = (await loadShellStatus(user)).needsYou.total
+  return n ? `🧭 <b>${n} ${n === 1 ? 'thing needs' : 'things need'} you</b> in ReLife → Coach` : ''
+}
+
+/** /help: the guide, plus what waits in Coach. */
+export async function helpView(user: User): Promise<{ text: string; buttons: Button[][] }> {
+  const needs = await needsYouLine(user)
+  return { text: needs ? `${HELP}\n\n${needs}` : HELP, buttons: [...HELP_BUTTONS, ...(needs ? openInReLife('/coach', 'Open Coach') : [])] }
 }
 
 export const HELP = [

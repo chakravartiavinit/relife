@@ -1,8 +1,9 @@
-import { and, eq, gte } from 'drizzle-orm'
+import { and, eq, gte, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import type { ProposedAction } from '@/db/schema'
 import { ensureTracker } from './ingest'
 import { localDate } from './time'
+import { RESTORE_MINUTES } from '@/domain/needs-you'
 import type { User } from './user'
 
 type NewInsight = Omit<typeof schema.insights.$inferInsert, 'userId'>
@@ -44,6 +45,17 @@ export async function dismissInsight(user: User, id: string) {
   await db.update(schema.insights).set({ status: 'dismissed' })
     .where(and(eq(schema.insights.id, id), eq(schema.insights.userId, user.id)))
   return true
+}
+
+/** Undo a dismiss: back to pending, only while it is recent. Recovery choices were never dismissable, so they stay out. */
+export async function restoreInsight(user: User, id: string, now = new Date()) {
+  const since = new Date(now.getTime() - RESTORE_MINUTES * 60_000)
+  const rows = await db.update(schema.insights).set({ status: 'pending' })
+    .where(and(
+      eq(schema.insights.id, id), eq(schema.insights.userId, user.id), eq(schema.insights.status, 'dismissed'),
+      gte(schema.insights.updatedAt, since), sql`not (${schema.insights.payload} ? 'recovery')`,
+    )).returning({ id: schema.insights.id })
+  return rows.length > 0
 }
 
 async function applyAction(user: User, a: ProposedAction) {

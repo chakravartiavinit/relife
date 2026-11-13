@@ -4,7 +4,7 @@ import { getUser } from '@/core/user'
 import { popupView, recordSegments, setSiteKind, siteKind, trackCourse } from '@/core/activity'
 
 // The browser extension posts stretches of focused time here, every minute or so.
-// Auth: the ACTIVITY_TOKEN set on Connectors → Laptop activity, sent as a bearer token.
+// Auth: the ACTIVITY_TOKEN set on You › Connections → Laptop activity, sent as a bearer token.
 // Only reachable from this machine unless you expose the port yourself.
 
 export async function POST(req: Request) {

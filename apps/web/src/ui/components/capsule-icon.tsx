@@ -9,6 +9,7 @@ import { cn } from '../cn'
 export const AREA_ICON: Record<Category, LucideIcon> = { health: HeartPulse, mind: Brain, skills: Code, wealth: Wallet, hobbies: Palette, relationships: Users }
 
 const SIZE = {
+  xs: { box: 'h-[23px] w-[14px]', icon: 'size-2', text: 'text-[7px]' },
   sm: { box: 'h-12 w-[30px]', icon: 'size-3.5', text: 'text-[13px]' },
   md: { box: 'h-[60px] w-[38px]', icon: 'size-[18px]', text: 'text-[17px]' },
   lg: { box: 'h-[72px] w-[46px]', icon: 'size-5', text: 'text-[21px]' },

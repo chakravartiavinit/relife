@@ -7,7 +7,7 @@ import type { XpNews } from '@/core/xp'
 
 // The extension popup's Today tab: GET reads the character, today's quests and routines; POST checks a routine off,
 // adds to a goal (water +250) or quick-logs ("coffee 2"), the same as Today and ⌘K. Same bearer token as
-// /api/activity (Connectors → Laptop activity). Open ReLife pages pick the change up through dataVersion().
+// /api/activity (You › Connections → Laptop activity). Open ReLife pages pick the change up through dataVersion().
 
 /** Rescore today's XP after a log. Never lets a scoring problem block the log itself (as in actions.ts). */
 async function xpAfterLog(user: Awaited<ReturnType<typeof getUser>>): Promise<XpNews> {

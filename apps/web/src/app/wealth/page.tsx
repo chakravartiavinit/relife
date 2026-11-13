@@ -4,11 +4,13 @@ import Link from 'next/link'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
 import { getUser } from '@/core/user'
-import { loadWealthOverview, spendColor } from '@/core/wealth-overview'
+import { spendColor } from '@/core/wealth-overview'
 import { formatMoney } from '@/domain/money'
 import { dueLabel, monthLabel, timeAgo } from '@/domain/wealth'
-import { AreaHeader } from '@/ui/components/area-header'
-import { Card, CardHeader, KpiStrip, Skeleton } from '@/ui/components/card'
+import { AREAS } from '@/core/areas'
+import { wealthOverview } from '@/core/areas/wealth'
+import { AreaKpis } from '@/ui/components/area/area-layout'
+import { Card, CardHeader, Skeleton } from '@/ui/components/card'
 import { StackedBars } from '@/ui/components/charts'
 import { EmptyState } from '@/ui/components/empty'
 import { buttonClass } from '@/ui/components/button'
@@ -20,7 +22,7 @@ import { cn } from '@/ui/cn'
 
 export const metadata: Metadata = { title: 'Wealth' }
 
-type Overview = Awaited<ReturnType<typeof loadWealthOverview>>
+type Overview = Awaited<ReturnType<typeof wealthOverview>>
 
 const ACCENT = 'var(--cat-wealth)'
 // These format local calendar dates ("2026-11"), so read them in UTC: no time zone may shift them a day.
@@ -33,19 +35,16 @@ const more = (href: string, label: string) => (
 
 export default function WealthPage() {
   return (
-    <>
-      <AreaHeader area="wealth" title="Money" description="Spending from your order apps, investments on Binance and every subscription, in one place." />
-      <Suspense fallback={<WealthSkeleton />}>
-        <Wealth />
-      </Suspense>
-    </>
+    <Suspense fallback={<WealthSkeleton />}>
+      <Wealth />
+    </Suspense>
   )
 }
 
 async function Wealth() {
   await connection()
   const user = await getUser()
-  const o = await loadWealthOverview(user)
+  const o = await wealthOverview(user)
   const money = (v: number, opts?: { sign?: boolean }) => formatMoney(v, o.base, { decimals: 0, ...opts })
 
   if (o.empty) {
@@ -54,25 +53,15 @@ async function Wealth() {
         <EmptyState
           title="No money data yet" icon={Coins} color={ACCENT}
           description="Connect Binance, your order apps (Zomato, Swiggy, Blinkit, Zepto, Amazon, Flipkart) or add a subscription, and this page fills in."
-          action={<Link href="/connectors" className={buttonClass({ variant: 'primary' })}>Open connectors</Link>}
+          action={<Link href="/you/connections" className={buttonClass({ variant: 'primary' })}>Open connections</Link>}
         />
       </Card>
     )
   }
 
-  const { pace, invest, subs } = o
   return (
     <div className="flex flex-col gap-6">
-      <KpiStrip items={[
-        { label: 'Net worth', value: <Ticker value={o.netWorth} currency={o.base} />, sub: invest.empty ? 'Connect Binance or a bank' : `Binance · spot ${money(invest.spot)} · futures ${money(invest.futures)}` },
-        {
-          label: `Spent in ${monthLabel(o.month).split(' ')[0]}`, value: <Ticker value={pace.spent} currency={o.base} />,
-          sub: pace.vsUsual == null ? `Day ${pace.day} of ${pace.daysInMonth}` : `On pace for ${money(pace.projected)} · ${pct(pace.vsUsual)} ${pace.vsUsual > 0 ? 'above' : 'below'} usual`,
-          tone: pace.vsUsual == null ? undefined : pace.vsUsual > 0.1 ? 'bad' : pace.vsUsual < -0.1 ? 'good' : undefined,
-        },
-        { label: 'Subscriptions', value: <Ticker value={subs.monthly} currency={o.base} />, sub: `a month · ${subs.count} active · ${money(subs.monthly * 12)} a year` },
-        { label: 'Investment P&L', value: invest.empty ? '–' : money(invest.pnl, { sign: true }), tone: invest.empty ? undefined : invest.pnl >= 0 ? 'good' : 'bad', sub: invest.empty ? 'Binance not connected' : 'All time, spot and futures' },
-      ]} />
+      <AreaKpis def={AREAS.wealth} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <MonthPace o={o} money={money} />
@@ -172,7 +161,7 @@ function MonthPace({ o, money }: Props) {
 function Nudges({ o }: { o: Overview }) {
   return (
     <Card>
-      <CardHeader title="What ReLife noticed" icon={<BellRing strokeWidth={2} />} color={ACCENT} description="Money nudges sent to Telegram, last 30 days" action={more('/insights', 'All')} />
+      <CardHeader title="What ReLife noticed" icon={<BellRing strokeWidth={2} />} color={ACCENT} description="Money nudges sent to Telegram, last 30 days" action={more('/coach', 'All')} />
       {o.nudges.length ? (
         <ul className="flex flex-col gap-1">
           {o.nudges.map((n) => (
@@ -255,7 +244,7 @@ async function Investments({ o, money }: Props) {
   return (
     <Card>
       <CardHeader title="Investments" icon={<Coins strokeWidth={2} />} color={ACCENT} description="Binance" action={more('/wealth/portfolio', 'Portfolio')} />
-      {invest.empty ? <p className="text-[13px] text-ink-3">Connect Binance on Connectors to see holdings and profit.</p> : (
+      {invest.empty ? <p className="text-[13px] text-ink-3">Connect Binance in You › Connections to see holdings and profit.</p> : (
         <div className="flex flex-col gap-4">
           <div>
             <p className="font-display text-[26px] leading-none font-extrabold tracking-[-0.02em] text-ink tabular-nums"><Ticker value={invest.worth} currency={o.base} /></p>

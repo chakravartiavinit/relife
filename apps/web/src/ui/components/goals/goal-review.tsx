@@ -9,6 +9,7 @@ import { cn } from '@/ui/cn'
 import { Button } from '../button'
 import { Badge, Card, IconChip, Stat } from '../card'
 import { Capsule } from '../capsule'
+import { usePeekChanged } from '../peek/peek-context'
 import { Field, Input, Textarea } from '../form'
 import { GoalStatusBadge } from './goal-card'
 import { GoalDialog, Notice, UnitInput, initialFromGoal, type GoalPickerData } from './goal-form'
@@ -25,14 +26,19 @@ export type ReviewData = {
 }
 
 const DECISIONS = [
-  { id: 'keep', label: 'Keep', icon: Check, done: 'Kept' },
-  { id: 'change', label: 'Change', icon: Pencil, done: 'Changed' },
-  { id: 'pause', label: 'Pause', icon: Pause, done: 'Paused' },
-  { id: 'finish', label: 'Finish', icon: Flag, done: 'Finished' },
+  { id: 'keep', label: 'Keep', icon: Check, done: 'Kept', hint: 'Nothing changes' },
+  { id: 'change', label: 'Change', icon: Pencil, done: 'Changed', hint: 'New date or target' },
+  { id: 'pause', label: 'Pause', icon: Pause, done: 'Paused', hint: 'Reviews stop' },
+  { id: 'finish', label: 'Finish', icon: Flag, done: 'Finished', hint: 'Ends the goal' },
 ] as const
-type DecisionId = (typeof DECISIONS)[number]['id']
+export type DecisionId = (typeof DECISIONS)[number]['id']
+export const DECISION_DONE: Record<DecisionId, string> = { keep: 'Kept', change: 'Changed', pause: 'Paused', finish: 'Finished' }
 
-export function GoalReviewCard({ g, review, picker, today }: { g: GoalViewData; review: ReviewData; picker: GoalPickerData; today: string }) {
+export function GoalReviewCard({ g, review, picker, today, onSaved, onNext, last }: {
+  g: GoalViewData; review: ReviewData; picker: GoalPickerData; today: string
+  /** The flow around the card: told when a choice is saved, and asked to move on (Decide later, Save and next goal). */
+  onSaved?: (decision: DecisionId) => void; onNext?: () => void; last?: boolean
+}) {
   const color = CATEGORY[g.area].color
   const s = review.snapshot
   const [pending, start] = useTransition()
@@ -41,13 +47,18 @@ export function GoalReviewCard({ g, review, picker, today }: { g: GoalViewData; 
   const saved = savedHere ?? review.decision
   const [error, setError] = useState<string | null>(null)
   const [changing, setChanging] = useState(false)
+  const [confirmFinish, setConfirmFinish] = useState(false)
 
-  const decide = (decision: DecisionId) => {
-    if (decision === 'change') { setChanging(true); return }
-    setChoice(decision); setError(null)
+  const pick = (d: DecisionId) => { setChoice(d); setConfirmFinish(false); setError(null) }
+  // Change opens the form (it saves the decision with the edit); Finish asks twice, because a finished goal cannot be resumed.
+  const save = () => {
+    if (!choice) return
+    if (choice === 'change') { setChanging(true); return }
+    if (choice === 'finish' && !confirmFinish) { setConfirmFinish(true); return }
+    setError(null)
     start(async () => {
-      const res = await decideGoalReviewAction({ reviewId: review.id, goalVersion: g.version, decision })
-      if (res.ok) setSaved(decision)
+      const res = await decideGoalReviewAction({ reviewId: review.id, goalVersion: g.version, decision: choice })
+      if (res.ok) { setSaved(choice); onSaved?.(choice); onNext?.() }
       else setError(res.retry ? 'Couldn’t save your choice. Nothing changed. Retry, or pick another option.' : res.error)
     })
   }
@@ -129,16 +140,39 @@ export function GoalReviewCard({ g, review, picker, today }: { g: GoalViewData; 
           </div>
         ) : (
           <>
-            <p className="mb-3 text-[14px] font-semibold text-pretty text-ink">{review.prompt}</p>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="group" aria-label={`Decision for ${g.title}`} aria-busy={pending || undefined}>
+            <p className="mb-3 text-body font-semibold text-pretty text-ink">{review.prompt}</p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup" aria-label={`Decision for ${g.title}`} aria-busy={pending || undefined}>
               {DECISIONS.map((d) => (
-                <Button key={d.id} size="lg" disabled={pending} onClick={() => decide(d.id)}>
-                  <d.icon className="size-4" strokeWidth={1.5} />{pending && choice === d.id ? 'Saving…' : d.label}
-                </Button>
+                <button
+                  key={d.id} type="button" role="radio" aria-checked={choice === d.id} disabled={pending} onClick={() => pick(d.id)}
+                  className="flex min-h-[72px] flex-col items-start gap-1 rounded-md bg-surface-2 p-3 text-start shadow-[inset_0_0_0_1px_var(--hairline)] transition-[background-color,box-shadow,transform] duration-150 ease-out-quint hover:bg-surface-3 active:scale-[0.96] aria-checked:bg-surface aria-checked:shadow-[inset_0_0_0_2px_var(--ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill disabled:opacity-60"
+                >
+                  <span className="flex items-center gap-1.5 text-body font-semibold text-ink"><d.icon className="size-4" strokeWidth={1.5} aria-hidden />{d.label}</span>
+                  <span className="text-caption text-ink-3">{d.hint}</span>
+                </button>
               ))}
             </div>
-            <p className="mt-2 text-[12.5px] text-ink-3">Change opens the goal form. Pause stops reviews and quest links until you resume. Finish moves it to finished.</p>
-            {error ? <p role="alert" className="mt-3 rounded-md bg-bad/8 px-3 py-2 text-[13px] text-bad">{error}</p> : null}
+            {choice ? (
+              <div role="status" className="mt-3 rounded-md bg-surface-2 p-3 text-small text-ink-2">
+                <span className="mb-1 block font-mono text-label text-ink-3 uppercase">What changes</span>
+                {choice === 'keep' ? `Nothing changes. Next review ${weekday(g.nextReviewOn)}.` : null}
+                {choice === 'pause' ? 'Reviews and quest links stop. Your routines keep running. Resume any time on Goals.' : null}
+                {choice === 'finish' ? `Ends early${s.outcome.current != null ? ` at ${value(s.outcome.current, g.unit)} of ${target(g)}` : ''}. Frees a slot. A finished goal can’t be resumed.` : null}
+                {choice === 'change' ? (
+                  <>
+                    {review.proposal ? `The coach suggests: ${proposalText(review.proposal, g.unit)}. ` : 'Move the target date or the target. '}
+                    Your baseline stays locked at {value(g.baselineValue, g.unit)}. <button type="button" onClick={() => setChanging(true)} className="rounded-xs font-medium text-pill-ink underline focus-visible:outline-2 focus-visible:outline-pill">Edit all fields</button>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+            {error ? <p role="alert" className="mt-3 rounded-md bg-bad/8 px-3 py-2 text-small text-bad">{error}</p> : null}
+            <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+              {onNext && !last ? <Button variant="ghost" disabled={pending} onClick={onNext}>Decide later</Button> : null}
+              <Button variant="primary" size="lg" disabled={!choice || pending} onClick={save}>
+                {pending ? 'Saving…' : confirmFinish ? 'Confirm: finish this goal' : choice === 'change' ? 'Edit and save' : last ? 'Save and finish review' : 'Save and next goal'}
+              </Button>
+            </div>
           </>
         )}
       </div>
@@ -153,6 +187,7 @@ export function CheckInPanel({ g, today, full = false }: { g: GoalViewData; toda
   const [pending, start] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+  const changed = usePeekChanged()
   const latest = g.snapshot?.outcome.latestCheckIn
   const submit = (form: FormData) => {
     const raw = String(form.get('value') ?? '').trim()
@@ -160,7 +195,7 @@ export function CheckInPanel({ g, today, full = false }: { g: GoalViewData; toda
     setError(null)
     start(async () => {
       const res = await recordGoalCheckInAction({ goalId: g.id, localDate: String(form.get('date') || today), value: Number(raw), note: String(form.get('note') ?? '') || undefined })
-      if (res.ok) setSaved(true)
+      if (res.ok) { setSaved(true); changed() }
       else setError(res.error)
     })
   }

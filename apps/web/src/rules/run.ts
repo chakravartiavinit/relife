@@ -3,7 +3,7 @@ import { addInsight } from '@/core/insights'
 import { esc } from '@/core/notify'
 import { notify } from '@/core/outbox'
 import { aiEnabled } from '@/ai/models'
-import { fold } from '@/bot/ui'
+import { fold, openInReLife } from '@/bot/ui'
 import { localDate } from '@/core/time'
 import type { Alert, Rule } from '@/core/types'
 import type { User } from '@/core/user'
@@ -19,7 +19,7 @@ export async function runRule(rule: Rule, user: User, now = new Date()) {
     await notify(user, a.channel ?? 'alerts', {
       ref: `insight:${row.id}`,
       text: alertText(a),
-      buttons: [[...(aiEnabled('chat') ? [{ text: '💬 Why?', data: `a:w:${row.id}` }] : []), { text: '✓ Got it', data: `a:k:${row.id}` }]],
+      buttons: [[...(aiEnabled('chat') ? [{ text: '💬 Why?', data: `a:w:${row.id}` }] : []), { text: '✓ Got it', data: `a:k:${row.id}` }], ...openInReLife('/coach', 'Open Coach')],
     })
   }
   return alerts.length

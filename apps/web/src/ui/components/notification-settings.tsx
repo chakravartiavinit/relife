@@ -15,7 +15,7 @@ const TIMES = [1, 2, 3, 5]
 const CAPS = [1, 2, 3, 5, 6, 10]
 const every = (m: number) => (m < 60 ? `${m} min` : `${m / 60} ${m === 60 ? 'hour' : 'hours'}`)
 
-/** Settings → Notifications: quiet hours, then one row per category with how it's delivered. Saves as you change it. */
+/** You › Notifications: quiet hours, then one row per category with how it's delivered. Saves as you change it. */
 export function NotificationSettings({ initial }: { initial?: NotifyPrefs }) {
   const [quiet, setQuiet] = useState(initial && 'quiet' in initial ? initial.quiet : DEFAULT_QUIET)
   const [cats, setCats] = useState(() => Object.fromEntries(NOTIFY_CATEGORIES.map((c) => [c, delivery(initial, c)])) as Record<NotifyCategory, Delivery>)

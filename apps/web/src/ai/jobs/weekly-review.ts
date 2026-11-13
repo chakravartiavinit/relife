@@ -196,7 +196,7 @@ export function reviewText(r: ReviewContent & { title: string; actions: { name: 
     r.wins.length ? `\n<b>🏆 Wins</b>\n${r.wins.map(line).join('\n')}` : '',
     r.watch.length ? `\n<b>👀 Watch</b>\n${r.watch.map(line).join('\n')}` : '',
     r.focus ? `\n<b>🎯 Next week</b>\n<blockquote><b>${esc(r.focus)}</b>\n${esc(r.plan)}</blockquote>` : '',
-    r.goals?.length ? `\n<b>🎯 Goals</b>\n${r.goals.map((g) => `• <b>${esc(g.title)}</b>: ${esc(g.lines.find((l) => !l.startsWith('Actions:') && !l.startsWith('Actions and')) ?? '')}\n<i>${esc(g.prompt)}</i>`).join('\n')}\nDecide on Goals in the app.` : '',
+    r.goals?.length ? `\n<b>🎯 Goals</b>\n${r.goals.map((g) => `• <b>${esc(g.title)}</b>: ${esc(g.lines.find((l) => !l.startsWith('Actions:') && !l.startsWith('Actions and')) ?? '')}\n<i>${esc(g.prompt)}</i>`).join('\n')}\nDecide in ReLife → Plan → Review.` : '',
     r.actions.length ? `➕ <b>Approve to add:</b> ${r.actions.map((a) => esc(a.name)).join(', ')}` : '',
     details ? `\n${fold(`📊 <b>The numbers</b>\n${details}`)}` : '',
   ].filter(Boolean).join('\n')

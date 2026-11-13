@@ -2,14 +2,13 @@
 
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
-import {
-  Check, Flame, Footprints, GitCommitHorizontal, GraduationCap, HeartHandshake, ListChecks, Moon, PiggyBank, Smile, Snowflake, Swords, Waves,
-  type LucideIcon,
-} from 'lucide-react'
+import { Check, Snowflake, Swords } from 'lucide-react'
 import type { QuestMeasure, Rarity } from '@/domain/quests'
 import { openChestAction } from '@/app/actions'
 import { CATEGORY } from '../tokens'
 import { Button } from './button'
+import { IconChip } from './card'
+import { PeekLink } from './peek/peek-link'
 import { Capsule } from './capsule'
 import { announceXp, useToast } from './toast'
 import { cn } from '../cn'
@@ -20,10 +19,6 @@ import { EASE_OUT_STRONG } from '@/ui/beui/lib/ease'
 export type QuestItem = { key: string; title: string; area: string; measure: QuestMeasure; target: number; progress: number; done: boolean; rarity: Rarity }
 export type ChestItem = { id: string; rarity: Rarity; reason: string }
 
-const MEASURE_ICON: Record<QuestMeasure, LucideIcon> = {
-  fullplan: ListChecks, active: Flame, sleep7: Moon, steps8k: Footprints, mood: Smile, meditate: Waves,
-  commit: GitCommitHorizontal, learn: GraduationCap, frugal: PiggyBank, catchup: HeartHandshake,
-}
 export const RARITY: Record<Rarity, { label: string; color: string }> = {
   common: { label: 'Common', color: 'var(--pill)' },
   rare: { label: 'Rare', color: 'var(--medal-gold)' },
@@ -31,7 +26,10 @@ export const RARITY: Record<Rarity, { label: string; color: string }> = {
 }
 const areaColor = (a: string) => (a in CATEGORY ? CATEGORY[a as keyof typeof CATEGORY].color : 'var(--pill)')
 
-/** Today's quests, this week's quest, chests waiting to be opened and streak freezes held. */
+/**
+ * Today's rail: the System's daily quests, this week's quest, the chest waiting to be opened and the streak freezes
+ * held, each on one line. Quests open their Peek; mood-type quests carry a Log button for Capture.
+ */
 export function Quests({ system, weekly, chests, freezes, frozeOn, weekLeft }: {
   system: { quests: SystemQuestItem[]; difficulty: number; hasData: boolean; timezone: string; recovery?: RecoveryView | null }
   weekly: QuestItem[]; chests: ChestItem[]; freezes: number; frozeOn: string[]; weekLeft: number
@@ -40,24 +38,31 @@ export function Quests({ system, weekly, chests, freezes, frozeOn, weekLeft }: {
   return (
     <section aria-labelledby="quests-h" className="relative rounded-lg bg-surface p-5 shadow-1">
       <header className="mb-3 flex items-center justify-between gap-3">
-        <h2 id="quests-h" className="flex items-center gap-2.5 text-[15px] font-semibold text-ink">
-          <span aria-hidden className="grid size-7 place-items-center rounded-[8px] text-pill-ink" style={{ background: 'var(--pill-wash)' }}><Swords className="size-4" strokeWidth={2} /></span>
+        <h2 id="quests-h" className="flex items-center gap-2.5 text-heading text-ink">
+          <IconChip color="var(--pill)"><Swords /></IconChip>
           Quests
         </h2>
         <span
           title="Streak freezes: one is used automatically when you miss a day, so your streak survives."
-          className="inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[12px] font-medium text-ink-2 shadow-[inset_0_0_0_1px_var(--hairline)] tabular-nums"
+          className="inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-caption font-medium text-ink-2 shadow-[inset_0_0_0_1px_var(--hairline)] tabular-nums"
         >
           <Snowflake className="size-3.5 text-sky" strokeWidth={2} aria-hidden />
           {freezes} <span className="sr-only">streak freezes</span><span aria-hidden className="text-ink-3">/ 2</span>
         </span>
       </header>
 
+      <SystemQuests {...system} compact />
+      {weekly.length ? (
+        <div className="mt-4 border-t border-divider pt-4">
+          <Group label={`This week · ${weekLeft === 0 ? 'ends today' : `${weekLeft} day${weekLeft === 1 ? '' : 's'} left`}`} items={weekly} />
+        </div>
+      ) : null}
+
       {chests.length ? (
         <button
           type="button"
           onClick={() => setOpening(true)}
-          className="group mb-4 flex w-full items-center gap-3 rounded-md p-2.5 text-start transition-[background-color,scale] duration-150 ease-out-quint active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill"
+          className="group mt-4 flex w-full items-center gap-3 rounded-md p-2.5 text-start transition-[background-color,scale] duration-150 ease-out-quint active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill"
           style={{ background: `color-mix(in oklch, ${RARITY[chests[0].rarity].color} 12%, transparent)` }}
         >
           <motion.span
@@ -69,20 +74,15 @@ export function Quests({ system, weekly, chests, freezes, frozeOn, weekLeft }: {
             <ChestArt rarity={chests[0].rarity} size={40} />
           </motion.span>
           <span className="min-w-0 flex-1">
-            <span className="block text-[13.5px] font-semibold text-ink">{chests.length === 1 ? 'A chest to open' : `${chests.length} chests to open`}</span>
-            <span className="block truncate text-[12px] text-ink-3">{chests[0].reason}</span>
+            <span className="block text-small font-semibold text-ink">{chests.length === 1 ? `A ${RARITY[chests[0].rarity].label.toLowerCase()} chest to open` : `${chests.length} chests to open`}</span>
+            <span className="block truncate text-caption text-ink-3">{chests[0].reason}</span>
           </span>
-          <span className="shrink-0 rounded-full bg-ink px-3 py-1.5 text-[12.5px] font-semibold text-bg">Open</span>
+          <span className="shrink-0 rounded-full bg-ink px-3 py-1.5 text-caption font-semibold text-bg">Open</span>
         </button>
       ) : null}
 
-      <SystemQuests {...system} />
-      <div className="mt-5 border-t border-divider pt-4">
-        <Group label={`This week · ${weekLeft === 0 ? 'ends today' : `${weekLeft} day${weekLeft === 1 ? '' : 's'} left`}`} items={weekly} empty="" />
-      </div>
-
       {frozeOn.length ? (
-        <p className="mt-4 flex items-center gap-1.5 text-[12px] text-ink-3">
+        <p className="mt-4 flex items-center gap-1.5 text-caption text-ink-3">
           <Snowflake className="size-3.5 text-sky" strokeWidth={2} aria-hidden />
           A freeze kept your streak on {frozeOn.map((d) => new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: 'UTC' }).format(new Date(`${d}T00:00:00Z`))).join(' and ')}.
         </p>
@@ -94,36 +94,25 @@ export function Quests({ system, weekly, chests, freezes, frozeOn, weekLeft }: {
   )
 }
 
-function Group({ label, items, empty }: { label: string; items: QuestItem[]; empty: string }) {
-  if (!items.length) return empty ? <p className="text-[12.5px] text-ink-3">{empty}</p> : null
+/** The week's quests, one line each: the title opens its Peek, "4 of 6" and a thin bar say how far. */
+function Group({ label, items }: { label: string; items: QuestItem[] }) {
   return (
     <div>
-      <h3 className="mb-1 text-[11px] font-semibold tracking-[0.08em] text-ink-3 uppercase">{label}</h3>
-      <ul className="flex flex-col">
+      <h3 className="mb-1 font-mono text-label text-ink-3 uppercase">{label}</h3>
+      <ul className="flex flex-col gap-3">
         {items.map((q) => {
-          const Icon = MEASURE_ICON[q.measure]
           const color = areaColor(q.area)
           return (
-            <li key={q.key} className="flex min-h-12 items-center gap-3 py-1.5">
-              <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-[10px]" style={{ color: `color-mix(in oklch, ${color} 78%, var(--ink))`, background: `color-mix(in oklch, ${color} 15%, transparent)` }}>
-                <Icon className="size-4" strokeWidth={2} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className={cn('block text-[13.5px] leading-snug', q.done ? 'text-ink-3 line-through decoration-ink-3/50' : 'text-ink')}>{q.title}</span>
-                {q.target > 1 ? (
-                  <span className="mt-1.5 flex items-center gap-2">
-                    <Capsule value={q.progress} max={q.target} size="sm" color={color} label={`${q.title}: ${q.progress} of ${q.target}`} />
-                    <span className="shrink-0 text-[11.5px] text-ink-3 tabular-nums">{q.progress}/{q.target}</span>
-                  </span>
-                ) : null}
-              </span>
-              {q.done ? (
-                <span className="inline-flex shrink-0 items-center gap-1 text-[11.5px] font-medium text-good">
-                  <Check className="size-3.5" strokeWidth={2.5} aria-hidden />Done
-                </span>
-              ) : (
-                <span title={`${RARITY[q.rarity].label} chest`} className="shrink-0"><ChestArt rarity={q.rarity} size={22} /><span className="sr-only">Reward: {RARITY[q.rarity].label} chest</span></span>
-              )}
+            <li key={q.key} className="min-w-0">
+              <div className="flex min-h-10 items-center justify-between gap-3">
+                <PeekLink to={{ type: 'quest', id: `weekly.${q.key}` }} className={cn('min-w-0 truncate rounded-xs text-body hover:underline focus-visible:outline-2 focus-visible:outline-pill', q.done ? 'text-ink-3 line-through decoration-ink-3/50' : 'text-ink')}>{q.title}</PeekLink>
+                {q.done ? (
+                  <span className="inline-flex shrink-0 items-center gap-1 text-caption font-medium text-good"><Check className="size-3.5" strokeWidth={2.5} aria-hidden />Done</span>
+                ) : (
+                  <span className="shrink-0 text-caption text-ink-2 tabular-nums">{q.progress} of {q.target}</span>
+                )}
+              </div>
+              {!q.done && q.target > 1 ? <Capsule value={q.progress} max={q.target} size="sm" color={color} label={`${q.title}: ${q.progress} of ${q.target}`} /> : null}
             </li>
           )
         })}
@@ -197,7 +186,7 @@ function Loot({ rarity }: { rarity: Rarity }) {
 type Opened = Extract<Awaited<ReturnType<typeof openChestAction>>, { ok: true }>
 
 /** Open chests one by one: tap the chest, the lid pops, the reward rises out. */
-function ChestModal({ chests, onClose }: { chests: ChestItem[]; onClose: () => void }) {
+export function ChestModal({ chests, onClose }: { chests: ChestItem[]; onClose: () => void }) {
   // Hold the queue locally: the page refreshes behind the modal after each open.
   const [queue] = useState(chests)
   const [k, setK] = useState(0)

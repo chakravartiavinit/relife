@@ -12,7 +12,7 @@ import { formatDay, formatTime, localDate, localHour } from '@/core/time'
 import { formatMoney } from '@/domain/money'
 import { fillDays } from '@/domain/series'
 import { QUICK_COMMERCE, monthLabel, monthRange, shiftMonth } from '@/domain/wealth'
-import { Badge, Card, CardHeader, PageHeader, Skeleton, Stat } from '@/ui/components/card'
+import { Badge, Card, CardHeader, Skeleton, Stat } from '@/ui/components/card'
 import { DailyBars, RankedBars } from '@/ui/components/charts'
 import { EmptyState } from '@/ui/components/empty'
 import { buttonClass } from '@/ui/components/button'
@@ -86,13 +86,16 @@ async function Spending({ searchParams }: { searchParams: PageProps<'/wealth/spe
 
   return (
     <>
-      <PageHeader eyebrow="Wealth" title="Spending" description="Where your money went: by category, by item and by habit, with what’s above your usual month." actions={nav} />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="max-w-[60ch] text-body text-ink-2">Where your money went: by category, by item and by habit, with what’s above your usual month.</p>
+        {nav}
+      </div>
       {txns.length === 0 ? (
         <Card>
           <EmptyState
             title={`No transactions in ${monthLabel(m)}`} icon={ReceiptText} color={'var(--cat-wealth)'}
             description={<>Spending comes from the order apps you connect (Zomato, Swiggy, Blinkit, Zepto, Flipkart, Amazon, MakeMyTrip). Log anything else with ⌘K, e.g. “spent 120 chai”.</>}
-            action={<Link href="/connectors" className={buttonClass({ variant: 'primary' })}>Set up sources</Link>}
+            action={<Link href="/you/connections" className={buttonClass({ variant: 'primary' })}>Set up sources</Link>}
           />
         </Card>
       ) : (
@@ -195,11 +198,8 @@ async function Spending({ searchParams }: { searchParams: PageProps<'/wealth/spe
 function SpendingSkeleton() {
   return (
     <div aria-busy>
-      <div className="mb-8 flex items-end justify-between">
-        <div><Skeleton className="mb-3 h-4 w-16" /><Skeleton className="h-9 w-48" /></div>
-        <Skeleton className="h-9 w-56" />
-      </div>
       <div className="flex flex-col gap-6">
+        <div className="flex items-center justify-between gap-3"><Skeleton className="h-5 w-72" /><Skeleton className="h-10 w-56" /></div>
         <Skeleton className="h-[130px] rounded-lg" />
         <Skeleton className="h-[268px] rounded-lg" />
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2"><Skeleton className="h-[260px] rounded-lg" /><Skeleton className="h-[260px] rounded-lg" /></div>

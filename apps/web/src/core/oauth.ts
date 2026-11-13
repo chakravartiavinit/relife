@@ -28,14 +28,14 @@ export function authorizeUrl(spec: OAuthSpec, redirectUri: string, state: string
 export function readTokens(json: unknown, previousRefresh?: string, now = Date.now()): OAuthTokens {
   const j = json as Record<string, unknown>
   const t = (j.body && typeof j.body === 'object' ? j.body : j) as Record<string, unknown>
-  if (typeof j.status === 'number' && j.status !== 0) throw new Error(`The service refused the sign-in (status ${j.status}${j.error ? `: ${j.error}` : ''}). Sign in again on Connectors.`)
+  if (typeof j.status === 'number' && j.status !== 0) throw new Error(`The service refused the sign-in (status ${j.status}${j.error ? `: ${j.error}` : ''}). Sign in again in You › Connections.`)
   if (typeof t.access_token !== 'string') throw new Error(`No access token in the reply${t.error ? `: ${t.error_description ?? t.error}` : ''}.`)
   const expiresAt = typeof t.expires_at === 'number' ? t.expires_at * 1000 : typeof t.expires_in === 'number' ? now + t.expires_in * 1000 : undefined
   return { access: t.access_token, refresh: typeof t.refresh_token === 'string' ? t.refresh_token : previousRefresh, expiresAt }
 }
 
 async function tokenRequest(spec: OAuthSpec, params: Record<string, string>, previousRefresh?: string) {
-  if (!env(spec.clientIdEnv) || !env(spec.clientSecretEnv)) throw new Error('Add the client ID and secret on Connectors, then sign in.')
+  if (!env(spec.clientIdEnv) || !env(spec.clientSecretEnv)) throw new Error('Add the client ID and secret in You › Connections, then sign in.')
   const res = await fetch(spec.tokenUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
@@ -48,7 +48,7 @@ async function tokenRequest(spec: OAuthSpec, params: Record<string, string>, pre
   const json = await res.json().catch(() => ({}))
   if (res.status === 400 || res.status === 401) {
     const why = (json as { error_description?: string; error?: string; message?: string })
-    throw new Error(`Sign-in expired or was refused${why.error_description || why.error || why.message ? ` (${why.error_description ?? why.error ?? why.message})` : ''}. Sign in again on Connectors.`)
+    throw new Error(`Sign-in expired or was refused${why.error_description || why.error || why.message ? ` (${why.error_description ?? why.error ?? why.message})` : ''}. Sign in again in You › Connections.`)
   }
   if (!res.ok) throw new Error(`Token request failed: HTTP ${res.status}`)
   return readTokens(json, previousRefresh)
@@ -101,9 +101,9 @@ export async function accessToken(user: User, c: Connector, fallbackRefresh?: st
   let tokens = await oauthTokens(user.id, c.id)
   const pasted = fallbackRefresh || (spec.refreshTokenEnv ? env(spec.refreshTokenEnv)?.trim() : undefined)
   if (!tokens && pasted) tokens = { access: '', refresh: pasted, expiresAt: 0 }
-  if (!tokens) throw new Error(`Sign in with ${c.name} on Connectors to finish connecting.`)
+  if (!tokens) throw new Error(`Sign in with ${c.name} in You › Connections to finish connecting.`)
   if (tokens.access && (!tokens.expiresAt || tokens.expiresAt - 60_000 > Date.now())) return tokens.access
-  if (!tokens.refresh) throw new Error(`The ${c.name} sign-in expired. Sign in again on Connectors.`)
+  if (!tokens.refresh) throw new Error(`The ${c.name} sign-in expired. Sign in again in You › Connections.`)
   const fresh = await tokenRequest(spec, { grant_type: 'refresh_token', refresh_token: tokens.refresh }, tokens.refresh)
   await saveOAuthTokens(user.id, c.id, fresh)
   return fresh.access
