@@ -80,12 +80,43 @@ per category.
 
 ## Run it
 
-Requirements: Node 20.9+, Docker, and Google Chrome for the shopping-app connectors.
+Two ways: **with Docker** (any OS, the one for daily use) or **from source** (to work on the code).
+
+### With Docker (daily use)
+
+Needs Docker with Compose 2.24 or newer. One line does everything below (it clones to `~/relife`, writes `.env`,
+starts ReLife and prints your first sign-in code):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/chakravartiavinit/relife/main/install.sh | sh
+```
+
+Or by hand:
+
+```bash
+git clone https://github.com/chakravartiavinit/relife && cd relife
+printf 'COMPOSE_PROFILES=app\nPOSTGRES_PASSWORD=%s\n' "$(openssl rand -hex 16)" > .env
+docker compose up -d --build   # builds the image, then starts Postgres, the migrations, the web app and the worker
+docker compose logs web        # the first sign-in code is at the top
+```
+
+Open http://127.0.0.1:3030, go to `/pair` and type the code. It lasts 10 minutes; a new one comes from
+`docker compose exec web relife signin`. To upgrade: `git pull && docker compose up -d --build`. Compose restarts it
+after a crash or a reboot (turn on "start Docker at login"). Reaching it from your phone, a free local AI model, backups
+and Coolify or Unraid notes are in [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md).
+
+Shopping apps (Swiggy, Zomato and the like) sign in through Chrome on your own computer, so they work only when you run
+ReLife on a Mac or PC, not in Docker.
+
+### From source (development)
+
+Requirements: Node 20.9+ and Docker (for Postgres). Google Chrome is needed only for the shopping-app connectors
+(Mac or PC, not Docker).
 
 ```bash
 npm install                     # also turns on the git hooks
 cp .env.example .env            # only DATABASE_URL is required
-docker compose up -d            # Postgres on 127.0.0.1:5442
+docker compose up -d            # Postgres on 127.0.0.1:5442 (no COMPOSE_PROFILES: just the database)
 npm run db:push                 # create tables
 npm run dev                     # http://127.0.0.1:3030 plus the worker
 ```
@@ -102,7 +133,12 @@ back off, and a connector syncs as soon as you connect it.
 ReLife uses port 3030 because 3000 is often taken by other projects, and two dev servers on one port make pages
 reload endlessly.
 
-### Run it in the background (recommended for daily use)
+Changing `apps/web/src/db/schema.ts`: run `npm run db:push` while you iterate, then `npm run db:generate` and commit
+`apps/web/drizzle/`. The Docker image applies those migrations when it starts.
+
+### Run it in the background on a Mac
+
+(With Docker, `restart: unless-stopped` already does this.)
 
 ```bash
 npm run build
@@ -167,6 +203,10 @@ server's or the browser's clock.
 http://127.0.0.1:3001, so you can check every page with something on it. Your real data is never touched. Stop
 `npm run dev` first; the two share a build folder. `npm run mock:seed -- 42` reseeds with a fixed seed.
 
+**Read-only demo.** `docker compose --profile demo up -d --build` serves the same sample data on http://127.0.0.1:3001
+with every write turned off: a tap on anything that would save shows "Demo: changes are off". It runs on its own
+throwaway database and has no access to your keys. See [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md#the-read-only-demo).
+
 ## Commands
 
 | Command | What it does |
@@ -178,7 +218,10 @@ http://127.0.0.1:3001, so you can check every page with something on it. Your re
 | `npm run service -- install` | Run in the background at login (see above) |
 | `npm test` | Domain, parser, connector, job engine, nudge and key-encryption tests |
 | `npm run typecheck` | TypeScript |
-| `npm run db:push` | Apply schema changes |
+| `npm run db:push` | Apply schema changes while developing |
+| `npm run db:generate` | Write the migration for a schema change (commit `apps/web/drizzle/`) |
+| `npm run db:migrate` | Apply the migrations to your database (Docker does this on start) |
+| `docker compose exec web relife signin` | A new sign-in code, in Docker |
 | `cd apps/web && npx tsx --env-file=../../.env scripts/binance-import.ts <csv...>` | Import Binance trade exports or Transaction History statements |
 
 ## Contributing
