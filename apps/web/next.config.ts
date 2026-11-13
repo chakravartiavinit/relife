@@ -30,10 +30,14 @@ const nextConfig: NextConfig = {
         { key: 'X-Content-Type-Options', value: 'nosniff' },
         { key: 'Referrer-Policy', value: 'same-origin' },
       ],
+    }, {
+      // The service worker must always be fetched fresh, and may control the whole site.
+      source: '/sw.js',
+      headers: [{ key: 'Cache-Control', value: 'no-cache' }, { key: 'Service-Worker-Allowed', value: '/' }],
     }]
   },
   devIndicators: { position: 'bottom-right' },
-  serverExternalPackages: ['ccxt', 'grammy', 'postgres', 'playwright-core'],
+  serverExternalPackages: ['ccxt', 'grammy', 'postgres', 'playwright-core', 'web-push'],
   // data/ is private runtime state (keys, Chrome profiles, caches): never part of a build.
   outputFileTracingExcludes: { '*': ['data/**', '../../data/**'] },
   // Allow opening the dev server from your phone over Tailscale (MagicDNS names).

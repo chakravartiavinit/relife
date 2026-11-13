@@ -4,6 +4,10 @@
 export const NOTIFY_CATEGORIES = ['system', 'reminders', 'alerts', 'analysis', 'coach', 'events'] as const
 export type NotifyCategory = (typeof NOTIFY_CATEGORIES)[number]
 
+/** Where a message can go. Each category picks its own (Settings → Notifications → Send to). */
+export const CHANNELS = ['telegram', 'push'] as const
+export type Channel = (typeof CHANNELS)[number]
+
 export type Delivery = {
   /** off: never send (still shown in the app) · once · repeat: send again until you tap a button. */
   mode: 'off' | 'once' | 'repeat'
@@ -15,6 +19,8 @@ export type Delivery = {
   quiet: boolean
   /** At most this many a day; the rest stay in the app only. null = no limit. */
   maxPerDay: number | null
+  /** Where it goes. A channel that is not set up is skipped, and a category with none of its channels set up goes nowhere. */
+  channels: Channel[]
 }
 
 export type NotifyPrefs = {
@@ -26,29 +32,35 @@ export type NotifyPrefs = {
 export const CATEGORY_INFO: Record<NotifyCategory, { label: string; emoji: string; about: string; repeatable: boolean; defaults: Delivery }> = {
   system: {
     label: 'The System', emoji: '⚔️', about: 'Daily quests, optional recovery choices, significant changes, and progress summaries.', repeatable: false,
-    defaults: { mode: 'once', everyMin: 60, times: 0, quiet: true, maxPerDay: null },
+    defaults: { mode: 'once', everyMin: 60, times: 0, quiet: true, maxPerDay: null, channels: ['telegram', 'push'] },
   },
   reminders: {
     label: 'Reminders', emoji: '⏰', about: 'Routines, medicines and payments, at the time you set.', repeatable: true,
-    defaults: { mode: 'repeat', everyMin: 30, times: 2, quiet: false, maxPerDay: null },
+    defaults: { mode: 'repeat', everyMin: 30, times: 2, quiet: false, maxPerDay: null, channels: ['telegram', 'push'] },
   },
   alerts: {
     label: 'Alerts', emoji: '⚠️', about: 'Money at risk (a futures position near liquidation, a crypto crash), low balance, failing syncs, goals behind, medicine running low.', repeatable: true,
-    defaults: { mode: 'once', everyMin: 120, times: 1, quiet: true, maxPerDay: null },
+    defaults: { mode: 'once', everyMin: 120, times: 1, quiet: true, maxPerDay: null, channels: ['telegram', 'push'] },
   },
   analysis: {
     label: 'Analysis', emoji: '🔍', about: 'Live changes worth knowing (portfolio moves, spending spikes, habits), patterns across your life and the Sunday review.', repeatable: true,
-    defaults: { mode: 'once', everyMin: 240, times: 1, quiet: true, maxPerDay: 3 },
+    defaults: { mode: 'once', everyMin: 240, times: 1, quiet: true, maxPerDay: 3, channels: ['telegram', 'push'] },
   },
   coach: {
     label: 'Coach', emoji: '☀️', about: 'The morning nudge with what to focus on today.', repeatable: false,
-    defaults: { mode: 'once', everyMin: 60, times: 0, quiet: true, maxPerDay: 1 },
+    defaults: { mode: 'once', everyMin: 60, times: 0, quiet: true, maxPerDay: 1, channels: ['telegram', 'push'] },
   },
   events: {
     label: 'Progress', emoji: '⭐', about: 'Level-ups, achievements and chests to open.', repeatable: false,
-    defaults: { mode: 'once', everyMin: 60, times: 0, quiet: true, maxPerDay: 6 },
+    defaults: { mode: 'once', everyMin: 60, times: 0, quiet: true, maxPerDay: 6, channels: ['telegram', 'push'] },
   },
 }
+
+/**
+ * The channels a message goes to: the category's choice, kept to the ones that are set up (Telegram connected, a push
+ * subscription alive). One message stays one row however many channels take it, so caps, quiet hours and repeats are shared.
+ */
+export const targets = (d: Pick<Delivery, 'channels'>, available: readonly Channel[]): Channel[] => CHANNELS.filter((c) => d.channels.includes(c) && available.includes(c))
 
 export const DEFAULT_QUIET = { from: '22:30', to: '07:30' }
 
