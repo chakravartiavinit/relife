@@ -87,10 +87,18 @@ function useCaptureActions(close: () => void, retry: () => void): CaptureActions
   const router = useRouter()
   const toast = useToast()
 
-  const undoable = (undo: () => Promise<Parameters<typeof announceXp>[1]>) => ({
-    label: 'Undo',
-    onClick: () => { undo().then((news) => { invalidateCapture(); announceXp(toast, news); toast('Undone', 'neutral') }).catch(() => toast.error('Couldn’t undo', 'Try again from Today')) },
-  })
+  /** The Undo action of a toast. It fires once: a second tap does nothing (the server undo is also safe to repeat). */
+  const undoable = (undo: () => Promise<Parameters<typeof announceXp>[1]>) => {
+    let used = false
+    return {
+      label: 'Undo',
+      onClick: () => {
+        if (used) return
+        used = true
+        undo().then((news) => { invalidateCapture(); announceXp(toast, news); toast('Undone', 'neutral') }).catch(() => { used = false; toast.error('Couldn’t undo', 'Try again from Today') })
+      },
+    }
+  }
 
   /** One action at a time. `fn` returns true when it worked (Capture closes) and throws or returns false when not. */
   const run = async (key: string, fn: () => Promise<boolean>) => {

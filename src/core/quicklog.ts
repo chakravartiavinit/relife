@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { formatMoney, formatNumber } from '@/domain/money'
 import { LAST_VALUE, quickLogUndo, type QuickLog, type QuickLogUndo } from '@/domain/quicklog'
@@ -36,6 +36,7 @@ async function writeQuickLog(user: User, q: QuickLog, now: Date, date: string, e
     const last = LAST_VALUE.has(q.slug)
     await persist(user, {
       kind: 'entry', tracker: q.slug, date, value: q.value, source: 'manual', mode: last ? 'set' : 'add',
+      meta: last ? undefined : { [externalRef]: q.value },
       defaults: last ? { aggregate: 'last', kind: q.slug === 'mood' || q.slug === 'energy' ? 'scale' : 'number' } : undefined,
     })
     // Say it back in the tracker's own words: "Water +250 ml · 750 ml today", "Mood: 4".
@@ -56,12 +57,21 @@ async function writeQuickLog(user: User, q: QuickLog, now: Date, date: string, e
 }
 
 /**
- * Takes a quick log back. Adds are reversed by adding the negative; a set goes back to what the day had (or the
- * manual entry goes away); a spend is deleted by its `manual:` reference. Everything is scoped to `user`.
+ * Takes a quick log back. An add is reversed by its ref: one statement subtracts the value stored under the ref and
+ * removes the ref, so a second Undo (double tap, retry, another tab) finds nothing and changes nothing. A set goes back
+ * to what the day had (or the manual entry goes away); a spend is deleted by its `manual:` reference. Everything is
+ * scoped to `user`.
  */
 export async function undoQuickLogWrite(user: User, u: QuickLogUndo) {
   if (u.kind === 'entry') {
-    await persist(user, { kind: 'entry', tracker: u.slug, date: u.date, value: -u.value, source: 'manual', mode: 'add' })
+    const e = schema.entries
+    const tracker = db.select({ id: schema.trackers.id }).from(schema.trackers).where(and(eq(schema.trackers.userId, user.id), eq(schema.trackers.slug, u.slug)))
+    const [row] = await db.update(e)
+      .set({ value: sql`${e.value} - (${e.meta} ->> ${u.ref})::numeric`, meta: sql`${e.meta} - ${u.ref}`, updatedAt: sql`now()` })
+      .where(and(eq(e.userId, user.id), inArray(e.trackerId, tracker), eq(e.localDate, u.date), eq(e.source, 'manual'), sql`${e.meta} ? ${u.ref}`))
+      .returning({ id: e.id })
+    // A day that is back to 0 was never logged: drop the row so it does not count as a logged day.
+    if (row) await db.delete(e).where(and(eq(e.id, row.id), eq(e.value, 0)))
   } else if (u.kind === 'set') {
     if (u.prev !== null) {
       await persist(user, { kind: 'entry', tracker: u.slug, date: u.date, value: u.prev, source: 'manual', mode: 'set' })
