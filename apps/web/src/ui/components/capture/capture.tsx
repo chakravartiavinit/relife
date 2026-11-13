@@ -135,10 +135,11 @@ function useCaptureActions(close: () => void, retry: () => void): CaptureActions
       return true
     }),
     addStep: (g) => run(`goal:${g.scheduleId}`, async () => {
-      announceXp(toast, await addToGoal(g.scheduleId, g.step))
+      const { undo, ...news } = await addToGoal(g.scheduleId, g.step)
+      announceXp(toast, news)
       toast(`${g.name} +${amountText(g.step, g.unit)}`, 'good', {
         description: `${amountText(g.value + g.step, g.unit)} of ${amountText(g.target, g.unit)} today`, icon: routineArt(g.name, 'routine', g.area),
-        action: undoable(() => addToGoal(g.scheduleId, -g.step)),
+        action: undoable(() => undoQuickLog(undo)),
       })
       return true
     }),

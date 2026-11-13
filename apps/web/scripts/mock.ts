@@ -408,7 +408,7 @@ async function main() {
   let v = nw.total
   const snaps: (typeof schema.netWorthSnapshots.$inferInsert)[] = []
   for (let i = 0; i < DAYS; i++) {
-    snaps.push({ userId: uid, localDate: addDays(today, -i), total: Math.round(v), cash: Math.round(nw.cash), crypto: Math.round(nw.crypto) })
+    snaps.push({ userId: uid, localDate: addDays(today, -i), currency: user.baseCurrency, total: Math.round(v), cash: Math.round(nw.cash), crypto: Math.round(nw.crypto) })
     v -= v * (0.0018 + (r.int(-100, 100) / 100) * 0.012)
   }
   await db.insert(schema.netWorthSnapshots).values(snaps)

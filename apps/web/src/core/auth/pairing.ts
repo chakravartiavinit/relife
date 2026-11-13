@@ -5,10 +5,10 @@ import { db, schema } from '@/db'
 import { createDevice, type DeviceMeta } from './devices'
 import { publish } from './events'
 import {
-  FAILED_REDEEMS_PER_IP, FAILED_REDEEM_WINDOW_MS, MAX_LIVE_OFFERS, MAX_PENDING_REQUESTS, OFFER_TTL_MS,
+  FAILED_REDEEMS_PER_IP, FAILED_REDEEM_WINDOW_MS, MAX_LIVE_OFFERS, MAX_PENDING_PER_BUCKET, MAX_PENDING_REQUESTS, OFFER_TTL_MS,
   POLL_INTERVAL_S, REQUEST_TTL_MS, mode,
 } from './mode'
-import { blockedFor, clearFailures, countFailure } from './ratelimit'
+import { clearFailures, hit } from './ratelimit'
 import { hashToken, isCode, newCode, newSecret, normalizeCode } from './tokens'
 import { browserDeviceName, kindFromUa } from './names'
 import { scopesFor } from './trust'
@@ -18,7 +18,7 @@ import { scopesFor } from './trust'
 // polls and gets its token exactly once. Both end in one new `devices` row.
 
 export type Pairing = typeof schema.pairings.$inferSelect
-export type PairingMeta = { baseUrl?: string; requesterIp?: string; userAgent?: string; platform?: string; via?: string; lastPollAt?: number }
+export type PairingMeta = { baseUrl?: string; requesterIp?: string; requesterBucket?: string; userAgent?: string; platform?: string; via?: string; lastPollAt?: number }
 
 /** A refusal with the HTTP status and ApiError code the route will send. */
 export class PairError extends Error {
@@ -76,11 +76,11 @@ export async function redeem(o: {
 }): Promise<Redeemed> {
   const now = o.now ?? new Date()
   const ipKey = `redeem:${o.bucket ?? o.ip}`
-  const wait = await blockedFor(ipKey, FAILED_REDEEMS_PER_IP, FAILED_REDEEM_WINDOW_MS)
+  // Every try is counted before it is looked at (one statement, so parallel guesses cannot slip past the limit); a success clears it.
+  const { wait } = await hit(ipKey, FAILED_REDEEMS_PER_IP, FAILED_REDEEM_WINDOW_MS)
   if (wait) throw new PairError('rate_limited', 'Too many tries. Wait a few minutes.', wait)
 
-  const fail = async (message = 'That code didn’t work. Check it, or make a new one.'): Promise<never> => {
-    await countFailure(ipKey, FAILED_REDEEM_WINDOW_MS)
+  const fail = (message = 'That code didn’t work. Check it, or make a new one.'): never => {
     throw new PairError('not_found', message)
   }
 
@@ -119,31 +119,34 @@ export async function redeem(o: {
 const REQUEST_START_LIMIT = 20
 
 /**
- * A device asks to be let in. 10 minutes; at most 5 pending on the server; a new request with the same kind, name and
+ * A device asks to be let in. 10 minutes; at most MAX_PENDING_REQUESTS pending on the server and MAX_PENDING_PER_BUCKET per client; a new request with the same kind, name and
  * IP replaces the old one.
  */
 export async function startRequest(o: {
   kind: DeviceKind; name: string; platform?: string; ip: string; bucket?: string; userAgent: string; baseUrl: string; via: string; now?: Date
 }) {
   const now = o.now ?? new Date()
-  const key = `request:${o.bucket ?? o.ip}`
-  const wait = await blockedFor(key, REQUEST_START_LIMIT, FAILED_REDEEM_WINDOW_MS)
+  const bucket = o.bucket ?? o.ip
+  const key = `request:${bucket}`
+  const { wait } = await hit(key, REQUEST_START_LIMIT, FAILED_REDEEM_WINDOW_MS)
   if (wait) throw new PairError('rate_limited', 'Too many requests. Wait a few minutes.', wait)
-  await countFailure(key, FAILED_REDEEM_WINDOW_MS)
 
   const same = await db.select({ id: schema.pairings.id, meta: schema.pairings.meta }).from(schema.pairings)
     .where(and(eq(schema.pairings.method, 'request'), live(now), eq(schema.pairings.kind, o.kind), eq(schema.pairings.deviceName, o.name)))
   const mine = same.filter((r) => (r.meta as PairingMeta).requesterIp === o.ip).map((r) => r.id)
   if (mine.length) await db.update(schema.pairings).set({ status: 'expired' }).where(inArray(schema.pairings.id, mine))
 
-  const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(schema.pairings).where(and(eq(schema.pairings.method, 'request'), live(now)))
+  // One client (its bucket) cannot take every slot; the global cap is the larger of the two.
+  const [{ n, mine: inBucket }] = await db.select({ n: sql<number>`count(*)::int`, mine: sql<number>`(count(*) filter (where ${schema.pairings.meta}->>'requesterBucket' = ${bucket}))::int` })
+    .from(schema.pairings).where(and(eq(schema.pairings.method, 'request'), live(now)))
+  if (inBucket >= MAX_PENDING_PER_BUCKET) throw new PairError('rate_limited', 'This device already has requests waiting. Approve or deny one, or wait a few minutes.', 60)
   if (n >= MAX_PENDING_REQUESTS) throw new PairError('rate_limited', 'Too many devices are waiting to connect. Approve or deny one, or wait a few minutes.', 60)
 
   const pollSecret = newSecret()
   const userCode = await freshCode(now)
   const [row] = await db.insert(schema.pairings).values({
     method: 'request', secretHash: hashToken(pollSecret), userCode, kind: o.kind, deviceName: o.name, scopes: scopesFor(o.kind),
-    meta: { baseUrl: o.baseUrl, requesterIp: o.ip, userAgent: o.userAgent.slice(0, 200), platform: o.platform, via: o.via } satisfies PairingMeta,
+    meta: { baseUrl: o.baseUrl, requesterIp: o.ip, requesterBucket: bucket, userAgent: o.userAgent.slice(0, 200), platform: o.platform, via: o.via } satisfies PairingMeta,
     expiresAt: new Date(now.getTime() + REQUEST_TTL_MS),
   }).returning()
   await notify(row, 'pending')
@@ -200,13 +203,14 @@ export async function requestById(id: string, now = new Date()) {
 /** The typed code from a device's screen, in the dashboard's "Connect a device" dialog. Wrong tries count against the caller's bucket. */
 export async function requestByCode(raw: string, bucket: string, now = new Date()) {
   const key = `approve-code:${bucket}`
-  const wait = await blockedFor(key, FAILED_REDEEMS_PER_IP, FAILED_REDEEM_WINDOW_MS)
+  const { wait } = await hit(key, FAILED_REDEEMS_PER_IP, FAILED_REDEEM_WINDOW_MS)
   if (wait) throw new PairError('rate_limited', 'Too many tries. Wait a few minutes.', wait)
   const code = normalizeCode(raw)
   const [p] = isCode(code)
     ? await db.select().from(schema.pairings).where(and(eq(schema.pairings.userCode, code), eq(schema.pairings.method, 'request'), live(now), isNull(schema.pairings.userId))).limit(1)
     : []
-  if (!p) { await countFailure(key, FAILED_REDEEM_WINDOW_MS); return null }
+  if (!p) return null
+  await clearFailures(key)
   return p
 }
 
@@ -235,12 +239,13 @@ export async function offerStatus(userId: string, id: string) {
   return { status, deviceId: p.deviceId, deviceName: p.deviceName, kind: p.kind }
 }
 
-/** Housekeeping job: pairings a day after they ended, idempotency rows after 7 days, devices revoked over 30 days ago. */
+/** Housekeeping job: pairings a day after they ended, idempotency rows after 7 days, devices revoked over 30 days ago (not the legacy token rows). */
 export async function cleanup(now = new Date()) {
   const day = 86_400_000
   await db.delete(schema.pairings).where(lt(schema.pairings.expiresAt, new Date(now.getTime() - day)))
   await db.delete(schema.idempotency).where(lt(schema.idempotency.createdAt, new Date(now.getTime() - 7 * day)))
-  await db.delete(schema.devices).where(and(lt(schema.devices.revokedAt, new Date(now.getTime() - 30 * day))))
+  // The legacy ACTIVITY_TOKEN and INGEST_TOKEN rows stay as tombstones: syncLegacyTokens would insert a fresh, working device for a revoked token whose row is gone.
+  await db.delete(schema.devices).where(and(lt(schema.devices.revokedAt, new Date(now.getTime() - 30 * day)), sql`${schema.devices.meta}->>'legacy' is distinct from 'true'`))
   await db.delete(schema.rateLimits).where(lt(schema.rateLimits.windowStart, new Date(now.getTime() - FAILED_REDEEM_WINDOW_MS * 2)))
 }
 

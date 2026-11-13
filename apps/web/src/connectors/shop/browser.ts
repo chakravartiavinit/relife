@@ -3,6 +3,7 @@ import { existsSync, mkdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import path from 'node:path'
 import type { BrowserContext, Page } from 'playwright-core'
+import { env } from '@/core/env'
 import { dataDir } from '@/core/paths'
 
 // One Chrome profile per app, kept in data/browser/<id> (git-ignored, like the key file). You log in
@@ -20,7 +21,7 @@ const CHROME_HOMES = ['/Applications/Google Chrome.app/Contents/MacOS/Google Chr
 
 /** The Chrome to drive, or a sentence saying how to point ReLife at it. */
 export function chromePath(): string {
-  const set = process.env.CHROME_PATH
+  const set = env('CHROME_PATH')
   if (set) {
     if (existsSync(set)) return set
     throw new Error(`CHROME_PATH (${set}) isn’t there. Fix it in .env, or remove it to use the installed Google Chrome.`)

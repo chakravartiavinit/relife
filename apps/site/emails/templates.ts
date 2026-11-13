@@ -31,12 +31,14 @@ export function confirmEmail(to: string, token: string): Email {
   }
 }
 
-export function alreadyConfirmedEmail(to: string, token: string): Email {
-  const link = statusUrl(token)
+/** No status link: the member's link is the one in their welcome mail, and a re-submit must not replace it. */
+export function alreadyConfirmedEmail(to: string, refCode: string): Email {
+  const ref = referralUrl(refCode)
   return {
-    to, subject: `Here's your spot on the ${brand.name} waitlist`, headers: unsubscribe(token),
-    text: `You're already on the ${brand.name} waitlist. See your spot, your referral link and leave any time:\n${link}`,
-    html: layout("Here's your spot", p("You're already on the list. Your link shows where you are and how to move up."), { label: 'See my spot', href: link }),
+    to, subject: `You're already on the ${brand.name} waitlist`,
+    text: `You're already on the ${brand.name} waitlist. Your link to see your spot and leave any time is in the welcome email we sent when you confirmed (search your inbox for "${brand.name}").\n\nYour referral link: ${ref}`,
+    html: layout("You're already on the list", p('Your link to see your spot and leave any time is in the welcome email we sent when you confirmed. Search your inbox for it.')
+      + p(`Referral link: <a href="${ref}">${esc(ref)}</a>`)),
   }
 }
 

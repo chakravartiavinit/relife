@@ -5,7 +5,7 @@ import { useOptimistic, useState, useTransition } from 'react'
 import { Check, Minus, Moon, RotateCcw, SkipForward, Sun, Sunrise, type LucideIcon } from 'lucide-react'
 import { routineArt } from '../routine-icons'
 import { RoutineArt } from './routine-art'
-import { addToGoal, setGoalTarget, toggleCheck } from '@/app/actions'
+import { addToGoal, setGoalTarget, toggleCheck, undoGoalStep, undoQuickLog } from '@/app/actions'
 import { cn } from '../cn'
 import { Button } from './button'
 import { Capsule } from './capsule'
@@ -369,17 +369,26 @@ export function Goals({ rows, compact }: { rows: GoalRow[]; /** Today's "All day
     state.map((g) => (g.scheduleId === a.id ? { ...g, value: Math.max(0, g.value + (a.add ?? 0)), target: a.target ?? g.target } : g)))
   const [, start] = useTransition()
   const toast = useToast()
-  // Every step toasts with Undo, which is the same step the other way (`addToGoal(id, -step)`).
+  // Every step toasts with Undo, which takes back exactly that step (once, whatever the day it is by then).
+  // A negative amount is the minus button: it takes back the latest step logged today.
   const add = (g: GoalRow, amount: number) => start(async () => {
     change({ id: g.scheduleId, add: amount })
     try {
-      announceXp(toast, await addToGoal(g.scheduleId, amount))
-      if (amount > 0) {
-        toast(`${g.name} +${fmtAmount(amount, g.unit)}`, 'good', {
-          description: `${fmtAmount(g.value + amount, g.unit)} of ${fmtAmount(g.target, g.unit)} today`, icon: routineArt(g.name, 'routine', g.area ?? 'health'),
-          action: { label: 'Undo', onClick: () => add(g, -amount) },
-        })
-      }
+      if (amount < 0) { announceXp(toast, await undoGoalStep(g.scheduleId)); return }
+      const { undo, ...news } = await addToGoal(g.scheduleId, amount)
+      announceXp(toast, news)
+      let used = false
+      toast(`${g.name} +${fmtAmount(amount, g.unit)}`, 'good', {
+        description: `${fmtAmount(g.value + amount, g.unit)} of ${fmtAmount(g.target, g.unit)} today`, icon: routineArt(g.name, 'routine', g.area ?? 'health'),
+        action: { label: 'Undo', onClick: () => {
+          if (used) return
+          used = true
+          start(async () => {
+            change({ id: g.scheduleId, add: -amount })
+            try { announceXp(toast, await undoQuickLog(undo)) } catch { used = false; toast.error() }
+          })
+        } },
+      })
     } catch { toast.error() }
   })
   const retarget = (g: GoalRow, target: number) => start(async () => {

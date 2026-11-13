@@ -123,13 +123,23 @@ export async function windowRows<R>(start: number, end: number, limit: number, r
   return [...(await windowRows(start, mid, limit, read)), ...(await windowRows(mid + 1, end, limit, read))]
 }
 
-/** A window of history Binance refuses as too old is skipped; rate limits, outages and key problems are not, so a cursor never moves past unread data. */
-async function window<T>(fn: () => Promise<T>): Promise<T | null> {
+/**
+ * A window of history Binance refuses as too old is skipped, but only when `tooOld` says the window reaches past
+ * what that endpoint keeps. Anything else (rate limits, outages, key problems, a refusal of a recent window)
+ * is thrown, so a cursor never moves past unread data.
+ */
+export async function window<T>(fn: () => Promise<T>, tooOld: boolean): Promise<T | null> {
   try { return await fn() } catch (e) {
-    if (e instanceof ccxt.NetworkError || e instanceof ccxt.AuthenticationError || e instanceof ccxt.PermissionDenied || keyProblem(e)) throw e
-    return null
+    if (tooOld && e instanceof ccxt.ExchangeError && !(e instanceof ccxt.AuthenticationError) && !keyProblem(e)) return null
+    throw e
   }
 }
+
+// How far back each endpoint answers; a window starting earlier may be refused. Kept on the short side of what
+// Binance documents (P2P about 6 months, Pay about 18), so a first sync that reaches back to 2020 still finishes.
+const P2P_KEPT = 180 * DAY
+const CONVERT_KEPT = 365 * DAY
+const PAY_KEPT = 365 * DAY
 
 export const binance: Connector = {
   id: 'binance',
@@ -313,8 +323,8 @@ async function tradesFromId(ex: Client, symbol: string, fromId: number, each: (t
 }
 
 async function syncTrades(ex: Client, markets: Record<string, unknown>, ctx: ConnectorCtx, cursor: Cursor, heldAssets: string[]) {
-  const quotes = (process.env.BINANCE_QUOTES || 'USDT,FDUSD,USDC').split(',').map((s) => s.trim().toUpperCase())
-  const extra = (process.env.BINANCE_SYMBOLS || '').split(',').map((s) => s.trim().toUpperCase()).filter(Boolean)
+  const quotes = (env('BINANCE_QUOTES') || 'USDT,FDUSD,USDC').split(',').map((s) => s.trim().toUpperCase())
+  const extra = (env('BINANCE_SYMBOLS') || '').split(',').map((s) => s.trim().toUpperCase()).filter(Boolean)
   const candidates = new Set([
     ...Object.keys(cursor.symbols ?? {}),
     ...extra,
@@ -350,7 +360,7 @@ async function syncP2P(ex: Client, ctx: ConnectorCtx, cursor: Cursor, now: numbe
     for (const tradeType of ['BUY', 'SELL']) {
       for (let page = 1; page <= 20; page++) {
         // Windows older than Binance keeps are refused; those are skipped, not the whole read.
-        const r = await window(() => ex.sapiGetC2cOrderMatchListUserOrderHistory({ tradeType, startTimestamp: start, endTimestamp: end, page, rows: 100 })) as { data?: P2POrder[] } | null
+        const r = await window(() => ex.sapiGetC2cOrderMatchListUserOrderHistory({ tradeType, startTimestamp: start, endTimestamp: end, page, rows: 100 }), start < now - P2P_KEPT) as { data?: P2POrder[] } | null
         const rows = r?.data ?? []
         for (const o of rows.filter((x) => x.orderStatus === 'COMPLETED')) {
           await ctx.emit({ source: 'binance', externalId: `p2p:${o.orderNumber}`, at: new Date(Number(o.createTime)), body: { type: 'p2p', ...o } })
@@ -368,7 +378,7 @@ async function syncConvert(ex: Client, ctx: ConnectorCtx, cursor: Cursor, now: n
   const from = cursor.convertFull ? Math.max((cursor.convertFrom ?? now) - DAY, now - 365 * DAY) : Date.parse('2021-01-01')
   for (let start = from; start < now; start += 30 * DAY) {
     const end = Math.min(now, start + 30 * DAY)
-    const rows = await windowRows(start, end, 1000, async (a, b) => ((await window(() => ex.sapiGetConvertTradeFlow({ startTime: a, endTime: b, limit: 1000 }))) as { list?: { orderId: string | number; orderStatus: string; createTime: number }[] } | null)?.list ?? null)
+    const rows = await windowRows(start, end, 1000, async (a, b) => ((await window(() => ex.sapiGetConvertTradeFlow({ startTime: a, endTime: b, limit: 1000 }), a < now - CONVERT_KEPT)) as { list?: { orderId: string | number; orderStatus: string; createTime: number }[] } | null)?.list ?? null)
     for (const o of rows.filter((x) => x.orderStatus === 'SUCCESS')) {
       await ctx.emit({ source: 'binance', externalId: `convert:${o.orderId}`, at: new Date(Number(o.createTime)), body: { type: 'convert', ...o } })
     }
@@ -502,7 +512,7 @@ async function syncPay(ex: Client, ctx: ConnectorCtx, cursor: Cursor, now: numbe
     const start = Math.max(oldest, end - 89 * DAY)
     let refused = false
     const rows = await windowRows(start, end, 100, async (a, b) => {
-      const r = await window(() => ex.sapiGetPayTransactions({ startTime: a, endTime: b, limit: 100 })) as { data?: Record<string, string | number>[] } | null
+      const r = await window(() => ex.sapiGetPayTransactions({ startTime: a, endTime: b, limit: 100 }), a < now - PAY_KEPT) as { data?: Record<string, string | number>[] } | null
       if (!r) refused = true
       return r?.data ?? null
     })

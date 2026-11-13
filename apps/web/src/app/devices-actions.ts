@@ -2,11 +2,9 @@
 
 import brand from '@relife/brand/brand.json'
 import { cookies, headers } from 'next/headers'
-import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import type { DeviceKind } from '@relife/contract'
-import { db, schema } from '@/db'
-import { getUser } from '@/core/user'
+import { getUser, mergeProfile } from '@/core/user'
 import { pairBase } from '@/core/auth/base-url'
 import { listDevices, renameDevice, revokeDevice } from '@/core/auth/devices'
 import { toListItem, toWaiting, type WaitingDevice } from '@/core/auth/device-view'
@@ -130,10 +128,7 @@ export async function deviceList() {
 export async function setRequireSignIn(on: boolean) {
   await requireDevice()
   const user = await getUser()
-  const [u] = await db.select({ profile: schema.users.profile }).from(schema.users).where(eq(schema.users.id, user.id))
-  await db.update(schema.users).set({ profile: { ...u?.profile, requireSignIn: z.boolean().parse(on) } }).where(eq(schema.users.id, user.id))
-  const { clearUserCache } = await import('@/core/user')
-  clearUserCache()
+  await mergeProfile(user.id, { requireSignIn: z.boolean().parse(on) }) // one key, merged in SQL: no lost concurrent write
   revalidatePath('/you/settings/devices')
   return { ok: true as const }
 }

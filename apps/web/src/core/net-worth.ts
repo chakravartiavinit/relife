@@ -42,16 +42,19 @@ export async function snapshotNetWorth(user: User, now = new Date()) {
   const n = await netWorthNow(user, now)
   if (!n.accounts) return n
   await db.insert(schema.netWorthSnapshots)
-    .values({ userId: user.id, localDate: n.today, total: n.total, cash: n.cash, crypto: n.crypto })
-    .onConflictDoUpdate({ target: [schema.netWorthSnapshots.userId, schema.netWorthSnapshots.localDate], set: { total: n.total, cash: n.cash, crypto: n.crypto } })
+    .values({ userId: user.id, localDate: n.today, currency: user.baseCurrency, total: n.total, cash: n.cash, crypto: n.crypto })
+    .onConflictDoUpdate({ target: [schema.netWorthSnapshots.userId, schema.netWorthSnapshots.localDate], set: { currency: user.baseCurrency, total: n.total, cash: n.cash, crypto: n.crypto } })
   return n
 }
 
+/** Net worth per local day in the user's current base currency (each day converted at that day's rate). */
 export async function netWorthHistory(user: User, days: number, now = new Date()) {
   const from = addDays(localDate(now, user.timezone), -(days - 1))
-  const rows = await db.select({ d: schema.netWorthSnapshots.localDate, total: schema.netWorthSnapshots.total })
+  const rows = await db.select({ d: schema.netWorthSnapshots.localDate, total: schema.netWorthSnapshots.total, currency: schema.netWorthSnapshots.currency })
     .from(schema.netWorthSnapshots)
     .where(and(eq(schema.netWorthSnapshots.userId, user.id), gte(schema.netWorthSnapshots.localDate, from)))
     .orderBy(asc(schema.netWorthSnapshots.localDate))
-  return { from, days: new Map(rows.map((r) => [r.d, r.total])) }
+  const points = await Promise.all(rows.map(async (r) => [r.d, await convert(r.total, r.currency ?? user.baseCurrency, user.baseCurrency, r.d)] as const))
+  // A day with no rate for its currency is left out rather than plotted in the wrong unit.
+  return { from, days: new Map(points.filter((p): p is [string, number] => p[1] != null)) }
 }

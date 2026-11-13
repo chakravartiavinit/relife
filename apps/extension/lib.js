@@ -64,6 +64,7 @@
     try {
       const r = await fetch(`${s.server.replace(/\/$/, '')}${path}`, {
         ...init,
+        signal: AbortSignal.timeout(10_000),
         headers: { Authorization: `Bearer ${s.token}`, ...(init.body ? { 'Content-Type': 'application/json' } : {}), ...init.headers },
       })
       return { ok: r.ok, status: r.status, data: await r.json().catch(() => null) }
@@ -84,7 +85,7 @@
     await chrome.storage.local.set({ server, token })
     let lastSync
     try {
-      const res = await fetch(`${server}/api/activity`, { headers: { Authorization: `Bearer ${token}` } })
+      const res = await fetch(`${server}/api/activity`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(10_000) })
       const error = res.ok ? undefined : res.status === 401 ? 'The token doesn’t match the one in ReLife' : `ReLife answered ${res.status}`
       lastSync = { at: Date.now(), ok: res.ok, status: res.status, ...(error ? { error } : {}) }
     } catch {
@@ -92,6 +93,90 @@
     }
     await chrome.storage.local.set({ lastSync })
     return lastSync
+  }
+
+  // ── Pairing (flow B of the server's device API: this extension shows a code, you type it in the app) ─────────────────
+
+  const LOOPBACK = /^(127\.0\.0\.1|localhost)$/
+
+  /** "mac.local:3030" or "http://127.0.0.1:3030/" → "http://127.0.0.1:3030"; the default for empty text, null when it isn't an address. */
+  function serverOf(text) {
+    const t = text.trim()
+    if (!t) return DEFAULTS.server
+    try {
+      const u = new URL(/^https?:\/\//i.test(t) ? t : `http://${t}`)
+      return u.hostname ? u.origin : null
+    } catch { return null }
+  }
+
+  /** Match pattern for every page on the address's host, which is what Chrome asks the user to allow. */
+  const hostPattern = (server) => { const u = new URL(server); return `${u.protocol}//${u.hostname}/*` }
+
+  /**
+   * Whether the extension may talk to this address. This computer's own (127.0.0.1, localhost) is allowed at install; any
+   * other needs the user's yes, so call it straight from a click.
+   */
+  async function allowServer(server) {
+    try {
+      if (LOOPBACK.test(new URL(server).hostname)) return true
+      return await chrome.permissions.request({ origins: [hostPattern(server)] })
+    } catch { return false }
+  }
+
+  /** "Chrome on macOS": how the approve screen names this browser. */
+  function deviceName() {
+    const data = /** @type {any} */ (navigator).userAgentData
+    const brand = data?.brands?.find((b) => !/^(Chromium|Not.*Brand)/i.test(b.brand))?.brand
+    return `${(brand ?? 'Chrome').replace(/^Google /, '')} on ${data?.platform || 'this computer'}`.slice(0, 80)
+  }
+
+  /** Whether version `a` is older than `b` ("0.7.0" < "0.10.0"). */
+  const older = (a, b) => {
+    const [x, y] = [a, b].map((v) => v.split('.').map(Number))
+    for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) < (y[i] || 0)
+    return false
+  }
+
+  /** A call with no token: the server's public pairing routes. `{ ok, status, data }`; status 0 when it can't be reached. */
+  async function open(server, path, body) {
+    try {
+      const r = await fetch(`${server}${path}`, {
+        method: body ? 'POST' : 'GET', signal: AbortSignal.timeout(10_000),
+        ...(body ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}),
+      })
+      return { ok: r.ok, status: r.status, data: await r.json().catch(() => null) }
+    } catch { return { ok: false, status: 0, data: null } }
+  }
+  const said = (r, fallback) => (typeof r.data?.error?.message === 'string' ? r.data.error.message : fallback)
+
+  /**
+   * Asks the server at `server` to let this browser in. `{ started }` holds the code to show (`userCode`, XXXX-XXXX), the
+   * link that opens the approve screen and what `pairPoll` needs; else `{ error }` says what to tell the user.
+   */
+  async function pairStart(server) {
+    const hello = await open(server, '/api/v1/hello')
+    if (!hello.status) return { error: OFFLINE }
+    if (hello.status === 404) return { error: 'This server is too old to pair. Paste a token instead.' }
+    if (hello.data?.app !== 'relife') return { error: 'That address isn’t this app’s server' }
+    const need = hello.data.minClient?.extension
+    if (need && older(chrome.runtime.getManifest().version, need)) return { error: `This server needs extension version ${need} or newer. Update the extension.` }
+    const r = await open(server, '/api/v1/pair/requests', { kind: 'extension', name: deviceName(), platform: navigator.platform.slice(0, 80) })
+    if (!r.ok || !r.data?.userCode) return { error: said(r, r.status === 429 ? 'Too many tries. Wait a few minutes.' : `The server answered ${r.status}`) }
+    return { started: /** @type {import('@relife/contract').PairRequestStarted} */ (r.data) }
+  }
+
+  /**
+   * One check on a pairing request: `pending`, `approved` (with the `token`, which the server hands out once), `denied`,
+   * `expired`, or `slow` (asked too soon; wait longer); `error` carries a message when the server can't be reached.
+   */
+  /** @param {string} server @param {import('@relife/contract').PairRequestStarted} started @returns {Promise<import('./globals').PairStatus>} */
+  async function pairPoll(server, started) {
+    const r = await open(server, `/api/v1/pair/requests/${started.id}/poll`, { pollSecret: started.pollSecret })
+    if (r.status === 429) return { status: 'slow' }
+    if (!r.status) return { status: 'error', error: OFFLINE }
+    if (r.status === 404) return { status: 'expired' }
+    if (!r.ok) return { status: 'error', error: said(r, `The server answered ${r.status}`) }
+    return r.data?.status ? /** @type {import('@relife/contract').PairPoll} */ (r.data) : { status: 'error' }
   }
 
   let toastTimer
@@ -105,6 +190,6 @@
     toastTimer = setTimeout(() => t.removeAttribute('data-show'), 3200)
   }
 
-  self.RL = { DEFAULTS, KINDS: /** @type {[string, string, string][]} */ (KINDS), KIND, TYPES: /** @type {[string, string][]} */ (TYPES), TYPE_LABEL, AREA_COLOR, OFFLINE, progressOf, settings, domainOf, keyOf, under, esc, hm, ago, num, call, connect, toast }
+  self.RL = { DEFAULTS, KINDS: /** @type {[string, string, string][]} */ (KINDS), KIND, TYPES: /** @type {[string, string][]} */ (TYPES), TYPE_LABEL, AREA_COLOR, OFFLINE, progressOf, settings, domainOf, keyOf, under, esc, hm, ago, num, call, connect, toast, serverOf, hostPattern, allowServer, pairStart, pairPoll }
   if (typeof module === 'object') module.exports = self.RL
 })()

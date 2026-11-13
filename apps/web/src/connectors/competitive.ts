@@ -1,8 +1,8 @@
-import { createHash } from 'node:crypto'
 import type { Connector, ConnectorCtx } from '@/core/types'
 import { env } from '@/core/env'
 import { addDays, localDate, wallToUtc } from '@/core/time'
 import { setTimeout as sleep } from 'node:timers/promises'
+import { emitDays, syncWindow } from './daily'
 import { fetchT, handleOf, retryOnce } from './net'
 
 // Competitive programming from public handles: no key, no login. Each sync rebuilds whole days
@@ -64,21 +64,6 @@ export function cpDays(platform: CpDay['platform'], input: {
   return days
 }
 
-async function emitDays(ctx: ConnectorCtx, days: Iterable<CpDay>) {
-  const now = new Date()
-  for (const d of days) {
-    const hash = createHash('sha256').update(JSON.stringify(d)).digest('hex').slice(0, 12)
-    await ctx.emit({ source: d.platform, externalId: `${d.date}:${hash}`, at: now, body: d })
-  }
-}
-
-function window(ctx: ConnectorCtx) {
-  const tz = ctx.user.timezone
-  const today = localDate(new Date(), tz)
-  const backfilled = (ctx.cursor as { backfilled?: boolean } | null)?.backfilled
-  return { tz, today, backfilled, from: addDays(today, backfilled ? -3 : -90) }
-}
-
 const handleField = (env: string, site: string, example: string) => ({
   env, label: `${site} handle`, placeholder: example, hint: 'Your public handle. No key or login needed.',
 })
@@ -121,7 +106,7 @@ export const codeforces: Connector = {
   async sync(ctx) {
     const handle = handleOf(env('CODEFORCES_HANDLE'))
     const h = encodeURIComponent(handle)
-    const { tz, today, from, backfilled } = window(ctx)
+    const { tz, today, from, backfilled } = syncWindow(ctx, 91)
     const [info] = await cfApi<{ rating?: number }[]>(`user.info?handles=${h}`, handle)
     const subs = await cfApi<CfSubmission[]>(`user.status?handle=${h}&from=1&count=${backfilled ? 300 : 3000}`, handle)
     const ratings = await cfApi<{ ratingUpdateTimeSeconds: number; newRating: number }[]>(`user.rating?handle=${h}`, handle)
@@ -130,7 +115,7 @@ export const codeforces: Connector = {
       ratings: ratings.map((r) => ({ at: r.ratingUpdateTimeSeconds * 1000, rating: r.newRating })),
       current: info?.rating,
     }, tz, from, today)
-    await emitDays(ctx, days.values())
+    await emitDays(ctx, (d) => d.platform, days.values())
     ctx.setCursor({ backfilled: true })
     ctx.log(`${subs.length} submissions, ${days.size} days`)
   },
@@ -159,7 +144,7 @@ export const atcoder: Connector = {
   async sync(ctx) {
     const handle = handleOf(env('ATCODER_HANDLE'))
     const h = encodeURIComponent(handle)
-    const { tz, today, from } = window(ctx)
+    const { tz, today, from } = syncWindow(ctx, 91)
     // AtCoder Problems returns at most 500 submissions per call; walk forward from the window start.
     // The next call starts at the last second seen (not one after), so a second split across two pages loses nothing; ids dedupe.
     let since = Math.floor(wallToUtc(new Date(`${addDays(from, -1)}T00:00:00Z`), tz).getTime() / 1000)
@@ -179,7 +164,7 @@ export const atcoder: Connector = {
       ratings: rated.map((c) => ({ at: Date.parse(c.EndTime), rating: c.NewRating })),
       current: rated.at(-1)?.NewRating,
     }, tz, from, today)
-    await emitDays(ctx, days.values())
+    await emitDays(ctx, (d) => d.platform, days.values())
     ctx.setCursor({ backfilled: true })
     ctx.log(`${subs.size} submissions, ${days.size} days`)
   },
@@ -206,7 +191,11 @@ export function codechefRows(html: string, now: Date) {
       const wall = new Date(Date.UTC(2000 + Number(abs[6]), Number(abs[5]) - 1, Number(abs[4]), h, Number(abs[2])))
       at = wallToUtc(wall, 'Asia/Kolkata').getTime()
     } else if (ago) {
-      at = now.getTime() - Number(ago[1]) * { sec: 1e3, min: 6e4, hour: 36e5, day: 864e5 }[ago[2] as 'sec']
+      // "3 days ago" has day precision: use noon of that India day, so the same row doesn't slide across a date
+      // boundary (and change its day's numbers) on every sync.
+      at = ago[2] === 'day'
+        ? wallToUtc(new Date(`${addDays(localDate(now, 'Asia/Kolkata'), -Number(ago[1]))}T12:00:00Z`), 'Asia/Kolkata').getTime()
+        : now.getTime() - Number(ago[1]) * { sec: 1e3, min: 6e4, hour: 36e5 }[ago[2] as 'sec']
     }
     if (at == null) continue
     rows.push({ at, problem, accepted: /title='accepted'/.test(row) })
@@ -237,7 +226,7 @@ export const codechef: Connector = {
   async sync(ctx) {
     const handle = handleOf(env('CODECHEF_HANDLE'))
     const h = encodeURIComponent(handle)
-    const { tz, today, from, backfilled } = window(ctx)
+    const { tz, today, from, backfilled } = syncWindow(ctx, 91)
     const profile = await codechefProfile(h, handle)
     const json = profile.match(/var all_rating = (\[[\s\S]*?\]);/)?.[1]
     const ratings = (json ? (JSON.parse(json) as { rating: string; end_date: string }[]) : [])
@@ -252,7 +241,7 @@ export const codechef: Connector = {
       if (!rows.length || page + 1 >= j.max_page || localDate(new Date(Math.min(...rows.map((r) => r.at))), tz) < from) break
     }
     const days = cpDays('codechef', { submissions: subs, ratings, current: ratings.at(-1)?.rating }, tz, from, today)
-    await emitDays(ctx, days.values())
+    await emitDays(ctx, (d) => d.platform, days.values())
     ctx.setCursor({ backfilled: true })
     ctx.log(`${subs.length} submissions, ${days.size} days`)
   },
@@ -337,10 +326,10 @@ export const leetcode: Connector = {
     await leetcodeQuery('query($u: String!) { matchedUser(username: $u) { username } }', handleOf(get('LEETCODE_USERNAME')))
   },
   async sync(ctx) {
-    const { tz, today, from } = window(ctx)
+    const { tz, today, from } = syncWindow(ctx, 91)
     const data = await leetcodeQuery(LC_QUERY, handleOf(env('LEETCODE_USERNAME')))
     const days = leetcodeDays(data, tz, from, today)
-    await emitDays(ctx, days.values())
+    await emitDays(ctx, (d) => d.platform, days.values())
     ctx.setCursor({ backfilled: true })
     ctx.log(`${days.size} days`)
   },

@@ -25,7 +25,7 @@ test('unzipFirst reads a one-file deflated zip', () => {
 })
 
 import ccxt from 'ccxt'
-import { binance, futuresProblem, keyProblem, readOnlyProblem, windowRows } from './binance'
+import { binance, futuresProblem, keyProblem, readOnlyProblem, window as historyWindow, windowRows } from './binance'
 
 /** Answers every Binance request with `reply` (a body, or an Error to throw); no network. */
 function fakeBinance(reply: (url: string) => unknown) {
@@ -79,4 +79,14 @@ test('futuresProblem advises a new read-only key, never Enable Futures', () => {
 
 test('readOnlyProblem still refuses a key with futures trading', () => {
   assert.match(readOnlyProblem({ enableReading: true, enableFutures: true })!, /enableFutures/)
+})
+
+test('window skips a refusal only for history older than the endpoint keeps; everything else is thrown', async () => {
+  const refused = () => Promise.reject(new ccxt.BadRequest('binance {"code":-1000,"msg":"Time range too old."}'))
+  assert.equal(await historyWindow(refused, true), null)
+  await assert.rejects(historyWindow(refused, false), /too old/) // a recent window must not be skipped
+  await assert.rejects(historyWindow(() => Promise.reject(new Error('boom')), true), /boom/) // unknown: keep the cursor
+  await assert.rejects(historyWindow(() => Promise.reject(new ccxt.RateLimitExceeded('slow down')), true), /slow down/)
+  await assert.rejects(historyWindow(() => Promise.reject(new ccxt.PermissionDenied('no')), true), /no/)
+  assert.equal(await historyWindow(() => Promise.resolve(7), false), 7)
 })

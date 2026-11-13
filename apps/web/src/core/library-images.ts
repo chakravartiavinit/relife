@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { dataDir } from './paths'
+import { fetchPublic } from './safe-fetch'
 
 // Cover pictures for library items (courses, shows), copied once from the page's og:image into data/library
 // so ReLife never loads them from the web again. data/ is never committed.
@@ -8,19 +9,15 @@ import { dataDir } from './paths'
 const DIR = dataDir('library')
 const TYPES: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif', 'image/avif': 'avif' }
 
-/** Download a picture for an item. Returns the saved file name, or null if it isn't a usable image. */
+/** Download a picture for an item. Returns the saved file name, or null if it isn't a usable image. The address comes from a web page, so it is fetched with fetchPublic (public addresses only, 3 MB at most). */
 export async function saveCover(itemId: string, url: string) {
-  if (!/^https:\/\//.test(url)) return null
   try {
-    const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 ReLife' }, signal: AbortSignal.timeout(10_000) })
-    const type = res.headers.get('content-type')?.split(';')[0].trim() ?? ''
-    const ext = TYPES[type]
-    if (!res.ok || !ext) return null
-    const buf = Buffer.from(await res.arrayBuffer())
-    if (buf.length > 3_000_000) return null
+    const res = await fetchPublic(url, { maxBytes: 3_000_000, headers: { 'User-Agent': 'Mozilla/5.0 ReLife' } })
+    const ext = TYPES[String(res?.headers['content-type'] ?? '').split(';')[0].trim()]
+    if (!res || res.status < 200 || res.status > 299 || !ext) return null
     await mkdir(DIR, { recursive: true })
     const name = `${itemId}.${ext}`
-    await writeFile(join(/* turbopackIgnore: true */ DIR, name), buf)
+    await writeFile(join(/* turbopackIgnore: true */ DIR, name), res.body)
     return name
   } catch {
     return null

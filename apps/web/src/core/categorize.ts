@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
+import { ruleMatches } from '@/domain/merchant-rule'
 
 // Built-in merchant knowledge. User rules (merchant_rules table) win over these.
 // Pattern = lowercase substring of merchant name or UPI id.
@@ -52,7 +53,7 @@ export async function categorize(userId: string, merchant?: string, upiId?: stri
   const hay = `${merchant ?? ''} ${upiId ?? ''}`.toLowerCase()
   const rules = await db.select().from(schema.merchantRules).where(eq(schema.merchantRules.userId, userId))
   const hit =
-    rules.find((r) => hay.includes(r.pattern)) ??
+    rules.find((r) => ruleMatches(hay, r.pattern)) ??
     BUILTIN.map(([pattern, m, category]) => ({ pattern, merchant: m, category })).find((r) => hay.includes(r.pattern))
   if (hit) return { merchant: hit.merchant, category: hit.category }
   return { merchant: merchant ?? upiId, category: 'Uncategorized' }

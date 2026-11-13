@@ -1,5 +1,6 @@
 import { and, eq, inArray, or, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
+import { MIN_RULE } from '@/domain/merchant-rule'
 import type { User } from './user'
 
 /**
@@ -21,11 +22,13 @@ export async function recategorizeTxns(user: User, transactionId: string, catego
   const pattern = (before.upiId ?? before.merchant ?? '').toLowerCase().trim()
   const same = before.upiId ? eq(t.upiId, before.upiId) : eq(t.merchant, before.merchant ?? '')
   const all = remember && pattern
+  // A one-character merchant must not become a rule that matches half the statement; "Remember" still moves the exact same payer.
+  const writeRule = all && pattern.length >= MIN_RULE
   const moved = await db.select({ id: t.id, from: t.category }).from(t)
     .where(and(eq(t.userId, user.id), all ? or(eq(t.id, before.id), same) : eq(t.id, before.id), sql`${t.category} is distinct from ${category}`))
   undo.moved = moved
   if (moved.length) await db.update(t).set({ category }).where(and(eq(t.userId, user.id), inArray(t.id, moved.map((m) => m.id))))
-  if (all) {
+  if (writeRule) {
     const r = schema.merchantRules
     const [prev] = await db.select({ category: r.category }).from(r).where(and(eq(r.userId, user.id), eq(r.pattern, pattern)))
     undo.prevRule = prev?.category ?? null

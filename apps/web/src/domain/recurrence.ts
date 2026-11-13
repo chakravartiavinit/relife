@@ -68,6 +68,40 @@ export function parseSimple(rrule: string): SimpleRule {
   }
 }
 
+/** Most reminders one routine may fire in a day. */
+export const MAX_PER_DAY = 6
+const ALLOWED_FREQ = new Set<number>([RRule.DAILY, RRule.WEEKLY, RRule.MONTHLY, RRule.YEARLY])
+
+/**
+ * Checks a rule that did not come from our own form (an AI proposal, an old stored suggestion) and returns it
+ * anchored with a DTSTART on `startDay` (YYYY-MM-DD, local), or null when it is unusable. It must parse, repeat
+ * daily or slower (never hourly, per minute or per second), fire at most MAX_PER_DAY times a day and have an
+ * occurrence left. Without this, `FREQ=MINUTELY;BYHOUR=7` would pass for "Daily · 07:00" and ring 60 times a day.
+ */
+export function validateRRule(input: string, startDay: string): string | null {
+  const text = input.trim()
+  if (!text || text.length > 600) return null
+  try {
+    const rule = text.includes('DTSTART')
+      ? text
+      : `DTSTART:${startDay.replaceAll('-', '')}T000000\n${text.startsWith('RRULE:') ? text : `RRULE:${text}`}`
+    const set = rrulestr(rule, { forceset: true }) as RRuleSet
+    const rules = set.rrules()
+    if (!rules.length || rules.length > MAX_PER_DAY || set.exrules().length || set.rdates().length || set.exdates().length) return null
+    let perDay = 0
+    for (const r of rules) {
+      const o = r.options
+      if (!ALLOWED_FREQ.has(o.freq)) return null
+      perDay += o.byhour.length * o.byminute.length * o.bysecond.length
+    }
+    if (perDay > MAX_PER_DAY) return null
+    if (!set.after(new Date(Date.UTC(1970, 0, 1)), true)) return null
+    return rule
+  } catch {
+    return null
+  }
+}
+
 /** Real instants of occurrences in [from, to] (inclusive). */
 export function occurrencesBetween(rrule: string, from: Date, to: Date, tz: string): Date[] {
   const set = rrulestr(rrule, { forceset: true })

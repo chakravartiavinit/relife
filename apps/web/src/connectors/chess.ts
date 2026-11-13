@@ -1,8 +1,7 @@
-import { createHash } from 'node:crypto'
 import type { Connector, ConnectorCtx } from '@/core/types'
 import { env } from '@/core/env'
 import { addDays, localDate } from '@/core/time'
-import { fillDays } from './daily'
+import { emitDays, fetchJson, fillDays, syncWindow } from './daily'
 import { fetchT, handleOf } from './net'
 
 // Lichess and Chess.com from your public username: no key, no login. Each sync rebuilds whole days
@@ -32,16 +31,7 @@ async function getRes(url: string, accept: string, missing: string, ms?: number)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res
 }
-const getJson = async <T>(url: string, missing: string) => (await getRes(url, 'application/json', missing)).json() as Promise<T>
-
-/** One event per day; the id includes the numbers, so a day re-syncs only when it changes. */
-async function emitDays(ctx: ConnectorCtx, days: Iterable<ChessDay>) {
-  const now = new Date()
-  for (const d of days) {
-    const hash = createHash('sha256').update(JSON.stringify(d)).digest('hex').slice(0, 12)
-    await ctx.emit({ source: d.platform, externalId: `${d.date}:${hash}`, at: now, body: d })
-  }
-}
+const getJson = <T>(url: string, missing: string) => fetchJson<T>(url, { headers: UA }, missing)
 
 const SPEED_NAMES: Record<string, true> = { ultraBullet: true, bullet: true, blitz: true, rapid: true, classical: true }
 
@@ -132,7 +122,7 @@ export const lichess: Connector = {
     const days = new Map(fillDays(lichessDays(games, user.id, main, tz, from).values(), from, today, (d) => blank('lichess', d), !!prev).map((d) => [d.date, d]))
     const current = main ? user.perfs![main]?.rating : undefined
     if (current && !days.get(today)?.rating) Object.assign(days.get(today) ?? days.set(today, blank('lichess', today)).get(today)!, { rating: current, control: main })
-    await emitDays(ctx, days.values())
+    await emitDays(ctx, (d) => d.platform, days.values())
     ctx.setCursor({ backfilled: true, v: 2 })
     ctx.log(`${games.length} games, ${days.size} days${main ? `, main control ${main}` : ''}${games.length >= max ? `, stopped at ${max} games (from ${from})` : ''}`)
   },
@@ -195,9 +185,7 @@ export const chesscom: Connector = {
   },
   async sync(ctx) {
     const username = handleOf(env('CHESSCOM_USERNAME'))
-    const tz = ctx.user.timezone
-    const backfilled = (ctx.cursor as { backfilled?: boolean } | null)?.backfilled
-    const from = addDays(localDate(new Date(), tz), backfilled ? -3 : -90)
+    const { tz, from } = syncWindow(ctx, 91)
     const { archives } = await getJson<{ archives: string[] }>(`https://api.chess.com/pub/player/${encodeURIComponent(username.toLowerCase())}/games/archives`, notFound('Chess.com', username))
     // Monthly archives that can hold days on or after `from`.
     const wanted = archives.filter((url) => {
@@ -207,7 +195,7 @@ export const chesscom: Connector = {
     const games: ComGame[] = []
     for (const url of wanted) games.push(...(await getJson<{ games: ComGame[] }>(url, notFound('Chess.com', username))).games)
     const days = chesscomDays(games, username, tz, from)
-    await emitDays(ctx, days.values())
+    await emitDays(ctx, (d) => d.platform, days.values())
     ctx.setCursor({ backfilled: true })
     ctx.log(`${games.length} games in ${wanted.length} month(s), ${days.size} days`)
   },

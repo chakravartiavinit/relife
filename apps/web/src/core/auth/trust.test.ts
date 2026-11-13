@@ -2,6 +2,8 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { bindIsLoopback, clientIp, cookieName, limitKey, isPublicPath, loopbackTrusted, trustPossible, scopeAllows, tokenOf } from './trust'
 
+process.env.RELIFE_BIND = '127.0.0.1' // what `npm run web` sets; without it nothing is trusted (see the bind test)
+
 const h = (o: Record<string, string>) => ({ get: (n: string) => o[n.toLowerCase()] ?? null })
 
 test('loopback trust: a loopback Host with no proxy headers, self-host only', () => {
@@ -62,13 +64,17 @@ test('public paths', () => {
 
 test('loopback trust is off once other hosts are allowed or the server listens beyond loopback', () => {
   const direct = h({ host: '127.0.0.1:3030' })
-  assert.ok(loopbackTrusted(direct, { mode: 'self-host', env: {} }))
-  assert.ok(loopbackTrusted(direct, { mode: 'self-host', env: { RELIFE_ALLOWED_HOSTS: '  ', HOSTNAME: 'macbook' } }), 'blank list, a machine name')
+  assert.ok(loopbackTrusted(direct, { mode: 'self-host', env: { RELIFE_BIND: '127.0.0.1' } }))
+  assert.ok(!loopbackTrusted(direct, { mode: 'self-host', env: {} }), 'a server whose bind is unknown (next start -H 0.0.0.0, no RELIFE_BIND) trusts no one: X-Forwarded-For: 127.0.0.1 is client-writable')
+  assert.ok(!loopbackTrusted(h({ host: '127.0.0.1:3030', 'x-forwarded-for': '127.0.0.1' }), { mode: 'self-host', env: {} }))
+  assert.ok(!bindIsLoopback({}) && !bindIsLoopback({ RELIFE_BIND: '  ' }))
+  assert.ok(loopbackTrusted(direct, { mode: 'self-host', env: { RELIFE_BIND: 'localhost', RELIFE_ALLOWED_HOSTS: '  ', HOSTNAME: 'macbook' } }), 'blank list, a machine name')
   assert.ok(!loopbackTrusted(direct, { mode: 'self-host', env: { RELIFE_ALLOWED_HOSTS: 'relife.example.com' } }), 'a tunnel name is listed')
   for (const bind of ['0.0.0.0', '192.168.1.20', '::']) assert.ok(!loopbackTrusted(direct, { mode: 'self-host', env: { RELIFE_BIND: bind } }), `RELIFE_BIND=${bind}`)
   assert.ok(!loopbackTrusted(direct, { mode: 'self-host', env: { HOSTNAME: '0.0.0.0' } }), 'a container that binds every address')
+  assert.ok(!bindIsLoopback({ RELIFE_BIND: '127.0.0.1', HOSTNAME: '0.0.0.0' }), 'a wide HOSTNAME overrides')
   for (const bind of ['127.0.0.1', 'localhost', '::1', '[::1]', '127.0.0.2']) assert.ok(bindIsLoopback({ RELIFE_BIND: bind }), bind)
-  assert.ok(trustPossible({}) && !trustPossible({ RELIFE_ALLOWED_HOSTS: 'x.example' }))
+  assert.ok(trustPossible({ RELIFE_BIND: '127.0.0.1' }) && !trustPossible({}) && !trustPossible({ RELIFE_BIND: '127.0.0.1', RELIFE_ALLOWED_HOSTS: 'x.example' }))
 })
 
 test('rate limits are kept per address, per Mac, or per tunnel name: never one shared bucket', () => {

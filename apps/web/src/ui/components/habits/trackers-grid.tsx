@@ -1,5 +1,5 @@
 import { Activity, ChevronDown } from 'lucide-react'
-import { CATEGORIES } from '@/db/schema'
+import { CATEGORIES } from '@/domain/categories'
 import type { User } from '@/core/user'
 import { trackerDays, trackerFacts } from '@/core/metrics'
 import { addDays, localDate } from '@/core/time'

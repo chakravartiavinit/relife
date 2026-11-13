@@ -17,7 +17,9 @@ export const REQUEST_TTL_MS = 10 * 60_000
 /** Seconds between polls of a device request. */
 export const POLL_INTERVAL_S = 2
 export const MAX_LIVE_OFFERS = 3
-export const MAX_PENDING_REQUESTS = 5
+/** Device requests waiting to be approved: at most this many in all, and at most MAX_PENDING_PER_BUCKET from one client (a bucket is its address, or its tunnel; this Mac is one bucket, so room for the Mac app, the extension and the CLI). */
+export const MAX_PENDING_REQUESTS = 10
+export const MAX_PENDING_PER_BUCKET = 3
 export const FAILED_REDEEMS_PER_IP = 20
 export const FAILED_REDEEM_WINDOW_MS = 10 * 60_000
 /** Browsers cap cookie life at 400 days. */

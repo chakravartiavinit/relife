@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import { hashToken, hmac, newRefCode, newToken } from './crypto'
 import { isDisposable } from './disposable'
 import { positionOf, scoreOf } from './position'
-import { EMAIL_LIMITS, IP_LIMITS, isLimited } from './rate-limit'
+import { EMAIL_LIMITS, IP_LIMITS, ipGroup, isLimited } from './rate-limit'
 import { joinSchema, readJoinForm } from './validation'
 
 test('position: join order, and a referral moves you up to 10 places', () => {
@@ -78,4 +78,20 @@ test('join schema: trims and lowercases, drops unknown chips, rejects bad emails
   assert.deepEqual(ok.utm, { utm_source: 'x' })
   assert.equal(joinSchema.safeParse({ email: 'nope', interests: [], platforms: [] }).success, false)
   assert.equal(joinSchema.parse({ email: 'a@b.co', interests: [], platforms: [], ref: 'bad ref!' }).ref, undefined)
+})
+
+test('ipGroup: IPv6 is grouped by /64, IPv4 and mapped IPv4 stay as they are', () => {
+  assert.equal(ipGroup('203.0.113.7'), '203.0.113.7')
+  assert.equal(ipGroup('::ffff:203.0.113.7'), '203.0.113.7')
+  assert.equal(ipGroup('2001:db8:1:2:aaaa:bbbb:cccc:dddd'), ipGroup('2001:0db8:0001:0002::1'))
+  assert.equal(ipGroup('2001:db8:1:2::1'), '2001:db8:1:2::/64')
+  assert.equal(ipGroup('::1'), '0:0:0:0::/64')
+  assert.notEqual(ipGroup('2001:db8:1:2::1'), ipGroup('2001:db8:1:3::1'))
+})
+
+test('readJoinForm: a long source is cut to what the schema accepts', () => {
+  const fd = new FormData()
+  fd.set('email', 'a@example.com')
+  fd.set('source', 'x'.repeat(500))
+  assert.equal(joinSchema.parse(readJoinForm(fd)).source?.length, 120)
 })
