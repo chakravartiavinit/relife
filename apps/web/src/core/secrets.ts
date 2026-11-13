@@ -113,7 +113,9 @@ export async function applySecrets(userId: string) {
     }
   }
   setKeys(keys)
-  await syncLegacyOnce(userId)
+  // Saved tokens are unreadable without the key: syncing now would delete the legacy device rows (and forget a
+  // revocation, so restoring the key would bring a revoked token back).
+  if (!problem) await syncLegacyOnce(userId)
 }
 
 // ACTIVITY_TOKEN and INGEST_TOKEN become device rows (src/core/auth/devices.ts). Keys load often, so only a change is synced.
