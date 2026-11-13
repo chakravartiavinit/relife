@@ -296,6 +296,15 @@ async function main() {
     if (dom === 25) tx(d, 12, -10_000, 'Zerodha', 'Investments')
   }
   await db.insert(schema.transactions).values(txns)
+  // Payments ReLife could not sort (Coach, Data to sort): two merchants, fixed values so a seed stays repeatable.
+  const waiting = (d: string, hh: number, mm: number, amount: number, merchant: string, upiId: string, n: number) =>
+    ({ userId: uid, accountId: acct['axis:4821'], at: at(d, hh, mm), localDate: d, amount, currency: 'INR', merchant, upiId, category: 'Uncategorized', source: 'mock', externalRef: `mock-sort-${n}` })
+  await db.insert(schema.transactions).values([
+    waiting(addDays(today, -2), 20, 14, -449, 'Blinkit', 'blinkit@icici', 1),
+    waiting(addDays(today, -6), 21, 40, -260, 'Blinkit', 'blinkit@icici', 2),
+    waiting(addDays(today, -9), 19, 5, -180, 'Blinkit', 'blinkit@icici', 3),
+    waiting(addDays(today, -1), 13, 22, -1180, 'Kalyan Silks', 'kalyansilks@okhdfc', 4),
+  ])
 
   const prices = { BTC: r.between(95_000, 112_000), ETH: r.between(3300, 4200), SOL: r.between(150, 220), USDT: 1 }
   await db.insert(schema.holdings).values([
@@ -347,11 +356,22 @@ async function main() {
     { userId: uid, name: 'Kabir', relation: 'College friend', contactEveryDays: 60, lastContactedAt: null },
   ])
 
-  await db.insert(schema.insights).values([
+  const seededInsights = await db.insert(schema.insights).values([
     { userId: uid, kind: 'nudge', title: 'Food delivery is up 32% this month', body: 'Most orders land between 9 and 11pm. Try a 9pm cut-off on Zomato and Swiggy for two weeks.', status: 'pending' },
     { userId: uid, kind: 'plan', title: 'Add a wind-down routine at 10:30pm', body: 'You sleep 50 minutes more on nights you journal. A fixed wind-down could make that the default.', status: 'pending', payload: { actions: [{ type: 'schedule', name: 'Wind down', kind: 'routine', category: 'health', rrule: buildRRule({ freq: 'daily', times: ['22:30'], start: today }) }] } },
     { userId: uid, kind: 'alert', title: 'Vitamin D3 runs out in 9 days', body: 'Reorder before the 15th to avoid a gap.', status: 'pending' },
     { userId: uid, kind: 'review', title: 'Weekly review', body: 'Commits up, sleep steady, two calls to family. Rohan is overdue.', status: 'accepted', createdAt: ago(7) },
+  ]).returning()
+
+  // The Ask conversation (Coach › Ask): a short thread with sources, one asked from Telegram. Fixed times, no rng.
+  const minsAgo = (m: number) => new Date(now.getTime() - m * 60_000)
+  await db.insert(schema.coachMessages).values([
+    { userId: uid, role: 'user', channel: 'app', text: 'How did I sleep this week?', createdAt: minsAgo(3 * 1440 + 12) },
+    { userId: uid, role: 'assistant', channel: 'app', text: 'You averaged 6.9 h, 24 minutes less than your usual 7.3 h. Thursday was the short night at 5.4 h.\n\nYou slept longer on the two nights you journaled.', payload: { sources: [{ label: 'Sleep · last 7 days', peek: 'metric:sleep.hours' }, { label: 'Journal' }] }, createdAt: minsAgo(3 * 1440 + 11) },
+    { userId: uid, role: 'user', channel: 'telegram', text: 'What did I spend on Zepto in October?', createdAt: minsAgo(1440 + 95) },
+    { userId: uid, role: 'assistant', channel: 'telegram', text: 'You spent about ₹6,800 on Zepto in October across 23 orders, 18% more than September. 14 of the orders were after 21:00.', payload: { sources: [{ label: 'Zepto · 1–31 Oct', peek: 'merchant:Zepto' }, { label: 'Spending by merchant' }] }, createdAt: minsAgo(1440 + 94) },
+    { userId: uid, role: 'user', channel: 'app', text: 'Is there a routine that would help me wind down?', createdAt: minsAgo(40) },
+    { userId: uid, role: 'assistant', channel: 'app', text: 'A fixed wind-down at 22:30 could help. You sleep about 50 minutes more on nights you journal, so I suggested a daily routine. Nothing changes until you approve it in Needs you.', payload: { sources: [{ label: 'Sleep · last 28 days', peek: 'metric:sleep.hours' }], insightIds: seededInsights.filter((i) => i.kind === 'plan').map((i) => i.id) }, createdAt: minsAgo(39) },
   ])
 
   await db.insert(schema.rawEvents).values([

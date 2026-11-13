@@ -1,39 +1,28 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
-import { buttonClass } from '@/ui/components/button'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
-import { and, count, desc, eq } from 'drizzle-orm'
-import { BellDot, Cpu, Inbox, Repeat, Target } from 'lucide-react'
-import { db, schema } from '@/db'
-import { getUser } from '@/core/user'
-import { pendingInsight } from '@/core/needs-you'
 import { aiEnabled, modelId } from '@/ai'
-import { describe } from '@/domain/recurrence'
-import { sentenceCase } from '@/domain/text'
-import { formatDay, localDate } from '@/core/time'
-import { Card, CardHeader, IconChip, PageHeader, Skeleton } from '@/ui/components/card'
-import { EmptyState } from '@/ui/components/empty'
-import { AskBox, InsightActions } from '@/ui/components/insight-ui'
-import { InsightBody } from '@/ui/components/insight-body'
-import { KIND, isKind, type InsightKind } from '@/ui/components/insight-kinds'
-import { InboxSections } from './inbox-sections'
-import { CATEGORY } from '@/ui/tokens'
-import { cn } from '@/ui/cn'
+import { goalFormContext } from '@/core/goals'
+import { loadThread } from '@/core/coach-messages'
+import { loadClearedToday, loadNeedsYou } from '@/core/needs-you'
+import { loadPatterns } from '@/core/patterns'
+import { localDate } from '@/core/time'
+import { getUser } from '@/core/user'
+import { Card, Skeleton } from '@/ui/components/card'
+import { AskThread } from '@/ui/components/coach/ask-thread'
+import { CoachPanes } from '@/ui/components/coach/coach-panes'
+import { CoachTabs } from '@/ui/components/coach/coach-tabs'
+import { ConnectCoach } from '@/ui/components/coach/connect-coach'
+import { NeedsYouPanel } from '@/ui/components/coach/needs-you-panel'
+import { PromptInput } from '@/ui/beui/agents/prompt-input'
 
 export const metadata: Metadata = { title: 'Coach' }
 
 export default function CoachPage({ searchParams }: PageProps<'/coach'>) {
   return (
-    <>
-      <PageHeader
-        eyebrow="Coach" title="Coach"
-        description="Ask about your data, decide on what ReLife suggests, and sort what it couldn’t read by itself."
-      />
-      <Suspense fallback={<Skeleton className="h-[420px] rounded-lg" />}>
-        <Coach searchParams={searchParams} />
-      </Suspense>
-    </>
+    <Suspense fallback={<div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,32.5rem)]"><Skeleton className="h-[520px] rounded-lg" /><Skeleton className="h-[520px] rounded-lg" /></div>}>
+      <Coach searchParams={searchParams} />
+    </Suspense>
   )
 }
 
@@ -41,164 +30,54 @@ async function Coach({ searchParams }: { searchParams: PageProps<'/coach'>['sear
   await connection()
   const sp = await searchParams
   const initial = typeof sp.ask === 'string' ? sp.ask : undefined
-  const show = isKind(sp.show) ? sp.show : null
   // `?filter=data` is the old Inbox (messages ReLife couldn't read, payments to sort); `?filter=decisions` is everything else.
   const filter = sp.filter === 'data' || sp.filter === 'decisions' ? sp.filter : null
   const user = await getUser()
-  const pendingNow = pendingInsight(user.id)
-  const [pending, counts, plans] = await Promise.all([
-    db.select().from(schema.insights)
-      .where(and(pendingNow, show ? eq(schema.insights.kind, show) : undefined))
-      .orderBy(desc(schema.insights.createdAt)).limit(30),
-    db.select({ kind: schema.insights.kind, n: count() }).from(schema.insights)
-      .where(pendingNow).groupBy(schema.insights.kind),
-    db.select().from(schema.plans)
-      .where(and(eq(schema.plans.userId, user.id), eq(schema.plans.status, 'active')))
-      .orderBy(desc(schema.plans.createdAt)),
+  const [{ items, categories }, cleared, thread, patterns] = await Promise.all([
+    loadNeedsYou(user), loadClearedToday(user), loadThread(user), loadPatterns(user),
   ])
-  const enabled = aiEnabled('chat')
-  const total = counts.reduce((s, c) => s + c.n, 0)
-  // Filters only for kinds that have something waiting, and only when there is more than one kind to tell apart.
-  const tabs = (Object.keys(KIND) as InsightKind[]).flatMap((k) => {
-    const n = counts.find((c) => c.kind === k)?.n ?? 0
-    return n ? [{ key: k as InsightKind | null, label: KIND[k].plural, n }] : []
-  })
-  const filters = tabs.length > 1 || show ? [{ key: null, label: 'All', n: total }, ...tabs] : []
+  const goal = items.some((i) => i.kind === 'goal-draft') ? await goalFormContext(user) : null
+  const aiOn = aiEnabled('chat')
+  const model = modelId('chat')
 
-  const views = [{ key: null, label: 'Everything' }, { key: 'decisions', label: 'Decisions' }, { key: 'data', label: 'Data to sort' }] as const
   return (
-    <div className="flex flex-col gap-8">
-    <nav aria-label="Coach view" className="-mt-2 flex gap-1 overflow-x-auto [scrollbar-width:none]">
-      {views.map((v) => (
-        <Link
-          key={v.key ?? 'all'} href={v.key ? `/coach?filter=${v.key}` : '/coach'} scroll={false}
-          aria-current={v.key === filter ? 'page' : undefined}
-          className={cn(buttonClass({ variant: v.key === filter ? 'primary' : 'ghost', size: 'sm' }), 'shrink-0')}
-        >{v.label}</Link>
-      ))}
-    </nav>
-    {filter === 'data' ? null : (
-    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <div className="flex min-w-0 flex-col gap-6">
-        <section aria-labelledby="ask-h">
-          <h2 id="ask-h" className="sr-only">Ask your data</h2>
-          {enabled ? <AskBox initial={initial} enabled /> : <ConnectCoach />}
-        </section>
-
-        <Card className="px-0 pb-2">
-          <CardHeader
-            title="Waiting for you" icon={<BellDot strokeWidth={2} />} color="var(--pill)" className="px-5"
-            description={total ? `${total} to review` : undefined}
-          />
-          {filters.length ? (
-            <nav aria-label="Show" className="flex gap-1 overflow-x-auto px-5 pb-3 [scrollbar-width:none]">
-              {filters.map((t) => (
-                <Link
-                  key={t.key ?? 'all'} href={t.key ? `/coach?show=${t.key}` : '/coach'} scroll={false}
-                  aria-current={t.key === show ? 'page' : undefined}
-                  className={cn(buttonClass({ variant: t.key === show ? 'primary' : 'ghost', size: 'sm' }), 'shrink-0')}
-                >
-                  {t.label}
-                  <span className={cn('tabular-nums', t.key === show ? 'opacity-70' : 'text-ink-3')}>{t.n}</span>
-                </Link>
-              ))}
-            </nav>
-          ) : null}
-          {pending.length ? (
-            <ul className="flex flex-col divide-y divide-divider border-t border-divider">
-              {pending.map((i) => {
-                const k = KIND[i.kind]
-                const actions = i.payload.actions ?? []
-                return (
-                  <li key={i.id} className="flex gap-3.5 px-5 py-5">
-                    <IconChip color={k.color} className="mt-px"><k.icon strokeWidth={2} /></IconChip>
-                    <article className="min-w-0 flex-1">
-                      <p className="flex flex-wrap items-center gap-x-1.5 text-[12px] leading-[18px] text-ink-3">
-                        <span className="font-medium text-ink-2">{k.label}</span>
-                        <span aria-hidden>·</span>
-                        <time dateTime={localDate(i.createdAt, user.timezone)}>{formatDay(localDate(i.createdAt, user.timezone))}</time>
-                        {i.payload.meta ? <><span aria-hidden>·</span><span>{i.payload.meta.split(' · ')[0]}</span></> : null}
-                      </p>
-                      <h3 className="mt-1 text-[15.5px] leading-snug font-semibold tracking-[-0.01em] text-ink text-pretty">{sentenceCase(i.title)}</h3>
-                      <div className="mt-2.5"><InsightBody body={i.body} review={i.payload.review} kind={i.kind} /></div>
-                      {actions.length ? (
-                        <ul className="mt-3 flex flex-col gap-2">
-                          {actions.map((a, n) => (
-                            <li key={n} className="flex items-center gap-2.5 rounded-md bg-surface-2 px-3 py-2 text-[13px]">
-                              <Repeat className="size-4 shrink-0" strokeWidth={1.5} style={{ color: CATEGORY[a.category].color }} />
-                              <span className="font-medium text-ink">{a.name}</span>
-                              <span className="truncate text-ink-3">
-                                {a.type === 'schedule' ? describe(a.rrule.includes('DTSTART') ? a.rrule : `DTSTART:20260101T000000\n${a.rrule.startsWith('RRULE:') ? a.rrule : `RRULE:${a.rrule}`}`) : `New tracker${a.unit ? ` · ${a.unit}` : ''}`}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : null}
-                      <div className="mt-4">{i.payload.recovery ? <Link href="/" className={buttonClass({ variant: 'primary', size: 'sm' })}>Choose recovery on Today</Link> : i.payload.goalDraft ? <Link href="/plan" className={buttonClass({ variant: 'primary', size: 'sm' })}>Review on Goals</Link> : <InsightActions id={i.id} hasActions={actions.length > 0} />}</div>
-                    </article>
-                  </li>
-                )
-              })}
-            </ul>
+    <CoachPanes
+      // A new ?ask= (Capture's hand-off while Coach is already open) remounts the panes, so the prefill and pane follow the URL.
+      key={initial ?? ''}
+      // ?ask= (Capture's ⌘↵ hand-off) forces the Ask pane on a phone, as does ?view=ask.
+      initial={initial !== undefined || sp.view === 'ask' ? 'ask' : 'needs'}
+      count={items.length}
+      needs={
+        <NeedsYouPanel
+          items={items} filter={filter} categories={categories} timezone={user.timezone} today={localDate(new Date(), user.timezone)}
+          goal={goal} cleared={cleared} aiOn={aiOn} patternChanges={patterns.changes.length}
+        />
+      }
+      ask={
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CoachTabs className="max-lg:hidden" />
+            <span className="inline-flex h-7 items-center gap-1.5 rounded-full bg-surface px-3 text-caption font-medium text-ink-2 shadow-1 max-lg:ml-auto">
+              <span aria-hidden className={aiOn ? 'size-1.5 rounded-full bg-good' : 'size-1.5 rounded-full bg-ink-3'} />
+              {aiOn ? 'Chat model ready' : 'No model connected'}
+              {model ? <span className="sr-only"> ({model})</span> : null}
+            </span>
+          </div>
+          {!aiOn && thread.length === 0 ? (
+            <>
+              <ConnectCoach />
+              <Card className="p-2"><PromptInput disabled minRows={1} placeholder="Connect an AI model to ask questions." aria-label="Ask about your data" /></Card>
+            </>
           ) : (
-            <div className="px-5 pb-3">
-              <EmptyState
-                title="All caught up" icon={Inbox} color={'var(--cat-mind)'}
-                description={enabled ? 'A nudge arrives each morning and a review every Sunday evening.' : 'Connect a model to get morning nudges and a Sunday review. Rule-based alerts work without one.'}
-              />
-            </div>
+            <>
+              {!aiOn ? <ConnectCoach compact /> : null}
+              <Card as="section" aria-label="Ask" className="flex h-[min(680px,max(460px,calc(100dvh-22rem)))] flex-col overflow-hidden p-0">
+                <AskThread thread={thread} enabled={aiOn} initial={initial} timezone={user.timezone} />
+              </Card>
+            </>
           )}
-        </Card>
-      </div>
-
-      <aside aria-label="Plans and history" className="flex flex-col gap-6">
-        <Card>
-          <CardHeader title="Active plans" icon={<Target strokeWidth={2} />} color="var(--cat-mind)" description={plans.length ? `${plans.length} running` : undefined} />
-          {plans.length ? (
-            <ul className="flex flex-col gap-3">
-              {plans.map((p) => (
-                <li key={p.id} className="flex items-start gap-2.5 text-sm text-ink">
-                  <Target className="mt-0.5 size-4 shrink-0 text-pill-ink" strokeWidth={1.5} />
-                  {p.goal}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-[13px] leading-relaxed text-ink-3">Approved plans show up here, and their steps become routines.</p>
-          )}
-        </Card>
-        {modelId('chat') ? (
-          <p className="flex items-center gap-2 px-1 text-[12px] text-ink-3">
-            <Cpu className="size-3.5 shrink-0" strokeWidth={1.5} aria-hidden />
-            <span>Model</span>
-            <span className="truncate font-mono text-[11.5px] text-ink-2">{modelId('chat')}</span>
-          </p>
-        ) : null}
-      </aside>
-    </div>
-    )}
-    {filter === 'decisions' ? null : <InboxSections />}
-    </div>
-  )
-}
-
-/** No model yet: one clear next step instead of a disabled box and a paragraph of provider names. */
-function ConnectCoach() {
-  return (
-    <div className="flex flex-wrap items-center gap-4 rounded-[20px] bg-surface p-5 shadow-1">
-      <div aria-hidden className="flex -space-x-2">
-        {['anthropic', 'openai', 'gemini'].map((l) => (
-          <span key={l} className="grid size-10 place-items-center rounded-full bg-white shadow-[0_0_0_2px_var(--surface),0_0_0_3px_oklch(0_0_0/0.08)]">
-            {/* eslint-disable-next-line @next/next/no-img-element -- local logos */}
-            <img src={`/connectors/${l}.svg`} alt="" className="size-5" />
-          </span>
-        ))}
-      </div>
-      <div className="min-w-0 flex-1">
-        <h2 className="text-[15px] font-semibold text-ink">Connect an AI model to wake your coach</h2>
-        <p className="mt-0.5 text-[13px] text-ink-3">Then ask anything about your data, and get a nudge each morning and a review every Sunday. Rule-based alerts already work.</p>
-      </div>
-      <Link href="/you/connections" className={buttonClass({ variant: 'primary' })}>Choose a model</Link>
-    </div>
+        </div>
+      }
+    />
   )
 }

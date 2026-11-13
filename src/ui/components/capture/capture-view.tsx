@@ -63,7 +63,9 @@ export function CaptureView({ layout, data, status, value, onValue, actions, onC
   const [armed, setArmed] = useState(false)
   const arm = () => setArmed(true)
   const sheet = layout === 'sheet'
-  const submit = () => { if (!typed) return; if (q) actions.log(typed, 'typed'); else actions.ask(typed) }
+  // No chat model: Ask rows point at Connections and ⌘↵ does nothing, instead of sending you to a Coach that cannot answer.
+  const aiOff = data ? !data.ai : false
+  const submit = () => { if (!typed) return; if (q) actions.log(typed, 'typed'); else if (!aiOff) actions.ask(typed) }
 
   const input = (
     <Command.Input
@@ -91,7 +93,7 @@ export function CaptureView({ layout, data, status, value, onValue, actions, onC
         if (e.key === 'ArrowDown' || e.key === 'ArrowUp') arm()
         if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
           // ⌘↵ always asks. A bare ↵ with nothing typed and nothing chosen does nothing.
-          if ((e.metaKey || e.ctrlKey) && typed) { e.preventDefault(); actions.ask(typed) } else if (!typed && !armed) e.preventDefault()
+          if ((e.metaKey || e.ctrlKey) && typed) { e.preventDefault(); if (!aiOff) actions.ask(typed) } else if (!typed && !armed) e.preventDefault()
         }
       }}
       onPointerMove={arm}
@@ -114,7 +116,11 @@ export function CaptureView({ layout, data, status, value, onValue, actions, onC
         <GoTo typed={typed} actions={actions} />
         {typed ? (
           <Command.Group heading="Ask" className={groupClass}>
-            <Row value={`ask ${typed}`} onSelect={() => actions.ask(typed)} icon={<Sparkles />} color="var(--cat-mind)" title={<>Ask your coach: “<span className="text-ink">{typed}</span>”</>} sub="Answers from your data, in Coach" trail={<Kbd>⌘↵</Kbd>} enter={false} />
+            {aiOff ? (
+              <Row value={`ask ${typed}`} onSelect={() => actions.go('/you/connections#ai')} icon={<Sparkles />} color="var(--cat-mind)" title="Choose a model to ask your coach" sub="Connect an AI model in You › Connections" trail={<ArrowRight className="size-4 text-ink-3" aria-hidden />} enter={false} />
+            ) : (
+              <Row value={`ask ${typed}`} onSelect={() => actions.ask(typed)} icon={<Sparkles />} color="var(--cat-mind)" title={<>Ask your coach: “<span className="text-ink">{typed}</span>”</>} sub="Answers from your data, in Coach" trail={<Kbd>⌘↵</Kbd>} enter={false} />
+            )}
           </Command.Group>
         ) : null}
       </Command.List>
@@ -218,7 +224,7 @@ function EmptyRows({ data, status, actions, sheet }: { data: CapturePayload | nu
 
       <SpendForm data={data} actions={actions} />
 
-      {sheet ? (
+      {sheet && data.ai ? (
         <Command.Group heading="Ask" className={groupClass}>
           <Row value="ask suggested" onSelect={() => actions.ask(ASK_SUGGESTION[data.bucket])} icon={<Sparkles />} color="var(--cat-mind)" title={ASK_SUGGESTION[data.bucket]} sub="Suggested from today · answers in Coach" trail={<ArrowRight className="size-4 text-ink-3" aria-hidden />} enter={false} />
         </Command.Group>

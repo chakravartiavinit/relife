@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { gatherBriefFacts, saveBrief, todaysBriefRows } from '@/core/briefs'
 import { localDate } from '@/core/time'
 import type { User } from '@/core/user'
-import { BRIEF_SCOPES, MAX_BRIEF_CHARS, briefHash, pickAiLines, ruleLine, shouldRewrite, type BriefScope, type RuleBrief } from '@/domain/briefs'
+import { BRIEF_SCOPES, MAX_BRIEF_CHARS, REWRITE_AFTER_MS, briefHash, pickAiLines, ruleLine, shouldRewrite, type BriefScope, type RuleBrief } from '@/domain/briefs'
 import { aiEnabled, model, modelId } from '../models'
 import { generate } from '../run'
 
@@ -15,7 +15,10 @@ import { generate } from '../run'
  */
 export async function areaBriefs(user: User, now = new Date()) {
   const today = localDate(now, user.timezone)
-  const [facts, prev] = await Promise.all([gatherBriefFacts(user, now), todaysBriefRows(user, today)])
+  const prev = await todaysBriefRows(user, today)
+  // Every scope written less than 2 hours ago: nothing can change, so skip gathering the facts (a sync burst stays cheap).
+  if (BRIEF_SCOPES.every((s) => { const p = prev.get(s); return p && now.getTime() - p.updatedAt.getTime() < REWRITE_AFTER_MS })) return undefined
+  const facts = await gatherBriefFacts(user, now)
 
   const changed: { scope: BriefScope; rule: RuleBrief; hash: string }[] = []
   for (const scope of BRIEF_SCOPES) {

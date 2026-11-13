@@ -20,8 +20,8 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
 - Pages: Today (`/`, the quest log: things to do now), Life (`/life`, the hub: a brief and one tile per area plus Time,
   then "This week, area by area"), seven areas, Plan (`/plan`, tabs:
   Goals (up to 3 outcome goals with a baseline, linked actions and weekly review decisions), `/plan/routines`,
-  `/plan/trackers`, `/plan/review`; details at `/plan/goals/[id]` and `/plan/trackers/[slug]`), Coach (`/coach`: ask,
-  decisions, and the data ReLife couldn't sort; `?filter=decisions|data`) and You (`/you`, tabs: Progress (the character
+  `/plan/trackers`, `/plan/review`; details at `/plan/goals/[id]` and `/plan/trackers/[slug]`), Coach (`/coach`: Needs you and
+  Ask side by side, `/coach/patterns`, `/coach/history`; `?filter=decisions|data`, `?ask=`, `?view=ask`) and You (`/you`, tabs: Progress (the character
   sheet: level, streak, week, consistency, achievements, XP), `/you/connections`, `/you/notifications`, `/you/settings`).
   Old URLs (`/goals`, `/habits`, `/insights`, `/inbox`, `/profile`, `/connectors`, `/settings`, `/activity`,
   `/relationships`, ...) redirect (307) through `LEGACY_REDIRECTS` in `src/domain/routes.ts`; never link to them.
@@ -73,6 +73,29 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
   its action so the peek refetches. `MetricDetail` is shared with `/plan/trackers/[slug]`; `setTrackerTarget` sets a
   tracker's target. Add a `peek` to a `Kpi` to make a tile open one; the sync dot opens `sync:status`. To add a type:
   a loader, a payload type, a view, a `peekHeading` case, a fixture.
+- Coach (`src/app/coach/`, `src/ui/components/coach/`): `/coach` is `CoachPanes` (Needs you | Ask on a laptop; a segmented
+  control on a phone, mirrored to `?view=ask` with `replaceState`; `?ask=` from Capture's ⌘↵ forces Ask). **Needs you** is one
+  typed queue (`NeedsYouItem` in `src/domain/needs-you.ts`, loaded and ranked by `loadNeedsYou` in `src/core/needs-you.ts`):
+  recovery, alerts, the weekly review, goal drafts, proposals, nudges, messages ReLife could not read and payments to
+  sort (one item per merchant). `NeedsYouPanel` draws the chips (All · Decisions · Data, `?filter=`), `NeedsYouList` the
+  rows (`needs-you-row.tsx`, one `QueueItem` shell per kind). An action collapses its row to "✓ what happened · Undo" at once
+  and the list puts it back with an error toast if the server action throws; Undo exists for dismiss (`restoreInsight`,
+  only within `RESTORE_MINUTES` = 10) and for a category (`undoRecategorize`). Nothing is added without a tap. The shell badge
+  (`loadShellStatus`) and the list share `pendingInsight()`, `UNREAD_FILTER` and `NUDGE_TTL_DAYS` (a nudge leaves the queue
+  and the badge after 3 days and stays in History); `needs-you.integration.test.ts` checks the two agree. **Ask** is one
+  conversation shared by the app and Telegram in `coach_messages` (`src/core/coach-messages.ts`; kept 180 days, the
+  `coach-messages-prune` job deletes older rows; "Clear conversation" deletes all). `askData(q, { channel })` saves the
+  question and the answer with `payload.sources` (Peek chips built from the tool calls, `sourcesFromSteps` in
+  `src/domain/coach-thread.ts`) and `payload.insightIds` (routines `propose_schedule` made, shown inline with Approve and
+  Dismiss), and passes the last 6 messages (2,000 characters) to the model so follow-ups work. `AskThread` draws it with beUI
+  `message`, `message-scroller` and `prompt-input`; without a model the composer is off, the Connect card shows and saved
+  history stays readable. History (`/coach/history`) has decisions, active plans and the Waiting / Skipped messages; Patterns
+  is `PatternsCard` with "Ask why" (`/coach?ask=`). Writes fail soft: a missing `coach_messages` table (before `npm run
+  db:push`) never loses the answer.
+- Telegram: `/ask` and plain text write to the same thread (`channel: 'telegram'`); `/help` and `/status` end with "N things
+  need you in ReLife → Coach" (`needsYouLine` in `src/bot/messages.ts`, the badge's count). Buttons that open the app
+  (`openInReLife` in `src/bot/ui.ts`) exist only when the optional `RELIFE_PUBLIC_URL` is set (read with `env()`); without it
+  messages stay text-only.
 - Look ("ReLife capsule"): ink black, white and the logo's capsule blue, light-first. The signature shapes are
   `CapsuleIcon` (`capsule-icon.tsx`, the tilted pill from the logo, for areas and avatars), `SystemLabel` (mono
   area label in `card.tsx`) and the `.halftone` dot texture in header corners. No other decorative textures.

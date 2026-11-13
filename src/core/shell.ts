@@ -1,11 +1,11 @@
 import { cache } from 'react'
 import { sql } from 'drizzle-orm'
 import { db } from '@/db'
-import { WAITING_ERRORS } from '@/domain/inbox'
 import { NUDGE_TTL_DAYS, needsYou, type NeedsYou } from '@/domain/needs-you'
 import { areaToday, syncTone, workerAlive, type AreaToday, type SyncTone } from '@/domain/shell'
 import type { Category } from '@/db/schema'
 import { loadDayPlan } from './day-plan'
+import { UNREAD_FILTER } from './needs-you'
 import { xpLevel } from './xp'
 import type { User } from './user'
 
@@ -23,14 +23,13 @@ export type ShellStatus = {
  * share one result per request. `LiveRefresh`'s `router.refresh()` re-runs it.
  */
 export const loadShellStatus = cache(async (user: User): Promise<ShellStatus> => {
-  const waiting = sql.join(WAITING_ERRORS.map((e) => sql`${e}`), sql`, `)
   const [[r], level, plan] = await Promise.all([
     db.execute<{ decisions: number; unread: number; merchants: number; heartbeat: string | null; failing: string[]; last_sync: string | null }>(sql`
       select
         (select count(*)::int from insights where user_id = ${user.id} and status = 'pending'
            and (kind <> 'nudge' or created_at > now() - make_interval(days => ${NUDGE_TTL_DAYS}))) as decisions,
         (select count(*)::int from raw_events where user_id = ${user.id} and status = 'failed'
-           and (error is null or error not in (${waiting}))) as unread,
+           and ${UNREAD_FILTER}) as unread,
         (select count(distinct coalesce(upi_id, merchant, id::text))::int from transactions
            where user_id = ${user.id} and category = 'Uncategorized') as merchants,
         (select at from heartbeats where name = 'worker') as heartbeat,

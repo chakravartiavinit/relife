@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { ArrowDownRight, ArrowUpRight, Waypoints } from 'lucide-react'
 import type { Category } from '@/db/schema'
 import type { Patterns } from '@/core/patterns'
@@ -9,7 +10,17 @@ const areaColor = (area: string) => CATEGORY[area as Category]?.color ?? 'var(--
 const TONE = { good: 'var(--good)', bad: 'var(--bad)', neutral: 'var(--ink-3)' }
 
 /** What changed this week and what moves together, across every area. Statistics only; the coach explains them. */
-export function PatternsCard({ patterns: p, title = 'Patterns across your life' }: { patterns: Patterns; title?: string }) {
+/** "Ask why": Coach with the question already in the composer (the same hand-off as Capture's ⌘↵). */
+function AskWhy({ about }: { about: string }) {
+  return (
+    <Link
+      href={`/coach?ask=${encodeURIComponent(`Why might this be? ${about}`)}`}
+      className="inline-flex h-8 shrink-0 items-center rounded-sm px-1.5 text-small font-medium text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill"
+    >Ask why</Link>
+  )
+}
+
+export function PatternsCard({ patterns: p, title = 'Patterns across your life', askWhy = false }: { patterns: Patterns; title?: string; askWhy?: boolean }) {
   const empty = !p.links.length && !p.changes.length
   return (
     <Card>
@@ -36,7 +47,8 @@ export function PatternsCard({ patterns: p, title = 'Patterns across your life' 
                   return (
                     <li key={c.signal.id} className="flex items-start gap-3 rounded-[12px] bg-surface-2 px-3 py-2.5">
                       <Icon className="mt-0.5 size-4 shrink-0" strokeWidth={2} style={{ color: TONE[t] }} aria-label={t === 'neutral' ? undefined : t === 'good' ? 'Good' : 'Worth a look'} />
-                      <p className="text-[13.5px] leading-snug text-ink tabular-nums">{c.text}</p>
+                      <p className="min-w-0 flex-1 text-[13.5px] leading-snug text-ink tabular-nums">{c.text}</p>
+                      {askWhy ? <AskWhy about={c.text} /> : null}
                     </li>
                   )
                 })}
@@ -56,7 +68,10 @@ export function PatternsCard({ patterns: p, title = 'Patterns across your life' 
                     {/* Phones: the badge drops under the sentence, lined up with its start. */}
                     <div className="flex min-w-0 flex-1 flex-col items-start gap-1.5 sm:flex-row sm:gap-3">
                       <p className="min-w-0 flex-1 text-[13.5px] leading-snug text-ink-2 tabular-nums">{l.text}</p>
-                      <Badge className="shrink-0">{Math.abs(l.rho) >= 0.6 ? 'Strong' : 'Clear'} · {l.n} days</Badge>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <Badge>{Math.abs(l.rho) >= 0.6 ? 'Strong' : 'Clear'} · {l.n} days</Badge>
+                        {askWhy ? <AskWhy about={l.text} /> : null}
+                      </div>
                     </div>
                   </li>
                 ))}

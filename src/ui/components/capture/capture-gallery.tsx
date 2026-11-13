@@ -20,6 +20,7 @@ const FIXTURE: CapturePayload = {
   trackers: [{ slug: 'water', name: 'Water', unit: 'ml' }, { slug: 'mood', name: 'Mood', unit: null }, { slug: 'guitar', name: 'Guitar', unit: 'min' }],
   moodToday: null,
   spend: [{ note: 'Chai', amount: 120, currency: 'INR' }, { note: 'Auto', amount: 80, currency: 'INR' }, { note: 'Lunch', amount: 250, currency: 'INR' }],
+  ai: true,
 }
 
 const idle: CaptureActions = { busy: null, checkOff: () => {}, addStep: () => {}, log: () => {}, ask: () => {}, go: () => {}, retry: () => {} }

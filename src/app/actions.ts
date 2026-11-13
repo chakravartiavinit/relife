@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { db, schema } from '@/db'
 import { CATEGORIES } from '@/db/schema'
 import { getUser } from '@/core/user'
+import { recategorizeTxns, undoRecategorizeTxns, type RecategorizeUndo } from '@/core/recategorize'
 import { addGoalProgress, setCheck } from '@/core/schedules'
 import { applyQuickLogWithUndo, parseQuickLog, slugify, undoQuickLogWrite } from '@/core/quicklog'
 import type { QuickLogUndo } from '@/domain/quicklog'
@@ -14,6 +15,7 @@ import { localDate } from '@/core/time'
 import { buildRRule, WEEKDAYS } from '@/domain/recurrence'
 import { acceptInsight, dismissInsight } from '@/core/insights'
 import type { XpNews } from '@/core/xp'
+import type { AskResult } from '@/ai/ask'
 
 // Local single-user app: the server binds to 127.0.0.1 / Tailscale, and every action scopes
 // writes to getUser(). When multi-user lands, getUser() becomes the session check.
@@ -261,21 +263,29 @@ export async function archiveTracker(id: string) {
   refresh()
 }
 
-/** Re-categorize a transaction and remember the rule for that merchant / UPI id. */
-export async function recategorize(transactionId: string, category: string, remember: boolean) {
+export type { RecategorizeUndo } from '@/core/recategorize'
+
+/**
+ * Re-categorize a transaction and, with `remember`, write the rule for that merchant / UPI id and move its other
+ * payments too. Returns what it changed so the caller can offer Undo.
+ */
+export async function recategorize(transactionId: string, category: string, remember: boolean): Promise<RecategorizeUndo> {
   category = z.string().trim().min(1).max(60).parse(category)
-  const user = await getUser()
-  const [t] = await db.update(schema.transactions).set({ category })
-    .where(and(eq(schema.transactions.id, transactionId), eq(schema.transactions.userId, user.id)))
-    .returning()
-  const pattern = (t?.upiId ?? t?.merchant ?? '').toLowerCase().trim()
-  if (t && remember && pattern) {
-    await db.insert(schema.merchantRules).values({ userId: user.id, pattern, merchant: t.merchant ?? pattern, category })
-      .onConflictDoUpdate({ target: [schema.merchantRules.userId, schema.merchantRules.pattern], set: { category } })
-    // Apply to other transactions from the same merchant.
-    const same = t.upiId ? eq(schema.transactions.upiId, t.upiId) : eq(schema.transactions.merchant, t.merchant ?? '')
-    await db.update(schema.transactions).set({ category }).where(and(eq(schema.transactions.userId, user.id), same))
-  }
+  const undo = await recategorizeTxns(await getUser(), transactionId, category, remember)
+  refresh()
+  return undo
+}
+
+const recategorizeUndo = z.object({
+  moved: z.array(z.object({ id: z.string().uuid(), from: z.string().max(60).nullable() })).max(5000),
+  to: z.string().trim().min(1).max(60),
+  pattern: z.string().max(200).nullable(),
+  prevRule: z.string().max(60).nullable().optional(),
+})
+
+/** Undo a `recategorize`: the rule goes back to what it was (or goes), and every payment it moved gets its category back. */
+export async function undoRecategorize(undo: RecategorizeUndo) {
+  await undoRecategorizeTxns(await getUser(), recategorizeUndo.parse(undo))
   refresh()
 }
 
@@ -301,6 +311,22 @@ export async function resolveInsight(id: string, decision: 'accept' | 'dismiss')
   const user = await getUser()
   if (decision === 'accept') await acceptInsight(user, id)
   else await dismissInsight(user, id)
+  refresh()
+}
+
+/** Undo a dismiss from Needs you: back to pending, only within RESTORE_MINUTES of dismissing it. */
+export async function restoreInsight(id: string) {
+  z.string().uuid().parse(id)
+  const { restoreInsight: restore } = await import('@/core/insights')
+  const ok = await restore(await getUser(), id)
+  refresh()
+  return { ok }
+}
+
+/** Coach: clear the Ask conversation (the app and Telegram share it). */
+export async function clearConversation() {
+  const { clearCoachMessages } = await import('@/core/coach-messages')
+  await clearCoachMessages(await getUser())
   refresh()
 }
 
@@ -547,11 +573,11 @@ export async function disconnectIntegration(id: string) {
   refresh()
 }
 
-export async function ask(question: string): Promise<{ answer: string; error?: string }> {
+export async function ask(question: string): Promise<AskResult> {
   const q = question.trim().slice(0, 1000)
   if (!q) return { answer: '', error: 'Ask a question about your data.' }
   const { askData } = await import('@/ai/ask')
-  const r = await askData(q)
+  const r = await askData(q, { channel: 'app' })
   refresh()
   return r
 }
@@ -697,7 +723,8 @@ export async function dataVersion() {
     (select max(updated_at) from insights where user_id = ${user.id}),
     (select max(created_at) from system_quests where user_id = ${user.id}),
     (select max(created_at) from xp_events where user_id = ${user.id}),
-    (select max(updated_at) from briefs where user_id = ${user.id})
+    (select max(updated_at) from briefs where user_id = ${user.id}),
+    (select max(created_at) from coach_messages where user_id = ${user.id})
   )::text as v`)
   return r?.v ?? null
 }
