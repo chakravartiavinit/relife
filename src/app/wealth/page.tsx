@@ -59,7 +59,6 @@ async function Wealth() {
     )
   }
 
-  const { pace, invest, subs } = o
   return (
     <div className="flex flex-col gap-6">
       <AreaKpis def={AREAS.wealth} />

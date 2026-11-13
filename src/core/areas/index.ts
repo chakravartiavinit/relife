@@ -84,7 +84,7 @@ export const areaOfCategory = (c: Category): AreaDef => AREA_LIST.find((a) => a.
 export const areaBySlug = (slug: string): AreaDef | null => (Object.hasOwn(AREAS, slug) ? AREAS[slug as AreaSlug] : null)
 
 /** The slugs that share the `[area]` template (Wealth and Time have their own folders). */
-export const TEMPLATE_SLUGS = ['health', 'mind', 'skills', 'hobbies', 'people'] as const
+export { AREA_SLUGS as TEMPLATE_SLUGS } from '@/domain/routes'
 
 /** An area's four headline numbers, read once per request: the header strip, the page and the Life hub share them. */
 export const loadAreaKpis = cache(async (user: User, slug: AreaSlug): Promise<AreaKpi[]> => AREAS[slug].kpis(user, localDate(new Date(), user.timezone)))

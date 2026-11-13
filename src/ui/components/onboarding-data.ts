@@ -73,7 +73,6 @@ export const city = (tz: string) => tz.split('/').pop()!.replaceAll('_', ' ')
 export const firstName = (name: string) => name.trim().split(' ')[0]
 
 export const toMin = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m }
-export const fromMin = (m: number) => { const x = ((m % 1440) + 1440) % 1440; return `${String(Math.floor(x / 60)).padStart(2, '0')}:${String(x % 60).padStart(2, '0')}` }
 /** Hours from bedtime to waking, across midnight. */
 export const nightHours = (sleep: string, wake: string) => ((toMin(wake) - toMin(sleep) + 1440) % 1440) / 60
 export const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x))

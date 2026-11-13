@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { ChevronRight, MonitorSmartphone } from 'lucide-react'
 import { areaHref, areaScope, type AreaDef, type AreaKpi } from '@/core/areas'
-import { formatNumber } from '@/domain/money'
 import { AREA_ICON, CapsuleIcon } from '../capsule-icon'
 import { Capsule } from '../capsule'
 import { Card, Skeleton } from '../card'
@@ -76,5 +75,3 @@ export function AreaTile({ d }: { d: TileData }) {
     </Card>
   )
 }
-
-export const fmtXp = (n: number) => `${n >= 0 ? '+' : '−'}${formatNumber(Math.abs(n))} XP`
