@@ -28,17 +28,19 @@ export async function notify(user: User, category: NotifyCategory, msg: { text: 
 export async function weeklyNotifications(user: User, now = new Date()) {
   const N = schema.notifications
   const since = new Date(now.getTime() - 7 * 86_400_000)
-  const rows = await db.select({ status: N.status, sent: sql<boolean>`${N.sends} >= 1`, n: sql<number>`count(*)::int` }).from(N)
-    .where(and(eq(N.userId, user.id), gte(N.createdAt, since))).groupBy(N.status, sql`${N.sends} >= 1`)
+  const rows = await db.select({ status: N.status, sent: sql<boolean>`${N.sends} >= 1`, failed: sql<boolean>`${N.sends} < 0`, n: sql<number>`count(*)::int` }).from(N)
+    .where(and(eq(N.userId, user.id), gte(N.createdAt, since))).groupBy(N.status, sql`${N.sends} >= 1`, sql`${N.sends} < 0`)
   const sum = (f: (r: (typeof rows)[number]) => boolean) => rows.filter(f).reduce((a, r) => a + r.n, 0)
-  return { sent: sum((r) => r.sent), held: sum((r) => !r.sent && r.status === 'queued'), skipped: sum((r) => !r.sent && r.status === 'skipped') }
+  // A send that failed (sends < 0) is not "held for quiet hours": it counts as dropped.
+  return { sent: sum((r) => r.sent), held: sum((r) => !r.sent && !r.failed && r.status === 'queued'), skipped: sum((r) => !r.sent && (r.failed || r.status === 'skipped')) }
 }
 
 /** What happened to the message about `ref`: reached Telegram, still waiting (quiet hours), or dropped (category off or the cap). */
-export async function outcome(userId: string, ref: string): Promise<'sent' | 'held' | 'dropped'> {
+export async function outcome(userId: string, ref: string): Promise<'sent' | 'held' | 'dropped' | 'failed'> {
   const N = schema.notifications
-  const [row] = await db.select({ status: N.status, messageId: N.messageId }).from(N).where(and(eq(N.userId, userId), eq(N.ref, ref))).limit(1)
+  const [row] = await db.select({ status: N.status, messageId: N.messageId, sends: N.sends }).from(N).where(and(eq(N.userId, userId), eq(N.ref, ref))).limit(1)
   if (row?.messageId) return 'sent'
+  if (row && row.sends < 0) return 'failed' // Telegram refused or was unreachable
   return row?.status === 'queued' ? 'held' : 'dropped'
 }
 
@@ -117,7 +119,8 @@ export async function flushOutbox(user: User, now = new Date()) {
     if (mid == null) {
       // Not sent (Telegram down, bad token, offline): try again in a minute, a few times, then give up.
       const attempts = 1 - row.sends
-      if (attempts >= MAX_SEND_ATTEMPTS) await setStatus(row.id, 'skipped', { sends: 0 })
+      // A test message says so at once instead of arriving minutes later; others give up after a few tries.
+      if (attempts >= MAX_SEND_ATTEMPTS || row.ref?.startsWith('test:')) await setStatus(row.id, 'skipped', { sends: -attempts })
       else await setStatus(row.id, 'queued', { sends: -attempts, sendAfter: new Date(now.getTime() + 60_000) })
       continue
     }

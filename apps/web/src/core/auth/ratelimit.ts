@@ -26,15 +26,6 @@ export async function hit(key: string, limit: number, windowMs: number) {
   return { count: r.count, wait: r.count > limit ? Math.max(1, r.wait) : 0 }
 }
 
-/** Count one failure. A new window starts when the old one has run out. One upsert. */
-export async function countFailure(key: string, windowMs: number) {
-  await db.execute(sql`
-    insert into rate_limits (key, window_start, count) values (${key}, now(), 1)
-    on conflict (key) do update set
-      count = case when rate_limits.window_start > now() - ${windowMs} * interval '1 millisecond' then rate_limits.count + 1 else 1 end,
-      window_start = case when rate_limits.window_start > now() - ${windowMs} * interval '1 millisecond' then rate_limits.window_start else now() end`)
-}
-
 export async function clearFailures(key: string) {
   await db.execute(sql`delete from rate_limits where key = ${key}`)
 }
