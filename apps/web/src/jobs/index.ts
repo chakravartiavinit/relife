@@ -77,8 +77,19 @@ export const JOBS: Job[] = [
       total.parsed += c.parsed; total.ignored += c.ignored; total.failed += c.failed
       if (c.parsed + c.ignored + c.failed < 500) break
     }
-    if (total.parsed) await emit('data.changed')
+    if (total.parsed) {
+      // An app order can arrive after the bank row that paid it: link what the last 35 days hold.
+      const [{ linkStatements }, { addDays, localDate }, user] = await Promise.all([import('@/core/statement-link'), import('@/core/time'), getUser()])
+      const today = localDate(new Date(), user.timezone)
+      await linkStatements(user, { from: addDays(today, -35), to: today }).catch((e) => console.error('[link]', e instanceof Error ? e.message : e))
+      await emit('data.changed')
+    }
     return total.parsed || total.failed ? `parsed ${total.parsed}, ignored ${total.ignored}, failed ${total.failed}` : undefined
+  } },
+  // A file import (src/core/imports): queued by the web (`emit('import.queued')`), run here or in the web's `after()`.
+  { id: 'import', schedule: { everyMinutes: 1 }, on: ['import.queued'], timeoutMinutes: 60, run: async () => {
+    const { runQueuedImports } = await import('@/core/imports')
+    return await runQueuedImports()
   } },
   // Failed parses get one more chance a day (a parser may have improved).
   { id: 'retry-failed', schedule: { cron: '30 3 * * *' }, catchUpMinutes: 12 * 60, run: async () => {
@@ -106,8 +117,8 @@ export const JOBS: Job[] = [
   { id: 'prune-old-data', schedule: { cron: '55 3 * * *' }, catchUpMinutes: 12 * 60, run: async () => {
     const { pruneOldData } = await import('@/core/prune')
     const r = await pruneOldData()
-    const total = r.notifications + r.reminders + r.llmRuns + r.rawEvents
-    return total ? `removed ${r.notifications} notifications, ${r.reminders} reminders, ${r.llmRuns} model runs, ${r.rawEvents} raw events` : undefined
+    const total = r.notifications + r.reminders + r.llmRuns + r.rawEvents + r.imports
+    return total ? `removed ${r.notifications} notifications, ${r.reminders} reminders, ${r.llmRuns} model runs, ${r.rawEvents} raw events, ${r.imports} unfinished uploads` : undefined
   } },
 
   // Devices: ended pairings, old idempotency keys, long-revoked devices and rate-limit windows.

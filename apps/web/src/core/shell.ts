@@ -30,7 +30,7 @@ export const loadShellStatus = cache(async (user: User): Promise<ShellStatus> =>
         (select count(*)::int from raw_events where user_id = ${user.id} and status = 'failed'
            and ${UNREAD_FILTER}) as unread,
         (select count(distinct coalesce(upi_id, merchant, id::text))::int from transactions
-           where user_id = ${user.id} and category = 'Uncategorized') as merchants,
+           where user_id = ${user.id} and category = 'Uncategorized' and linked_to is null) as merchants,
         (select at from heartbeats where name = 'worker') as heartbeat,
         (select coalesce(array_agg(connector_id order by connector_id), '{}') from connections
            where user_id = ${user.id} and enabled and status = 'error') as failing,

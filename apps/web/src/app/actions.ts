@@ -3,6 +3,7 @@
 import brand from '@relife/brand/brand.json'
 import { and, eq, inArray, sql } from 'drizzle-orm'
 import { refresh } from 'next/cache'
+import { after } from 'next/server'
 import { z } from 'zod'
 import { db, schema } from '@/db'
 import { CATEGORIES } from '@/db/schema'
@@ -948,4 +949,71 @@ export async function dismissGoalDraftAction(insightId: string) {
     .where(and(eq(schema.insights.id, insightId), eq(schema.insights.userId, user.id), eq(schema.insights.status, 'pending'), sql`${schema.insights.payload} ? 'goalDraft'`))
   refresh()
   return { ok: true as const }
+}
+
+// ---- File imports (You → Connections → Import a file). Thin wrappers over src/core/imports. Errors the user can act
+// on (a file over the limit, a bad mapping) come back as `{ ok: false, error }`: a thrown error is hidden in production.
+
+const importKind = z.enum(['statement', 'apple-health', 'takeout', 'tracker-csv'])
+
+export async function createImportAction(input: { kind: string; fileName: string; size: number }) {
+  const v = z.object({ kind: importKind, fileName: z.string().trim().min(1).max(200), size: z.number().int().positive() }).safeParse(input)
+  if (!v.success) return { ok: false as const, error: 'That file could not be added.' }
+  try {
+    const { createImport } = await import('@/core/imports')
+    return { ok: true as const, ...(await createImport(await getUser(), v.data)) }
+  } catch (e) {
+    return { ok: false as const, error: e instanceof Error ? e.message : 'That file could not be added.' }
+  }
+}
+
+/** All bytes arrived: mark the upload done and read it (CSV columns, or what the zip holds). */
+export async function finishUploadAction(id: string) {
+  idArg.parse(id)
+  const { finishUpload } = await import('@/core/imports')
+  return finishUpload(await getUser(), id)
+}
+
+/** The preview again with the user's own column choice (CSV kinds). */
+export async function previewImportAction(id: string, mapping: unknown) {
+  idArg.parse(id)
+  const { previewImport } = await import('@/core/imports')
+  return previewImport(await getUser(), id, mapping as never)
+}
+
+export async function startImportAction(id: string, mapping?: unknown) {
+  idArg.parse(id)
+  try {
+    const { startImport } = await import('@/core/imports')
+    await startImport(await getUser(), id, mapping)
+  } catch (e) {
+    return { ok: false as const, error: e instanceof z.ZodError ? (e.issues[0]?.message ?? 'Check the column choices.') : e instanceof Error ? e.message : 'The import could not start.' }
+  }
+  // Runs here too, so an import works without a worker (dev:mock). The job lease stops a second run.
+  after(async () => { try { await (await import('@/jobs')).runNow('import') } catch (e) { console.error('[import]', e instanceof Error ? e.message : e) } })
+  return { ok: true as const }
+}
+
+export async function importStatusAction(id: string) {
+  idArg.parse(id)
+  const { importStatus } = await import('@/core/imports')
+  return importStatus(await getUser(), id)
+}
+
+export async function cancelImportAction(id: string) {
+  idArg.parse(id)
+  const { cancelImport } = await import('@/core/imports')
+  await cancelImport(await getUser(), id)
+}
+
+export async function undoImportAction(id: string) {
+  idArg.parse(id)
+  try {
+    const { undoImport } = await import('@/core/imports')
+    const r = await undoImport(await getUser(), id)
+    refresh()
+    return { ok: true as const, ...r }
+  } catch (e) {
+    return { ok: false as const, error: e instanceof Error ? e.message : 'Could not remove this import.' }
+  }
 }

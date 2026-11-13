@@ -1,0 +1,88 @@
+{
+  "note": "Fixture: one Google Fit day from a Takeout. Fake numbers.",
+  "event": {
+    "source": "google-fit-export",
+    "externalId": "day:2024-01-01",
+    "at": "2024-01-01T06:30:00.000Z",
+    "body": {
+      "importId": "imp-1",
+      "date": "2024-01-01",
+      "steps": 8000,
+      "distanceM": 6100.5,
+      "moveMinutes": 52,
+      "heartPoints": 31
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "tracker": "steps",
+      "date": "2024-01-01",
+      "value": 8000,
+      "source": "google-fit",
+      "mode": "fill",
+      "verified": true,
+      "meta": {
+        "importId": "imp-1"
+      },
+      "defaults": {
+        "name": "Steps",
+        "category": "health",
+        "target": 8000
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "walking.km",
+      "date": "2024-01-01",
+      "value": 6.1,
+      "source": "google-fit",
+      "mode": "fill",
+      "verified": true,
+      "meta": {
+        "importId": "imp-1"
+      },
+      "defaults": {
+        "name": "Walking distance",
+        "category": "health",
+        "unit": "km"
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "move.minutes",
+      "date": "2024-01-01",
+      "value": 52,
+      "source": "google-fit",
+      "mode": "fill",
+      "verified": true,
+      "meta": {
+        "importId": "imp-1"
+      },
+      "defaults": {
+        "name": "Move minutes",
+        "category": "health",
+        "kind": "duration",
+        "unit": "min"
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "heart.points",
+      "date": "2024-01-01",
+      "value": 31,
+      "source": "google-fit",
+      "mode": "fill",
+      "verified": true,
+      "meta": {
+        "importId": "imp-1"
+      },
+      "defaults": {
+        "name": "Heart points",
+        "category": "health",
+        "kind": "number",
+        "direction": "up"
+      }
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull, lte, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { clearUserCache, type User } from './user'
 import { formatTime } from './time'
@@ -25,6 +25,9 @@ export async function newPaymentsFor(user: User, now = new Date()): Promise<{ it
     inArray(schema.accounts.kind, ['bank', 'card']),
     sql`${schema.transactions.createdAt} > coalesce((select (profile->>'paymentsSeenAt')::timestamptz from ${schema.users} where id = ${user.id}), ${firstLook}::timestamptz)`,
     lte(schema.transactions.createdAt, now),
+    // A file import is history, not a new payment; a linked row is the same payment as an app order.
+    sql`${schema.transactions.meta}->>'importId' is null`,
+    isNull(schema.transactions.linkedTo),
   )
   const [rows, [{ n, upTo }]] = await Promise.all([
     db.select({ t: schema.transactions, a: schema.accounts }).from(schema.transactions)

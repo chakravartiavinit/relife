@@ -1,0 +1,46 @@
+{
+  "note": "Fixture: a bank statement row from a file import. Fake account.",
+  "event": {
+    "source": "statement",
+    "externalId": "statement:sample-bank:0123456789abcdef0123456789abcdef",
+    "at": "2024-01-05T06:30:00.000Z",
+    "body": {
+      "importId": "imp-1",
+      "account": {
+        "key": "statement:sample-bank",
+        "name": "Sample Bank",
+        "kind": "bank"
+      },
+      "date": "2024-01-05",
+      "amount": -120,
+      "currency": "INR",
+      "description": "UPI/412345678901/FAKE CAFE",
+      "balance": 880,
+      "ref": "R1"
+    }
+  },
+  "expected": [
+    {
+      "kind": "transaction",
+      "account": {
+        "key": "statement:sample-bank",
+        "kind": "bank",
+        "name": "Sample Bank",
+        "currency": "INR"
+      },
+      "at": "2024-01-05T06:30:00.000Z",
+      "amount": -120,
+      "currency": "INR",
+      "merchant": "FAKE CAFE",
+      "balance": 880,
+      "source": "statement",
+      "externalRef": "statement:sample-bank:0123456789abcdef0123456789abcdef",
+      "meta": {
+        "importId": "imp-1",
+        "statement": true,
+        "description": "UPI/412345678901/FAKE CAFE",
+        "ref": "R1"
+      }
+    }
+  ]
+}

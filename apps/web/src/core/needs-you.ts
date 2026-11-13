@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, ne, or, gt, sql } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, isNull, ne, or, gt, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { SPEND_CATEGORIES } from './categorize'
 import { localDate, localDayRange } from './time'
@@ -50,7 +50,7 @@ export async function loadNeedsYou(user: User, now = new Date()): Promise<{ item
     db.select().from(schema.insights).where(pendingInsight(user.id)).orderBy(desc(schema.insights.createdAt)).limit(200),
     db.select().from(R).where(and(eq(R.userId, user.id), eq(R.status, 'failed'), sql`${UNREAD_FILTER}`)).orderBy(desc(R.at)).limit(300),
     db.select({ id: T.id, merchant: T.merchant, upiId: T.upiId, amount: T.amount, currency: T.currency, at: T.at }).from(T)
-      .where(and(eq(T.userId, user.id), eq(T.category, 'Uncategorized'))).limit(5000),
+      .where(and(eq(T.userId, user.id), eq(T.category, 'Uncategorized'), isNull(T.linkedTo))).limit(5000),
     // The user's own most used categories come first in the chips.
     db.select({ category: T.category, n: sql<number>`count(*)::int` }).from(T)
       .where(and(eq(T.userId, user.id), sql`${T.category} is not null`, ne(T.category, 'Uncategorized'), ne(T.category, 'Income'), ne(T.category, 'Transfers')))

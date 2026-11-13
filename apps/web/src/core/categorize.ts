@@ -5,6 +5,11 @@ import { ruleMatches } from '@/domain/merchant-rule'
 // Built-in merchant knowledge. User rules (merchant_rules table) win over these.
 // Pattern = lowercase substring of merchant name or UPI id.
 const BUILTIN: [pattern: string, merchant: string, category: string][] = [
+  // A card bill paid from a bank account must not count on top of the card's own rows (statement imports).
+  ['credit card payment', 'Card payment', 'Transfers'],
+  ['card payment', 'Card payment', 'Transfers'],
+  ['cc payment', 'Card payment', 'Transfers'],
+  ['self transfer', 'Self transfer', 'Transfers'],
   ['instamart', 'Swiggy Instamart', 'Groceries'],
   ['swiggy', 'Swiggy', 'Food delivery'],
   ['zomato', 'Zomato', 'Food delivery'],
@@ -45,6 +50,7 @@ const BUILTIN: [pattern: string, merchant: string, category: string][] = [
   ['zerodha', 'Zerodha', 'Investments'],
   ['groww', 'Groww', 'Investments'],
   ['binance', 'Binance', 'Investments'],
+  ['autopay', 'Autopay', 'Transfers'],
 ]
 
 export type Categorized = { merchant?: string; category: string }

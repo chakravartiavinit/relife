@@ -69,12 +69,16 @@ export async function trackerFacts(user: User, from: string, to: string, tracker
 
 export type Txn = typeof schema.transactions.$inferSelect & { base: number }
 
-/** Transactions in [from, to] with amounts converted to the user's base currency. */
-export async function transactionsBetween(user: User, from: string, to: string) {
+/**
+ * Transactions in [from, to] with amounts converted to the user's base currency. A bank row linked to an app order
+ * (`linked_to`) is the same payment seen twice and is left out; `includeLinked` keeps it (the row's own peek).
+ */
+export async function transactionsBetween(user: User, from: string, to: string, opts: { includeLinked?: boolean } = {}) {
   const rows = await db.select().from(schema.transactions).where(and(
     eq(schema.transactions.userId, user.id),
     gte(schema.transactions.localDate, from),
     lte(schema.transactions.localDate, to),
+    opts.includeLinked ? undefined : isNull(schema.transactions.linkedTo),
   )).orderBy(sql`${schema.transactions.at} desc`)
   const out: Txn[] = []
   for (const r of rows) {

@@ -10,7 +10,12 @@ export type Rec =
       date: string // local YYYY-MM-DD
       value: number
       source: string
-      mode?: 'set' | 'add' // 'add' accumulates into the same day (manual logs); default 'set'
+      /**
+       * 'add' accumulates into the same day (manual logs); default 'set'. 'fill' is for imported history: it never
+       * touches a day that already has live data (another source, or this source without `meta.importId`) and
+       * rewrites only the days an earlier import wrote, and only when the value changed.
+       */
+      mode?: 'set' | 'add' | 'fill'
       verified?: boolean
       note?: string
       meta?: Record<string, unknown>

@@ -85,6 +85,7 @@ export async function persist(user: User, rec: Rec, rawEventId?: string) {
   switch (rec.kind) {
     case 'entry': {
       const tracker = await ensureTracker(user.id, rec.tracker, rec.defaults)
+      if (rec.mode === 'fill' && (await fillBlocked(user.id, tracker.id, rec))) return
       const value = rec.mode === 'add'
         ? sql`${schema.entries.value} + ${rec.value}`
         : sql`${rec.value}`
@@ -153,6 +154,17 @@ export async function persist(user: User, rec: Rec, rawEventId?: string) {
       return
     }
   }
+}
+
+/**
+ * Whether an imported day must be left alone: an entry for the same tracker and day from another source, or from this
+ * source without `meta.importId` (live data), or this source's own import with the same value (nothing to refresh).
+ */
+async function fillBlocked(userId: string, trackerId: string, rec: Extract<Rec, { kind: 'entry' }>) {
+  const E = schema.entries
+  const rows = await db.select({ source: E.source, value: E.value, imported: sql<boolean>`${E.meta}->>'importId' is not null` }).from(E)
+    .where(and(eq(E.userId, userId), eq(E.trackerId, trackerId), eq(E.localDate, rec.date)))
+  return rows.some((r) => r.source !== rec.source || !r.imported || r.value === rec.value)
 }
 
 async function setBalance(accountId: string, amount: number, at: Date) {

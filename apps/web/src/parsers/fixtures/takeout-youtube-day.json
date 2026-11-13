@@ -1,0 +1,36 @@
+{
+  "note": "Fixture: videos watched on one day from a Takeout's watch history. Fake channel.",
+  "event": {
+    "source": "youtube-history",
+    "externalId": "day:2024-01-02",
+    "at": "2024-01-02T06:30:00.000Z",
+    "body": {
+      "importId": "imp-1",
+      "date": "2024-01-02",
+      "videos": 3,
+      "topChannel": "Fake Channel A"
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "tracker": "youtube.videos",
+      "date": "2024-01-02",
+      "value": 3,
+      "source": "youtube",
+      "mode": "fill",
+      "verified": true,
+      "note": "Fake Channel A",
+      "meta": {
+        "importId": "imp-1"
+      },
+      "defaults": {
+        "name": "YouTube videos",
+        "category": "mind",
+        "kind": "number",
+        "direction": "down",
+        "aggregate": "sum"
+      }
+    }
+  ]
+}

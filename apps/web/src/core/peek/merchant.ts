@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, or } from 'drizzle-orm'
+import { and, desc, eq, gte, isNull, or } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { SPEND_CATEGORIES } from '../categorize'
 import { convert } from '../fx'
@@ -21,7 +21,7 @@ export async function loadMerchantPeek(user: User, name: string): Promise<Mercha
   const first = `${shiftMonth(month, -11)}-01`
   const T = schema.transactions
   const rows = await db.select().from(T)
-    .where(and(eq(T.userId, user.id), or(eq(T.merchant, name), eq(T.upiId, name)), gte(T.localDate, first)))
+    .where(and(eq(T.userId, user.id), or(eq(T.merchant, name), eq(T.upiId, name)), gte(T.localDate, first), isNull(T.linkedTo)))
     .orderBy(desc(T.at))
   if (!rows.length) return null
   const spend: ((typeof rows)[number] & { base: number })[] = []

@@ -1,0 +1,75 @@
+{
+  "note": "Fixture: one day of an Apple Health export.zip. Fake numbers.",
+  "event": {
+    "source": "apple-health-export",
+    "externalId": "day:2024-01-03",
+    "at": "2024-01-03T06:30:00.000Z",
+    "body": {
+      "importId": "imp-1",
+      "date": "2024-01-03",
+      "metrics": {
+        "steps": 9120,
+        "weight": 70.5
+      },
+      "sleepHours": 7
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "tracker": "steps",
+      "date": "2024-01-03",
+      "value": 9120,
+      "source": "apple-health",
+      "mode": "fill",
+      "verified": true,
+      "meta": {
+        "importId": "imp-1"
+      },
+      "defaults": {
+        "name": "Steps",
+        "category": "health",
+        "target": 8000
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "weight",
+      "date": "2024-01-03",
+      "value": 70.5,
+      "source": "apple-health",
+      "mode": "fill",
+      "verified": true,
+      "meta": {
+        "importId": "imp-1"
+      },
+      "defaults": {
+        "name": "Weight",
+        "category": "health",
+        "unit": "kg",
+        "aggregate": "last",
+        "direction": "down"
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "sleep.hours",
+      "date": "2024-01-03",
+      "value": 7,
+      "source": "apple-health",
+      "mode": "fill",
+      "verified": true,
+      "meta": {
+        "importId": "imp-1"
+      },
+      "defaults": {
+        "name": "Sleep",
+        "category": "health",
+        "unit": "h",
+        "aggregate": "last",
+        "target": 7.5,
+        "kind": "duration"
+      }
+    }
+  ]
+}

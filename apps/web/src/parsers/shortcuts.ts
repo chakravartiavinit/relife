@@ -3,7 +3,7 @@ import type { Parser, Rec, TrackerDefaults } from '@/core/types'
 import { asObj } from './util'
 
 // iPhone Shortcuts health lines: {type:'steps', value, date} or {type:'health', metric, value, unit?, date}.
-const METRICS: Record<string, { tracker: string; defaults: TrackerDefaults }> = {
+export const METRICS: Record<string, { tracker: string; defaults: TrackerDefaults }> = {
   steps: { tracker: 'steps', defaults: { name: 'Steps', category: 'health', target: 8000 } },
   distance: { tracker: 'walking.km', defaults: { name: 'Walking distance', category: 'health', unit: 'km' } },
   flights: { tracker: 'flights', defaults: { name: 'Flights climbed', category: 'health' } },

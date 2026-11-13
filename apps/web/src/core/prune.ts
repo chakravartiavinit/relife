@@ -26,5 +26,7 @@ export async function pruneOldData(now = new Date()) {
     lt(R.at, rawCutoff), inArray(R.status, ['parsed', 'ignored']),
     sql`${R.id} not in (select distinct on (user_id, source) id from raw_events order by user_id, source, at desc)`,
   ))).count
-  return { notifications, reminders, llmRuns, rawEvents }
+  // Uploads nobody finished (an import started but never run) are cancelled after a day.
+  const imports = await (await import('./imports')).pruneImports(now)
+  return { notifications, reminders, llmRuns, rawEvents, imports }
 }
