@@ -1,0 +1,19 @@
+{
+  "segments": [
+    {
+      "id": "3f2c9d0e-6b0c-4f0e-9a52-0d9a2a1c7e10",
+      "source": "mac",
+      "app": "Xcode",
+      "bundleId": "com.apple.dt.Xcode",
+      "start": "2026-11-12T09:00:00.000Z",
+      "end": "2026-11-12T09:42:10.000Z"
+    },
+    {
+      "id": "8a1b7c34-2d9e-4b61-b0aa-5c3e9f1d2a77",
+      "source": "mac",
+      "app": "Figma",
+      "start": 1794474130000,
+      "end": 1794475000000
+    }
+  ]
+}

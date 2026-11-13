@@ -12,7 +12,7 @@ const schemas: Record<string, ZodType> = {
   TodayView: contract.TodayView, TodayAction: contract.TodayAction, TodayActionResult: contract.TodayActionResult,
   ActivityBatch: contract.ActivityBatch, Hello: contract.Hello, Me: contract.Me, DeviceInfo: contract.DeviceInfo,
   PairRequestStart: contract.PairRequestStart, PairRequestStarted: contract.PairRequestStarted, PairPoll: contract.PairPoll,
-  PairRedeem: contract.PairRedeem, PairRedeemResult: contract.PairRedeemResult, Event: contract.Event, ApiError: contract.ApiError,
+  PairRedeem: contract.PairRedeem, DeviceList: contract.DeviceList, DeviceRename: contract.DeviceRename, PairRedeemResult: contract.PairRedeemResult, Event: contract.Event, ApiError: contract.ApiError,
 }
 const files = readdirSync(dir).filter((f) => f.endsWith('.json'))
 

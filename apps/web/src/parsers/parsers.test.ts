@@ -14,7 +14,7 @@ import { consumable, lineToRawEvent } from '@/connectors/icloud-inbox'
 
 const dir = join(__dirname, 'fixtures')
 const ctx = {
-  user: { id: 'u', name: 'Me', timezone: 'Asia/Kolkata', baseCurrency: 'INR', profile: {}, createdAt: new Date(), updatedAt: new Date() },
+  user: { id: 'u', name: 'Me', timezone: 'Asia/Kolkata', baseCurrency: 'INR', email: null, profile: {}, createdAt: new Date(), updatedAt: new Date() },
   db: null as never, // fixture parsers must be pure; DB-backed parsers are tested below via helpers
 } satisfies ParserCtx
 

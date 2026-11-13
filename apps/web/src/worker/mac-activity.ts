@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { randomUUID } from 'node:crypto'
 import { env } from '@/core/env'
-import { recordSegments } from '@/core/activity'
+import { laptopEnabled, macAppWatching, recordSegments } from '@/core/activity'
 import type { User } from '@/core/user'
 import { BROWSER_APPS } from '@/domain/activity'
 
@@ -39,7 +39,11 @@ export function startMacActivity(user: User) {
     await recordSegments(user, [{ id: o.id, source: 'mac', app: o.app, start: o.start.toISOString(), end: o.last.toISOString() }])
   }
   const tick = async () => {
-    if (!env('ACTIVITY_TOKEN') || env('ACTIVITY_APPS')?.trim().toLowerCase() === 'off') { open = null; return }
+    if (env('ACTIVITY_APPS')?.trim().toLowerCase() === 'off' || !(await laptopEnabled(user.id)) || (await macAppWatching(user.id))) {
+      // Off, not connected, or the Mac app is watching (it sends app time itself): close what is open.
+      if (open) { const o = open; open = null; await save(o) }
+      return
+    }
     try {
       const [app, idle] = await Promise.all([frontApp(), idleSeconds()])
       const now = new Date()

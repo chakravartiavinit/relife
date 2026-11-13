@@ -7,13 +7,6 @@ import { oauthTokens, saveOAuthTokens, type OAuthTokens } from './secrets'
 // /api/oauth/<id>/callback) and fresh access tokens for syncs. Refresh tokens that the service rotates
 // (Oura, Strava) are saved before anything else, because the old one stops working.
 
-/** The address the browser used to reach ReLife. `req.url` is not reliable for this (Next reports `localhost` even
- * when you opened 127.0.0.1), and the redirect address you register with the service must match it exactly. */
-export function requestOrigin(h: { get(name: string): string | null }) {
-  const first = (name: string) => h.get(name)?.split(',')[0].trim() || undefined // proxies chain values with commas
-  return `${first('x-forwarded-proto') ?? 'http'}://${first('x-forwarded-host') ?? first('host') ?? '127.0.0.1:3030'}`
-}
-
 export const callbackPath = (id: string) => `/api/oauth/${id}/callback`
 
 export function authorizeUrl(spec: OAuthSpec, redirectUri: string, state: string) {

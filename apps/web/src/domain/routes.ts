@@ -19,6 +19,7 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   { source: '/profile', destination: '/you' },
   { source: '/overview', destination: '/you' },
   { source: '/connectors', destination: '/you/connections' },
+  { source: '/settings/devices', destination: '/you/settings/devices' },
   { source: '/settings', destination: '/you/settings' },
   { source: '/activity', destination: '/time' },
   { source: '/relationships', destination: '/people' },
@@ -64,6 +65,7 @@ export const ROUTES: RouteInfo[] = [
   { path: '/you/connections', label: 'Connections', parent: '/you' },
   { path: '/you/notifications', label: 'Notifications', parent: '/you' },
   { path: '/you/settings', label: 'Settings', parent: '/you' },
+  { path: '/you/settings/devices', label: 'Devices', parent: '/you/settings' },
   { path: '/welcome', label: 'Welcome' },
   { path: '/dev/ui', label: 'UI gallery' },
 ]

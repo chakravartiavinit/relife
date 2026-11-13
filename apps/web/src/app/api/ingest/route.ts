@@ -1,25 +1,21 @@
-import { timingSafeEqual } from 'node:crypto'
+import { authenticate, denied } from '@/core/auth/request'
+import { env } from '@/core/env'
 import { emitRawMany } from '@/core/ingest'
 import type { RawEvent } from '@/core/types'
 import { parseNow } from '@/jobs'
-import { getUser } from '@/core/user'
 import { lineToRawEvent } from '@/connectors/icloud-inbox'
 
 // Direct push from iPhone Shortcuts (over Tailscale) or anything else.
 // Body: one JSON object, an array of objects/strings, or plain text with one event per line.
 // Same line formats as the iCloud inbox file (docs/SHORTCUTS.md).
 
-function authorized(req: Request) {
-  const token = process.env.INGEST_TOKEN
-  const got = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ?? ''
-  const a = Buffer.from(got)
-  const b = Buffer.from(token ?? '')
-  return a.length === b.length && timingSafeEqual(a, b)
-}
-
 export async function POST(req: Request) {
-  if (!process.env.INGEST_TOKEN) return Response.json({ error: 'INGEST_TOKEN is not set on this computer. Add it to .env and restart ReLife.' }, { status: 503 })
-  if (!authorized(req)) return Response.json({ error: 'unauthorized: send the header Authorization: Bearer <INGEST_TOKEN>' }, { status: 401 })
+  // The old shared INGEST_TOKEN is a device with scope `ingest` (src/core/auth/devices.ts); a full device works too.
+  const a = await authenticate(req, 'ingest')
+  if (!a.ok) {
+    if (!env('INGEST_TOKEN') && a.reason !== 'scope') return Response.json({ error: 'INGEST_TOKEN is not set on this computer. Add it to .env and restart ReLife.' }, { status: 503 })
+    return denied(a, { legacy: true })
+  }
 
   const raw = await req.text()
   if (raw.length > 1_000_000) return Response.json({ error: 'body too large' }, { status: 413 })
@@ -31,7 +27,7 @@ export async function POST(req: Request) {
     lines = raw.split('\n')
   }
 
-  const user = await getUser()
+  const user = a.user
   const now = new Date()
   let skipped = 0 // blank, malformed or not a type ReLife reads (steps, health, sleep)
   const events: RawEvent[] = []

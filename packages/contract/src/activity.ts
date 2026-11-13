@@ -5,7 +5,7 @@ import { ActivityKind } from './common'
 
 const CourseKind = z.enum(['course', 'book', 'show', 'video', 'other'])
 
-const Segment = z.object({
+const BrowserSegment = z.object({
   id: z.string().min(1).max(80),
   source: z.literal('browser'),
   domain: z.string().max(200).nullish(),
@@ -29,6 +29,18 @@ const Segment = z.object({
     }).optional(),
   }).optional(),
 })
+
+/** The Mac app's front-app stretches (names only). The server drops browsers from these: the extension covers them. */
+const MacSegment = z.object({
+  id: z.string().min(1).max(80),
+  source: z.literal('mac'),
+  app: z.string().min(1).max(80),
+  bundleId: z.string().max(200).nullish(),
+  start: z.union([z.string(), z.number()]),
+  end: z.union([z.string(), z.number()]),
+})
+
+const Segment = z.discriminatedUnion('source', [BrowserSegment, MacSegment])
 
 /** "Track this course" from the popup. */
 const Course = z.object({

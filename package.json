@@ -14,6 +14,7 @@
     "build": "npm run build -w apps/web",
     "start": "npm run start -w apps/web",
     "service": "npm run service -w apps/web --",
+    "signin": "npm run signin -w apps/web --",
     "db:push": "npm run db:push -w apps/web",
     "dev:vault": "dotsafe run -- env RELIFE_SECRETS=dotsafe npm run dev",
     "dev:mock": "npm run dev:mock -w apps/web",

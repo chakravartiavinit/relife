@@ -1,12 +1,8 @@
-import { timingSafeEqual } from 'node:crypto'
-import { eq } from 'drizzle-orm'
 import type { TodayView } from '@relife/contract'
-import { db, schema } from '@/db'
 import { companionPlan } from '@/domain/companion'
 import { streaks } from '@/domain/streaks'
 import { activeDays, trackerDays } from './metrics'
 import { activitySummary } from './activity'
-import { env } from './env'
 import { freezesHeld } from './quests'
 import { dayAgenda, type ScheduleMeta } from './schedules'
 import { systemBoard } from './system'
@@ -14,35 +10,9 @@ import { addDays, formatTime, localDate } from './time'
 import type { User } from './user'
 import { xpSummary } from './xp'
 
-// The browser extension's side of ReLife: its token check, its "last seen" mark, and the Today tab's data
-// (character, today's quests and routines). The shapes are in @relife/contract (TodayView). Routes: /api/activity (time) and /api/companion (Today).
-
-/** The bearer token matches ACTIVITY_TOKEN (You › Connections → Laptop activity), compared in constant time. */
-export function extensionAuthorized(req: Request) {
-  const token = env('ACTIVITY_TOKEN')
-  if (!token) return false
-  const got = Buffer.from(req.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ?? '')
-  const want = Buffer.from(token)
-  return got.length === want.length && timingSafeEqual(got, want)
-}
-
-/** 503 before Laptop activity is connected, else 401 for a token that doesn't match. */
-export const extensionDenied = () => env('ACTIVITY_TOKEN')
-  ? Response.json({ error: 'unauthorized: the token doesn’t match the one on You › Connections → Laptop activity' }, { status: 401 })
-  : Response.json({ error: 'Laptop activity is not connected. Set a token on the Connections page.' }, { status: 503 })
-
-/** The extension posts every 30 seconds while the browser is open; the Activity page shows when it last did. */
-/** Best effort: a failed mark never fails the request that carries the extension's data. */
-export async function markExtensionSeen(now = new Date()) {
-  await db.insert(schema.heartbeats).values({ name: 'extension', at: now })
-    .onConflictDoUpdate({ target: schema.heartbeats.name, set: { at: now } })
-    .catch((e) => console.error('[heartbeat]', e instanceof Error ? e.message : e))
-}
-
-export async function extensionLastSeen() {
-  const [row] = await db.select().from(schema.heartbeats).where(eq(schema.heartbeats.name, 'extension'))
-  return row?.at ?? null
-}
+// What the device clients show for Today (character, today's quests and routines), in one request. The shapes are in
+// @relife/contract (TodayView); the routes are /api/v1/today and /api/v1/activity (src/core/v1), and the older /api/companion and
+// /api/activity are aliases. Who may call them is src/core/auth.
 
 /** Everything the popup's Today tab shows, in one request. Read-only. */
 export async function companionView(user: User, now = new Date()): Promise<TodayView> {

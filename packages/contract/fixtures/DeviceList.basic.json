@@ -1,0 +1,30 @@
+{
+  "devices": [
+    {
+      "id": "0c9a4e72-31d8-4f5b-8a66-b0d1e7a3c5f2",
+      "kind": "browser",
+      "name": "Safari on MacBook Pro",
+      "scopes": ["full"],
+      "via": "127.0.0.1",
+      "lastSeenAt": "2026-11-12T11:42:10.000Z",
+      "createdAt": "2026-10-30T08:00:00.000Z",
+      "current": true,
+      "legacy": false,
+      "appVersion": null,
+      "platform": "macOS"
+    },
+    {
+      "id": "7d6f2b1e-5f3a-4c0e-9d52-2c1b6f0a8e11",
+      "kind": "extension",
+      "name": "Chrome extension (old token)",
+      "scopes": ["companion"],
+      "via": null,
+      "lastSeenAt": null,
+      "createdAt": "2026-10-01T08:00:00.000Z",
+      "current": false,
+      "legacy": true,
+      "appVersion": null,
+      "platform": null
+    }
+  ]
+}

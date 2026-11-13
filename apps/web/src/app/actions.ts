@@ -525,6 +525,17 @@ export async function saveSystemFocus(ids: string[]) {
   return { ok: true as const }
 }
 
+/** Appearance, kept on the server so every device shows the same (the browser keeps a localStorage copy for a flash-free first paint). */
+export async function saveTheme(choice: 'light' | 'dark' | 'system') {
+  const theme = z.enum(['light', 'dark', 'system']).parse(choice)
+  const user = await getUser()
+  const profile = await freshProfile(user.id)
+  await db.update(schema.users).set({ profile: { ...profile, prefs: { ...profile.prefs, theme } } }).where(eq(schema.users.id, user.id))
+  const { clearUserCache } = await import('@/core/user')
+  clearUserCache()
+  return { ok: true as const }
+}
+
 /**
  * You › Notifications: send one message through the outbox (category `events`, so the user's own delivery choice,
  * quiet hours and daily cap apply, exactly like the real ones). `sent` is false when those rules hold it back.
@@ -737,24 +748,8 @@ export async function paymentsSeen(upTo: string) {
  * XP and insights. Open pages compare it to refresh themselves when something new lands.
  */
 export async function dataVersion() {
-  const user = await getUser()
-  const [r] = await db.execute<{ v: string | null }>(sql`select greatest(
-    (select max(updated_at) from raw_events where user_id = ${user.id}),
-    (select max(updated_at) from transactions where user_id = ${user.id}),
-    (select max(updated_at) from entries where user_id = ${user.id}),
-    (select max(updated_at) from trades where user_id = ${user.id}),
-    (select max(updated_at) from crypto_flows where user_id = ${user.id}),
-    (select max(updated_at) from accounts where user_id = ${user.id}),
-    (select max(at) from holdings where user_id = ${user.id}),
-    (select max(c.at) from checks c join schedules s on s.id = c.schedule_id where s.user_id = ${user.id}),
-    (select max(updated_at) from schedules where user_id = ${user.id}),
-    (select max(updated_at) from insights where user_id = ${user.id}),
-    (select max(created_at) from system_quests where user_id = ${user.id}),
-    (select max(created_at) from xp_events where user_id = ${user.id}),
-    (select max(updated_at) from briefs where user_id = ${user.id}),
-    (select max(created_at) from coach_messages where user_id = ${user.id})
-  )::text as v`)
-  return r?.v ?? null
+  const { dataVersionFor } = await import('@/core/data-version')
+  return dataVersionFor((await getUser()).id)
 }
 
 // ── Outcome goals (src/core/goals.ts) ────────────────────────────────────────────────────────────

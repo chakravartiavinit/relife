@@ -91,6 +91,11 @@ export const JOBS: Job[] = [
     return count ? `removed ${count} sync runs older than 30 days` : undefined
   } },
 
+  // Devices: ended pairings, old idempotency keys, long-revoked devices and rate-limit windows.
+  { id: 'prune-devices', schedule: { cron: '50 3 * * *' }, catchUpMinutes: 12 * 60, run: async () => {
+    await (await import('@/core/auth/pairing')).cleanup()
+  } },
+
   // The Ask conversation (app and Telegram share one) is kept 180 days.
   { id: 'coach-messages-prune', schedule: { cron: '50 3 * * *' }, catchUpMinutes: 12 * 60, run: async () => {
     const { pruneCoachMessages } = await import('@/core/coach-messages')

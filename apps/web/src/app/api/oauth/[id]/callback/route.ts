@@ -1,12 +1,16 @@
 import { and, eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { connectors } from '@/connectors'
-import { exchangeCode, requestOrigin } from '@/core/oauth'
+import { authenticate, denied } from '@/core/auth/request'
+import { requestOrigin } from '@/core/auth/trust'
+import { exchangeCode } from '@/core/oauth'
 import { getUser } from '@/core/user'
 
 // Step 2: the service sends the browser back with a code. Check the state, trade the code for tokens,
 // start the first sync and go back to You › Connections, which shows how it went.
 export async function GET(req: Request, ctx: RouteContext<'/api/oauth/[id]/callback'>) {
+  const a = await authenticate(req, 'full')
+  if (!a.ok) return denied(a)
   const { id } = await ctx.params
   const url = new URL(req.url)
   const c = connectors.find((x) => x.id === id && x.oauth)
