@@ -6,6 +6,19 @@ npm run --silent typecheck
 echo "pre-push: tokens and brand" >&2
 npm run --silent tokens -- --check
 npm run --silent brand:check
+echo "pre-push: migrations" >&2
+# A schema.ts change needs its generated migration (apps/web/drizzle). Generate under a time limit with no terminal: a
+# rename question can't be answered here, so it times out (or errors) and fails with the same message.
+if command -v timeout >/dev/null 2>&1; then limit="timeout 60"; else limit=""; fi
+before=$(git status --porcelain apps/web/drizzle)
+rc=0
+(cd apps/web && $limit npx drizzle-kit generate </dev/null >/tmp/relife-prepush-drizzle.log 2>&1) || rc=$?
+if [ "$rc" -ne 0 ] || [ "$(git status --porcelain apps/web/drizzle)" != "$before" ]; then
+  tail -5 /tmp/relife-prepush-drizzle.log >&2
+  echo "Schema changed: run \`npm run db:generate\` and commit apps/web/drizzle. Push blocked." >&2
+  [ "$rc" -eq 0 ] && echo "(The migration just generated is in apps/web/drizzle: review it, then commit.)" >&2
+  exit 1
+fi
 echo "pre-push: tests" >&2
 npm test --silent > /tmp/relife-prepush.log 2>&1 || { tail -30 /tmp/relife-prepush.log >&2; echo "Tests failed. Push blocked." >&2; exit 1; }
 

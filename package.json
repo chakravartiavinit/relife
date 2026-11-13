@@ -16,6 +16,8 @@
     "service": "npm run service -w apps/web --",
     "signin": "npm run signin -w apps/web --",
     "db:push": "npm run db:push -w apps/web",
+    "db:generate": "npm run db:generate -w apps/web",
+    "db:migrate": "npm run db:migrate -w apps/web",
     "dev:vault": "dotsafe run -- env RELIFE_SECRETS=dotsafe npm run dev",
     "dev:mock": "npm run dev:mock -w apps/web",
     "mock:seed": "npm run mock:seed -w apps/web --",

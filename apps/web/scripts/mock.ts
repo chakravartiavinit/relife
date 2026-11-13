@@ -6,7 +6,7 @@
 //
 // Mock mode runs the web app only (no worker), so nothing is sent to Telegram.
 import { execSync } from 'node:child_process'
-import postgres from 'postgres'
+import { inContainer } from '@/core/platform'
 
 const DAYS = 120
 
@@ -39,12 +39,16 @@ async function main() {
   if (!dbName.endsWith('_mock')) throw new Error(`Refusing to seed "${dbName}": mock database names must end in _mock`)
   const seed = Number(process.argv[2]) || Math.floor(Math.random() * 1e9)
 
-  // Create the mock database and push the schema. The pool from '@/db' only connects on first query.
-  const admin = postgres(realUrl, { max: 1, onnotice: () => {} })
-  const [exists] = await admin`select 1 from pg_database where datname = ${dbName}`
-  if (!exists) await admin.unsafe(`create database "${dbName}"`)
-  await admin.end()
-  execSync('npx drizzle-kit push --force', { stdio: 'ignore', env: { ...process.env, DATABASE_URL: url } })
+  // Create the mock database and put the schema in it. The pool from '@/db' only connects on first query.
+  if (inContainer()) {
+    // The image has no drizzle-kit: apply the generated migrations.
+    const { runMigrations } = await import('@/core/migrate-run')
+    await runMigrations(url, { create: true })
+  } else {
+    const { ensureDatabase } = await import('@/core/migrate-run')
+    await ensureDatabase(url, realUrl)
+    execSync('npx drizzle-kit push --force', { stdio: 'ignore', env: { ...process.env, DATABASE_URL: url } })
+  }
 
   const { localDate, localDayRange, addDays, wallToUtc } = await import('@/core/time')
   const { buildRRule, occurrencesBetween } = await import('@/domain/recurrence')
@@ -79,6 +83,8 @@ async function main() {
       focus: 'health',
       tone: 'balanced',
       // Not onboarded: mock opens on /welcome so setup (and its fresh start at Level 1) can be tried.
+      // The public demo (docker/entrypoint.sh) can't run setup, which writes, so it seeds an onboarded profile.
+      ...(process.env.RELIFE_MOCK_ONBOARDED === '1' ? { onboardedAt: new Date().toISOString() } : {}),
     },
     createdAt: wallToUtc(new Date(`${start}T09:00:00Z`), tz),
   }).returning()
