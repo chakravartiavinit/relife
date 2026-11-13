@@ -39,5 +39,5 @@ async function Connections() {
   const user = await getUser() // also applies connected keys to process.env
   // The address the service sends you back to: the one this page was opened on (127.0.0.1:3030 by default).
   const { items, worker } = await loadConnectorItems(user, requestOrigin(await headers()))
-  return <ConnectorMarket items={items} worker={worker} />
+  return <ConnectorMarket items={items} worker={worker} areas={user.profile.areas} />
 }

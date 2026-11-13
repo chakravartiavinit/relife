@@ -1,5 +1,6 @@
 import { connection } from 'next/server'
 import { Suspense } from 'react'
+import { loadDayPlan } from '@/core/day-plan'
 import { dueReviewCount } from '@/core/goals'
 import { getUser } from '@/core/user'
 import { PageHeader } from '@/ui/components/card'
@@ -26,15 +27,19 @@ export default function PlanLayout({ children }: LayoutProps<'/plan'>) {
   )
 }
 
-function PlanTabs({ due = 0 }: { due?: number }) {
+function PlanTabs({ due = 0, today }: { due?: number; today?: { done: number; total: number } }) {
   const tabs = TABS.map((t) => t.href === '/plan/review' && due
     ? { ...t, label: <span className="inline-flex items-center gap-1.5">Review<span role="img" aria-label={`${due} due`} className="size-1.5 rounded-full bg-pill" /></span> }
-    : t)
+    : t.href === '/plan/routines' && today?.total
+      ? { ...t, label: <span className="inline-flex items-center gap-1.5">Routines<span className="text-caption font-normal text-ink-3 tabular-nums">{today.done}/{today.total}</span></span> }
+      : t)
   return <RouteTabs tabs={tabs} label="Plan" className="mb-6" />
 }
 
-/** The dot on Review needs the database, so it streams in. The row itself is already there. */
+/** The dot on Review and today's count on Routines need the database, so they stream in. The row itself is already there. */
 async function PlanTabsWithDot() {
   await connection()
-  return <PlanTabs due={await dueReviewCount(await getUser())} />
+  const user = await getUser()
+  const [due, plan] = await Promise.all([dueReviewCount(user), loadDayPlan(user)])
+  return <PlanTabs due={due} today={{ done: plan.done, total: plan.total }} />
 }

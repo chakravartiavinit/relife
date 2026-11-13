@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
 import { and, eq, gte, isNotNull, sql } from 'drizzle-orm'
-import { ArrowUpRight, Bot, Swords, Brain, Database, KeyRound, Palette, ShieldCheck, UserRound, type LucideIcon } from 'lucide-react'
+import { ArrowUpRight, Bot, LayoutGrid, Swords, Brain, Database, KeyRound, Palette, ShieldCheck, UserRound, type LucideIcon } from 'lucide-react'
 import { databaseUrl, db, isMock, schema } from '@/db'
 import { getUser } from '@/core/user'
 import { aiEnabled, modelId, type Task } from '@/ai'
@@ -12,6 +12,7 @@ import { buttonClass } from '@/ui/components/button'
 import { ProfileForm, ThemePicker } from '@/ui/components/settings-ui'
 import { SettingsRow, SettingsSection } from '@/ui/components/settings-layout'
 import { SystemFocus } from '@/ui/components/system-focus'
+import { AreasSettings } from '@/ui/components/areas-settings'
 import { loadSignals } from '@/core/patterns'
 
 export const metadata: Metadata = { title: 'Settings' }
@@ -19,6 +20,7 @@ export const metadata: Metadata = { title: 'Settings' }
 const SECTIONS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: 'profile', label: 'Profile', icon: UserRound },
   { id: 'coaching', label: 'Goals & coaching', icon: Brain },
+  { id: 'areas', label: 'Areas', icon: LayoutGrid },
   { id: 'system', label: 'The System', icon: Swords },
   { id: 'appearance', label: 'Appearance', icon: Palette },
   { id: 'ai', label: 'AI', icon: Bot },
@@ -44,7 +46,7 @@ export default function SettingsPage() {
       </div>
       <div className="grid gap-8 lg:grid-cols-[200px_minmax(0,1fr)] xl:gap-12">
         <nav aria-label="Settings sections" className="hidden lg:block">
-          <ul className="sticky top-9 flex flex-col gap-0.5">
+          <ul className="sticky top-9 flex flex-col gap-0.5 rounded-lg bg-surface p-2 shadow-1">
             {SECTIONS.map(({ id, label, icon: Icon }) => (
               <li key={id}>
                 <a href={`#${id}`} className="flex h-9 items-center gap-2.5 rounded-md px-2.5 text-[13.5px] text-ink-2 transition-[background-color,color] duration-150 hover:bg-ink/[0.04] hover:text-ink focus-visible:outline-2 focus-visible:outline-pill dark:hover:bg-white/[0.05]">
@@ -91,6 +93,8 @@ async function Settings() {
         goals={user.profile.goals ?? ''} constraints={user.profile.constraints ?? ''} notes={user.profile.notes ?? ''}
         timezones={Intl.supportedValuesOf('timeZone')} currencies={Intl.supportedValuesOf('currency')}
       />
+
+      <AreasSettings initial={user.profile.areas ?? []} />
 
       <SystemFocus
         initial={user.profile.improve ?? []}
@@ -150,7 +154,7 @@ async function Settings() {
         <SettingsRow label="Background worker" hint="Runs reminders, syncs, XP and AI jobs.">
           <span className="inline-flex items-center gap-2 text-[13.5px] text-ink-2">
             <span aria-hidden className="size-2 rounded-full" style={{ background: workerUp ? 'var(--good)' : 'var(--warn)' }} />
-            {workerUp ? 'Running' : 'Not running. Start it with npm run dev.'}
+            {workerUp ? `Running · heartbeat ${Math.max(1, Math.round((Date.now() - beat!.at.getTime()) / 1000))} s ago` : 'Not running. Start it with npm run dev.'}
           </span>
         </SettingsRow>
       </SettingsSection>

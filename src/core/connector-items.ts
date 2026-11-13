@@ -78,6 +78,7 @@ export async function loadConnectorItems(user: User, origin: string) {
       statusLabel: signIn ? `Sign in with ${c.name} to finish` : connected && !c.missingEnv.length && !conn?.lastSyncAt && conn?.status !== 'error' ? (syncing ? 'First sync running…' : 'First sync starting…') : undefined,
       detail: syncing ? `${every(c.everyMinutes)} · syncing now…` : `${every(c.everyMinutes)} · synced ${ago(conn?.lastSyncAt)} · next ${inTime(job?.requestedAt ? new Date() : job?.nextRunAt)}`,
       error: conn?.lastError,
+      lastSync: conn?.lastSyncAt ? ago(conn.lastSyncAt) : null, cadence: every(c.everyMinutes),
     }
   })
 

@@ -8,7 +8,7 @@ import { getUser } from '@/core/user'
 import { buttonClass } from '@/ui/components/button'
 import { Card, Skeleton } from '@/ui/components/card'
 import { EmptyState } from '@/ui/components/empty'
-import { GoalReviewCard } from '@/ui/components/goals/goal-review'
+import { ReviewFlow, ReviewNow } from '@/ui/components/goals/review-flow'
 import { day } from '@/ui/components/goals/format'
 
 export const metadata: Metadata = { title: 'Weekly review' }
@@ -35,19 +35,18 @@ async function Review() {
         <p className="mt-1 text-body text-ink-2">For each goal, compare what you did with how the outcome moved. Then choose what happens next. Goals you don’t decide stay as they are.</p>
       </div>
       {cards.length ? (
-        <div className="flex max-w-[760px] flex-col gap-6">
-          {cards.map(({ goal, review }) => {
+        <ReviewFlow
+          picker={data.picker} today={data.today}
+          items={cards.map(({ goal, review }) => {
             const { lines, prompt } = reviewPoint(goal, review)
-            return (
-              <GoalReviewCard key={review.id} g={goal} picker={data.picker} today={data.today}
-                review={{ id: review.id, reviewDate: review.reviewDate, snapshot: review.snapshot, aiNote: review.aiNote, proposal: review.proposal, lines, prompt, decision: review.decision }} />
-            )
+            return { goal, review: { id: review.id, reviewDate: review.reviewDate, snapshot: review.snapshot, aiNote: review.aiNote, proposal: review.proposal, lines, prompt, decision: review.decision } }
           })}
-        </div>
+        />
       ) : (
         <Card>
-          <EmptyState icon={CalendarCheck} title="Nothing to review" description="Reviews land on Sundays. You can also start one from a goal’s menu."
+          <EmptyState icon={CalendarCheck} title="Nothing to review" description="Reviews land on Sundays. You can also review a goal today."
             action={<Link href="/plan" className={buttonClass({ variant: 'primary' })}>Back to goals</Link>} />
+          <ReviewNow goals={data.active.map((g) => ({ id: g.id, title: g.title }))} />
         </Card>
       )}
     </div>

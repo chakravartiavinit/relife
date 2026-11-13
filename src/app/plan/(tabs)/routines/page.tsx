@@ -5,7 +5,7 @@ import { getUser } from '@/core/user'
 import { localDate } from '@/core/time'
 import { Skeleton } from '@/ui/components/card'
 import { NewScheduleButton } from '@/ui/components/forms/schedule-form'
-import { RoutinesList } from '@/ui/components/habits/routines-list'
+import { PlanRoutines } from '@/ui/components/habits/routines-list'
 
 export const metadata: Metadata = { title: 'Routines' }
 
@@ -23,7 +23,7 @@ async function Routines() {
   return (
     <div>
       <div className="mb-4 flex justify-end"><NewScheduleButton today={localDate(new Date(), user.timezone)} listenToUrl /></div>
-      <RoutinesList user={user} />
+      <PlanRoutines user={user} />
     </div>
   )
 }

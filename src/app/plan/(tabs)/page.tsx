@@ -34,20 +34,20 @@ async function Goals() {
   return (
     <div>
       <div className="mb-4 flex justify-end">
-        <NewGoalButton today={data.today} picker={data.picker} activeCount={data.activeCount} listenToUrl />
+        <NewGoalButton today={data.today} picker={data.picker} activeCount={data.activeCount} listenToUrl drafts={drafts.map((d) => ({ insightId: d.id, draft: d.payload.goalDraft! }))} />
       </div>
       {/* DOM order: Review due → Active → Drafts → Paused and finished. On wide screens review and drafts sit in the right column. */}
       <div className={cn('grid gap-6', hasAside && 'lg:grid-cols-[minmax(0,1fr)_340px] lg:grid-rows-[auto_1fr_auto]')}>
         {data.due.length ? (
           <div className="lg:col-start-2 lg:row-start-1">
-            <ReviewDueCard count={data.due.length} date={data.today} />
+            <ReviewDueCard date={data.today} goals={data.due.map(({ goal }) => ({ id: goal.id, title: goal.title, status: goal.snapshot?.outcome.status ?? null, sensitive: goal.sensitive }))} />
           </div>
         ) : null}
 
         <section aria-labelledby="active-goals" className="flex flex-col gap-4 lg:col-start-1 lg:row-span-2 lg:row-start-1">
           <div className="flex items-baseline justify-between px-1">
-            <h2 id="active-goals" className="text-[15px] font-semibold text-ink">Active</h2>
-            <span className="text-[13px] text-ink-3 tabular-nums">{data.activeCount} of {MAX_ACTIVE}</span>
+            <h2 id="active-goals" className="text-heading text-ink">Active</h2>
+            <span className="text-small text-ink-3 tabular-nums">{data.activeCount} of {MAX_ACTIVE}</span>
           </div>
           <CapNote show={atCap} />
           {data.active.length ? data.active.map((g) => <OutcomeGoalCard key={g.id} g={g} picker={data.picker} today={data.today} />) : (
@@ -58,6 +58,15 @@ async function Goals() {
                 action={<NewGoalButton today={data.today} picker={data.picker} activeCount={data.activeCount} />} />
             </Card>
           )}
+          {data.active.length && !atCap ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-surface-2 p-4">
+              <div className="min-w-0">
+                <p className="text-body font-semibold text-ink">{MAX_ACTIVE - data.activeCount} {MAX_ACTIVE - data.activeCount === 1 ? 'slot' : 'slots'} free</p>
+                <p className="text-small text-ink-3">Start from the coach draft or any tracker ReLife already fills.</p>
+              </div>
+              <NewGoalButton today={data.today} picker={data.picker} activeCount={data.activeCount} />
+            </div>
+          ) : null}
         </section>
 
         {drafts.length || ai ? (

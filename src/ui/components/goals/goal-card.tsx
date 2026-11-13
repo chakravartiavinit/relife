@@ -5,17 +5,21 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { CalendarCheck, CalendarClock, CircleDashed, Flag, History, Pause, Pencil, Play, Repeat, Sparkles, ChartLine, Target } from 'lucide-react'
 import { dismissGoalDraftAction, draftGoalAction, reviewGoalNowAction, setGoalStatusAction } from '@/app/actions'
-import { CAP_MESSAGE, MAX_ACTIVE, type GoalDraft } from '@/domain/goals'
+import { CAP_MESSAGE, MAX_ACTIVE, type GoalDraft, type OutcomeStatus } from '@/domain/goals'
+import { goalPace, type Pace } from '@/domain/day-plan'
 import { CATEGORY } from '@/ui/tokens'
 import { cn } from '@/ui/cn'
 import { Button, buttonClass } from '../button'
-import { Badge, Card, CardHeader, IconChip, Skeleton, Stat } from '../card'
+import { Badge, Card, CardHeader, IconChip, Skeleton, Stat, SystemLabel } from '../card'
 import { Capsule } from '../capsule'
 import { RowMenu } from '../row-menu'
 import { useToast } from '../toast'
 import { usePeekChanged } from '../peek/peek-context'
+import { PeekLink } from '../peek/peek-link'
 import { GoalDialog, GoalFormButton, initialFromDraft, initialFromGoal, type GoalPickerData } from './goal-form'
 import { STATUS_LABEL, coverageLine, day, directionLabel, fill, measureLine, movement, statusColor, target, value, weekday, type GoalViewData } from './format'
+
+const PACE_COLOR: Record<Pace['tone'], string | undefined> = { good: 'var(--good)', pill: 'var(--pill)', warn: 'var(--warn)', neutral: undefined }
 
 export function GoalStatusBadge({ g }: { g: Pick<GoalViewData, 'snapshot' | 'sensitive'> }) {
   if (!g.snapshot) return null
@@ -46,20 +50,21 @@ export function OutcomeGoalCard({ g, picker, today }: { g: GoalViewData; picker:
   const move = movement(g)
   const { pending, set, reviewNow } = useGoalActions(g)
   const [editing, setEditing] = useState(false)
+  const pace = g.snapshot ? goalPace({ share: g.snapshot.outcome.progressShare ?? null, met: !!g.snapshot.met, startedOn: g.startedOn, targetDate: g.targetDate }, today) : null
   return (
     <Card as="article" aria-labelledby={`goal-${g.id}`} aria-busy={pending || undefined}>
       <header className="mb-4 flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           <IconChip color={color}><Target strokeWidth={1.5} /></IconChip>
           <div className="min-w-0">
-            <h3 id={`goal-${g.id}`} className="text-[15px] leading-7 font-semibold tracking-[-0.01em] text-ink">
-              <Link href={`/plan/goals/${g.id}`} className="rounded-sm hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">{g.title}</Link>
+            <h3 id={`goal-${g.id}`} className="text-heading text-ink">
+              <PeekLink to={{ type: 'goal', id: g.id }} className="rounded-sm hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">{g.title}</PeekLink>
             </h3>
             <p className="-mt-0.5 text-[13px] text-ink-3">{measureLine(g)}</p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          {pending ? <span role="status" className="text-[12.5px] text-ink-3">Saving…</span> : <GoalStatusBadge g={g} />}
+          {pending ? <span role="status" className="text-caption text-ink-3">Saving…</span> : pace && pace.label !== 'Too early' ? <Badge color={PACE_COLOR[pace.tone]}>{pace.label === 'Behind' ? 'Behind pace' : pace.label}</Badge> : <GoalStatusBadge g={g} />}
           <RowMenu label={g.title} items={[
             { label: 'Edit', icon: Pencil, onSelect: () => setEditing(true) },
             { label: 'Review now', icon: CalendarCheck, onSelect: reviewNow },
@@ -72,10 +77,16 @@ export function OutcomeGoalCard({ g, picker, today }: { g: GoalViewData; picker:
 
       <div className="grid grid-cols-3 gap-4">
         <Stat label="Baseline" value={value(g.baselineValue, g.unit)} sub={`${day(g.baselineDate)}${g.baselineObservations ? ` · ${g.baselineObservations} days` : ''}`} />
-        <Stat label="Now" value={o?.current != null ? value(o.current, g.unit) : '—'} sub={g.measureKind === 'tracker' ? `Last ${g.snapshot?.window.days ?? 7} days` : o?.latestCheckIn ? `Check-in ${day(o.latestCheckIn.localDate)}` : 'No check-in yet'} />
+        <PeekLink to={{ type: 'goal', id: g.id }} aria-label={`${g.title}: open trend`} className="-m-1.5 rounded-md p-1.5 transition-[background-color] duration-150 hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-pill">
+          <Stat label="Now" value={o?.current != null ? value(o.current, g.unit) : '—'} sub={g.measureKind === 'tracker' ? `Last ${g.snapshot?.window.days ?? 7} days` : o?.latestCheckIn ? `Check-in ${day(o.latestCheckIn.localDate)}` : 'No check-in yet'} />
+        </PeekLink>
         <Stat label="Target" value={target(g)} sub={directionLabel(g.direction)} />
       </div>
-      <Capsule className="mt-5" value={fill(g.snapshot)} color={color} label={`Progress toward ${g.title}`} />
+      {/* The ink tick is where the pace says you should be today: past it is ahead, short of it is behind. */}
+      <div className="relative mt-5">
+        <Capsule value={fill(g.snapshot)} color={color} label={`Progress toward ${g.title}`} />
+        {pace && pace.label !== 'Reached' && pace.label !== 'Too early' ? <span aria-hidden className="absolute -inset-y-0.5 w-0.5 -translate-x-1/2 rounded-full bg-ink" style={{ left: `${pace.elapsed * 100}%` }} /> : null}
+      </div>
       <div className="mt-2 flex justify-between gap-3 text-[12.5px] text-ink-3 tabular-nums">
         <span>{move?.since ?? 'No current value yet'}</span>
         <span>{move?.left ?? ''}</span>
@@ -105,13 +116,24 @@ export function OutcomeGoalCard({ g, picker, today }: { g: GoalViewData; picker:
   )
 }
 
-/** "Review due": a count and one way in. The cards themselves live on /goals/review. */
-export function ReviewDueCard({ count, date }: { count: number; date: string }) {
+/** The weekly review in the rail: which goals are waiting, and one way in. The cards live on /plan/review. */
+export function ReviewDueCard({ goals, date }: { goals: { id: string; title: string; status: OutcomeStatus | null; sensitive: boolean }[]; date: string }) {
+  const count = goals.length
   return (
     <Card>
-      <CardHeader icon={<CalendarCheck strokeWidth={1.5} />} color="var(--pill)" title="Weekly review" description={weekday(date)} />
-      <p className="text-[13.5px] leading-relaxed text-ink-2">Compare what you did with how each outcome moved, then keep, change, pause or finish each goal.</p>
-      <Link href="/plan/review" className={buttonClass({ variant: 'secondary', size: 'md', className: 'mt-4' })}>Review {count} {count === 1 ? 'goal' : 'goals'}</Link>
+      <SystemLabel>Weekly review</SystemLabel>
+      <h2 className="mt-2 text-heading text-ink">{count} {count === 1 ? 'goal' : 'goals'} to review</h2>
+      <p className="mt-1 text-small text-ink-3">Due {weekday(date)}</p>
+      <ul className="mt-3 flex flex-col gap-2">
+        {goals.map((g) => (
+          <li key={g.id} className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            {g.status ? <Badge color={statusColor(g.status, g.sensitive)}>{STATUS_LABEL[g.status]}</Badge> : null}
+            <PeekLink to={{ type: 'goal', id: g.id }} className="min-w-0 truncate rounded-xs text-small text-ink-2 hover:underline focus-visible:outline-2 focus-visible:outline-pill">{g.title}</PeekLink>
+          </li>
+        ))}
+      </ul>
+      <Link href="/plan/review" className={buttonClass({ variant: 'primary', size: 'lg', className: 'mt-4 w-full' })}>Start review</Link>
+      <p className="mt-2 text-center text-caption text-ink-3">About 2 minutes. Nothing changes until you choose.</p>
     </Card>
   )
 }
@@ -189,7 +211,7 @@ function PausedRow({ g, atCap }: { g: GoalViewData; atCap: boolean }) {
     <li className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
       <IconChip color={CATEGORY[g.area].color}><Target strokeWidth={1.5} /></IconChip>
       <div className="min-w-0 flex-1">
-        <Link href={`/plan/goals/${g.id}`} className="block truncate text-[14px] font-medium text-ink hover:underline">{g.title}</Link>
+        <PeekLink to={{ type: 'goal', id: g.id }} className="block truncate text-body font-medium text-ink hover:underline">{g.title}</PeekLink>
         <p className="truncate text-[12.5px] text-ink-3 tabular-nums">{when} · {cur != null ? `latest ${value(cur, g.unit)}, ` : ''}baseline {value(g.baselineValue, g.unit)}, target {target(g)}</p>
       </div>
       {g.status === 'paused' ? (

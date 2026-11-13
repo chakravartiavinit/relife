@@ -14,6 +14,7 @@ import { CenterMorphModal, CenterMorphModalContent, CenterMorphModalTrigger } fr
 import { useToast } from './toast'
 import { usePeekChanged } from './peek/peek-context'
 import { AppLogo as Logo } from './app-logo'
+import { ConnectSuccess, YourSources, SuggestedForYou, needsFix } from './connections-status'
 import { cn } from '../cn'
 
 export type { ConnectorStatus }
@@ -45,6 +46,10 @@ export type ConnectorItem = {
   /** Data sources get a Sync now button once connected. */
   sync?: boolean
   fields: FieldView[]
+  /** "12 min ago" for the last good sync of a data source, null before the first. */
+  lastSync?: string | null
+  /** How often it runs: "Every hour". */
+  cadence?: string
   /** Latest sync runs for this service, newest first, formatted for display. */
   syncs?: { at: string; ok: boolean | null; events: number }[]
 }
@@ -88,12 +93,13 @@ type Show = 'all' | 'on' | 'off'
  * Every service as a card in a catalog, grouped by what it tracks, with a category rail (a chip row on phones),
  * search and a connected filter. Cards open one dialog for connecting and managing.
  */
-export function ConnectorMarket({ items, worker }: { items: ConnectorItem[]; worker: { alive: boolean; ago: string } }) {
+export function ConnectorMarket({ items, worker, areas }: { items: ConnectorItem[]; worker: { alive: boolean; ago: string }; /** The areas the user picked, for the suggestions. */ areas?: string[] }) {
   useSignInResult(items)
   const [query, setQuery] = useState('')
   const [show, setShow] = useState<Show>('all')
   const connected = items.filter((i) => i.connected)
-  const attention = connected.filter((i) => ['error', 'setup', 'waiting'].includes(i.status))
+  const attention = connected.filter(needsFix)
+  const manage = (c: ConnectorItem, trigger: React.ReactElement) => <ConnectorDialog c={c} trigger={trigger} />
 
   const q = query.trim().toLowerCase()
   const groups = GROUPS.map((g) => {
@@ -116,23 +122,14 @@ export function ConnectorMarket({ items, worker }: { items: ConnectorItem[]; wor
         <Pill color={worker.alive ? 'var(--good)' : 'var(--warn)'} title={worker.alive ? `Heartbeat ${worker.ago}` : 'Start it with npm run dev'}>
           {worker.alive ? 'Syncing in the background' : 'Worker stopped · run npm run dev'}
         </Pill>
-        {attention.length ? <Pill color="var(--bad)">{attention.length} need{attention.length === 1 ? 's' : ''} attention</Pill> : null}
+        {attention.length ? <Pill color="var(--bad)">{attention.length} need{attention.length === 1 ? 's' : ''} a fix</Pill> : null}
       </div>
 
-      {attention.length ? (
-        <section aria-label="Needs attention" className="rise flex flex-col gap-2" style={{ '--i': 1 } as React.CSSProperties}>
-          {attention.map((c) => (
-            <div key={c.id} className="flex items-center gap-3 rounded-[16px] p-2.5 pe-3 shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--bad)_35%,transparent)]" style={{ background: 'color-mix(in oklch, var(--bad) 7%, var(--surface))' }}>
-              <Logo id={c.id} category={c.category} size="sm" />
-              <div className="min-w-0 flex-1">
-                <div className="text-[14px] font-semibold text-ink">{c.name}</div>
-                <div className="truncate text-[12.5px] text-bad" title={c.error ?? undefined}>{c.error || (c.missingEnv.length ? `Add ${c.missingEnv.join(', ')}` : c.statusLabel ?? STATUS[c.status].label)}</div>
-              </div>
-              <ConnectorDialog c={c} trigger={<Button size="sm" variant="primary">Fix</Button>} />
-            </div>
-          ))}
-        </section>
-      ) : null}
+      <div className="rise flex flex-col gap-8" style={{ '--i': 1 } as React.CSSProperties}>
+        <YourSources items={items} manage={manage} />
+        <SuggestedForYou items={items} areas={areas} manage={manage} />
+        <h2 className="-mb-4 px-1 text-heading text-ink">All apps</h2>
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-[200px_minmax(0,1fr)] xl:gap-10">
         <CategoryRail groups={groups} active={active} />
@@ -374,13 +371,16 @@ function Tile({ c, ...props }: { c: ConnectorItem } & React.ButtonHTMLAttributes
 /** "API key" stays, "Personal access token" → "personal access token". */
 const lowerFirst = (s: string) => (/^[A-Z][A-Z]/.test(s) ? s : s[0].toLowerCase() + s.slice(1))
 
-export function SyncButton({ id, name }: { id: string; name: string }) {
+export function SyncButton({ id, name, compact }: { id: string; name: string; /** An icon button for a table row. */ compact?: boolean }) {
   const [pending, start] = useTransition()
   const toast = useToast()
   const changed = usePeekChanged()
   return (
     <Button
       disabled={pending}
+      size={compact ? 'icon-sm' : undefined}
+      variant={compact ? 'ghost' : undefined}
+      aria-label={compact ? `Sync ${name} now` : undefined}
       onClick={() => start(async () => {
         const t = toast.loading(`Syncing ${name}…`, { icon: <Logo id={id} size="xs" /> })
         const r = await syncNow(id)
@@ -390,7 +390,7 @@ export function SyncButton({ id, name }: { id: string; name: string }) {
       })}
     >
       <RefreshCw className={pending ? 'size-4 animate-spin' : 'size-4'} strokeWidth={1.5} />
-      {pending ? 'Syncing…' : 'Sync now'}
+      {compact ? null : pending ? 'Syncing…' : 'Sync now'}
     </Button>
   )
 }
@@ -555,19 +555,26 @@ function ConnectForm({ c, onDone }: { c: ConnectorItem; onDone: () => void }) {
   const [, startSubmit] = useTransition()
   const toast = useToast()
   const uid = useId()
+  // A new connection ends on the success step (where it shows up, first sync) instead of closing at once.
+  const [connectedHere, setConnectedHere] = useState(false)
+  // Whether it was connected when the form opened: the refresh after saving flips `c.connected` under us.
+  const wasConnected = useRef(c.connected)
+  const failed = !!state && !state.ok
   useEffect(() => {
-    if (!state?.ok) return
+    if (!state?.ok || connectedHere) return
     const icon = <Logo id={c.id} category={c.category} size="xs" />
     // A new or changed app needs a sign-in before anything syncs: go straight there.
-    if (c.oauth && (!c.connected || !c.oauth.signedIn)) {
+    if (c.oauth && (!wasConnected.current || !c.oauth.signedIn)) {
       toast(`Opening ${c.name} sign-in…`, 'neutral', { icon })
       window.location.assign(`/api/oauth/${c.id}/start`)
       return
     }
-    if (c.connected) toast(`${c.name} settings saved`, 'good', { icon })
-    else toast(`${c.name} connected`, 'good', { icon, description: c.sync ? 'Its first sync starts within a minute' : undefined })
-    onDone()
-  }, [state, c.connected, c.name, c.id, c.category, c.sync, onDone, toast])
+    if (wasConnected.current) { toast(`${c.name} settings saved`, 'good', { icon }); onDone(); return }
+    toast(`${c.name} connected`, 'good', { icon, description: c.sync ? 'Its first sync starts within a minute' : undefined })
+    setConnectedHere(true)
+  }, [state, connectedHere, c.connected, c.name, c.id, c.category, c.sync, c.oauth, onDone, toast])
+
+  if (connectedHere) return <ConnectSuccess c={c} onDone={onDone} />
 
   return (
     <form
@@ -592,7 +599,8 @@ function ConnectForm({ c, onDone }: { c: ConnectorItem; onDone: () => void }) {
             maxLength={500}
             defaultValue={f.secret ? undefined : f.value}
             placeholder={f.secret && f.saved ? 'Saved. Leave blank to keep it' : f.fromEnv ? (f.envSource === 'dotsafe' ? 'From your dotsafe vault. Leave blank to use it' : 'Found in .env. Leave blank to use it') : f.placeholder}
-            className="font-mono text-[13px]"
+            aria-invalid={failed || undefined}
+            className={cn('font-mono text-small', failed && 'shadow-[0_0_0_1.5px_var(--bad)]')}
           />
         </Field>
       )) : (
@@ -629,7 +637,7 @@ function ConnectForm({ c, onDone }: { c: ConnectorItem; onDone: () => void }) {
         <div className="ml-auto flex gap-2">
           <Button variant="ghost" onClick={onDone}>Cancel</Button>
           <Button type="submit" variant="primary" disabled={pending || leaving}>
-            {pending ? (c.connected ? 'Saving…' : 'Connecting…') : c.connected ? 'Save' : 'Connect'}
+            {pending ? (c.connected ? 'Saving…' : 'Checking…') : c.connected ? 'Save' : failed ? 'Check again' : 'Connect'}
           </Button>
         </div>
       </div>
