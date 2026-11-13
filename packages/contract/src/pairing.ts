@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { DeviceInfo } from './common'
+import { DeviceInfo, Scope } from './common'
 
 /** The kinds a new device may ask for. `cli` pairs only from the server's shell. */
 const PairKind = z.enum(['mac', 'extension', 'phone', 'browser'])
@@ -11,6 +11,8 @@ export const PairRedeem = z.object({
   kind: PairKind.optional(),
   name: z.string().trim().min(1).max(80).optional(),
   platform: z.string().max(80).optional(),
+  /** Asks for less than the kind's default (the Android app asks for `['ingest']`). It can only narrow, never widen. */
+  scopes: z.array(Scope).min(1).max(3).optional(),
 }).refine((v) => v.secret || v.code, { message: 'secret or code is required' })
 export type PairRedeem = z.infer<typeof PairRedeem>
 
@@ -28,6 +30,7 @@ export const PairRequestStart = z.object({
   kind: PairKind,
   name: z.string().trim().min(1).max(80),
   platform: z.string().max(80).optional(),
+  scopes: z.array(Scope).min(1).max(3).optional(),
 })
 export type PairRequestStart = z.infer<typeof PairRequestStart>
 

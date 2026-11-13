@@ -1,0 +1,6 @@
+{
+  "kind": "phone",
+  "name": "Pixel 8 · Health Connect",
+  "platform": "android-app/0.1.0",
+  "scopes": ["ingest"]
+}

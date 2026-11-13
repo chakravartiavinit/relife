@@ -6,9 +6,13 @@ import Testing
 /// fixture fails the TypeScript tests first, then fails here until the Swift models match.
 @Suite("Contract fixtures")
 struct ContractTests {
+    /// Contract types only the web server, the phone's web push and the Android app use. The Mac app has no model for them.
+    static let notForMac: Set<String> = ["HealthBatch", "HealthIngestResult", "PushAction", "PushActionResult"]
+
     @Test("every fixture decodes", arguments: try Fixtures.names())
     func decodes(file: String) throws {
         let schema = String(file.split(separator: ".")[0])
+        if Self.notForMac.contains(schema) { return }
         let data = try Fixtures.data(file)
         switch schema {
         case "TodayView": _ = try JSONDecoder().decode(TodayView.self, from: data)
@@ -41,7 +45,7 @@ struct ContractTests {
         let covered = Set(try Fixtures.names().map { String($0.split(separator: ".")[0]) })
         let known: Set = ["TodayView", "TodayActionResult", "TodayAction", "Hello", "Me", "DeviceInfo", "PairRequestStart", "PairRequestStarted",
                           "PairPoll", "PairRedeem", "PairRedeemResult", "DeviceList", "DeviceRename", "Event", "ApiError", "ActivityBatch"]
-        #expect(covered.subtracting(known).isEmpty, "fixtures without a Swift model: \(covered.subtracting(known))")
+        #expect(covered.subtracting(known).subtracting(Self.notForMac).isEmpty, "fixtures without a Swift model: \(covered.subtracting(known).subtracting(Self.notForMac))")
     }
 
     @Test("full view carries every part")
