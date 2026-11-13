@@ -45,6 +45,16 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
   in `src/domain/capture.ts`) and are prefetched on hover/focus. Every result toasts with Undo: `quickLog` returns an undo token that
   `undoQuickLog` validates and reverses; check-offs undo with `toggleCheck(…, null)`, goal steps with `addToGoal(id, -step)`.
   `CaptureView` is presentational (`/dev/ui` draws it from fixtures); `capture.tsx` owns the actions.
+- Peek: any number or row can open a detail panel (`?peek=type:id`; types in `src/domain/peek.ts`: metric, routine, goal,
+  txn, merchant, insight, connector, person, quest, sync, brief). `PeekHost` (`peek/peek-host.tsx`, mounted in the layout
+  under Suspense) reads the param, fetches `GET /api/peek?ref=` (loaders in `src/core/peek/`, one file per type, payload
+  types in `src/core/peek/types.ts`, plain JSON) and draws `PeekView` in the `Sheet`: a non-modal panel on a laptop, so
+  clicking another number swaps it, and a modal sheet on a phone. Opening pushes one history entry and swapping replaces
+  it, so Back and Esc close it. Views are presentational (`views/*.tsx`; `/dev/ui` "Peek views" draws each from
+  `src/ui/fixtures/peek.ts`). A shared component that changes data under an open peek calls `usePeekChanged()` after
+  its action so the peek refetches. `MetricDetail` is shared with `/plan/trackers/[slug]`; `setTrackerTarget` sets a
+  tracker's target. Add a `peek` to a `Kpi` to make a tile open one; the sync dot opens `sync:status`. To add a type:
+  a loader, a payload type, a view, a `peekHeading` case, a fixture.
 - Look ("ReLife capsule"): ink black, white and the logo's capsule blue, light-first. The signature shapes are
   `CapsuleIcon` (`capsule-icon.tsx`, the tilted pill from the logo, for areas and avatars), `SystemLabel` (mono
   area label in `card.tsx`) and the `.halftone` dot texture in header corners. No other decorative textures.

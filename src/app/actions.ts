@@ -244,6 +244,16 @@ export async function logEntry(slug: string, value: number, date?: string) {
   return news
 }
 
+/** A tracker's daily target (the metric Peek's “Target” row). `null` clears it, so the chart draws no target line. */
+export async function setTrackerTarget(slug: string, target: number | null) {
+  slugArg.parse(slug)
+  const t = z.number().positive().max(1_000_000).nullable().parse(target)
+  const user = await getUser()
+  await db.update(schema.trackers).set({ target: t })
+    .where(and(eq(schema.trackers.userId, user.id), eq(schema.trackers.slug, slug)))
+  refresh()
+}
+
 export async function archiveTracker(id: string) {
   const user = await getUser()
   await db.update(schema.trackers).set({ archivedAt: new Date() })

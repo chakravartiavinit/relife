@@ -13,6 +13,7 @@ import { Badge, Card, CardHeader, IconChip, Skeleton, Stat } from '../card'
 import { Capsule } from '../capsule'
 import { RowMenu } from '../row-menu'
 import { useToast } from '../toast'
+import { usePeekChanged } from '../peek/peek-context'
 import { GoalDialog, GoalFormButton, initialFromDraft, initialFromGoal, type GoalPickerData } from './goal-form'
 import { STATUS_LABEL, coverageLine, day, directionLabel, fill, measureLine, movement, statusColor, target, value, weekday, type GoalViewData } from './format'
 
@@ -27,10 +28,12 @@ export function useGoalActions(g: GoalViewData) {
   const [pending, start] = useTransition()
   const toast = useToast()
   const router = useRouter()
+  const changed = usePeekChanged()
   // One change at a time: a second tap while saving would only hit a stale version.
   const set = (status: 'active' | 'paused' | 'finished') => !pending && start(async () => {
     const res = await setGoalStatusAction({ goalId: g.id, version: g.version, status })
     toast(res.ok ? { active: 'Goal resumed', paused: 'Goal paused', finished: 'Goal finished' }[status] : res.error, res.ok ? 'good' : 'bad')
+    if (res.ok) changed()
   })
   const reviewNow = () => !pending && start(async () => { await reviewGoalNowAction(g.id); router.push('/plan/review') })
   return { pending, set, reviewNow }

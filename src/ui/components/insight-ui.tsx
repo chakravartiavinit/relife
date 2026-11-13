@@ -6,6 +6,7 @@ import { ask, resolveInsight } from '@/app/actions'
 import { TextShimmer } from '@/ui/beui/motion/text-shimmer'
 import { Button, buttonClass } from './button'
 import { useToast } from './toast'
+import { usePeekChanged } from './peek/peek-context'
 import { cn } from '../cn'
 
 const EXAMPLES = ['How much did I spend on Zepto last month?', 'Am I sleeping better than in October?', 'What slipped this week?']
@@ -81,8 +82,10 @@ export function AskBox({ initial, enabled }: { initial?: string; enabled: boolea
 export function InsightActions({ id, hasActions }: { id: string; hasActions: boolean }) {
   const [pending, start] = useTransition()
   const toast = useToast()
+  const changed = usePeekChanged()
   const go = (d: 'accept' | 'dismiss') => start(async () => {
     await resolveInsight(id, d)
+    changed()
     if (d === 'accept') toast(hasActions ? 'Added to your routines' : 'Insight noted', 'good', { icon: Sparkles })
     else toast('Insight dismissed', 'neutral', { icon: X })
   })

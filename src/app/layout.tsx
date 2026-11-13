@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono, Outfit } from 'next/font/google'
 import { Suspense } from 'react'
 import { cn } from '@/ui/cn'
 import { Capture } from '@/ui/components/capture/capture'
+import { PeekHost } from '@/ui/components/peek/peek-host'
 import { Sidebar, SidebarProvider, AreaLinksPlaceholder } from '@/ui/components/shell/sidebar'
 import { PhoneTopBar, TopBar } from '@/ui/components/shell/top-bar'
 import { TabBar } from '@/ui/components/shell/tab-bar'
@@ -94,6 +95,8 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
           </SidebarProvider>
           <TabBar coachBadge={<Suspense fallback={null}><CoachCount className="h-[18px] min-w-[18px] px-1 text-label shadow-[0_0_0_2px_var(--surface)]" /></Suspense>} />
           <Capture />
+          {/* useSearchParams needs a Suspense boundary under Cache Components; nothing to show while it resolves. */}
+          <Suspense fallback={null}><PeekHost /></Suspense>
           <Tour />
           <Celebration />
           <Celebrations />

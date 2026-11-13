@@ -1,15 +1,13 @@
 import Link from 'next/link'
 import { ArrowUpRight, Pill, Repeat } from 'lucide-react'
 import type { User } from '@/core/user'
-import type { Schedule, ScheduleMeta } from '@/core/schedules'
-import { parseSimple } from '@/domain/recurrence'
+import { scheduleInitial } from '@/core/schedules'
 import { Card, CardHeader } from '../card'
 import { EmptyState } from '../empty'
 import { buttonClass } from '../button'
 import { AdherenceLegend } from '../category/adherence-strip'
 import { AdherenceRow } from '../category/routines-card'
 import { loadAdherence, type ScheduleAdherence } from '@/core/adherence'
-import { type ScheduleInitial } from '../forms/schedule-form'
 import { ScheduleActions } from '../forms/schedule-actions'
 
 /** Every routine and medicine with 14-day adherence and edit actions. Server component. */
@@ -55,7 +53,7 @@ function Section({ title, rows, empty }: { title: string; rows: ScheduleAdherenc
             <AdherenceRow
               key={r.schedule.id}
               r={r}
-              actions={<ScheduleActions initial={toInitial(r.schedule)} active={r.schedule.active} name={r.schedule.name} />}
+              actions={<ScheduleActions initial={scheduleInitial(r.schedule)} active={r.schedule.active} name={r.schedule.name} />}
             />
           ))}
         </ul>
@@ -64,30 +62,4 @@ function Section({ title, rows, empty }: { title: string; rows: ScheduleAdherenc
       )}
     </Card>
   )
-}
-
-function toInitial(s: Schedule): ScheduleInitial {
-  const r = parseSimple(s.rrule)
-  const meta = s.meta as ScheduleMeta
-  return {
-    id: s.id,
-    name: s.name,
-    kind: s.kind === 'medicine' ? 'medicine' : 'routine',
-    category: s.category,
-    freq: r.freq,
-    interval: r.interval ?? 1,
-    times: r.times,
-    byweekday: r.byweekday ?? [],
-    bymonthday: r.bymonthday,
-    bymonth: r.bymonth,
-    start: r.start,
-    until: r.until,
-    remindOffsetMin: s.remindOffsetMin,
-    target: s.target ?? undefined,
-    unit: s.unit ?? undefined,
-    step: meta.step,
-    dose: meta.dose,
-    stock: meta.stock,
-    notes: meta.notes,
-  }
 }

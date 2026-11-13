@@ -55,9 +55,9 @@ async function Health() {
   return (
     <div className="flex flex-col gap-6">
       <KpiStrip items={[
-        { label: 'Sleep, 7-day avg', value: sleep == null ? '–' : `${formatNumber(sleep, 1)}h`, sub: `Target ${formatNumber(get('sleep.hours')?.tracker.target ?? 7.5, 1)}h` },
-        { label: 'Steps, 7-day avg', value: steps == null ? '–' : formatNumber(steps), sub: `Target ${formatNumber(get('steps')?.tracker.target ?? 8000)}` },
-        { label: waterGoal ? `${waterGoal.name} today` : 'Water today', value: water == null ? '–' : formatNumber(water), sub: waterGoal?.target ? `of ${formatNumber(waterGoal.target)} ${waterGoal.unit ?? ''}` : 'No daily goal yet' },
+        { label: 'Sleep, 7-day avg', value: sleep == null ? '–' : `${formatNumber(sleep, 1)}h`, sub: `Target ${formatNumber(get('sleep.hours')?.tracker.target ?? 7.5, 1)}h`, peek: { type: 'metric', id: 'sleep.hours' } },
+        { label: 'Steps, 7-day avg', value: steps == null ? '–' : formatNumber(steps), sub: `Target ${formatNumber(get('steps')?.tracker.target ?? 8000)}`, peek: { type: 'metric', id: 'steps' } },
+        { label: waterGoal ? `${waterGoal.name} today` : 'Water today', value: water == null ? '–' : formatNumber(water), sub: waterGoal?.target ? `of ${formatNumber(waterGoal.target)} ${waterGoal.unit ?? ''}` : 'No daily goal yet', peek: { type: 'metric', id: waterSlug } },
         { label: 'Medicines kept', value: kept == null ? '–' : `${Math.round(kept * 100)}%`, sub: meds.length ? `${meds.length} medicine${meds.length === 1 ? '' : 's'}, last 60 days` : 'None added' },
       ]} />
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2 xl:[&>*:last-child:nth-child(odd)]:col-span-2">

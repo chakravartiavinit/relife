@@ -16,6 +16,7 @@ import { PositionCard } from '@/ui/components/wealth/position-card'
 import { IlloGallery } from '@/ui/components/tour/illos'
 import { ToastGallery } from '@/ui/components/toast'
 import { CaptureGallery } from '@/ui/components/capture/capture-gallery'
+import { PeekGallery } from '@/ui/components/peek/peek-gallery'
 import { InstalledBeuiGallery, PeekLinkDemo, SegmentTabsDemo, SheetDemo, ShellDemo, TypeScale } from '@/ui/components/gallery-foundations'
 import { RecoveryPanel, SystemQuests } from '@/ui/components/system-quests'
 import type { RecoveryView } from '@/domain/recovery'
@@ -156,6 +157,11 @@ export default function UiGallery() {
         <PeekLinkDemo />
       </Section>
 
+      <Section title="Peek views">
+        {/* The metric view draws EvilCharts, which read the clock, so it renders per request too. */}
+        <Suspense fallback={<Skeleton className="h-[420px]" />}><PeekSamples /></Suspense>
+      </Section>
+
       <Section title="Shell pieces">
         <ShellDemo />
       </Section>
@@ -213,6 +219,11 @@ export default function UiGallery() {
       </Section>
     </div>
   )
+}
+
+async function PeekSamples() {
+  await connection()
+  return <PeekGallery />
 }
 
 async function ChartSamples() {
