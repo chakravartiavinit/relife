@@ -9,6 +9,9 @@
 // shortcuts and the icon's right-click menu, and caches the popup's Today data so the popup opens instantly.
 
 importScripts('lib.js')
+
+// The device token is in chrome.storage.local: keep content scripts (which run inside web pages) from reading it.
+void chrome.storage.local.setAccessLevel?.({ accessLevel: 'TRUSTED_CONTEXTS' })
 const { OFFLINE, progressOf, settings, domainOf, keyOf, under, call } = self.RL
 
 const IDLE_SECONDS = 120
@@ -319,7 +322,9 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
       await session.set({ frames })
     })
   }
-  // Popup: "Track this course" and a site's kind.
+  // Our own pages only (popup, options). The options page opens in a tab, so a tab alone proves nothing: a content
+  // script's sender.url is the web page's, ours starts with the extension origin.
+  if (!sender.url?.startsWith(chrome.runtime.getURL(''))) return false
   if (msg.type === 'track-course') void queueAndSend('pendingCourses', (list) => [...list, msg.course]).then(reply)
   if (msg.type === 'site-kind') {
     void queueAndSend('pendingRules', (list) => [...list.filter((r) => r.domain !== msg.domain), { domain: msg.domain, kind: msg.kind }]).then(reply)

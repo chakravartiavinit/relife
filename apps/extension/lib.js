@@ -64,6 +64,7 @@
     try {
       const r = await fetch(`${s.server.replace(/\/$/, '')}${path}`, {
         ...init,
+        signal: AbortSignal.timeout(10_000),
         headers: { Authorization: `Bearer ${s.token}`, ...(init.body ? { 'Content-Type': 'application/json' } : {}), ...init.headers },
       })
       return { ok: r.ok, status: r.status, data: await r.json().catch(() => null) }
@@ -84,7 +85,7 @@
     await chrome.storage.local.set({ server, token })
     let lastSync
     try {
-      const res = await fetch(`${server}/api/activity`, { headers: { Authorization: `Bearer ${token}` } })
+      const res = await fetch(`${server}/api/activity`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(10_000) })
       const error = res.ok ? undefined : res.status === 401 ? 'The token doesn’t match the one in ReLife' : `ReLife answered ${res.status}`
       lastSync = { at: Date.now(), ok: res.ok, status: res.status, ...(error ? { error } : {}) }
     } catch {

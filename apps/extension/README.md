@@ -8,10 +8,16 @@ page) and sends it to **your own** ReLife on this computer. Nothing goes anywher
 
 ## Install (Chrome, Arc, Brave, Edge)
 
-1. In ReLife, open **You › Connections → Laptop activity**, put any long random text in **Extension token**
-   (e.g. from `openssl rand -hex 24`) and press Connect.
+1. Get a token. This version (0.7) signs in with a pasted token, not a pairing code: put one in `ACTIVITY_TOKEN` in
+   ReLife's `.env` (any long random text, e.g. `openssl rand -hex 24`) or in **You › Connections → Laptop activity →
+   Legacy token**, then restart or press Connect. The server turns it into a device with the `companion` scope, which can
+   record activity and read Today but never reads wealth data or connector keys.
 2. Open `chrome://extensions`, turn on **Developer mode**, press **Load unpacked** and choose this `apps/extension` folder.
 3. Click the ReLife icon in the toolbar, open **Connection**, paste the same token and press **Save and test**.
+
+The server's pairing flow (**Connect the Chrome extension** shows a code box) is for extensions that display a pairing
+code. This extension does not yet, so use the token above. The token is kept in `chrome.storage.local`, which only the
+extension's own pages and worker can read (content scripts in web pages cannot).
 
 ## Today, from the toolbar
 
@@ -80,11 +86,11 @@ checks, goal adds and quick logs go to `POST /api/companion`. The same token cov
 
 ## Updating
 
-After pulling a new version, press the reload arrow on the ReLife card in `chrome://extensions`, then refresh the
+After pulling a new version, press the reload arrow on the extension card in `chrome://extensions`, then refresh the
 tabs that were already open. Chrome keeps the old copy running in open tabs until they reload; it stops on its own
 and no longer logs "Extension context invalidated", but it doesn't track either.
 
-Uploads are clipped to what ReLife accepts, so an unusually long page title can't block the queue, and a long
+Uploads are clipped to what the server accepts, so an unusually long page title can't block the queue, and a long
 offline backlog goes out in batches.
 
 ## Developing
