@@ -30,7 +30,7 @@ async function Coach({ searchParams }: { searchParams: PageProps<'/coach'>['sear
   await connection()
   const sp = await searchParams
   const initial = typeof sp.ask === 'string' ? sp.ask : undefined
-  // `?filter=data` is the old Inbox (messages ReLife couldn't read, payments to sort); `?filter=decisions` is everything else.
+  // `?filter=data` is the old Inbox (messages the app couldn't read, payments to sort); `?filter=decisions` is everything else.
   const filter = sp.filter === 'data' || sp.filter === 'decisions' ? sp.filter : null
   const user = await getUser()
   const [{ items, categories }, cleared, thread, patterns] = await Promise.all([

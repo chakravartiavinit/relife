@@ -1,5 +1,6 @@
 'use client'
 
+import brand from '@relife/brand/brand.json'
 import { CalendarCheck, CalendarClock, ChartLine, CircleDashed, Repeat, Target } from 'lucide-react'
 import type { GoalPeek } from '@/core/peek/types'
 import { CATEGORY } from '@/ui/tokens'
@@ -41,7 +42,7 @@ export function GoalPeekView({ data: d }: { data: GoalPeek }) {
         </p>
         <p className="mt-1.5 flex items-center gap-1.5 text-caption text-ink-3"><CalendarClock className="size-3.5" strokeWidth={1.5} aria-hidden />Next review {weekday(g.nextReviewOn)} · {directionLabel(g.direction).toLowerCase()}</p>
         {g.trackerArchived ? <p className="mt-2 text-caption text-ink-2">Tracker archived. Change the measure or finish the goal.</p> : null}
-        {g.sensitive ? <p className="mt-2 text-caption text-ink-3">ReLife won’t set quests or suggest changes for this measure.</p> : null}
+        {g.sensitive ? <p className="mt-2 text-caption text-ink-3">{brand.name} won’t set quests or suggest changes for this measure.</p> : null}
       </PeekSection>
 
       {g.measureKind === 'check_in' && g.status !== 'finished' ? (

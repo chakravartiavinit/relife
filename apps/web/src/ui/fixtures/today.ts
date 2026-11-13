@@ -1,3 +1,4 @@
+import brand from '@relife/brand/brand.json'
 import type { PulseTile } from '@/core/pulse'
 import type { TomorrowRow } from '@/core/day-plan'
 import type { MoneyView } from '@/core/today'
@@ -20,7 +21,7 @@ export const HEADER: HeaderData = {
 }
 export const HEADER_FIRST_DAY: HeaderData = {
   date: 'Thursday · 12 November', greeting: 'Good morning', name: 'Avinit', why: false, firstDay: true,
-  line: 'Day one. Check things off as you go and ReLife learns your rhythm; connect a source or two to fill in the rest.',
+  line: `Day one. Check things off as you go and ${brand.name} learns your rhythm; connect a source or two to fill in the rest.`,
   streak: { current: 0, doneToday: false }, freezes: 0, xpToday: 0,
 }
 export const HEADER_DONE: HeaderData = {

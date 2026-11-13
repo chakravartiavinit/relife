@@ -41,7 +41,7 @@ type SidebarSide = "left" | "right";
 type SidebarVariant = "sidebar" | "floating" | "inset";
 type SidebarCollapsible = "offcanvas" | "icon" | "none";
 
-// ReLife: in-app links go through next/link (client navigation, prefetch). motion adds tabIndex=0 to a custom
+// Local change: in-app links go through next/link (client navigation, prefetch). motion adds tabIndex=0 to a custom
 // component on the server, so the links set it themselves, or hydration reports a mismatch.
 const MotionLink = motion.create(Link);
 
@@ -515,7 +515,7 @@ export interface AnimatedSidebarProps
   collapsible?: SidebarCollapsible;
   ariaLabel?: string;
   panelClassName?: string;
-  /** ReLife: false renders nothing below `md`. The phone has its own tab bar, not this drawer. */
+  /** Local change: false renders nothing below `md`. The phone has its own tab bar, not this drawer. */
   mobile?: boolean;
 }
 

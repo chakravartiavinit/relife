@@ -1,5 +1,6 @@
 'use server'
 
+import brand from '@relife/brand/brand.json'
 import { and, eq, inArray, sql } from 'drizzle-orm'
 import { refresh } from 'next/cache'
 import { z } from 'zod'
@@ -535,7 +536,7 @@ export async function sendTestMessage() {
   if (!telegramConfigured()) return { ok: false as const, error: 'Telegram isn’t connected yet. Connect it first.' }
   const { notify, outcome } = await import('@/core/outbox')
   const ref = `test:${crypto.randomUUID()}`
-  await notify(user, 'events', { text: '⭐ Test message from ReLife\nIf you can read this, Progress messages reach you here.', ref })
+  await notify(user, 'events', { text: `⭐ Test message from ${brand.name}\nIf you can read this, Progress messages reach you here.`, ref })
   return { ok: true as const, result: await outcome(user.id, ref) }
 }
 

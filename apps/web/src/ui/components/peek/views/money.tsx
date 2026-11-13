@@ -1,5 +1,6 @@
 'use client'
 
+import brand from '@relife/brand/brand.json'
 import type { MerchantPeek, TxnPeek } from '@/core/peek/types'
 import { formatMoney } from '@/domain/money'
 import { CATEGORY } from '@/ui/tokens'
@@ -20,13 +21,13 @@ export function merchantHeading(d: MerchantPeek) {
   return { title: d.name, description: 'Wealth · merchant', icon: <BrandLogo name={d.name} size="md" /> }
 }
 
-/** "Change once, ReLife remembers it" with the picker, and what is already remembered. */
+/** "Change once, the app remembers it" with the picker, and what is already remembered. */
 function CategoryBlock({ id, category, categories, merchant, rule }: { id: string; category: string | null; categories: string[]; merchant: string; rule: { pattern: string; category: string } | null }) {
   return (
     <div className="mt-6 flex items-start justify-between gap-4">
       <div className="min-w-0">
         <p className="text-small font-medium text-ink">Category</p>
-        <p className="text-caption text-ink-3">Change once, ReLife remembers it for {merchant}.</p>
+        <p className="text-caption text-ink-3">Change once, {brand.name} remembers it for {merchant}.</p>
         {rule ? <p className="mt-1 text-caption text-ink-3">Remembered: “{rule.pattern}” goes to {rule.category}.</p> : null}
       </div>
       <CategorySelect id={id} value={category ?? 'Uncategorized'} options={categories} merchant={merchant} />

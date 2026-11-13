@@ -1,3 +1,4 @@
+import brand from '@relife/brand/brand.json'
 import { and, desc, eq, isNull } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { activeDays } from '@/core/metrics'
@@ -36,10 +37,10 @@ export const fold = (html: string) => `<blockquote expandable>${html}</blockquot
 export const status = (text: string): Button => ({ text, data: 'noop' })
 
 /**
- * A row with one "Open in ReLife" button, or nothing. Telegram can only open an address the phone can reach, so this
+ * A row with one "Open in the app" button, or nothing. Telegram can only open an address the phone can reach, so this
  * needs the optional RELIFE_PUBLIC_URL (for example the Tailscale name); without it messages stay text-only.
  */
-export function openInReLife(path: `/${string}`, label = 'Open in ReLife'): Button[][] {
+export function openInReLife(path: `/${string}`, label = `Open in ${brand.name}`): Button[][] {
   const base = env('RELIFE_PUBLIC_URL')?.trim().replace(/\/+$/, '')
   if (!base || !/^https?:\/\//i.test(base)) return []
   return [[{ text: `↗ ${label}`, url: `${base}${path}` }]]

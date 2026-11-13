@@ -1,5 +1,6 @@
 'use client'
 
+import brand from '@relife/brand/brand.json'
 import { useOptimistic, useState, useTransition } from 'react'
 import { Check, Send, Sparkles, Trash2 } from 'lucide-react'
 import { ask, clearConversation, resolveInsight } from '@/app/actions'
@@ -76,7 +77,7 @@ export function AskThread({ thread, enabled, initial, timezone, className }: {
         const r = await ask(text)
         if (!r.saved) setUnsaved({ q: text, text: r.error ?? r.answer, error: !!r.error, sources: r.sources })
       } catch {
-        setUnsaved({ q: text, text: 'Couldn’t reach ReLife. Nothing was saved. Try again.', error: true })
+        setUnsaved({ q: text, text: `Couldn’t reach ${brand.name}. Nothing was saved. Try again.`, error: true })
       }
     })
   }
@@ -94,7 +95,7 @@ export function AskThread({ thread, enabled, initial, timezone, className }: {
       <MessageScroller className="min-h-0 flex-1" viewportClassName="px-5" contentClassName="py-4" label="Ask thread" busy={pending}>
         {empty ? (
           <div className="flex flex-col gap-4 py-2">
-            <p className="text-body text-ink-2 text-pretty">Ask about your spending, sleep, routines or code. ReLife reads your own records and shows what it used.</p>
+            <p className="text-body text-ink-2 text-pretty">Ask about your spending, sleep, routines or code. {brand.name} reads your own records and shows what it used.</p>
             <ul aria-label="Example questions" className="flex flex-wrap gap-2">
               {EXAMPLES.map((e) => (
                 <li key={e}>

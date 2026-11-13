@@ -1,3 +1,4 @@
+import brand from '@relife/brand/brand.json'
 import Link from 'next/link'
 import { ChevronRight, CheckCheck, Waypoints } from 'lucide-react'
 import type { ClearedItem } from '@/core/needs-you'
@@ -68,7 +69,7 @@ export function NeedsYouPanel({ items, filter, categories, timezone, today, goal
               <h3 className="text-title font-semibold text-ink">All caught up</h3>
               <p className="mt-1.5 max-w-[40ch] text-body text-ink-2 text-pretty">
                 {cleared.length ? `You cleared ${cleared.length} ${cleared.length === 1 ? 'thing' : 'things'} today. ` : ''}
-                {aiOn ? 'New ones land here: the morning nudge and the weekly review on Sunday.' : 'Rule-based alerts and anything ReLife can’t read land here. Connect a model for morning nudges and a Sunday review.'}
+                {aiOn ? 'New ones land here: the morning nudge and the weekly review on Sunday.' : `Rule-based alerts and anything ${brand.name} can’t read land here. Connect a model for morning nudges and a Sunday review.`}
               </p>
             </div>
             <ClearedToday items={cleared} timezone={timezone} />

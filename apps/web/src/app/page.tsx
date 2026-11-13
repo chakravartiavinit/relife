@@ -1,3 +1,4 @@
+import brand from '@relife/brand/brand.json'
 import Link from 'next/link'
 import { connection } from 'next/server'
 import { redirect } from 'next/navigation'
@@ -100,7 +101,7 @@ async function Header({ user }: { user: User }) {
     <TodayHeader d={{
       date: `${formatDay(today, { weekday: 'long' })} · ${formatDay(today, { day: 'numeric', month: 'long' })}`,
       greeting: greeting(hour), name: user.name.split(' ')[0],
-      line: complete ? recapLine({ total: plan.total, tomorrow }) : stored ?? (firstDay ? 'Day one. Check things off as you go and ReLife learns your rhythm; connect a source or two to fill in the rest.' : planLine({ total: plan.total, done: plan.done, next: plan.next })),
+      line: complete ? recapLine({ total: plan.total, tomorrow }) : stored ?? (firstDay ? `Day one. Check things off as you go and ${brand.name} learns your rhythm; connect a source or two to fill in the rest.` : planLine({ total: plan.total, done: plan.done, next: plan.next })),
       why: !complete && !!stored,
       streak, freezes: quests.freezes, xpToday: xp.today, firstDay, complete,
     }} />

@@ -11,7 +11,7 @@ export const NUDGE_TTL_DAYS = 3
 /** How long after dismissing a card Undo still brings it back. */
 export const RESTORE_MINUTES = 10
 
-/** The three things that count: AI decisions waiting, data ReLife could not read, merchants with no category. */
+/** The three things that count: AI decisions waiting, data the app could not read, merchants with no category. */
 export type NeedsYou = { total: number; decisions: number; data: number }
 
 /** `data` = messages nobody can retry for you + payments waiting for a category (one per merchant). */
@@ -39,7 +39,7 @@ export type NeedsYouItem =
 export type NeedsYouKind = NeedsYouItem['kind']
 export type NeedsYouFilter = 'decisions' | 'data'
 
-/** Items made of data ReLife could not sort; everything else is a decision. */
+/** Items made of data the app could not sort; everything else is a decision. */
 export const DATA_KINDS: readonly NeedsYouKind[] = ['unread', 'categorise']
 export const isDataItem = (i: NeedsYouItem) => DATA_KINDS.includes(i.kind)
 

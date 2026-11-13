@@ -296,7 +296,7 @@ async function main() {
     if (dom === 25) tx(d, 12, -10_000, 'Zerodha', 'Investments')
   }
   await db.insert(schema.transactions).values(txns)
-  // Payments ReLife could not sort (Coach, Data to sort): two merchants, fixed values so a seed stays repeatable.
+  // Payments the app could not sort (Coach, Data to sort): two merchants, fixed values so a seed stays repeatable.
   const waiting = (d: string, hh: number, mm: number, amount: number, merchant: string, upiId: string, n: number) =>
     ({ userId: uid, accountId: acct['axis:4821'], at: at(d, hh, mm), localDate: d, amount, currency: 'INR', merchant, upiId, category: 'Uncategorized', source: 'mock', externalRef: `mock-sort-${n}` })
   await db.insert(schema.transactions).values([

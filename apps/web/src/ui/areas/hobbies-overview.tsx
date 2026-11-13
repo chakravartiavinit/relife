@@ -1,3 +1,4 @@
+import brand from '@relife/brand/brand.json'
 import Link from 'next/link'
 import { ChartColumn, Flame, Hourglass, Tv } from 'lucide-react'
 import { AREAS } from '@/core/areas'
@@ -26,7 +27,7 @@ export async function HobbiesOverview({ user, today }: { user: User; today: stri
   // Shows and anime you track from the browser extension.
   const watching = shows.length ? (
     <Card>
-      <CardHeader title="Watching" icon={<Tv strokeWidth={2} />} color="var(--cat-health)" description="Shows and anime you track with the ReLife extension. Time on them counts as entertainment." />
+      <CardHeader title="Watching" icon={<Tv strokeWidth={2} />} color="var(--cat-health)" description={`Shows and anime you track with the ${brand.name} extension. Time on them counts as entertainment.`} />
       <LibraryGrid items={shows} />
     </Card>
   ) : null
