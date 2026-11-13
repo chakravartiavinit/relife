@@ -1,5 +1,5 @@
 import {
-  pgTable, uuid, text, timestamp, numeric, boolean, jsonb, date, integer, uniqueIndex, index, customType,
+  pgTable, uuid, text, timestamp, numeric, boolean, jsonb, date, integer, bigint, uniqueIndex, index, customType, type AnyPgColumn,
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 import { DEVICE_KINDS, SCOPES, type DeviceKind, type Scope } from '@relife/contract'
@@ -13,6 +13,7 @@ import type {
   GoalReviewPoint, GoalSnapshot, GoalStatus,
 } from '@/domain/goals'
 import type { ActivityKind, LibraryKind } from '@/domain/activity'
+import type { ImportKind, ImportMapping, ImportProgress, ImportStatus, ImportSummary } from '@/domain/imports'
 
 const bytea = customType<{ data: Buffer }>({ dataType: () => 'bytea' })
 // Postgres numeric comes back as string; keep it as number in app code.
@@ -258,6 +259,8 @@ export const transactions = pgTable('transactions', {
   source: text('source').notNull(),
   externalRef: text('external_ref').notNull(),
   rawEventId: uuid('raw_event_id'),
+  // A bank or card statement row that is the same payment as this app order: only the order is counted.
+  linkedTo: uuid('linked_to').references((): AnyPgColumn => transactions.id, { onDelete: 'set null' }),
   meta: meta(),
   ...stamps(),
 }, (t) => [
@@ -754,3 +757,26 @@ export const coachMessages = pgTable('coach_messages', {
   payload: jsonb('payload').$type<CoachMessagePayload>().notNull().default({}),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index('coach_messages_user_created').on(t.userId, t.createdAt)])
+
+// File imports (bank CSV, Apple Health, Takeout, tracker CSV). The import id is kept in `meta.importId` of the rows
+// it wrote (transactions, entries) and in `body.importId` of its raw events, so Undo removes exactly one import.
+export const imports = pgTable('imports', {
+  id: id(),
+  userId: userId(),
+  kind: text('kind').$type<ImportKind>().notNull(),
+  fileName: text('file_name').notNull(),
+  sizeBytes: bigint('size_bytes', { mode: 'number' }).notNull(),
+  receivedBytes: bigint('received_bytes', { mode: 'number' }).notNull().default(0),
+  status: text('status').$type<ImportStatus>().notNull().default('uploading'),
+  signature: text('signature'), // CSV header signature (statement, tracker-csv): finds the saved mapping
+  mapping: jsonb('mapping').$type<ImportMapping>(),
+  progress: jsonb('progress').$type<ImportProgress>().notNull().default({ phase: 'upload', done: 0 }),
+  summary: jsonb('summary').$type<ImportSummary>().notNull().default({ rows: 0, added: 0, duplicates: 0, invalid: 0, invalidSamples: [] }),
+  error: text('error'),
+  finishedAt: timestamp('finished_at', { withTimezone: true }),
+  undoneAt: timestamp('undone_at', { withTimezone: true }),
+  ...stamps(),
+}, (t) => [
+  index('imports_user_created').on(t.userId, t.createdAt),
+  index('imports_user_signature').on(t.userId, t.signature),
+])
