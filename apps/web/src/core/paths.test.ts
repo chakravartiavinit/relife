@@ -20,3 +20,15 @@ test('RELIFE_DATA_DIR moves it', () => {
   assert.equal(dataDir(), resolve(import.meta.dirname, '..', '..', '..', '..', 'backup', 'data'))
   delete process.env.RELIFE_DATA_DIR
 })
+
+test('backups go to RELIFE_BACKUP_DIR, else backups/ at the repo root', async () => {
+  const { backupDir } = await import('./paths')
+  const top = resolve(import.meta.dirname, '..', '..', '..', '..')
+  delete process.env.RELIFE_BACKUP_DIR
+  assert.equal(backupDir(), join(top, 'backups'))
+  process.env.RELIFE_BACKUP_DIR = '/backups'
+  assert.equal(backupDir('a.tar.gz'), '/backups/a.tar.gz')
+  process.env.RELIFE_BACKUP_DIR = 'disk/relife'
+  assert.equal(backupDir(), join(top, 'disk', 'relife'))
+  delete process.env.RELIFE_BACKUP_DIR
+})

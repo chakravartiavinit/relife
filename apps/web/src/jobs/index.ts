@@ -92,6 +92,16 @@ export const JOBS: Job[] = [
     return count ? `removed ${count} sync runs older than 30 days` : undefined
   } },
 
+  // A backup every night, before the prune jobs: pg_dump plus secret.key and library covers (src/core/data/backup.ts). Off
+  // when RELIFE_BACKUP_KEEP=0, in the demo, or when pg_dump is not installed (Settings → Data & privacy says so).
+  { id: 'backup', schedule: { cron: '30 3 * * *' }, catchUpMinutes: 12 * 60, timeoutMinutes: 60, enabled: async () => {
+    const [{ keepDaily }, { pgDumpInstalled }, { isDemo }] = await Promise.all([import('@/core/data/backup'), import('@/core/data/pg'), import('@/core/data/demo')])
+    return keepDaily() !== 0 && pgDumpInstalled() && !isDemo()
+  }, run: async () => {
+    const { backupNow } = await import('@/core/data/backup')
+    return (await backupNow({ reason: 'daily' })).message
+  } },
+
   // The outbox, reminder history and model logs are kept 90 days, handled raw events a year.
   { id: 'prune-old-data', schedule: { cron: '55 3 * * *' }, catchUpMinutes: 12 * 60, run: async () => {
     const { pruneOldData } = await import('@/core/prune')
