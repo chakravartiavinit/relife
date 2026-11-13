@@ -177,7 +177,9 @@ export async function undoLastGoalStep(user: User, scheduleId: string, now = new
   const [row] = await db.select({ meta: schema.entries.meta }).from(schema.entries)
     .innerJoin(schema.trackers, eq(schema.trackers.id, schema.entries.trackerId))
     .where(and(eq(schema.entries.userId, user.id), eq(schema.trackers.slug, slug), eq(schema.entries.localDate, date), eq(schema.entries.source, 'manual')))
-  const ref = Object.keys(row?.meta ?? {}).filter((k) => /^manual:\d+/.test(k)).sort((a, b) => Number.parseInt(b.slice(7)) - Number.parseInt(a.slice(7)))[0]
+  const meta = (row?.meta ?? {}) as Record<string, unknown>
+  // Positive steps only: taking back a negative one (an old client's minus) would raise the value.
+  const ref = Object.keys(meta).filter((k) => /^manual:\d+/.test(k) && Number(meta[k]) > 0).sort((a, b) => Number.parseInt(b.slice(7)) - Number.parseInt(a.slice(7)))[0]
   if (!ref) return false
   await undoQuickLogWrite(user, { kind: 'entry', slug, date, ref })
   return true

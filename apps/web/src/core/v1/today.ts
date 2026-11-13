@@ -1,7 +1,7 @@
 import { TodayAction as action, type TodayResponse } from '@relife/contract'
 import { companionView } from '../companion'
 import { authenticate, apiError, denied } from '../auth/request'
-import { addGoalProgress, setCheck } from '../schedules'
+import { addGoalProgress, setCheck, undoLastGoalStep } from '../schedules'
 import { applyQuickLog, parseQuickLog } from '../quicklog'
 import type { XpNews } from '../xp'
 import type { User } from '../user'
@@ -43,8 +43,10 @@ export async function postAction(req: Request, o: Opts = {}) {
         await setCheck(a.user, act.scheduleId, new Date(act.occurrence), act.status)
         message = act.status === 'done' ? 'Done.' : act.status === 'skipped' ? 'Skipped for today.' : 'Undone.'
       } else if (act.action === 'add') {
-        await addGoalProgress(a.user, act.scheduleId, act.amount)
-        message = 'Added.'
+        // A negative add is a client's undo: take back the latest step instead of storing a negative one.
+        if (act.amount < 0) await undoLastGoalStep(a.user, act.scheduleId)
+        else await addGoalProgress(a.user, act.scheduleId, act.amount)
+        message = act.amount < 0 ? 'Undone.' : 'Added.'
       } else {
         const q = parseQuickLog(act.text, a.user.baseCurrency)
         if (!q) return apiError(422, 'bad_request', 'Try “water 250”, “mood 4” or “spent 120 chai”', o)
