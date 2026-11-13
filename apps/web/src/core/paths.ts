@@ -21,5 +21,7 @@ function root() {
 
 /** The data folder, or a path inside it: `dataDir('browser', id)`. */
 export function dataDir(...parts: string[]) {
-  return join(process.env.RELIFE_DATA_DIR || join(root(), 'data'), ...parts)
+  // A relative RELIFE_DATA_DIR is read from the repo root, where .env is, not from apps/web.
+  const custom = process.env.RELIFE_DATA_DIR
+  return join(custom ? resolve(root(), custom) : join(root(), 'data'), ...parts)
 }

@@ -16,5 +16,7 @@ test('data lives at the repo root, not inside apps/web', () => {
 test('RELIFE_DATA_DIR moves it', () => {
   process.env.RELIFE_DATA_DIR = '/var/lib/relife'
   assert.equal(dataDir('library'), '/var/lib/relife/library')
+  process.env.RELIFE_DATA_DIR = 'backup/data'
+  assert.equal(dataDir(), resolve(import.meta.dirname, '..', '..', '..', '..', 'backup', 'data'))
   delete process.env.RELIFE_DATA_DIR
 })
