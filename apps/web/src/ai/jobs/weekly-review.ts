@@ -153,7 +153,7 @@ export async function weeklyReview(user: User, now = new Date()) {
       model: model('plan'),
       output: Output.object({ schema: out }),
       system: `${COACH_SYSTEM}\nWrite this week's review. Wins and problems must cite numbers from the digest. Propose one change for next week, and only actions that directly implement it. Never suggest medicine or dosage changes; direct medicine reminders to the existing medicine form.${forModel.length ? '\nFor each due outcome goal, use only the goal snapshot numbers. Never say an action caused an outcome. Proposals are optional and the user decides.' : ''}`,
-      prompt: forModel.length ? `${digest}\n\nDue outcome goal reviews (snapshots computed by code):\n${mask(JSON.stringify(forModel.map((d) => ({ goalId: d.goal.id, title: d.goal.title, measure: d.goal.measureName, unit: d.goal.unit, direction: d.goal.direction, target: d.goal.target, range: [d.goal.rangeLow, d.goal.rangeHigh], targetDate: d.goal.targetDate, cadence: d.goal.cadence, sensitive: d.review.snapshot.sensitive, snapshot: d.review.snapshot }))))}` : digest,
+      prompt: forModel.length ? `${digest}\n\nDue outcome goal reviews (snapshots computed by code):\n${mask(JSON.stringify(forModel.map((d) => ({ goalId: d.goal.id, title: d.goal.title, measure: d.goal.measureName, unit: d.goal.unit, direction: d.goal.direction, target: d.goal.target, range: [d.goal.rangeLow, d.goal.rangeHigh], targetDate: d.goal.targetDate, cadence: d.goal.cadence, sensitive: d.review.snapshot.sensitive, snapshot: d.review.snapshot }))), true)}` : digest,
     })
   } catch (e) {
     if (!due.length) throw e
