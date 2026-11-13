@@ -1,0 +1,12 @@
+{
+  "format": "relife.pack",
+  "version": 1,
+  "id": "minimal",
+  "name": "Minimal",
+  "description": "One routine and nothing else.",
+  "routines": [
+    { "key": "stretch", "name": "Stretch", "area": "health", "kind": "routine", "rule": { "freq": "daily", "times": ["07:00"] } }
+  ],
+  "trackers": [],
+  "goals": []
+}

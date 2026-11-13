@@ -18,6 +18,8 @@ export type OutcomeStatus = 'met' | 'toward' | 'flat' | 'away' | 'not_enough_dat
 export const BASELINE_DAYS = 28
 export const MIN_BASELINE_OBS = 7
 export const MAX_ACTIVE = 3
+/** Goal drafts waiting for a decision (the coach's and a starter pack's). */
+export const MAX_PENDING_DRAFTS = 3
 export const MAX_ACTIONS = 3
 export const MAX_TARGET_DAYS = 730
 export const CADENCE_DAYS: Record<GoalCadence, number> = { weekly: 7, fortnightly: 14, monthly: 28 }
@@ -80,6 +82,8 @@ export type GoalDraft = {
   measure: { tracker: string } | { checkIn: string; unit?: string; how?: string }
   direction: GoalDirection; target?: number; rangeLow?: number; rangeHigh?: number
   targetDate: string; cadence: GoalCadence; actions: GoalActionLink[]
+  /** Set when a starter pack made the draft: the form says so. */
+  origin?: { pack: string }
 }
 
 /** One goal inside a weekly review insight. Lines are deterministic; the coach note is separate. */

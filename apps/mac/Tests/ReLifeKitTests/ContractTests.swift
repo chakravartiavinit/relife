@@ -35,6 +35,10 @@ struct ContractTests {
             // `source: 'mac'` segments, so check the envelope here and the segment shape in ActivityTests.
             let object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
             #expect(object["segments"] is [Any])
+        case "Pack":
+            // Packs (routines, trackers and goals as shareable JSON) are read by the web app only: check the envelope.
+            let object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+            #expect(object["format"] as? String == "relife.pack")
         default:
             Issue.record("no Swift model for fixture \(file)")
         }
@@ -44,7 +48,7 @@ struct ContractTests {
     func coverage() throws {
         let covered = Set(try Fixtures.names().map { String($0.split(separator: ".")[0]) })
         let known: Set = ["TodayView", "TodayActionResult", "TodayAction", "Hello", "Me", "DeviceInfo", "PairRequestStart", "PairRequestStarted",
-                          "PairPoll", "PairRedeem", "PairRedeemResult", "DeviceList", "DeviceRename", "Event", "ApiError", "ActivityBatch"]
+                          "PairPoll", "PairRedeem", "PairRedeemResult", "DeviceList", "DeviceRename", "Event", "ApiError", "ActivityBatch", "Pack"]
         #expect(covered.subtracting(known).subtracting(Self.notForMac).isEmpty, "fixtures without a Swift model: \(covered.subtracting(known).subtracting(Self.notForMac))")
     }
 

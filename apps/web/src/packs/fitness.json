@@ -1,0 +1,111 @@
+{
+  "format": "relife.pack",
+  "version": 1,
+  "id": "fitness",
+  "name": "Fitness",
+  "description": "Move on a plan: workouts, stretching, an evening walk and water, with a steps target and a check-in goal draft.",
+  "areas": [
+    "health",
+    "mind"
+  ],
+  "improve": [
+    "tracker:steps",
+    "tracker:sleep.hours",
+    "routines"
+  ],
+  "routines": [
+    {
+      "key": "workout",
+      "name": "Workout",
+      "area": "health",
+      "kind": "routine",
+      "rule": {
+        "freq": "weekly",
+        "times": [
+          "07:00"
+        ],
+        "byweekday": [
+          "MO",
+          "WE",
+          "FR"
+        ]
+      }
+    },
+    {
+      "key": "stretch",
+      "name": "Stretch",
+      "area": "health",
+      "kind": "routine",
+      "rule": {
+        "freq": "daily",
+        "times": [
+          "07:15"
+        ]
+      },
+      "note": "Five minutes"
+    },
+    {
+      "key": "evening-walk",
+      "name": "Evening walk",
+      "area": "health",
+      "kind": "routine",
+      "rule": {
+        "freq": "daily",
+        "times": [
+          "18:30"
+        ]
+      },
+      "note": "20 minutes"
+    },
+    {
+      "key": "water",
+      "name": "Drink water",
+      "area": "health",
+      "kind": "routine",
+      "rule": {
+        "freq": "daily",
+        "times": [
+          "10:00",
+          "13:00",
+          "16:00",
+          "19:00"
+        ]
+      },
+      "quantity": {
+        "unit": "ml",
+        "step": 250
+      }
+    }
+  ],
+  "trackers": [],
+  "goals": [
+    {
+      "key": "active-days",
+      "title": "Walk 8,000 steps on five days a week",
+      "reason": "Steady movement first. Raise it later, once it feels easy.",
+      "area": "health",
+      "measure": {
+        "checkIn": "Days per week with 8,000+ steps",
+        "unit": "days"
+      },
+      "direction": "up",
+      "target": 5,
+      "weeks": 8,
+      "cadence": "weekly",
+      "actions": [
+        "workout",
+        "evening-walk"
+      ]
+    }
+  ],
+  "targets": {
+    "sleepHours": 7.5,
+    "steps": 10000
+  },
+  "sources": [
+    "strava",
+    "hevy",
+    "oura",
+    "whoop"
+  ]
+}

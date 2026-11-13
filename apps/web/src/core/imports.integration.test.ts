@@ -161,3 +161,32 @@ test('a fill entry never replaces live data, and a newer import refreshes only i
     await db.delete(schema.trackers).where(eq(schema.trackers.id, tracker.id))
   }
 })
+
+test('setup with the Fitness pack adds exactly one pending goal draft, linked to the Workout routine, and a rerun adds none', { skip: !enabled }, async () => {
+  assert.equal(process.env.RELIFE_MOCK, '1', 'integration tests require RELIFE_MOCK=1')
+  const { db, databaseUrl, schema } = await import('@/db')
+  assert.ok(new URL(databaseUrl).pathname.endsWith('_mock'), 'effective database must be an isolated _mock database')
+  const { completeOnboarding } = await import('./onboarding')
+  const [user] = await db.insert(schema.users).values({ name: 'Pack Integration', timezone: 'Asia/Kolkata', baseCurrency: 'INR' }).returning()
+  const now = new Date('2026-11-13T06:00:00.000Z')
+  const input = { name: 'Ada', timezone: 'Asia/Kolkata', baseCurrency: 'INR', areas: ['health', 'mind'] as ('health' | 'mind')[], improve: [], templates: ['workout', 'stretch'], pack: 'fitness' }
+  const drafts = () => db.select().from(schema.insights).where(and(eq(schema.insights.userId, user.id), sql`${schema.insights.payload} ? 'goalDraft'`))
+  try {
+    await completeOnboarding(user, input, now)
+    const [workout] = await db.select().from(schema.schedules).where(and(eq(schema.schedules.userId, user.id), eq(schema.schedules.name, 'Workout')))
+    const first = await drafts()
+    assert.equal(first.length, 1)
+    assert.equal(first[0].status, 'pending')
+    const draft = first[0].payload.goalDraft!
+    assert.deepEqual(draft.origin, { pack: 'fitness' })
+    assert.deepEqual('checkIn' in draft.measure, true)
+    assert.deepEqual(draft.actions, [{ kind: 'schedule', id: workout.id }], 'only the routine that was created is linked')
+    assert.equal(draft.targetDate, '2027-01-08')
+    // Nothing started: a draft is not a goal.
+    assert.equal((await db.select().from(schema.goals).where(eq(schema.goals.userId, user.id))).length, 0)
+    await completeOnboarding(user, input, now)
+    assert.equal((await drafts()).length, 1, 'a rerun adds none')
+  } finally {
+    await db.delete(schema.users).where(eq(schema.users.id, user.id))
+  }
+})

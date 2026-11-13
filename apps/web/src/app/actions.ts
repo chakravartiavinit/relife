@@ -722,6 +722,7 @@ const onboardingInput = z.object({
   wake: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Pick a wake-up time').optional(),
   sleep: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Pick a bedtime').optional(),
   improve: z.array(z.string().max(80)).max(3).default([]),
+  pack: z.string().max(40).optional(),
   tone: z.enum(['gentle', 'balanced', 'blunt']).optional(),
 })
 

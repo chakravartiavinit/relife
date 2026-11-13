@@ -1,0 +1,108 @@
+{
+  "format": "relife.pack",
+  "version": 1,
+  "id": "student-dev",
+  "name": "Student / Dev",
+  "description": "Learn and ship: a daily practice block, deep work sessions, reading and a weekly course session.",
+  "areas": [
+    "skills",
+    "mind"
+  ],
+  "improve": [
+    "tracker:github.commits",
+    "tracker:learning.minutes",
+    "tracker:screen.work"
+  ],
+  "routines": [
+    {
+      "key": "practice",
+      "name": "Practice coding",
+      "area": "skills",
+      "kind": "routine",
+      "rule": {
+        "freq": "daily",
+        "times": [
+          "19:00"
+        ]
+      },
+      "note": "One problem"
+    },
+    {
+      "key": "deep-work",
+      "name": "Deep work block",
+      "area": "skills",
+      "kind": "routine",
+      "rule": {
+        "freq": "weekly",
+        "times": [
+          "10:00"
+        ],
+        "byweekday": [
+          "MO",
+          "TU",
+          "WE",
+          "TH",
+          "FR"
+        ]
+      },
+      "note": "Ninety minutes, phone away"
+    },
+    {
+      "key": "read",
+      "name": "Read 20 pages",
+      "area": "skills",
+      "kind": "routine",
+      "rule": {
+        "freq": "daily",
+        "times": [
+          "21:30"
+        ]
+      }
+    },
+    {
+      "key": "course",
+      "name": "Course session",
+      "area": "skills",
+      "kind": "routine",
+      "rule": {
+        "freq": "weekly",
+        "times": [
+          "20:00"
+        ],
+        "byweekday": [
+          "TU",
+          "TH",
+          "SA"
+        ]
+      },
+      "note": "30 minutes"
+    }
+  ],
+  "trackers": [],
+  "goals": [
+    {
+      "key": "deep-work-hours",
+      "title": "Ten hours of deep work a week",
+      "reason": "Long, quiet blocks are where the real progress happens.",
+      "area": "skills",
+      "measure": {
+        "checkIn": "Deep work hours per week",
+        "unit": "hours"
+      },
+      "direction": "up",
+      "target": 10,
+      "weeks": 6,
+      "cadence": "weekly",
+      "actions": [
+        "deep-work"
+      ]
+    }
+  ],
+  "sources": [
+    "github",
+    "leetcode",
+    "wakatime",
+    "duolingo",
+    "anki"
+  ]
+}

@@ -7,6 +7,7 @@ import { Check, ChartLine, ClipboardCheck, Info, Plus, Target, TriangleAlert, ty
 import { decideGoalReviewAction, saveGoal, type GoalFormState } from '@/app/actions'
 import { addDays } from '@/core/time'
 import { CATEGORIES, type Category } from '@/domain/categories'
+import { packName } from '@/packs'
 import { MAX_ACTIONS, MAX_ACTIVE, nextReviewOn, type GoalDraft } from '@/domain/goals'
 import { CATEGORY } from '@/ui/tokens'
 import { cn } from '@/ui/cn'
@@ -37,7 +38,7 @@ export type GoalFormInitial = {
 
 type Mode =
   | { kind: 'create'; activeCount: number }
-  | { kind: 'draft'; activeCount: number; insightId: string }
+  | { kind: 'draft'; activeCount: number; insightId: string; /** A starter pack made the draft. */ pack?: string }
   | { kind: 'edit'; goal: GoalViewData }
   | { kind: 'review'; goal: GoalViewData; reviewId: string; suggested?: string }
 
@@ -100,7 +101,7 @@ function CreateSteps({ mode, initial, picker, today, drafts, onDone }: {
   return (
     <GoalStartPicker
       picker={picker} activeCount={mode.activeCount} drafts={drafts}
-      onDraft={(d) => setStep2({ mode: { kind: 'draft', activeCount: mode.activeCount, insightId: d.insightId }, initial: initialFromDraft(d.draft, picker, today) })}
+      onDraft={(d) => setStep2({ mode: { kind: 'draft', activeCount: mode.activeCount, insightId: d.insightId, pack: d.draft.origin?.pack }, initial: initialFromDraft(d.draft, picker, today) })}
       onTracker={(t) => setStep2({ mode, initial: { ...initial, measureKind: 'tracker', trackerId: t.id, measureName: t.name, unit: t.unit ?? '', area: t.category } })}
       onCheckIn={() => setStep2({ mode, initial: { ...initial, measureKind: 'check_in', trackerId: null } })}
     />
@@ -293,7 +294,7 @@ function GoalForm({ mode, initial, picker, today, onDone, onBack }: { mode: Mode
       ) : null}
       {mode.kind === 'draft' ? <input type="hidden" name="draftInsightId" value={mode.insightId} /> : null}
       {mode.kind === 'review' && mode.suggested ? <Notice>Suggested by the coach: {mode.suggested} Nothing changes until you save.</Notice> : null}
-      {mode.kind === 'draft' ? <Notice>Suggested by the coach from your profile. Check every field. Nothing starts until you approve it.</Notice> : null}
+      {mode.kind === 'draft' ? <Notice>{mode.pack ? `From the ${packName(mode.pack)} pack.` : 'Suggested by the coach from your profile.'} Check every field. Nothing starts until you approve it.</Notice> : null}
 
       <Section title="Outcome">
         <div className="grid gap-4 sm:grid-cols-[1fr_200px]">
