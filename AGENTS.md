@@ -289,6 +289,11 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
     `npm run brand:check`, and on a Mac with `swift` installed, `swift test` when `apps/mac` or
     `packages/contract/fixtures` changed.
   - Don't bypass them with `--no-verify`; fix the cause.
+- CI (`.github/workflows/ci.yml`) runs on every PR and on main: the pre-commit rules over the whole PR diff, tokens,
+  brand, typecheck, `npm test`, the PostgreSQL integration tests (`npm run test:integration -w apps/web` after
+  `npm run mock:seed`), `next build` for web and site, the extension pack, and `swift test` plus grid lint for
+  `apps/mac` on Linux. `ci-ok` is the one required check. `pr-title.yml` checks the Conventional Commits title,
+  `codeql.yml` scans the code, Dependabot sends weekly grouped updates.
 - Commit only files related to the change. Review `git status` and `git diff --cached` before
   committing; never use `git add -A` blindly.
 - Commit messages: Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `chore:`, `test:`),

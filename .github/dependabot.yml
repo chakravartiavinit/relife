@@ -1,0 +1,28 @@
+# Weekly dependency updates. Minor and patch bumps come as one grouped PR per ecosystem so CI checks them together.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Asia/Kolkata
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Asia/Kolkata
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ['*']
