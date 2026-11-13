@@ -10,7 +10,7 @@ import { cookieName, isSecureRequest, scopeAllows, tokenOf } from './trust'
 // Checks used by route handlers, server actions and server components. The edge check is src/proxy.ts; a route always
 // calls authenticate() itself (defense in depth).
 
-export type AuthFail = 'missing' | 'invalid' | 'revoked' | 'expired' | 'scope'
+export type AuthFail = 'missing' | 'invalid' | 'revoked' | 'expired' | 'scope' | 'csrf'
 export type Authed = { ok: true; device: Device; user: User; via: 'bearer' | 'cookie' }
 export type Denied = { ok: false; reason: AuthFail }
 
@@ -21,6 +21,7 @@ export async function authenticate(req: Request, scope: Scope): Promise<Authed |
   if (!t) return { ok: false, reason: 'missing' }
   const found = await findByToken(t.token)
   if (!found.ok) return { ok: false, reason: found.reason }
+  if (t.via === 'cookie' && !cookieWriteAllowed(req.method, req.headers)) return { ok: false, reason: 'csrf' }
   if (!scopeAllows(found.device.scopes, scope)) return { ok: false, reason: 'scope' }
   await touchIfDue(found.device).catch((e) => console.error('[auth] touch failed', e instanceof Error ? e.message : e))
   const [user] = await db.select().from(schema.users).where(eq(schema.users.id, found.device.userId)).limit(1)
@@ -34,6 +35,7 @@ const MESSAGES: Record<AuthFail, [ApiError['error']['code'], number, string]> = 
   revoked: ['revoked', 401, `This device was disconnected from ${brand.name}.`],
   expired: ['expired', 401, 'Your sign-in ended. Connect this device again.'],
   scope: ['forbidden', 403, 'This device isn’t allowed to do that.'],
+  csrf: ['forbidden', 403, 'This request did not come from this site.'],
 }
 
 /** A JSON error. `legacy` keeps the old `{ error: string }` body that extensions before 0.7 read. */
@@ -60,4 +62,16 @@ export function sameOrigin(h: { get(n: string): string | null }) {
   const origin = h.get('origin')
   if (!origin) return true
   try { return new URL(origin).host === h.get('host') } catch { return false }
+}
+
+/**
+ * A write that rides on the session cookie must come from this site. SameSite=Lax does not stop a cross-origin
+ * `text/plain` POST from a page on another port of this Mac (same site), and a browser attaches the cookie to it. Origin,
+ * when sent, has to match Host, and Sec-Fetch-Site, when sent, has to say same-origin (or none: the user typed it).
+ * Reads are left alone. A bearer token is not a cookie, so no browser attaches it for a page: callers that send one skip this.
+ */
+export function cookieWriteAllowed(method: string, h: { get(n: string): string | null }) {
+  if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return true
+  const site = h.get('sec-fetch-site')
+  return sameOrigin(h) && (site === null || site === 'same-origin' || site === 'none')
 }

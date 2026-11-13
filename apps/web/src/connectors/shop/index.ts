@@ -58,6 +58,16 @@ const QUICK = new Set(['zomato', 'swiggy', 'blinkit', 'zepto'])
 const LOGIN_PAGE = /\/(log-?in|sign-?in|ap\/signin|auth)\b/i
 const envKey = (id: string) => `${id.toUpperCase()}_ORDERS_URL`
 
+/** A saved order page is opened in a Chrome that is logged in to the shop, so it has to be on the shop's own site (its orders address's domain, subdomains too). */
+function ownSite(p: Platform, url: string) {
+  const labels = new URL(p.orders).hostname.split('.')
+  const site = labels.slice(-2).join('.')
+  try {
+    const host = new URL(url).hostname.toLowerCase()
+    return host === site || host.endsWith(`.${site}`)
+  } catch { return false }
+}
+
 function shopConnector(p: Platform): Connector {
   return {
     id: p.id,
@@ -79,6 +89,7 @@ function shopConnector(p: Platform): Connector {
       let u: URL | null = null
       try { u = new URL(url) } catch { /* not an address */ }
       if (!u || !/^https?:$/.test(u.protocol)) throw new Error(`“${url.slice(0, 60)}” isn’t a web address. Copy it from Chrome’s address bar while your orders are open.`)
+      if (!ownSite(p, url)) throw new Error(`That address isn’t on ${p.name}’s own site. Copy it from Chrome’s address bar while your ${p.name} orders are open.`)
     },
     async sync(ctx) {
       try { await run(ctx) } catch (e) {
@@ -101,12 +112,16 @@ function shopConnector(p: Platform): Connector {
     const emitOrders = async (orders: ShopOrder[]) => {
       ctx.log(`${p.name}: ${orders.length} order${orders.length === 1 ? '' : 's'} read`)
       for (const o of orders) {
-        if (isCancelled(o)) continue
-        await ctx.emit({ source: p.id, externalId: `${p.id}:${o.orderId}`, at: new Date(o.at), body: { platform: p.id, name: p.name, ...o } })
+        // A cancelled order gets its own id: under the order's id it would be dropped as a duplicate of the
+        // earlier confirmed one, and the parser could not delete the spend it recorded.
+        const id = `${p.id}:${o.orderId}${isCancelled(o) ? ':cancelled' : ''}`
+        await ctx.emit({ source: p.id, externalId: id, at: new Date(o.at), body: { platform: p.id, name: p.name, ...o } })
       }
     }
     // A saved address that finds nothing (say, an API link pasted instead of the page) falls back to the default page.
-    const custom = env(envKey(p.id))
+    const saved = env(envKey(p.id))
+    const custom = saved && ownSite(p, saved) ? saved : undefined // an address off the shop's own site is ignored, even if it got into .env
+    if (saved && !custom) ctx.log(`${p.name}: ignoring the saved order page, it is not on ${p.name}’s own site`)
     const url0 = p.orders
     const cursor = (ctx.cursor ?? {}) as { withItems?: string[]; full?: boolean }
     if (p.history) {

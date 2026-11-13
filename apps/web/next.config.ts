@@ -20,6 +20,18 @@ const nextConfig: NextConfig = {
   async redirects() {
     return LEGACY_REDIRECTS.map((r) => ({ ...r, permanent: false }))
   },
+  // No page may be framed (clickjacking), sniffed into another type, or leak its address cross-site.
+  async headers() {
+    return [{
+      source: '/:path*',
+      headers: [
+        { key: 'Content-Security-Policy', value: "frame-ancestors 'none'" },
+        { key: 'X-Frame-Options', value: 'DENY' },
+        { key: 'X-Content-Type-Options', value: 'nosniff' },
+        { key: 'Referrer-Policy', value: 'same-origin' },
+      ],
+    }]
+  },
   devIndicators: { position: 'bottom-right' },
   serverExternalPackages: ['ccxt', 'grammy', 'postgres', 'playwright-core'],
   // data/ is private runtime state (keys, Chrome profiles, caches): never part of a build.

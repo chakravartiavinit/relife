@@ -5,7 +5,7 @@ import { safeNext } from './next'
 import { getUser } from '../user'
 import { findByToken, touchIfDue } from './devices'
 import { mintLoopbackDevice, requireSignIn } from './loopback'
-import { apiError, denied, sessionCookie } from './request'
+import { apiError, cookieWriteAllowed, denied, sessionCookie } from './request'
 import { cookieName, hasProxyHeaders, isLoopbackHost, isPageNavigation, isPublicPath, loopbackTrusted, scopeAllows, sessionCookieOf } from './trust'
 
 // The edge check behind src/proxy.ts, with its lookups passed in so it can be tested without a database (gate.test.ts).
@@ -40,7 +40,9 @@ export async function gate(req: NextRequest, deps: GateDeps = realDeps): Promise
   const { pathname, search } = req.nextUrl
   // The health probe is for this Mac only.
   if (pathname === '/api/health') return isLoopbackHost(host) && !hasProxyHeaders(req.headers) ? NextResponse.next() : new NextResponse('Not found', { status: 404 })
-  if (isPublicPath(pathname)) return NextResponse.next()
+  // A server action posts to whatever page the user is on, so a request carrying `Next-Action` is never "public": /signin
+  // would otherwise run any action without a session.
+  if (isPublicPath(pathname) && !req.headers.has('next-action')) return NextResponse.next()
 
   const api = pathname.startsWith('/api/')
   // A bearer token is checked here, whatever the route does with it: a route that forgot to authenticate must not be
@@ -57,6 +59,8 @@ export async function gate(req: NextRequest, deps: GateDeps = realDeps): Promise
   if (cookie) {
     const found = await deps.findByToken(cookie)
     if (found.ok && scopeAllows(found.device.scopes, 'full')) {
+      // The cookie rides on every request a browser makes, so a write has to be from this site (cookieWriteAllowed).
+      if (!cookieWriteAllowed(req.method, req.headers)) return apiError(403, 'forbidden', 'This request did not come from this site.', { legacy: LEGACY_BODY.has(pathname) })
       const res = NextResponse.next()
       // Stay signed in: re-set the cookie (a fresh Max-Age) whenever last_seen is refreshed.
       if (await deps.touchIfDue(found.device).catch(() => false)) {

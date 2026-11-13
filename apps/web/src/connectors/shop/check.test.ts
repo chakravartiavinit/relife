@@ -26,7 +26,13 @@ test('every shop connector checks Chrome and a pasted order page before connecti
     await withChrome('/var/tmp/no-such-chrome', () => assert.rejects(c.check!(() => undefined), /CHROME_PATH/))
     await withChrome(process.execPath, async () => {
       await c.check!(() => undefined)
-      await c.check!((k) => (k === key ? 'https://example.com/orders' : undefined))
+      const own = new URL(c.fields[0].placeholder!)
+      const site = own.hostname.split('.').slice(-2).join('.')
+      await c.check!((k) => (k === key ? `${own.origin}/moved` : undefined))
+      await c.check!((k) => (k === key ? `https://m.${site}/orders` : undefined))
+      for (const other of ['https://example.com/orders', `https://${site}.evil.example/`, `https://not${site}/`, 'http://127.0.0.1:3030/']) {
+        await assert.rejects(c.check!((k) => (k === key ? other : undefined)), /own site/, other)
+      }
       await assert.rejects(c.check!((k) => (k === key ? 'not a link' : undefined)), /isn’t a web address/)
       await assert.rejects(c.check!((k) => (k === key ? 'javascript:alert(1)' : undefined)), /isn’t a web address/)
     })
