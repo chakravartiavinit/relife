@@ -75,7 +75,8 @@ export async function persist(user: User, rec: Rec, rawEventId?: string) {
       }).onConflictDoUpdate({
         target: [schema.entries.trackerId, schema.entries.localDate, schema.entries.source],
         // Only a changed value counts as newer: re-parsing a day mustn't make one device's sleep win over another's.
-        set: { value, note: rec.note, meta: rec.meta ?? {}, updatedAt: sql`case when ${schema.entries.value} is distinct from excluded.value then now() else ${schema.entries.updatedAt} end` },
+        // An add keeps the keys already there (quick logs record each add under its ref, so Undo can take back one).
+        set: { value, note: rec.note, meta: rec.mode === 'add' ? sql`${schema.entries.meta} || excluded.meta` : rec.meta ?? {}, updatedAt: sql`case when ${schema.entries.value} is distinct from excluded.value then now() else ${schema.entries.updatedAt} end` },
       })
       return
     }

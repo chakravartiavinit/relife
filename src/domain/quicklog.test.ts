@@ -29,7 +29,7 @@ test('slugify and the set-not-add trackers', () => {
 
 test('undo tokens', () => {
   const ctx = { date: '2026-11-12', prev: null as number | null, externalRef: 'manual:1' }
-  assert.deepEqual(quickLogUndo({ type: 'entry', slug: 'water', value: 250 }, ctx), { kind: 'entry', slug: 'water', date: '2026-11-12', value: 250 })
+  assert.deepEqual(quickLogUndo({ type: 'entry', slug: 'water', value: 250 }, ctx), { kind: 'entry', slug: 'water', date: '2026-11-12', ref: 'manual:1' })
   assert.deepEqual(quickLogUndo({ type: 'entry', slug: 'mood', value: 4 }, ctx), { kind: 'set', slug: 'mood', date: '2026-11-12', prev: null })
   assert.deepEqual(quickLogUndo({ type: 'entry', slug: 'weight', value: 71 }, { ...ctx, prev: 72 }), { kind: 'set', slug: 'weight', date: '2026-11-12', prev: 72 })
   assert.deepEqual(quickLogUndo({ type: 'spend', amount: 120, currency: 'INR', note: 'chai' }, ctx), { kind: 'spend', externalRef: 'manual:1' })

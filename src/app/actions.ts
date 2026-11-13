@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { db, schema } from '@/db'
 import { CATEGORIES } from '@/db/schema'
 import { getUser } from '@/core/user'
+import { recategorizeTxns, undoRecategorizeTxns, type RecategorizeUndo } from '@/core/recategorize'
 import { addGoalProgress, setCheck } from '@/core/schedules'
 import { applyQuickLogWithUndo, parseQuickLog, slugify, undoQuickLogWrite } from '@/core/quicklog'
 import type { QuickLogUndo } from '@/domain/quicklog'
@@ -77,10 +78,11 @@ export async function quickLog(text: string): Promise<{ ok: boolean; message: st
   return { ok: true, message, news, undo }
 }
 
+const manualRef = z.string().regex(/^manual:\d{10,16}$/)
 const undoToken = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('entry'), slug: slugArg, date: ymd, value: logValue }),
+  z.object({ kind: z.literal('entry'), slug: slugArg, date: ymd, ref: manualRef }),
   z.object({ kind: z.literal('set'), slug: slugArg, date: ymd, prev: logValue.nullable() }),
-  z.object({ kind: z.literal('spend'), externalRef: z.string().regex(/^manual:\d{10,16}$/) }),
+  z.object({ kind: z.literal('spend'), externalRef: manualRef }),
 ])
 
 /** Takes a quick log back: the token comes from `quickLog`. Rescoring replaces the day's XP, so XP goes too. */
@@ -261,8 +263,7 @@ export async function archiveTracker(id: string) {
   refresh()
 }
 
-/** What `undoRecategorize` needs to put a merchant back: the payments that were waiting, and whether a rule was written. */
-export type RecategorizeUndo = { ids: string[]; pattern: string | null; prevRule?: string | null }
+export type { RecategorizeUndo } from '@/core/recategorize'
 
 /**
  * Re-categorize a transaction and, with `remember`, write the rule for that merchant / UPI id and move its other
@@ -270,46 +271,21 @@ export type RecategorizeUndo = { ids: string[]; pattern: string | null; prevRule
  */
 export async function recategorize(transactionId: string, category: string, remember: boolean): Promise<RecategorizeUndo> {
   category = z.string().trim().min(1).max(60).parse(category)
-  const user = await getUser()
-  const [before] = await db.select().from(schema.transactions)
-    .where(and(eq(schema.transactions.id, transactionId), eq(schema.transactions.userId, user.id)))
-  const undo: RecategorizeUndo = { ids: [], pattern: null }
-  if (!before) return undo
-  const pattern = (before.upiId ?? before.merchant ?? '').toLowerCase().trim()
-  const same = before.upiId ? eq(schema.transactions.upiId, before.upiId) : eq(schema.transactions.merchant, before.merchant ?? '')
-  // The payments that are waiting for a category now; undo puts exactly these back.
-  const waiting = remember && pattern
-    ? await db.select({ id: schema.transactions.id }).from(schema.transactions)
-      .where(and(eq(schema.transactions.userId, user.id), same, eq(schema.transactions.category, 'Uncategorized')))
-    : before.category === 'Uncategorized' ? [{ id: before.id }] : []
-  undo.ids = waiting.map((w) => w.id)
-  await db.update(schema.transactions).set({ category })
-    .where(and(eq(schema.transactions.id, transactionId), eq(schema.transactions.userId, user.id)))
-  if (remember && pattern) {
-    const [prev] = await db.select({ category: schema.merchantRules.category }).from(schema.merchantRules)
-      .where(and(eq(schema.merchantRules.userId, user.id), eq(schema.merchantRules.pattern, pattern)))
-    undo.prevRule = prev?.category ?? null
-    await db.insert(schema.merchantRules).values({ userId: user.id, pattern, merchant: before.merchant ?? pattern, category })
-      .onConflictDoUpdate({ target: [schema.merchantRules.userId, schema.merchantRules.pattern], set: { category } })
-    // Apply to other transactions from the same merchant.
-    await db.update(schema.transactions).set({ category }).where(and(eq(schema.transactions.userId, user.id), same))
-    undo.pattern = pattern
-  }
+  const undo = await recategorizeTxns(await getUser(), transactionId, category, remember)
   refresh()
   return undo
 }
 
-/** Undo a `recategorize`: the rule it wrote goes back to what it was (or goes), and the waiting payments wait again. */
+const recategorizeUndo = z.object({
+  moved: z.array(z.object({ id: z.string().uuid(), from: z.string().max(60).nullable() })).max(5000),
+  to: z.string().trim().min(1).max(60),
+  pattern: z.string().max(200).nullable(),
+  prevRule: z.string().max(60).nullable().optional(),
+})
+
+/** Undo a `recategorize`: the rule goes back to what it was (or goes), and every payment it moved gets its category back. */
 export async function undoRecategorize(undo: RecategorizeUndo) {
-  const parsed = z.object({ ids: z.array(z.string().uuid()).max(5000), pattern: z.string().max(200).nullable(), prevRule: z.string().max(60).nullable().optional() }).parse(undo)
-  const user = await getUser()
-  const rule = and(eq(schema.merchantRules.userId, user.id), eq(schema.merchantRules.pattern, parsed.pattern ?? ''))
-  if (parsed.pattern && parsed.prevRule) await db.update(schema.merchantRules).set({ category: parsed.prevRule }).where(rule)
-  else if (parsed.pattern) await db.delete(schema.merchantRules).where(rule)
-  if (parsed.ids.length) {
-    await db.update(schema.transactions).set({ category: 'Uncategorized' })
-      .where(and(eq(schema.transactions.userId, user.id), inArray(schema.transactions.id, parsed.ids)))
-  }
+  await undoRecategorizeTxns(await getUser(), recategorizeUndo.parse(undo))
   refresh()
 }
 
