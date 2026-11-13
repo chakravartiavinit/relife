@@ -6,7 +6,7 @@ import { Check, Clock, X } from 'lucide-react'
 import { approveDevice, denyDevice, type WaitingDevice } from '@/app/devices-actions'
 import { cn } from '@/ui/cn'
 import { Button } from '../button'
-import { SystemLabel } from '../card'
+import { Badge, SystemLabel } from '../card'
 import { ConnectCode } from './connect-code'
 import { DeviceTile, KIND } from './device-kind'
 import { ago, mmss, useCountdown } from './use-countdown'
@@ -14,6 +14,7 @@ import { ago, mmss, useCountdown } from './use-countdown'
 /** What a device can do once approved, in plain words (the extension has the smaller scope). */
 const CAN: Record<string, string> = {
   extension: 'See Today, check off quests, quick log, send browsing time',
+  ingest: 'Send health data only: steps, sleep and heart rate. It cannot read anything.',
   default: 'See and log everything, like this dashboard',
 }
 
@@ -32,6 +33,7 @@ export function ApproveCard({ device, onResult, className }: { device: WaitingDe
   const expired = left === 0
   const kind = KIND[device.kind]
   const title = `“${device.name}”`
+  const ingestOnly = device.scopes.length === 1 && device.scopes[0] === 'ingest'
 
   const answer = (approve: boolean) => start(async () => {
     setError(null)
@@ -87,7 +89,7 @@ export function ApproveCard({ device, onResult, className }: { device: WaitingDe
         <dt className="text-ink-3">From</dt>
         <dd className="text-ink">{device.ip === 'local' ? 'This computer' : device.ip}{device.via ? <span className="text-small text-ink-3"> · via {device.via}</span> : null}</dd>
         <dt className="text-ink-3">Can</dt>
-        <dd className="text-ink">{CAN[device.kind] ?? CAN.default}</dd>
+        <dd className="text-ink">{ingestOnly ? <>{CAN.ingest} <Badge color="var(--pill)">Health data only</Badge></> : CAN[device.kind] ?? CAN.default}</dd>
         <dt className="text-ink-3">Signed in</dt>
         <dd className="text-ink">Until you disconnect it in Settings → Devices</dd>
       </dl>
