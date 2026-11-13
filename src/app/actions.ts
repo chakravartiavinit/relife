@@ -76,10 +76,11 @@ export async function quickLog(text: string): Promise<{ ok: boolean; message: st
   return { ok: true, message, news, undo }
 }
 
+const manualRef = z.string().regex(/^manual:\d{10,16}$/)
 const undoToken = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('entry'), slug: slugArg, date: ymd, value: logValue }),
+  z.object({ kind: z.literal('entry'), slug: slugArg, date: ymd, ref: manualRef }),
   z.object({ kind: z.literal('set'), slug: slugArg, date: ymd, prev: logValue.nullable() }),
-  z.object({ kind: z.literal('spend'), externalRef: z.string().regex(/^manual:\d{10,16}$/) }),
+  z.object({ kind: z.literal('spend'), externalRef: manualRef }),
 ])
 
 /** Takes a quick log back: the token comes from `quickLog`. Rescoring replaces the day's XP, so XP goes too. */
