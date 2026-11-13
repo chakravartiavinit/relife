@@ -24,7 +24,7 @@
     "@ai-sdk/anthropic": "^3.0.138",
     "@ai-sdk/google": "^3.0.141",
     "@ai-sdk/openai": "^3.0.137",
-    "@ai-sdk/openai-compatible": "^2.0.90",
+    "@ai-sdk/openai-compatible": "^3.0.87",
     "@floating-ui/dom": "^1.8.0",
     "@next/env": "16.4.5",
     "@relife/brand": "*",
