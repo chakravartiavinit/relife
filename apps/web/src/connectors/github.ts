@@ -1,7 +1,7 @@
-import { createHash } from 'node:crypto'
 import type { Connector } from '@/core/types'
 import { env } from '@/core/env'
 import { addDays, localDate } from '@/core/time'
+import { emitDays } from './daily'
 import { fetchT, handleOf } from './net'
 
 // Daily contribution counts via GraphQL. First run backfills 365 days, then the last 14.
@@ -161,13 +161,11 @@ export const github: Connector = {
     // The first local day of the window may start before the first UTC midnight asked for (east of UTC), so it
     // is partial: keep the full count an earlier sync sent.
     const firstDay = localDate(new Date(midnight - days * 86_400_000), ctx.user.timezone)
-    for (const d of byDate.values()) {
-      if (d.date <= firstDay) continue
-      if (!d.contributions && !d.commits && d.date !== today) continue
-      // The id includes the counts, so a day re-syncs when it changes and is skipped when not.
-      const hash = createHash('sha256').update(JSON.stringify(d)).digest('hex').slice(0, 12)
-      await ctx.emit({ source: 'github', externalId: `${d.date}:${hash}`, at: now, body: d })
-    }
+    // After the first sync the whole window is sent, zero days too, so a day that drops to 0 (a deleted commit,
+    // a private contribution turned off) is recorded. The first sync skips empty days: before your first
+    // contribution you may not have used GitHub at all.
+    const sent = [...byDate.values()].filter((d) => d.date > firstDay && (cursor.backfilled || d.contributions || d.commits || d.date === today))
+    await emitDays(ctx, 'github', sent)
     ctx.setCursor({ backfilled: true } satisfies Cursor)
   },
 }

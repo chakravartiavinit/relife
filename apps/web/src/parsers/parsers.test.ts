@@ -76,3 +76,17 @@ test('tradesFromStatement rebuilds trades from Binance statement lines', async (
     { base: 'SOL', quote: 'USDT', side: 'sell', qty: 1, price: 160, fee: 0, feeAsset: undefined },
   ])
 })
+
+test('app-order turns a cancelled or refunded order into a delete of its transaction, and a live one into a record', async () => {
+  const { appOrder } = await import('./app-order')
+  const order = { platform: 'zepto', name: 'Zepto', orderId: 'Z1', at: '2026-11-11T06:00:00.000Z', total: 500, currency: 'INR', items: [{ name: 'Milk', qty: 1 }] }
+  const ev = (o: object) => ({ source: 'zepto', externalId: 'zepto:Z1', at: new Date(order.at), body: o })
+  const live = await appOrder.parse(ev(order), ctx)
+  assert.deepEqual(live.map((r) => r.kind === 'transaction' && [r.amount, r.externalRef]), [[-500, 'zepto:Z1']])
+  let deleted = 0
+  const db = { delete: () => ({ where: async () => { deleted++ } }) } as never
+  assert.deepEqual(await appOrder.parse(ev({ ...order, status: 'Cancelled' }), { ...ctx, db }), [])
+  assert.deepEqual(await appOrder.parse(ev({ ...order, status: 'Refunded' }), { ...ctx, db }), [])
+  assert.equal(deleted, 2)
+  assert.equal(appOrder.enriches, true) // an empty result is still "parsed"
+})
