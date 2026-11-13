@@ -165,6 +165,9 @@ export function ordersFromFlipkart(payloads: unknown[]): ShopOrder[] {
 /** Cancelled or failed orders cost nothing. */
 export const isCancelled = (o: ShopOrder) => /cancel|fail|refund(ed)?\b|reject|\breturned\b/i.test(o.status ?? '') || (o.total <= 0 && !o.items.length)
 
+/** The shop says outright the order did not go through. Refunds, returns and empty reads are not proof the whole order cost nothing. */
+export const isHardCancelled = (o: ShopOrder) => /cancel|fail|reject/i.test(o.status ?? '')
+
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
 
 /**

@@ -17,16 +17,16 @@ export async function emitRaw(userId: string, e: RawEvent): Promise<boolean> {
 }
 
 /**
- * Store many raw events in one statement. Duplicates are skipped, except day summaries (`dayEventId`): a day
- * whose numbers changed replaces the stored body and goes back to `new`, so it is parsed again. Returns how
- * many were new or changed.
+ * Store many raw events in one statement. Duplicates are skipped, except day summaries (`dayEventId`) and events
+ * marked `replace` (shop orders): one whose body changed replaces the stored body and goes back to `new`, so it is
+ * parsed again. Returns how many were new or changed.
  */
 export async function emitRawMany(userId: string, events: RawEvent[]): Promise<number> {
   if (!events.length) return 0
   const row = (e: RawEvent) => ({ userId, source: e.source, externalId: e.externalId, at: e.at, body: e.body as object })
   const days = new Map<string, RawEvent>()
   const rest: RawEvent[] = []
-  for (const e of events) { if (isDayEvent(e)) days.set(`${e.source}\0${e.externalId}`, e); else rest.push(e) }
+  for (const e of events) { if (isDayEvent(e) || e.replace) days.set(`${e.source}\0${e.externalId}`, e); else rest.push(e) }
   let n = 0
   if (rest.length) {
     n += (await db.insert(schema.rawEvents).values(rest.map(row)).onConflictDoNothing().returning({ id: schema.rawEvents.id })).length
@@ -49,7 +49,7 @@ export async function processNew(limit = 500) {
   const user = await getUser()
   const rows = await db.select().from(schema.rawEvents)
     .where(and(eq(schema.rawEvents.userId, user.id), eq(schema.rawEvents.status, 'new')))
-    .orderBy(asc(schema.rawEvents.at))
+    .orderBy(asc(schema.rawEvents.at), asc(schema.rawEvents.createdAt)) // same `at`: the order they arrived in
     .limit(limit)
   const counts = { parsed: 0, ignored: 0, failed: 0 }
   for (const row of rows) {

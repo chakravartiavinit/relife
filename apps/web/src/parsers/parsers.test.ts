@@ -77,16 +77,22 @@ test('tradesFromStatement rebuilds trades from Binance statement lines', async (
   ])
 })
 
-test('app-order turns a cancelled or refunded order into a delete of its transaction, and a live one into a record', async () => {
+test('app-order deletes the spend of a cancelled order only, and a cancelled order stays cancelled', async () => {
   const { appOrder } = await import('./app-order')
   const order = { platform: 'zepto', name: 'Zepto', orderId: 'Z1', at: '2026-11-11T06:00:00.000Z', total: 500, currency: 'INR', items: [{ name: 'Milk', qty: 1 }] }
   const ev = (o: object) => ({ source: 'zepto', externalId: 'zepto:Z1', at: new Date(order.at), body: o })
-  const live = await appOrder.parse(ev(order), ctx)
-  assert.deepEqual(live.map((r) => r.kind === 'transaction' && [r.amount, r.externalRef]), [[-500, 'zepto:Z1']])
   let deleted = 0
-  const db = { delete: () => ({ where: async () => { deleted++ } }) } as never
+  let cancelledSeen: object[] = []
+  const select = () => ({ from: () => ({ where: () => ({ limit: async () => cancelledSeen }) }) })
+  const db = { delete: () => ({ where: async () => { deleted++ } }), select } as never
+  const live = await appOrder.parse(ev(order), { ...ctx, db })
+  assert.deepEqual(live.map((r) => r.kind === 'transaction' && [r.amount, r.externalRef]), [[-500, 'zepto:Z1']])
   assert.deepEqual(await appOrder.parse(ev({ ...order, status: 'Cancelled' }), { ...ctx, db }), [])
-  assert.deepEqual(await appOrder.parse(ev({ ...order, status: 'Refunded' }), { ...ctx, db }), [])
-  assert.equal(deleted, 2)
+  assert.equal(deleted, 1)
+  assert.deepEqual(await appOrder.parse(ev({ ...order, status: 'Refunded' }), { ...ctx, db }), [], 'a refund records nothing')
+  assert.deepEqual(await appOrder.parse(ev({ ...order, status: 'Returned' }), { ...ctx, db }), [])
+  assert.equal(deleted, 1, 'a refund or return never deletes the spend')
+  cancelledSeen = [{ id: 'x' }]
+  assert.deepEqual(await appOrder.parse(ev(order), { ...ctx, db }), [], 'read again after its cancel: stays cancelled')
   assert.equal(appOrder.enriches, true) // an empty result is still "parsed"
 })

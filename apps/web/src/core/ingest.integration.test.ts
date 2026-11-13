@@ -64,7 +64,7 @@ test('an app order follows a changed total and disappears when it is cancelled',
   const order = { platform: 'zepto', name: 'Zepto', orderId: 'ORDER-1', at: '2026-11-11T06:00:00.000Z', total: 500, currency: 'INR', items: [{ name: 'Milk', qty: 1 }] }
   const txns = () => db.select().from(schema.transactions).where(and(eq(schema.transactions.userId, user.id), eq(schema.transactions.source, 'zepto'), eq(schema.transactions.externalRef, ref)))
   const read = async (externalId: string, body: object) => {
-    await emitRawMany(user.id, [{ source: 'zepto', externalId, at: new Date(order.at), body }])
+    await emitRawMany(user.id, [{ source: 'zepto', externalId, at: new Date(order.at), body, replace: true }])
     const [r] = await db.select().from(schema.rawEvents).where(and(eq(schema.rawEvents.userId, user.id), eq(schema.rawEvents.source, 'zepto'), eq(schema.rawEvents.externalId, externalId)))
     return processOne(user, r)
   }
@@ -72,8 +72,7 @@ test('an app order follows a changed total and disappears when it is cancelled',
     assert.equal(await read('zepto:ORDER-1', order), 'parsed')
     assert.equal(Number((await txns())[0].amount), -500)
     // A partial refund: the same order again with a smaller total updates it, once, not twice.
-    await db.update(schema.rawEvents).set({ status: 'new' }).where(eq(schema.rawEvents.source, 'zepto'))
-    assert.equal(await read('zepto:ORDER-1:total-400', { ...order, total: 400 }), 'parsed')
+    assert.equal(await read('zepto:ORDER-1', { ...order, total: 400 }), 'parsed')
     const rows = await txns()
     assert.deepEqual([rows.length, Number(rows[0].amount)], [1, -400])
     // Cancelled later: the spending goes away.

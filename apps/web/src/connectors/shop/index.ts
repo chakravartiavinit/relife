@@ -3,7 +3,7 @@ import { env } from '@/core/env'
 import { localDate, wallToUtc } from '@/core/time'
 import { chromePath, LoggedOut, readPage, readPages, replayDetails } from './browser'
 import { amazonHistory, makemytripHistory, swiggyHistory, zomatoHistory, type History } from './history'
-import { isCancelled, itemsFromBlinkit, itemsFromZepto, ordersFromJson, ordersFromSnippets, type ShopItem, type ShopOrder, ordersFromFlipkart } from './extract'
+import { isCancelled, isHardCancelled, itemsFromBlinkit, itemsFromZepto, ordersFromJson, ordersFromSnippets, type ShopItem, type ShopOrder, ordersFromFlipkart } from './extract'
 
 // Shopping and food apps, read from your own logged-in account. No public APIs exist, so this opens
 // the app's order-history page in Chrome with your saved session (see browser.ts), reads the order
@@ -112,10 +112,12 @@ function shopConnector(p: Platform): Connector {
     const emitOrders = async (orders: ShopOrder[]) => {
       ctx.log(`${p.name}: ${orders.length} order${orders.length === 1 ? '' : 's'} read`)
       for (const o of orders) {
+        const cancelled = isHardCancelled(o)
+        if (isCancelled(o) && !cancelled) continue // a refund, return or empty read: skipped, never deletes a spend
         // A cancelled order gets its own id: under the order's id it would be dropped as a duplicate of the
         // earlier confirmed one, and the parser could not delete the spend it recorded.
-        const id = `${p.id}:${o.orderId}${isCancelled(o) ? ':cancelled' : ''}`
-        await ctx.emit({ source: p.id, externalId: id, at: new Date(o.at), body: { platform: p.id, name: p.name, ...o } })
+        const id = `${p.id}:${o.orderId}${cancelled ? ':cancelled' : ''}`
+        await ctx.emit({ source: p.id, externalId: id, at: new Date(o.at), body: { platform: p.id, name: p.name, ...o }, replace: true }) // a changed total is read again
       }
     }
     // A saved address that finds nothing (say, an API link pasted instead of the page) falls back to the default page.
