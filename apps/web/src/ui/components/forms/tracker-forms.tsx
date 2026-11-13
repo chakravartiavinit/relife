@@ -8,6 +8,7 @@ import { CATEGORY } from '@/ui/tokens'
 import { Button } from '../button'
 import { Field, Input, Select } from '../form'
 import { announceXp, useToast } from '../toast'
+import { usePeekChanged } from '../peek/peek-context'
 import { Dialog, FormError } from './dialog'
 
 /** Inline "set today's value" for a tracker card. */
@@ -16,6 +17,7 @@ export function QuickLog({ slug, name, unit, step }: { slug: string; name: strin
   const [saved, setSaved] = useState(false)
   const [pending, start] = useTransition()
   const toast = useToast()
+  const changed = usePeekChanged()
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
     const n = Number(value)
@@ -23,6 +25,7 @@ export function QuickLog({ slug, name, unit, step }: { slug: string; name: strin
     start(async () => {
       try {
         announceXp(toast, await logEntry(slug, n))
+        changed()
         setValue('')
         setSaved(true)
         setTimeout(() => setSaved(false), 1200)

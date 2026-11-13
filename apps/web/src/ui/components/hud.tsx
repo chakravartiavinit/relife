@@ -9,12 +9,12 @@ import { MedalDisc } from './xp'
 import { cn } from '../cn'
 import { AREA_ICON, CapsuleIcon } from './capsule-icon'
 import { Ticker } from './ticker'
+import { AREA_HREF } from './nav'
 
-// The character sheet at the top of Today and Progress: who you are in the game (level, title, XP),
-// your streak, and your areas as stats. One component so the two pages always agree.
+// The character sheet at the top of Progress: who you are in the game (level, title, XP),
+// your streak, and your areas as stats.
 
 type Summary = Awaited<ReturnType<typeof xpSummary>>
-const AREA_HREF: Record<Category, string> = { health: '/health', mind: '/mind', skills: '/skills', wealth: '/wealth', hobbies: '/hobbies', relationships: '/relationships' }
 
 export function CharacterBanner({ s, name, heading, eyebrow, streak, freezes, areas, children }: {
   s: Summary
@@ -51,7 +51,7 @@ export function CharacterBanner({ s, name, heading, eyebrow, streak, freezes, ar
         </div>
 
         <Link
-          href="/profile#streak"
+          href="/you#streak"
           className="flex items-center gap-3 rounded-[16px] bg-surface/70 px-4 py-3 shadow-1 backdrop-blur-sm transition-[box-shadow] duration-150 hover:shadow-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill sm:flex-col sm:items-center sm:gap-1 sm:px-5 sm:text-center"
         >
           <Flame className={cn('size-6', streak.current ? 'text-[var(--medal-gold)]' : 'text-ink-3')} strokeWidth={2} aria-hidden />

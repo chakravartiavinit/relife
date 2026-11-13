@@ -15,6 +15,15 @@ import { BeuiGallery } from '@/ui/components/gallery-beui'
 import { PositionCard } from '@/ui/components/wealth/position-card'
 import { IlloGallery } from '@/ui/components/tour/illos'
 import { ToastGallery } from '@/ui/components/toast'
+import { CaptureGallery } from '@/ui/components/capture/capture-gallery'
+import { PeekGallery } from '@/ui/components/peek/peek-gallery'
+import { CoachGallery } from '@/ui/components/coach/coach-gallery'
+import { AreaGallery } from '@/ui/components/area/area-gallery'
+import { TodayGallery } from '@/ui/components/today/today-gallery'
+import { PlanYouGallery } from '@/ui/components/plan-you-gallery'
+import { OnboardingGallery } from '@/ui/components/onboarding-gallery'
+import { TEMPLATES } from '@/core/onboarding'
+import { InstalledBeuiGallery, PeekLinkDemo, SegmentTabsDemo, SheetDemo, ShellDemo, TypeScale } from '@/ui/components/gallery-foundations'
 import { RecoveryPanel, SystemQuests } from '@/ui/components/system-quests'
 import type { RecoveryView } from '@/domain/recovery'
 import { GOAL_FOOTNOTE, goalSnapshot } from '@/domain/goals'
@@ -42,6 +51,10 @@ export default function UiGallery() {
   return (
     <div className="flex flex-col gap-8">
       <PageHeader eyebrow="Dev" title="UI gallery" description="Components and states. Check both themes before merging UI changes." />
+
+      <Section title="Type scale">
+        <TypeScale />
+      </Section>
 
       <Section title="Brand">
         <div className="flex flex-wrap items-end gap-10">
@@ -134,7 +147,57 @@ export default function UiGallery() {
         <BeuiGallery />
       </Section>
 
-      <Section title="Toasts">
+      <Section title="Capture">
+        <CaptureGallery />
+      </Section>
+
+      <Section title="Sheet">
+        <SheetDemo />
+      </Section>
+
+      <Section title="Segment tabs">
+        <SegmentTabsDemo />
+      </Section>
+
+      <Section title="Peek link">
+        <PeekLinkDemo />
+      </Section>
+
+      <Section title="Peek views">
+        {/* The metric view draws EvilCharts, which read the clock, so it renders per request too. */}
+        <Suspense fallback={<Skeleton className="h-[420px]" />}><PeekSamples /></Suspense>
+      </Section>
+
+      <Section title="Area template and Life hub">
+        <Suspense fallback={<Skeleton className="h-[420px]" />}><AreaGallery /></Suspense>
+      </Section>
+
+      <Section title="Coach: Needs you, Ask and no model">
+        {/* The rows format a routine's rhythm with the current date, so this streams in. */}
+        <Suspense fallback={<Skeleton className="h-[480px] rounded-lg" />}><CoachGallery /></Suspense>
+      </Section>
+
+      <Section title="Today: header, attention, pulse, timeline, rail, first day and all done">
+        <Suspense fallback={<Skeleton className="h-[640px] rounded-lg" />}><TodayGallery /></Suspense>
+      </Section>
+
+      <Section title="Plan and You: review card, Your sources, suggestions, connect success, notification channel">
+        <PlanYouGallery />
+      </Section>
+
+      <Section title="Setup: the four steps and the save file">
+        <OnboardingGallery templates={TEMPLATES} />
+      </Section>
+
+      <Section title="Shell pieces">
+        <ShellDemo />
+      </Section>
+
+      <Section title="beUI: installed for the redesign">
+        <InstalledBeuiGallery />
+      </Section>
+
+      <Section title="Toasts (with Undo)">
         <ToastGallery />
       </Section>
 
@@ -183,6 +246,11 @@ export default function UiGallery() {
       </Section>
     </div>
   )
+}
+
+async function PeekSamples() {
+  await connection()
+  return <PeekGallery />
 }
 
 async function ChartSamples() {

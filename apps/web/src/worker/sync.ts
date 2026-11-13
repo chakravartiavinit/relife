@@ -74,7 +74,7 @@ export async function recentSyncRuns(perConnector = 4) {
   return db.select().from(ranked).where(lte(ranked.n, perConnector)).orderBy(ranked.connectorId, ranked.n)
 }
 
-/** Status of every connector for the Connectors page. */
+/** Status of every connector for the Connections page. */
 export async function connectorStatus() {
   const user = await getUser()
   const rows = await db.select().from(schema.connections).where(eq(schema.connections.userId, user.id))

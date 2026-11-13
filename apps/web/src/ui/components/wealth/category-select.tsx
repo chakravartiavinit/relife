@@ -3,6 +3,7 @@
 import { useOptimistic, useTransition } from 'react'
 import { recategorize } from '@/app/actions'
 import { useToast } from '../toast'
+import { usePeekChanged } from '../peek/peek-context'
 import { Select } from '../select'
 
 /** Inline category picker. Changing it re-categorizes and remembers the rule for that merchant. */
@@ -10,6 +11,7 @@ export function CategorySelect({ id, value, options, merchant }: { id: string; v
   const [current, setCurrent] = useOptimistic(value)
   const [pending, start] = useTransition()
   const toast = useToast()
+  const changed = usePeekChanged()
   return (
     <Select
       variant="pill" aria-label={`Category for ${merchant}`} value={current} disabled={pending} className="max-w-full"
@@ -19,6 +21,7 @@ export function CategorySelect({ id, value, options, merchant }: { id: string; v
           setCurrent(next)
           try {
             await recategorize(id, next, true)
+            changed()
             toast(`${merchant} moved to ${next}`, 'good', { description: 'Remembered for their next payments' })
           } catch {
             toast.error()

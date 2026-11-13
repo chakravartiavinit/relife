@@ -1,20 +1,20 @@
 'use client'
 
-import { useActionState, useEffect, useId, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useActionState, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Check, ChartLine, ClipboardCheck, Info, Plus, Target, TriangleAlert, type LucideIcon } from 'lucide-react'
 import { decideGoalReviewAction, saveGoal, type GoalFormState } from '@/app/actions'
 import { addDays } from '@/core/time'
 import { CATEGORIES, type Category } from '@/db/schema'
-import { MAX_ACTIONS, MAX_ACTIVE, type GoalDraft } from '@/domain/goals'
+import { MAX_ACTIONS, MAX_ACTIVE, nextReviewOn, type GoalDraft } from '@/domain/goals'
 import { CATEGORY } from '@/ui/tokens'
 import { cn } from '@/ui/cn'
 import { Button } from '../button'
-import { Badge } from '../card'
+import { Badge, IconChip } from '../card'
 import { Field, Input, Segmented, Select, Textarea } from '../form'
 import { useToast } from '../toast'
 import { Dialog, FormError } from '../forms/dialog'
-import { CADENCE_LABEL, day, directionLabel, type GoalViewData } from './format'
+import { CADENCE_LABEL, day, directionLabel, value as fmtValue, weekday, type GoalViewData } from './format'
 
 // Create, edit, review-change and draft-approval form for an outcome goal. The server owns the baseline:
 // "use recorded" is recomputed there, and the measure and baseline are locked after a goal starts.
@@ -72,15 +72,97 @@ export function initialFromDraft(d: GoalDraft, picker: GoalPickerData, today: st
   }
 }
 
-export function GoalDialog({ open, onClose, mode, initial, picker, today }: {
+export type DraftOffer = { insightId: string; draft: GoalDraft }
+
+export function GoalDialog({ open, onClose, mode, initial, picker, today, drafts }: {
   open: boolean; onClose: () => void; mode: Mode; initial: GoalFormInitial; picker: GoalPickerData; today: string
+  /** Create only: coach drafts offered on the first step. */
+  drafts?: DraftOffer[]
 }) {
   const title = { create: 'New goal', draft: 'Review goal draft', edit: 'Edit goal', review: 'Change goal' }[mode.kind]
   return (
     <Dialog open={open} onClose={onClose} title={title} icon={Target} color={CATEGORY[initial.area].color} width="max-w-[600px]"
       description="Say what you’ll measure, where you start and where you want to be.">
-      {open ? <GoalForm mode={mode} initial={initial} picker={picker} today={today} onDone={onClose} /> : null}
+      {open ? (mode.kind === 'create'
+        ? <CreateSteps mode={mode} initial={initial} picker={picker} today={today} drafts={drafts ?? []} onDone={onClose} />
+        : <GoalForm mode={mode} initial={initial} picker={picker} today={today} onDone={onClose} />) : null}
     </Dialog>
+  )
+}
+
+/** New goal in two steps: pick what to change (a coach draft, a tracker ReLife already fills, or a check-in), then the prefilled form. */
+function CreateSteps({ mode, initial, picker, today, drafts, onDone }: {
+  mode: Extract<Mode, { kind: 'create' }>; initial: GoalFormInitial; picker: GoalPickerData; today: string; drafts: DraftOffer[]; onDone: () => void
+}) {
+  const [step2, setStep2] = useState<{ mode: Mode; initial: GoalFormInitial } | null>(null)
+  if (step2) return <GoalForm mode={step2.mode} initial={step2.initial} picker={picker} today={today} onDone={onDone} onBack={() => setStep2(null)} />
+  return (
+    <GoalStartPicker
+      picker={picker} activeCount={mode.activeCount} drafts={drafts}
+      onDraft={(d) => setStep2({ mode: { kind: 'draft', activeCount: mode.activeCount, insightId: d.insightId }, initial: initialFromDraft(d.draft, picker, today) })}
+      onTracker={(t) => setStep2({ mode, initial: { ...initial, measureKind: 'tracker', trackerId: t.id, measureName: t.name, unit: t.unit ?? '', area: t.category } })}
+      onCheckIn={() => setStep2({ mode, initial: { ...initial, measureKind: 'check_in', trackerId: null } })}
+    />
+  )
+}
+
+const SHOWN_TRACKERS = 5
+const MIN_DAYS = 7
+
+function GoalStartPicker({ picker, activeCount, drafts, onDraft, onTracker, onCheckIn }: {
+  picker: GoalPickerData; activeCount: number; drafts: DraftOffer[]
+  onDraft: (d: DraftOffer) => void; onTracker: (t: PickerTracker) => void; onCheckIn: () => void
+}) {
+  const [all, setAll] = useState(false)
+  const trackers = [...picker.trackers].sort((a, b) => b.observations - a.observations || a.name.localeCompare(b.name))
+  const shown = all ? trackers : trackers.slice(0, SHOWN_TRACKERS)
+  const draft = drafts[0]
+  const row = 'flex min-h-14 w-full items-center gap-3 rounded-md bg-surface-2 p-3 text-start transition-[background-color,transform] duration-150 ease-out-quint hover:bg-surface-3 active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill disabled:opacity-50 disabled:active:scale-100'
+  return (
+    <div className="flex flex-col gap-5">
+      <div>
+        <h3 className="text-heading text-ink">What do you want to change?</h3>
+        <p className="mt-1 text-small text-ink-3 tabular-nums">{activeCount} of {MAX_ACTIVE} active · {MAX_ACTIVE - activeCount} {MAX_ACTIVE - activeCount === 1 ? 'slot' : 'slots'} free. Pick something to measure; you set the target next.</p>
+      </div>
+      {draft ? (
+        <div className="rounded-md bg-pill/7 p-4">
+          <p className="font-mono text-label text-pill-ink uppercase">Coach draft</p>
+          <p className="mt-1 text-body font-semibold text-ink">{draft.draft.title}</p>
+          <p className="mt-0.5 text-small text-ink-2">{draft.draft.reason}</p>
+          <Button variant="primary" className="mt-3" onClick={() => onDraft(draft)}>Use this draft</Button>
+        </div>
+      ) : null}
+      <div>
+        <h3 className="mb-2 text-small font-semibold text-ink-2">Trackers ReLife already fills</h3>
+        <ul className="flex flex-col gap-2">
+          {shown.map((t) => {
+            const ok = t.observations >= MIN_DAYS && !!t.baseline
+            return (
+              <li key={t.id}>
+                <button type="button" className={row} disabled={!ok} onClick={() => onTracker(t)}>
+                  <span aria-hidden className="size-2.5 shrink-0 rounded-full" style={{ background: CATEGORY[t.category].color }} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-body font-medium text-ink">{t.name}</span>
+                    <span className="block text-caption text-ink-3 tabular-nums">{CATEGORY[t.category].label} · {t.observations} of 28 days recorded</span>
+                  </span>
+                  <span className="shrink-0 text-small text-ink-2 tabular-nums">{ok ? `28-day avg ${fmtValue(t.baseline!.value, t.unit)}` : `Needs ${MIN_DAYS} days`}</span>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+        {trackers.length > SHOWN_TRACKERS ? (
+          <Button variant="ghost" size="sm" className="mt-2" onClick={() => setAll((v) => !v)} aria-expanded={all}>{all ? 'Show fewer' : `Show all ${trackers.length} trackers`}</Button>
+        ) : null}
+      </div>
+      <button type="button" className={row} onClick={onCheckIn}>
+        <IconChip color="var(--pill)"><ClipboardCheck strokeWidth={1.5} /></IconChip>
+        <span className="min-w-0 flex-1">
+          <span className="block text-body font-medium text-ink">I’ll record a check-in</span>
+          <span className="block text-caption text-ink-3">For things no tracker counts, like a tempo or a mood score.</span>
+        </span>
+      </button>
+    </div>
   )
 }
 
@@ -134,10 +216,12 @@ export function Notice({ tone = 'info', icon: Icon = tone === 'warn' ? TriangleA
   )
 }
 
-function GoalForm({ mode, initial, picker, today, onDone }: { mode: Mode; initial: GoalFormInitial; picker: GoalPickerData; today: string; onDone: () => void }) {
+function GoalForm({ mode, initial, picker, today, onDone, onBack }: { mode: Mode; initial: GoalFormInitial; picker: GoalPickerData; today: string; onDone: () => void; onBack?: () => void }) {
+  const cadence = useRef(initial.cadence)
   const locked = mode.kind === 'edit' || mode.kind === 'review'
   const goal = locked ? mode.goal : null
   const submit = async (prev: GoalFormState, form: FormData): Promise<GoalFormState> => {
+    cadence.current = String(form.get('cadence') ?? initial.cadence) as GoalFormInitial['cadence']
     if (mode.kind !== 'review') return saveGoal(prev, form)
     const n = (k: string) => { const v = form.get(k); return v === '' || v == null ? null : Number(v) }
     const res = await decideGoalReviewAction({
@@ -172,10 +256,11 @@ function GoalForm({ mode, initial, picker, today, onDone }: { mode: Mode; initia
 
   useEffect(() => {
     if (state?.ok) {
-      toast(mode.kind === 'create' || mode.kind === 'draft' ? 'Goal started' : 'Goal saved', 'good')
+      const started = mode.kind === 'create' || mode.kind === 'draft'
+      toast(started ? 'Goal started' : 'Goal saved', 'good', started ? { description: `First review ${weekday(nextReviewOn(today, cadence.current))}` } : undefined)
       onDone()
     }
-  }, [state, mode.kind, onDone, toast])
+  }, [state, mode.kind, onDone, toast, today])
 
   // A new tracker brings its own suggested baseline.
   const pickTracker = (v: string) => {
@@ -364,7 +449,7 @@ function GoalForm({ mode, initial, picker, today, onDone }: { mode: Mode; initia
               </label>
             )
           })}
-          {!actionOptions.length ? <p className="text-[13px] text-ink-3">Add a routine on Habits first, then link it here.</p> : null}
+          {!actionOptions.length ? <p className="text-[13px] text-ink-3">Add a routine in Plan › Routines first, then link it here.</p> : null}
         </div>
         <p className="text-[12.5px] text-ink-3 tabular-nums">{actions.length} of {MAX_ACTIONS} selected.{outcomeTrackerKey ? ' The measure can’t also be an action.' : ''}</p>
         <FieldError id={`${id}-actions-e`} message={errors.actions} />
@@ -386,27 +471,33 @@ function GoalForm({ mode, initial, picker, today, onDone }: { mode: Mode; initia
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-divider pt-4">
         <p className="text-[12.5px] text-ink-3 tabular-nums">{activeAfter ? `Saving makes this active goal ${activeAfter} of ${MAX_ACTIVE}.` : ''}</p>
         <div className="flex gap-2">
-          <Button variant="ghost" onClick={onDone}>Cancel</Button>
-          <Button type="submit" variant="primary" disabled={pending}>{pending ? 'Saving…' : mode.kind === 'draft' ? 'Approve goal' : locked ? 'Save' : 'Save goal'}</Button>
+          <Button variant="ghost" onClick={onBack ?? onDone}>{onBack ? 'Back' : 'Cancel'}</Button>
+          <Button type="submit" variant="primary" disabled={pending}>{pending ? 'Saving…' : mode.kind === 'draft' || mode.kind === 'create' ? 'Start goal' : 'Save'}</Button>
         </div>
       </div>
     </form>
   )
 }
 
-/** "Create goal"; also opens itself for `/goals?new=1`. Disabled at the cap with the reason read out. */
-export function NewGoalButton({ today, picker, activeCount, autoOpen = false }: { today: string; picker: GoalPickerData; activeCount: number; autoOpen?: boolean }) {
+/**
+ * "New goal"; also open while the URL is `/plan?new=1`. Open state comes from the URL, not from state set once,
+ * so a page kept alive in the background never comes back with a stale dialog. Disabled at the cap with the reason read out.
+ */
+export function NewGoalButton({ today, picker, activeCount, listenToUrl = false, drafts }: { today: string; picker: GoalPickerData; activeCount: number; listenToUrl?: boolean; drafts?: DraftOffer[] }) {
   const atCap = activeCount >= MAX_ACTIVE
-  const [open, setOpen] = useState(autoOpen && !atCap)
+  const [open, setOpen] = useState(false)
   const router = useRouter()
+  const pathname = usePathname()
+  const params = useSearchParams()
+  const fromUrl = listenToUrl && pathname === '/plan' && params.get('new') === '1'
   return (
     <>
       <Button variant="primary" onClick={() => setOpen(true)} disabled={atCap} aria-describedby={atCap ? 'goal-cap-note' : undefined}>
         <Plus className="size-4" strokeWidth={2} />
-        Create goal
+        New goal
       </Button>
-      <GoalDialog open={open} mode={{ kind: 'create', activeCount }} initial={blank(today)} picker={picker} today={today}
-        onClose={() => { setOpen(false); if (autoOpen) router.replace('/goals', { scroll: false }) }} />
+      <GoalDialog open={(open || fromUrl) && !atCap} mode={{ kind: 'create', activeCount }} initial={blank(today)} picker={picker} today={today} drafts={drafts}
+        onClose={() => { setOpen(false); if (fromUrl) router.replace(pathname, { scroll: false }) }} />
     </>
   )
 }

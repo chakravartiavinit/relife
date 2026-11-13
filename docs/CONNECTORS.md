@@ -4,7 +4,7 @@ A connector fetches data from one source and stores it untouched in `raw_events`
 turn it into entries, transactions, trades and holdings. Each connector lives in one file in
 `apps/web/src/connectors/` and is listed in `apps/web/src/connectors/index.ts`.
 
-A connector runs only after you connect it on the **Connectors** page. Connect opens a dialog for its
+A connector runs only after you connect it on **You → Connections**. Connect opens a dialog for its
 keys, which are stored encrypted in your local database; values already in `.env` fill any field you
 leave blank. Before saving, most connectors make one quick request to test the key or username, so a
 typo shows in the dialog instead of as a failing sync later (network trouble doesn't block saving).
@@ -56,7 +56,7 @@ database. ReLife reads them from its environment, so nothing in the code changes
 2. In this folder: `dotsafe unlock --for 8h`, then `dotsafe import` to move `.env` into the vault. That links
    the folder (`.dotsafe.json`, safe to commit: ids only). Add more with `dotsafe set ANTHROPIC_API_KEY`.
 3. Start with `npm run dev:vault` instead of `npm run dev`. Both the web app and the worker get the keys.
-4. Leave the key fields on Connectors blank. Keys saved there win over the vault, so remove any you moved
+4. Leave the key fields on You → Connections blank. Keys saved there win over the vault, so remove any you moved
    (Disconnect, then Connect again with the fields empty). The dialog shows *From your dotsafe vault*.
 
 Once everything is in the vault you can empty the secrets in `.env` (keep `DATABASE_URL` there or move it too).
@@ -97,7 +97,7 @@ Two local trackers feed one timeline (Activity page):
 
 - **Chrome extension** (`apps/extension/`, see its README): time on each site, YouTube video and course page while
   the tab is in front and you're active or a video plays. It posts to `POST /api/activity` with the token you set
-  on Connectors → Laptop activity (`ACTIVITY_TOKEN`).
+  on You → Connections → Laptop activity (`ACTIVITY_TOKEN`).
 - **Mac apps**: the worker checks the app in front every 15 seconds with `lsappinfo` (no permission prompt) and
   the idle time with `ioreg`. App names only, no window titles. Browsers are skipped because the extension covers
   them. Set `ACTIVITY_APPS=off` to turn it off.
@@ -159,16 +159,16 @@ Strava, Oura, WHOOP, Withings and Google Calendar connect by signing in with the
 machine, so there is no shared ReLife app: you make a free app with the service once, and the Connect dialog walks you
 through it.
 
-1. Open the connector on **Connectors**. Follow the link to the service's developer page and create an app.
+1. Open the connector on **You → Connections**. Follow the link to the service's developer page and create an app.
 2. Copy the **redirect address** the dialog shows (`http://127.0.0.1:3030/api/oauth/<id>/callback` by default) into
    the app. It must match exactly, so open ReLife at the same address you registered (`127.0.0.1` and `localhost` are
    different addresses).
 3. Paste the app's client ID and secret and press **Connect**. The service's sign-in page opens; approve it and you
-   come back to Connectors, where the first sync starts within a minute.
+   come back to You → Connections, where the first sync starts within a minute.
 
 The tokens are kept encrypted with the connection's keys and refreshed before they expire (WHOOP is asked for `offline` again on each refresh); services that rotate the
 refresh token (Strava, Oura, WHOOP, Withings) have the new one saved at once. Disconnect forgets them. A new client ID
-means signing in again. If a refresh is refused, the sync fails with "Sign in again on Connectors" and the dialog's
+means signing in again. If a refresh is refused, the sync fails with "Sign in again on You → Connections" and the dialog's
 **Sign in again** button fixes it. The sign-in flow is in `apps/web/src/core/oauth.ts` and `apps/web/src/app/api/oauth/`; a connector
 opts in with an `oauth` spec (`apps/web/src/core/types.ts`).
 
@@ -419,7 +419,7 @@ returned, so nothing is counted twice. Spot trade history exports work too.
 These apps have no public API, so ReLife reads your own order history the way you would: in Chrome,
 logged in as you. Personal use only, and not an official integration.
 
-1. On Connectors, open the app and press **Open login window**. A plain Chrome window opens (not
+1. On You → Connections, open the app and press **Open login window**. A plain Chrome window opens (not
    remote-controlled, so sites' bot checks let the login through).
 2. Log in (phone OTP included).
 3. Once you see your account, press **Connect**: ReLife closes the window and keeps the login. Every 6 hours the worker opens the order-history page in a hidden window with the
@@ -443,7 +443,7 @@ logged in as you. Personal use only, and not an official integration.
 
 1. Create `apps/web/src/connectors/<id>.ts` exporting a `Connector` (`id`, `name`, `category`, `description`,
    `provides`, `fields`, `env`, `everyMinutes`, `sync`). `fields` are the inputs of its Connect dialog on
-   /connectors; each names the env var the connector reads. In `sync`, call `ctx.emit()` with a stable `externalId` per event and
+   /you/connections; each names the env var the connector reads. In `sync`, call `ctx.emit()` with a stable `externalId` per event and
    save progress with `ctx.setCursor()`. Add a `check(get)` that makes one cheap request with the values being
    saved (`get('<ENV>')`, not `env()`) and throws advice when the key or username is wrong.
 2. Add it to the list in `apps/web/src/connectors/index.ts`.

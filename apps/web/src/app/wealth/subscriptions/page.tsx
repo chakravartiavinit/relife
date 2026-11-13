@@ -11,7 +11,7 @@ import { localDate, localDayRange } from '@/core/time'
 import { nextOccurrence, parseSimple } from '@/domain/recurrence'
 import { formatMoney } from '@/domain/money'
 import { dueLabel } from '@/domain/wealth'
-import { Badge, Card, CardHeader, KpiStrip, PageHeader, Skeleton } from '@/ui/components/card'
+import { Badge, Card, CardHeader, KpiStrip, Skeleton, peekAll } from '@/ui/components/card'
 import { EmptyState } from '@/ui/components/empty'
 import { Button } from '@/ui/components/button'
 import { AddSubscription, type SubscriptionValues } from '@/ui/components/wealth/subscription-form'
@@ -33,10 +33,10 @@ const UPCOMING_DAYS = 30
 export default function SubscriptionsPage() {
   return (
     <>
-      <PageHeader
-        eyebrow="Wealth" title="Subscriptions & bills" description="Everything that renews, with a reminder before it charges."
-        actions={<Suspense fallback={<Button variant="primary" disabled><Plus className="size-4" strokeWidth={2} /> Add subscription</Button>}><AddButton /></Suspense>}
-      />
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <p className="max-w-[60ch] text-body text-ink-2">Everything that renews, with a reminder before it charges.</p>
+        <Suspense fallback={<Button variant="primary" disabled><Plus className="size-4" strokeWidth={2} /> Add subscription</Button>}><AddButton /></Suspense>
+      </div>
       <Suspense fallback={<SubscriptionsSkeleton />}>
         <Subscriptions />
       </Suspense>
@@ -110,12 +110,12 @@ async function Subscriptions() {
 
   return (
     <div className="flex flex-col gap-6">
-      <KpiStrip items={[
+      <KpiStrip items={peekAll([
         { label: 'Per month', value: <Ticker value={monthly} currency={base} />, sub: `${active.length} active${paused ? ` · ${paused} paused` : ''}` },
         { label: 'Per year', value: <Ticker value={monthly * 12} currency={base} />, sub: 'At today’s rates' },
         { label: 'Next 30 days', value: formatMoney(upcoming.reduce((s, i) => s + i.chargeBase, 0), base, { decimals: 0 }), sub: `${upcoming.length} charge${upcoming.length === 1 ? '' : 's'}` },
         { label: 'Next charge', value: next ? dueLabel(next.daysLeft!) : '–', sub: next ? `${next.s.name}${next.s.amount ? ` · ${formatMoney(next.s.amount, next.cur)}` : ''}` : 'Nothing scheduled' },
-      ]} />
+      ], { type: 'brief', id: 'wealth' })} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         {/* What charges next, as a dated timeline. */}

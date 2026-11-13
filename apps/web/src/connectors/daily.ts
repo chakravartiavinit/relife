@@ -27,14 +27,14 @@ export function request(url: string, init: RequestInit = {}): Promise<Response> 
   return fetchT(url, { ...init, headers: { 'User-Agent': 'ReLife (self-hosted life tracker)', Accept: 'application/json', ...init.headers } }, 30_000)
 }
 
-/** The status errors every service shares, with words for the Connectors page. */
+/** The status errors every service shares, with words for the Connections page. */
 export function checkStatus(res: Response, notFound: string) {
-  if (res.status === 401 || res.status === 403) throw new Error('The key was rejected. Check it on Connectors, or make a new one.')
+  if (res.status === 401 || res.status === 403) throw new Error('The key was rejected. Check it in You › Connections, or make a new one.')
   if (res.status === 404) throw new Error(notFound)
   if (res.status === 429) throw new Error('Rate limited. It will try again on the next sync.')
 }
 
-/** fetch + JSON with errors a person can act on, shown on the Connectors page. A 204 answers `undefined`. */
+/** fetch + JSON with errors a person can act on, shown on the Connections page. A 204 answers `undefined`. */
 export async function fetchJson<T>(url: string, init: RequestInit = {}, notFound = 'Not found. Check the username.'): Promise<T> {
   const res = await request(url, init)
   checkStatus(res, notFound)

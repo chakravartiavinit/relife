@@ -61,7 +61,7 @@ export const withings: Connector = {
       const r = await fetchJson<{ status: number; body: T; error?: string }>(`https://wbsapi.withings.net${path}`, {
         method: 'POST', headers: { Authorization: auth, 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(params),
       })
-      if (r.status === 401) throw new Error('The Withings sign-in expired. Sign in again on Connectors.')
+      if (r.status === 401) throw new Error('The Withings sign-in expired. Sign in again in You › Connections.')
       if (r.status !== 0) throw new Error(`Withings: ${r.error ?? `status ${r.status}`}`)
       return r.body
     }

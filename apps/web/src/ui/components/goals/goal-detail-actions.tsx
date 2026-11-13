@@ -32,7 +32,7 @@ export function GoalDetailActions({ g, picker, today, activeCount, reviewDue }: 
         <GoalFormButton mode={{ kind: 'edit', goal: g }} initial={initialFromGoal(g)} picker={picker} today={today}><Pencil className="size-4" strokeWidth={1.5} />Edit</GoalFormButton>
         {g.status === 'active' ? (
           reviewDue
-            ? <Link href="/goals/review" className={buttonClass({ variant: 'secondary' })}><CalendarCheck className="size-4" strokeWidth={1.5} />Review</Link>
+            ? <Link href="/plan/review" className={buttonClass({ variant: 'secondary' })}><CalendarCheck className="size-4" strokeWidth={1.5} />Review</Link>
             : <Button disabled={pending} onClick={reviewNow}><CalendarCheck className="size-4" strokeWidth={1.5} />Review now</Button>
         ) : null}
         {g.status === 'active'

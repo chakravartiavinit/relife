@@ -12,7 +12,7 @@ import type { User } from './user'
 // Scores days into xp_events and unlocks achievements. Days older than yesterday are final: the worker
 // only rescores today and yesterday (and back-fills once when there is no XP yet).
 
-const BALANCE_XP = 50
+export const BALANCE_XP = 50
 /** Steps from the phone and each wearable (one tracker per device, so they don't add up). */
 const STEPS = ['steps', 'oura.steps', 'withings.steps']
 const TRACKERS = [
@@ -299,4 +299,12 @@ export async function recentXp(user: User, limit = 40) {
     reason: schema.xpEvents.reason, verified: schema.xpEvents.verified, ref: schema.xpEvents.ref, source: schema.xpEvents.source,
   }).from(schema.xpEvents).where(eq(schema.xpEvents.userId, user.id))
     .orderBy(desc(schema.xpEvents.localDate), desc(schema.xpEvents.amount)).limit(limit)
+}
+
+/** Level, progress to the next and title: one `sum`, for the shell (the full `xpSummary` does far more). */
+export async function xpLevel(user: User) {
+  const [row] = await db.select({ n: sql<number>`coalesce(sum(${schema.xpEvents.amount}), 0)::int` }).from(schema.xpEvents)
+    .where(eq(schema.xpEvents.userId, user.id))
+  const lv = levelFor(row.n)
+  return { level: lv.level, progress: lv.progress, title: titleFor(lv.level) }
 }

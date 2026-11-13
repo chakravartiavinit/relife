@@ -192,7 +192,7 @@ function renderQuests(v) {
 }
 
 function renderScreen(focus) {
-  $('openActivity').href = `${base()}/activity`
+  $('openActivity').href = `${base()}/time`
   if (!focus) { $('todayTotal').textContent = '–'; $('todayBar').innerHTML = ''; $('todayLegend').innerHTML = ''; return }
   $('todayTotal').textContent = hm(focus.seconds)
   const parts = focus.byKind.filter((k) => k.seconds >= 30)

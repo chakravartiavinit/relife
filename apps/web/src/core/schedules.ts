@@ -1,6 +1,7 @@
 import { and, between, eq, inArray } from 'drizzle-orm'
 import { db, schema } from '@/db'
-import { describe, nextOccurrence, occurrencesBetween } from '@/domain/recurrence'
+import { describe, nextOccurrence, occurrencesBetween, parseSimple } from '@/domain/recurrence'
+import type { ScheduleInitial } from '@/ui/components/forms/schedule-form'
 import { persist } from './ingest'
 import { localDate, localDayRange } from './time'
 import type { User } from './user'
@@ -142,4 +143,31 @@ export async function addGoalProgress(user: User, scheduleId: string, amount: nu
     kind: 'entry', tracker: slug, date: localDate(now, user.timezone), value: amount, source: 'manual', mode: 'add',
     defaults: { name: s.name, category: s.category, unit: s.unit ?? undefined, target: s.target ?? undefined },
   })
+}
+
+/** A schedule as the edit form wants it. */
+export function scheduleInitial(s: Schedule): ScheduleInitial {
+  const r = parseSimple(s.rrule)
+  const meta = s.meta as ScheduleMeta
+  return {
+    id: s.id,
+    name: s.name,
+    kind: s.kind === 'medicine' ? 'medicine' : 'routine',
+    category: s.category,
+    freq: r.freq,
+    interval: r.interval ?? 1,
+    times: r.times,
+    byweekday: r.byweekday ?? [],
+    bymonthday: r.bymonthday,
+    bymonth: r.bymonth,
+    start: r.start,
+    until: r.until,
+    remindOffsetMin: s.remindOffsetMin,
+    target: s.target ?? undefined,
+    unit: s.unit ?? undefined,
+    step: meta.step,
+    dose: meta.dose,
+    stock: meta.stock,
+    notes: meta.notes,
+  }
 }
