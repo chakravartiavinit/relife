@@ -82,7 +82,8 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
           <Celebrations />
           <PaymentToasts />
           <LiveRefresh />
-          <WaitingBanner />
+          {/* usePathname needs a Suspense boundary under Cache Components, or `next build` fails to prerender. */}
+          <Suspense fallback={null}><WaitingBanner /></Suspense>
           <Suspense fallback={null}><ThemeFromServer /></Suspense>
         </ToastProvider>
         </AppMotion>
