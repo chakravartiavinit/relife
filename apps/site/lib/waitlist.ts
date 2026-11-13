@@ -17,11 +17,19 @@ export type JoinResult = 'sent' | 'rate_limited' | 'disposable'
 const attemptTimes = async (where: SQL) =>
   (await db().select({ at: waitlistAttempts.at }).from(waitlistAttempts).where(and(where, gt(waitlistAttempts.at, new Date(Date.now() - DAY))))).map((r) => r.at.getTime())
 
+/**
+ * Record an attempt first, then judge it only by the attempts recorded before it (lower id). Parallel requests can't
+ * all pass a read-then-write check, and the first of them still goes through instead of all being refused.
+ */
+async function recordThenLimited(values: typeof waitlistAttempts.$inferInsert, where: SQL, limits: Parameters<typeof isLimited>[1]) {
+  const [mine] = await db().insert(waitlistAttempts).values(values).returning({ id: waitlistAttempts.id })
+  return isLimited(await attemptTimes(and(where, lt(waitlistAttempts.id, mine.id))!), limits)
+}
+
 /** The one write path for the signup form. Returns what to tell the visitor; the email is always "check your inbox". */
 export async function joinWaitlist(input: JoinInput, ip: string): Promise<JoinResult> {
   const ipHash = hmac(ipGroup(ip))
-  if (isLimited(await attemptTimes(and(eq(waitlistAttempts.ipHash, ipHash), eq(waitlistAttempts.kind, 'submit'))!), IP_LIMITS)) return 'rate_limited'
-  await db().insert(waitlistAttempts).values({ ipHash, kind: 'submit' })
+  if (await recordThenLimited({ ipHash, kind: 'submit' }, and(eq(waitlistAttempts.ipHash, ipHash), eq(waitlistAttempts.kind, 'submit'))!, IP_LIMITS)) return 'rate_limited'
   if (isDisposable(input.email)) return 'disposable'
 
   const emailHash = hmac(input.email)
@@ -32,7 +40,8 @@ export async function joinWaitlist(input: JoinInput, ip: string): Promise<JoinRe
   // A confirmed member's link is the one in their welcome mail. Issuing a new token here would kill it, and anyone
   // can type someone else's address, so for confirmed rows nothing is rotated: they just get a mail without a link.
   if (existing?.status === 'confirmed') {
-    await db().insert(waitlistAttempts).values({ ipHash, emailHash, kind: 'send' })
+    // Parallel submits all pass the check above: only the first recorded send mails.
+    if (await recordThenLimited({ ipHash, emailHash, kind: 'send' }, eq(waitlistAttempts.emailHash, emailHash), EMAIL_LIMITS)) return 'sent'
     await emailDriver().send(alreadyConfirmedEmail(existing.email, existing.refCode))
     return 'sent'
   }
