@@ -22,6 +22,8 @@ struct ContractTests {
         case "PairPoll": _ = try JSONDecoder().decode(PairPoll.self, from: data)
         case "PairRedeem": _ = try JSONDecoder().decode(PairRedeem.self, from: data)
         case "PairRedeemResult": _ = try JSONDecoder().decode(PairRedeemResult.self, from: data)
+        case "DeviceList": _ = try JSONDecoder().decode(DeviceList.self, from: data)
+        case "DeviceRename": _ = try JSONDecoder().decode(DeviceRename.self, from: data)
         case "Event": _ = try JSONDecoder().decode(Event.self, from: data)
         case "ApiError": _ = try JSONDecoder().decode(ApiError.self, from: data)
         case "ActivityBatch":
@@ -38,7 +40,7 @@ struct ContractTests {
     func coverage() throws {
         let covered = Set(try Fixtures.names().map { String($0.split(separator: ".")[0]) })
         let known: Set = ["TodayView", "TodayActionResult", "TodayAction", "Hello", "Me", "DeviceInfo", "PairRequestStart", "PairRequestStarted",
-                          "PairPoll", "PairRedeem", "PairRedeemResult", "Event", "ApiError", "ActivityBatch"]
+                          "PairPoll", "PairRedeem", "PairRedeemResult", "DeviceList", "DeviceRename", "Event", "ApiError", "ActivityBatch"]
         #expect(covered.subtracting(known).isEmpty, "fixtures without a Swift model: \(covered.subtracting(known))")
     }
 

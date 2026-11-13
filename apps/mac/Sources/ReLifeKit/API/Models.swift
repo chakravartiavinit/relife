@@ -409,6 +409,39 @@ public struct PairRedeemResult: Codable, Sendable, Equatable {
     public var next: String?
 }
 
+// MARK: - Devices
+
+/// One row of GET /api/v1/devices: what Settings → Devices shows.
+public struct DeviceListItem: Codable, Sendable, Equatable, Identifiable {
+    public var id: String
+    public var kind: DeviceKind
+    public var name: String
+    public var scopes: [Scope]
+    /// The host the device paired through, such as `127.0.0.1` or `mac.tailnet.ts.net`.
+    public var via: String?
+    public var lastSeenAt: String?
+    public var createdAt: String
+    /// The device that made this request.
+    public var current: Bool
+    /// The shared ACTIVITY_TOKEN or INGEST_TOKEN, kept so old clients keep working.
+    public var legacy: Bool
+    public var appVersion: String?
+    public var platform: String?
+}
+
+public struct DeviceList: Codable, Sendable, Equatable {
+    public var devices: [DeviceListItem]
+}
+
+/// PATCH /api/v1/devices/:id
+public struct DeviceRename: Codable, Sendable, Equatable {
+    public var name: String
+
+    public init(name: String) {
+        self.name = name
+    }
+}
+
 // MARK: - Events (SSE)
 
 public enum PairingStatus: String, Codable, Sendable {
