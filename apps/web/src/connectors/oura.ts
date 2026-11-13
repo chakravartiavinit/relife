@@ -67,14 +67,16 @@ export const oura: Connector = {
     const get = async <T,>(collection: string) => {
       const out: T[] = []
       let next: string | null | undefined
-      do {
+      // A token that repeats, or never ends, would loop forever; 50 pages of 100 days of data is more than any window.
+      for (let page = 0; page < 50; page++) {
         // end_date a day later: Oura's end is exclusive for some collections.
         const q = new URLSearchParams({ start_date: from, end_date: addDays(today, 1), ...(next ? { next_token: next } : {}) })
         const p = await fetchJson<Page<T>>(`https://api.ouraring.com/v2/usercollection/${collection}?${q}`, { headers })
           .catch(apiError('Oura', ' Oura only shares data while your membership is active.'))
         out.push(...p.data)
+        if (!p.next_token || p.next_token === next) break
         next = p.next_token
-      } while (next)
+      }
       return out
     }
     const [sleep, dailySleep, readiness, activity] = await Promise.all([

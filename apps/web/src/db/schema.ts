@@ -3,6 +3,7 @@ import {
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 import { DEVICE_KINDS, SCOPES, type DeviceKind, type Scope } from '@relife/contract'
+import { CATEGORIES, type Category } from '@/domain/categories'
 import type { NotifyCategory, NotifyPrefs } from '@/domain/notify'
 import type { Agg, Op, QuestStatus, Rank, SystemKind } from '@/domain/system'
 import type { RecoveryPayload } from '@/domain/recovery'
@@ -30,8 +31,7 @@ const stamps = () => ({
 })
 const meta = () => jsonb('meta').$type<Record<string, unknown>>().notNull().default({})
 
-export const CATEGORIES = ['health', 'mind', 'skills', 'wealth', 'hobbies', 'relationships'] as const
-export type Category = (typeof CATEGORIES)[number]
+export { CATEGORIES, type Category }
 
 /** Set in onboarding (/welcome) and Settings. The AI reads the whole object before every plan. */
 /** A weekly review in parts, so the app and Telegram can lay it out (src/ai/jobs/weekly-review.ts). */
@@ -172,6 +172,7 @@ export const entries = pgTable('entries', {
 }, (t) => [
   uniqueIndex('entries_tracker_date_source').on(t.trackerId, t.localDate, t.source),
   index('entries_user_date').on(t.userId, t.localDate),
+  index('entries_user_updated').on(t.userId, t.updatedAt), // dataVersionFor
 ])
 
 export type ScheduleKind = 'routine' | 'medicine' | 'subscription' | 'bill' | 'renewal'
@@ -245,6 +246,9 @@ export const transactions = pgTable('transactions', {
 }, (t) => [
   uniqueIndex('transactions_source_ref').on(t.userId, t.source, t.externalRef),
   index('transactions_user_date').on(t.userId, t.localDate),
+  index('transactions_user_updated').on(t.userId, t.updatedAt), // dataVersionFor
+  // Needs you and the shell count the rows still waiting for a category.
+  index('transactions_uncategorized').on(t.userId).where(sql`${t.category} = 'Uncategorized'`),
 ])
 
 export const merchantRules = pgTable('merchant_rules', {
@@ -272,7 +276,10 @@ export const trades = pgTable('trades', {
   externalRef: text('external_ref').notNull(),
   meta: meta(),
   ...stamps(),
-}, (t) => [uniqueIndex('trades_source_ref').on(t.userId, t.source, t.externalRef)])
+}, (t) => [
+  uniqueIndex('trades_source_ref').on(t.userId, t.source, t.externalRef),
+  index('trades_user_updated').on(t.userId, t.updatedAt), // dataVersionFor
+])
 
 // Money in and out of exchange accounts (crypto deposits, withdrawals) and futures income (realized P&L,
 // funding, commission). With trades and holdings it gives the all-time P&L: value now + out − in.
@@ -290,7 +297,11 @@ export const cryptoFlows = pgTable('crypto_flows', {
   externalRef: text('external_ref').notNull(),
   meta: meta(),
   ...stamps(),
-}, (t) => [uniqueIndex('crypto_flows_source_ref').on(t.userId, t.source, t.externalRef), index('crypto_flows_user_at').on(t.userId, t.at)])
+}, (t) => [
+  uniqueIndex('crypto_flows_source_ref').on(t.userId, t.source, t.externalRef),
+  index('crypto_flows_user_at').on(t.userId, t.at),
+  index('crypto_flows_user_updated').on(t.userId, t.updatedAt), // dataVersionFor
+])
 
 export const holdings = pgTable('holdings', {
   id: id(),
@@ -372,6 +383,10 @@ export const rawEvents = pgTable('raw_events', {
   uniqueIndex('raw_events_source_ext').on(t.userId, t.source, t.externalId),
   index('raw_events_status').on(t.status),
   index('raw_events_queue').on(t.userId, t.status, t.at), // the parse queue: new events, oldest first
+  // The latest event of one type from one source (rules/watch `changeTable`: the binance `balances` snapshots).
+  index('raw_events_source_type_at').on(t.userId, t.source, sql`(${t.body}->>'type')`, t.at),
+  // `dataVersionFor` reads max(updated_at) of this table every 20 s per open page.
+  index('raw_events_user_updated').on(t.userId, t.updatedAt),
 ])
 
 export const connections = pgTable('connections', {
@@ -665,11 +680,17 @@ export const chests = pgTable('chests', {
   openedAt: timestamp('opened_at', { withTimezone: true }),
 }, (t) => [uniqueIndex('chests_user_ref').on(t.userId, t.ref)])
 
-/** Net worth once per local day (base currency), for the trend on Wealth. */
+/**
+ * Net worth once per local day, for the trend on Wealth. `total`, `cash` and `crypto` are in `currency`, the user's
+ * base currency on that day; readers convert to the current base currency with `core/fx.convert`. Rows from before
+ * the column existed have none and are read in the current base currency (the assumption they were written under).
+ */
 export const netWorthSnapshots = pgTable('net_worth_snapshots', {
   id: id(),
   userId: userId(),
   localDate: date('local_date').notNull(),
+  // Null on rows saved before this column: they were in the base currency of that time, read as today's.
+  currency: text('currency'),
   total: num('total').notNull(),
   cash: num('cash').notNull(),
   crypto: num('crypto').notNull(),

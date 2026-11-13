@@ -69,7 +69,7 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
   previews the quick-log grammar (`apps/web/src/domain/quicklog.ts`), then Open and "Ask your coach" (⌘↵, `/coach?ask=`). Suggestions come from
   `GET /api/capture` (`loadCapture` in `apps/web/src/core/capture.ts`: `buildDayPlan` + `manualLogHistory` + the pure `rankCaptureSuggestions`
   in `apps/web/src/domain/capture.ts`) and are prefetched on hover/focus. Every result toasts with Undo: `quickLog` returns an undo token that
-  `undoQuickLog` validates and reverses; check-offs undo with `toggleCheck(…, null)`, goal steps with `addToGoal(id, -step)`.
+  `undoQuickLog` validates and reverses; check-offs undo with `toggleCheck(…, null)`, goal steps with the `undoQuickLog` token `addToGoal` returns (the minus buttons use `undoGoalStep`).
   `CaptureView` is presentational (`/dev/ui` draws it from fixtures); `capture.tsx` owns the actions.
 - Peek: any number or row can open a detail panel (`?peek=type:id`; types in `apps/web/src/domain/peek.ts`: metric, routine, goal,
   txn, merchant, insight, connector, person, quest, sync, brief). `PeekHost` (`peek/peek-host.tsx`, mounted in the layout
@@ -110,7 +110,7 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
   `loadBriefing().attention`, nudges left out because Coach's count, `loadShellStatus().needsYou.total`, is one chip), `PulseRow` (the
   areas and Time, each the first headline number of its `AreaDef.kpis`; `core/pulse.ts`), then `Plan` (the all-day `Goals compact` rows and
   `Agenda timeline`) beside the rail (`Quests`, `GoalsCard`, `MoneyToday`). The rules are pure in `apps/web/src/domain/day-plan.ts` (periods, Now line,
-  greeting, goal pace, state). Every check-off and goal step toasts with Undo (`toggleCheck(…, null)`, `addToGoal(id, -step)`); rows,
+  greeting, goal pace, state). Every check-off and goal step toasts with Undo (`toggleCheck(…, null)`, `undoQuickLog` with the token `addToGoal` returns); rows,
   numbers and quests open Peeks. States: first day (nothing earned and setup open: `SetupCard` replaces Check first, Life pulse and Money,
   `GoalsCard` shows its empty line), nothing planned (EmptyState with Add a routine and Capture) and all done (`DayComplete` with its
   chest, `TomorrowCard`, the briefing becomes the recap). `/dev/ui` "Today" draws all of them from `apps/web/src/ui/fixtures/today.ts`.

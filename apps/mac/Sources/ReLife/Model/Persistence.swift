@@ -58,11 +58,29 @@ enum Store {
         return dir.appending(path: "\(Brand.name).store")
     }
 
+    /// Opens the store. A store that will not open (damaged, or from a newer app) is moved aside as `.broken` and
+    /// recreated; if that fails too, the app runs on an in-memory store so it still opens instead of crashing on every launch.
     static func makeContainer() -> ModelContainer {
         do {
             return try ModelContainer(for: PendingOp.self, CachedView.self, configurations: ModelConfiguration(url: url))
         } catch {
-            fatalError("Could not open the database at \(url.path): \(error)")
+            NSLog("Could not open the database at %@: %@", url.path, String(describing: error))
+        }
+        if !isOverridden {
+            let fm = FileManager.default
+            let stamp = Int(Date().timeIntervalSince1970)
+            for suffix in ["", "-wal", "-shm"] {
+                let from = URL(fileURLWithPath: url.path + suffix)
+                try? fm.moveItem(at: from, to: URL(fileURLWithPath: url.path + ".broken-\(stamp)" + suffix))
+            }
+            if let fresh = try? ModelContainer(for: PendingOp.self, CachedView.self, configurations: ModelConfiguration(url: url)) {
+                return fresh
+            }
+        }
+        do {
+            return try ModelContainer(for: PendingOp.self, CachedView.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        } catch {
+            fatalError("Could not open any database: \(error)")
         }
     }
 }

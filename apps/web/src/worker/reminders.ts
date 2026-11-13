@@ -11,29 +11,52 @@ import { head } from '@/bot/ui'
 import { delivery, occurrenceWindow, reminderAt } from './due'
 
 let lastTick: Date | undefined
+/** Reminders recorded but whose send threw: the retry tick sends them again. */
+const unsent = new Set<string>()
 
 /** One reminder pass: new occurrences since the last tick, plus expired snoozes. */
 export async function remindTick(user: User, now = new Date()) {
   // First tick after start looks back over the catch-up window (see due.ts).
   const since = lastTick ?? new Date(0)
-  lastTick = now
 
   const list = await db.select().from(schema.schedules)
     .where(and(eq(schema.schedules.userId, user.id), eq(schema.schedules.active, true)))
 
   const digest: { s: Schedule; occ: Date }[] = []
+  let failed = false
   for (const s of list) {
     const [from, to] = occurrenceWindow(s.remindOffsetMin, since, now)
-    for (const occ of occurrencesBetween(s.rrule, from, to, user.timezone)) {
-      if (await alreadyChecked(s.id, occ)) continue
-      const [row] = await db.insert(schema.reminders).values({ scheduleId: s.id, occurrence: occ })
-        .onConflictDoNothing().returning()
-      if (!row) continue // already reminded
-      if (delivery(reminderAt(occ, s.remindOffsetMin), now) === 'digest') {
-        digest.push({ s, occ })
-        continue
+    let occs: Date[]
+    try {
+      occs = occurrencesBetween(s.rrule, from, to, user.timezone)
+    } catch (e) {
+      // A malformed rule must not stop every other reminder; skip it (its window can never be read anyway).
+      console.error(`[reminders] schedule ${s.id} has a bad rule:`, e instanceof Error ? e.message : e)
+      continue
+    }
+    try {
+      for (const occ of occs) {
+        if (await alreadyChecked(s.id, occ)) continue
+        let [row] = await db.insert(schema.reminders).values({ scheduleId: s.id, occurrence: occ })
+          .onConflictDoNothing().returning()
+        if (!row) {
+          // Already recorded. Only one whose send threw on an earlier tick (unsent) is sent again.
+          const [prev] = await db.select().from(schema.reminders)
+            .where(and(eq(schema.reminders.scheduleId, s.id), eq(schema.reminders.occurrence, occ))).limit(1)
+          if (!prev || !unsent.has(prev.id)) continue // already reminded
+          row = prev
+        }
+        if (delivery(reminderAt(occ, s.remindOffsetMin), now) === 'digest') {
+          digest.push({ s, occ })
+          continue
+        }
+        unsent.add(row.id)
+        await sendReminder(user, s, occ, row.id)
+        unsent.delete(row.id)
       }
-      await sendReminder(user, s, occ, row.id)
+    } catch (e) {
+      failed = true // keep the window open so the next tick retries it (inserts are idempotent)
+      console.error(`[reminders] schedule ${s.id} failed:`, e instanceof Error ? e.message : e)
     }
   }
 
@@ -58,6 +81,7 @@ export async function remindTick(user: User, now = new Date()) {
     if (await alreadyChecked(s.id, r.occurrence)) continue
     await sendReminder(user, s, r.occurrence, r.id)
   }
+  if (!failed) lastTick = now
 }
 
 async function alreadyChecked(scheduleId: string, occurrence: Date) {

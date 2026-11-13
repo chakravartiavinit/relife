@@ -11,6 +11,7 @@ import { Capsule } from './capsule'
 import { LearningActions } from './forms/learning-forms'
 import { LibraryMenu } from './library-menu'
 import { cn } from '../cn'
+import { isWebUrl } from '@/domain/text'
 
 // Library cards: courses, books, shows and video series, each with its cover picture (saved locally from
 // the page), where you are in it, time spent, when you last opened it, and the episodes or lessons watched.
@@ -83,7 +84,7 @@ function LibraryCard({ item: i, episodes, timeZone }: { item: Item; episodes: Ep
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
             <h3 className="line-clamp-2 text-[15px] leading-snug font-semibold text-ink">
-              {i.url ? <a href={i.url} target="_blank" rel="noreferrer" className="rounded-sm hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">{i.title}</a> : i.title}
+              {isWebUrl(i.url) ? <a href={i.url} target="_blank" rel="noreferrer" className="rounded-sm hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">{i.title}</a> : i.title}
             </h3>
             <p className="mt-1 flex items-center gap-1.5 truncate text-[12.5px] text-ink-3">
               {i.provider ? <><BrandLogo name={i.provider} className="size-5 rounded-[6px] text-[10px]" /><span className="truncate">{i.provider}</span></> : null}

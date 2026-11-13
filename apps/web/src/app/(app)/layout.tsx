@@ -82,7 +82,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
           <Celebrations />
           <PaymentToasts />
           <LiveRefresh />
-          {/* usePathname needs a Suspense boundary under Cache Components, or `next build` fails to prerender. */}
+          {/* usePathname() needs a Suspense boundary on dynamic routes under Cache Components. */}
           <Suspense fallback={null}><WaitingBanner /></Suspense>
           <Suspense fallback={null}><ThemeFromServer /></Suspense>
         </ToastProvider>

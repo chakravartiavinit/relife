@@ -91,6 +91,14 @@ export const JOBS: Job[] = [
     return count ? `removed ${count} sync runs older than 30 days` : undefined
   } },
 
+  // The outbox, reminder history and model logs are kept 90 days, handled raw events a year.
+  { id: 'prune-old-data', schedule: { cron: '55 3 * * *' }, catchUpMinutes: 12 * 60, run: async () => {
+    const { pruneOldData } = await import('@/core/prune')
+    const r = await pruneOldData()
+    const total = r.notifications + r.reminders + r.llmRuns + r.rawEvents
+    return total ? `removed ${r.notifications} notifications, ${r.reminders} reminders, ${r.llmRuns} model runs, ${r.rawEvents} raw events` : undefined
+  } },
+
   // Devices: ended pairings, old idempotency keys, long-revoked devices and rate-limit windows.
   { id: 'prune-devices', schedule: { cron: '50 3 * * *' }, catchUpMinutes: 12 * 60, run: async () => {
     await (await import('@/core/auth/pairing')).cleanup()

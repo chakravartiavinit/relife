@@ -11,6 +11,8 @@ import type { User } from './user'
 
 type Row = typeof schema.notifications.$inferSelect
 
+const MAX_SEND_ATTEMPTS = 5
+
 /** Queue a message and try to send it right away. `once` turns repeats off for this one (summaries). */
 export async function notify(user: User, category: NotifyCategory, msg: { text: string; buttons?: Button[][]; ref?: string; once?: boolean }) {
   // Without Telegram there's nowhere to send it; queuing would only flood the chat once it's connected.
@@ -26,17 +28,19 @@ export async function notify(user: User, category: NotifyCategory, msg: { text: 
 export async function weeklyNotifications(user: User, now = new Date()) {
   const N = schema.notifications
   const since = new Date(now.getTime() - 7 * 86_400_000)
-  const rows = await db.select({ status: N.status, sent: sql<boolean>`${N.sends} >= 1`, n: sql<number>`count(*)::int` }).from(N)
-    .where(and(eq(N.userId, user.id), gte(N.createdAt, since))).groupBy(N.status, sql`${N.sends} >= 1`)
+  const rows = await db.select({ status: N.status, sent: sql<boolean>`${N.sends} >= 1`, failed: sql<boolean>`${N.sends} < 0`, n: sql<number>`count(*)::int` }).from(N)
+    .where(and(eq(N.userId, user.id), gte(N.createdAt, since))).groupBy(N.status, sql`${N.sends} >= 1`, sql`${N.sends} < 0`)
   const sum = (f: (r: (typeof rows)[number]) => boolean) => rows.filter(f).reduce((a, r) => a + r.n, 0)
-  return { sent: sum((r) => r.sent), held: sum((r) => !r.sent && r.status === 'queued'), skipped: sum((r) => !r.sent && r.status === 'skipped') }
+  // A send that failed (sends < 0) is not "held for quiet hours": it counts as dropped.
+  return { sent: sum((r) => r.sent), held: sum((r) => !r.sent && !r.failed && r.status === 'queued'), skipped: sum((r) => !r.sent && (r.failed || r.status === 'skipped')) }
 }
 
 /** What happened to the message about `ref`: reached Telegram, still waiting (quiet hours), or dropped (category off or the cap). */
-export async function outcome(userId: string, ref: string): Promise<'sent' | 'held' | 'dropped'> {
+export async function outcome(userId: string, ref: string): Promise<'sent' | 'held' | 'dropped' | 'failed'> {
   const N = schema.notifications
-  const [row] = await db.select({ status: N.status, messageId: N.messageId }).from(N).where(and(eq(N.userId, userId), eq(N.ref, ref))).limit(1)
+  const [row] = await db.select({ status: N.status, messageId: N.messageId, sends: N.sends }).from(N).where(and(eq(N.userId, userId), eq(N.ref, ref))).limit(1)
   if (row?.messageId) return 'sent'
+  if (row && row.sends < 0) return 'failed' // Telegram refused or was unreachable
   return row?.status === 'queued' ? 'held' : 'dropped'
 }
 
@@ -106,13 +110,22 @@ export async function flushOutbox(user: User, now = new Date()) {
     if (d.quiet && quietLeft) { await db.update(N).set({ sendAfter: new Date(now.getTime() + quietLeft * 60_000) }).where(eq(N.id, row.id)); continue }
     if (d.maxPerDay != null && (sentToday.get(row.category) ?? 0) >= d.maxPerDay) { await setStatus(row.id, 'skipped'); continue }
     if (!(await stillOpen(row.ref))) { await setStatus(row.id, 'done'); continue }
-    // Claim it first, so the minute tick and an immediate flush never both send it.
-    const [claimed] = await db.update(N).set({ sends: 1, lastSentAt: now }).where(and(eq(N.id, row.id), eq(N.sends, 0))).returning()
+    // Claim it first, so the minute tick and an immediate flush never both send it. `sends` is 0 for a fresh row
+    // and -n after n failed attempts (it only counts as sent at 1 or more).
+    const [claimed] = await db.update(N).set({ sends: 1, lastSentAt: now }).where(and(eq(N.id, row.id), eq(N.sends, row.sends), lte(N.sends, 0))).returning()
     if (!claimed) continue
     const { text, buttons } = await render(user, row)
     const mid = await sendMessage(text, { buttons })
+    if (mid == null) {
+      // Not sent (Telegram down, bad token, offline): try again in a minute, a few times, then give up.
+      const attempts = 1 - row.sends
+      // A test message says so at once instead of arriving minutes later; others give up after a few tries.
+      if (attempts >= MAX_SEND_ATTEMPTS || row.ref?.startsWith('test:')) await setStatus(row.id, 'skipped', { sends: -attempts })
+      else await setStatus(row.id, 'queued', { sends: -attempts, sendAfter: new Date(now.getTime() + 60_000) })
+      continue
+    }
     sentToday.set(row.category, (sentToday.get(row.category) ?? 0) + 1)
-    const repeats = d.mode === 'repeat' && !!mid && !!buttons?.length && !row.ref?.startsWith('once:')
+    const repeats = d.mode === 'repeat' && !!buttons?.length && !row.ref?.startsWith('once:')
     await setStatus(row.id, repeats ? 'sent' : 'done', { messageId: mid })
   }
 

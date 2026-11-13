@@ -5,7 +5,8 @@ import { buildRRule, type SimpleRule } from '@/domain/recurrence'
 import { slugify } from './quicklog'
 import { ensureTracker } from './ingest'
 import { localDate } from './time'
-import type { User } from './user'
+import { lockUser } from './recovery'
+import { mergeProfile, profileMerge, type User } from './user'
 
 // One-time setup (/welcome): profile, usual hours, areas, what The System trains first, daily targets,
 // tone, goals and starter routines, in one write. Only the name, region and areas are required: anything
@@ -80,60 +81,73 @@ const TONE_NOTE: Record<NonNullable<OnboardingInput['tone']>, string> = {
   blunt: 'Be blunt. Skip the praise and tell me what to change.',
 }
 
-/** Write everything from the flow. Safe to run again: existing routines (same name) are left alone. */
+/**
+ * Write everything from the flow. Safe to run again: existing routines (same name) are left alone.
+ * One transaction under the user lock: a double submit takes turns (the second sees setup done, so it neither wipes
+ * XP again nor repeats routines), and a rescoring run waits for the whole fresh start instead of landing in the middle.
+ * The profile is read again under the lock and only the changed keys are written, so a concurrent write to another
+ * key (payments seen, celebrated level) survives.
+ */
 export async function completeOnboarding(user: User, input: OnboardingInput, now = new Date()) {
   const areas = CATEGORIES.filter((c) => input.areas.includes(c))
   const today = localDate(now, input.timezone)
-  const tone = input.tone ?? user.profile.tone ?? 'balanced'
-  // The coach's notes start as the tone's own line. A new tone replaces that line, never words the user wrote.
-  const notes = user.profile.notes?.trim()
-  const day = input.wake && input.sleep ? { wake: input.wake, sleep: input.sleep } : undefined
-  // Quiet hours follow the usual hours, unless the user switched quiet hours off.
-  const quietOff = !!user.profile.notifications && 'quiet' in user.profile.notifications && user.profile.notifications.quiet === null
-  const profile: UserProfile = {
-    ...user.profile,
-    goals: input.goals?.trim() || user.profile.goals,
-    constraints: input.constraints?.trim() || user.profile.constraints,
-    notes: !notes || Object.values(TONE_NOTE).includes(notes) ? TONE_NOTE[tone] : user.profile.notes,
-    tone,
-    areas,
-    focus: input.focus && areas.includes(input.focus) ? input.focus : areas[0],
-    onboardedAt: now.toISOString(),
-    improve: input.improve.length ? input.improve : user.profile.improve,
-    // Usual hours, when given: Telegram stays quiet while they sleep; per-category settings are kept.
-    ...(day ? { day } : {}),
-    ...(day && !quietOff ? { notifications: { categories: {}, ...user.profile.notifications, quiet: { from: day.sleep, to: day.wake } } } : {}),
-  }
-  // First time through is a fresh start: earlier XP, achievements, chests and freezes go, and XP counts from today.
-  // Running setup again from Settings never resets.
-  const fresh = !user.profile.onboardedAt
-  if (fresh) {
-    profile.xpSince = today
-    profile.paymentsSeenAt = now.toISOString() // payments already on record aren't announced as new
-    await db.delete(schema.xpEvents).where(eq(schema.xpEvents.userId, user.id))
-    await db.delete(schema.achievements).where(eq(schema.achievements.userId, user.id))
-    await db.delete(schema.chests).where(eq(schema.chests.userId, user.id))
-    await db.delete(schema.streakFreezes).where(eq(schema.streakFreezes.userId, user.id))
-  }
-  await db.update(schema.users).set({
-    name: input.name.trim() || user.name, timezone: input.timezone, baseCurrency: input.baseCurrency, profile,
-  }).where(eq(schema.users.id, user.id))
+  const { added, fresh } = await db.transaction(async (tx) => {
+    await lockUser(tx, user.id)
+    const [saved] = await tx.select().from(schema.users).where(eq(schema.users.id, user.id))
+    const cur = saved ?? user
+    const tone = input.tone ?? cur.profile.tone ?? 'balanced'
+    // The coach's notes start as the tone's own line. A new tone replaces that line, never words the user wrote.
+    const notes = cur.profile.notes?.trim()
+    const day = input.wake && input.sleep ? { wake: input.wake, sleep: input.sleep } : undefined
+    // Quiet hours follow the usual hours, unless the user switched quiet hours off.
+    const quietOff = !!cur.profile.notifications && 'quiet' in cur.profile.notifications && cur.profile.notifications.quiet === null
+    // undefined keys are left out of the write, so anything not given keeps its saved value.
+    const patch: Partial<UserProfile> = {
+      goals: input.goals?.trim() || undefined,
+      constraints: input.constraints?.trim() || undefined,
+      notes: !notes || Object.values(TONE_NOTE).includes(notes) ? TONE_NOTE[tone] : undefined,
+      tone,
+      areas,
+      focus: input.focus && areas.includes(input.focus) ? input.focus : areas[0],
+      onboardedAt: now.toISOString(),
+      improve: input.improve.length ? input.improve : undefined,
+      // Usual hours, when given: Telegram stays quiet while they sleep; per-category settings are kept.
+      ...(day ? { day } : {}),
+      ...(day && !quietOff ? { notifications: { categories: {}, ...cur.profile.notifications, quiet: { from: day.sleep, to: day.wake } } } : {}),
+    }
+    // First time through is a fresh start: earlier XP, achievements, chests and freezes go, and XP counts from today.
+    // Running setup again from Settings never resets.
+    const fresh = !cur.profile.onboardedAt
+    if (fresh) {
+      patch.xpSince = today
+      patch.paymentsSeenAt = now.toISOString() // payments already on record aren't announced as new
+      await tx.delete(schema.xpEvents).where(eq(schema.xpEvents.userId, user.id))
+      await tx.delete(schema.achievements).where(eq(schema.achievements.userId, user.id))
+      await tx.delete(schema.chests).where(eq(schema.chests.userId, user.id))
+      await tx.delete(schema.streakFreezes).where(eq(schema.streakFreezes.userId, user.id))
+    }
+    await tx.update(schema.users).set({
+      name: input.name.trim() || cur.name, timezone: input.timezone, baseCurrency: input.baseCurrency, profile: profileMerge(patch),
+    }).where(eq(schema.users.id, user.id))
 
-  const existing = new Set((await db.select({ name: schema.schedules.name }).from(schema.schedules)
-    .where(eq(schema.schedules.userId, user.id))).map((r) => r.name.toLowerCase()))
-  let added = 0
-  for (const t of [...TEMPLATES, ...(input.generated ?? [])]) {
-    if (!input.templates?.includes(t.id) || !areas.includes(t.area) || existing.has(t.name.toLowerCase())) continue
-    const trackerSlug = t.quantity ? slugify(t.name) : undefined
-    await db.insert(schema.schedules).values({
-      userId: user.id, name: t.name, kind: t.kind, category: t.area,
-      rrule: buildRRule({ ...t.rule, start: today }),
-      target: t.quantity ? input.waterMl ?? null : null, unit: t.quantity?.unit ?? null,
-      meta: Object.fromEntries(Object.entries({ notes: t.note, dose: t.dose, doseCount: t.dose ? 1 : undefined, trackerSlug, step: t.quantity?.step })
-        .filter(([, v]) => v !== undefined)),
-    })
-    added++
-  }
+    const existing = new Set((await tx.select({ name: schema.schedules.name }).from(schema.schedules)
+      .where(eq(schema.schedules.userId, user.id))).map((r) => r.name.toLowerCase()))
+    let added = 0
+    for (const t of [...TEMPLATES, ...(input.generated ?? [])]) {
+      if (!input.templates?.includes(t.id) || !areas.includes(t.area) || existing.has(t.name.toLowerCase())) continue
+      existing.add(t.name.toLowerCase())
+      const trackerSlug = t.quantity ? slugify(t.name) : undefined
+      await tx.insert(schema.schedules).values({
+        userId: user.id, name: t.name, kind: t.kind, category: t.area,
+        rrule: buildRRule({ ...t.rule, start: today }),
+        target: t.quantity ? input.waterMl ?? null : null, unit: t.quantity?.unit ?? null,
+        meta: Object.fromEntries(Object.entries({ notes: t.note, dose: t.dose, doseCount: t.dose ? 1 : undefined, trackerSlug, step: t.quantity?.step })
+          .filter(([, v]) => v !== undefined)),
+      })
+      added++
+    }
+    return { added, fresh }
+  })
 
   // Daily targets. First setup creates the trackers with their usual targets; a target that already
   // exists changes only when one is given, so running setup again never overwrites it.
@@ -151,5 +165,5 @@ export async function completeOnboarding(user: User, input: OnboardingInput, now
 
 /** "Skip for now": never ask again, change nothing else. */
 export async function skipOnboarding(user: User, now = new Date()) {
-  await db.update(schema.users).set({ profile: { ...user.profile, onboardedAt: now.toISOString() } }).where(eq(schema.users.id, user.id))
+  await mergeProfile(user.id, { onboardedAt: now.toISOString() })
 }

@@ -34,6 +34,13 @@ test('codechefRows reads times (India time), problems and accepted marks', () =>
   assert.equal(rows[1].at, now.getTime() - 5 * 60_000)
 })
 
+test('codechefRows: a "N days ago" row lands on the same time however late in the day it is read', () => {
+  const row = '<tr ><td  title=\'2 days ago\'>x</td><td  title=\'A\'><a href=\'/problems/A\'>A</a></td><td><span title=\'accepted\'></span></td></tr>'
+  const at = (iso: string) => codechefRows(row, new Date(iso))[0].at
+  assert.equal(at('2026-11-07T01:00:00Z'), at('2026-11-07T17:00:00Z')) // both on the 7th in India
+  assert.equal(new Date(at('2026-11-07T01:00:00Z')).toISOString(), '2026-11-05T06:30:00.000Z') // noon on the 5th, India
+})
+
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
 
 test('codeforces.check names an unknown handle, accepts a pasted profile link, and lets rate limits through as transient', async () => {

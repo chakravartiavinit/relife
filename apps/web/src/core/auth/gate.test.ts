@@ -6,7 +6,7 @@ import { gate, type GateDeps } from './gate'
 // The edge rules (src/core/auth/gate.ts) with the database replaced by a few fakes.
 
 delete process.env.RELIFE_ALLOWED_HOSTS // the rules below are for a plain install; one test sets it
-delete process.env.RELIFE_BIND
+process.env.RELIFE_BIND = '127.0.0.1' // what `npm run web` sets
 
 const GOOD = 'rlf_b_good'
 const device = (scopes: string[] = ['full']) => ({ id: 'd1', userId: 'u1', scopes, tokenHash: Buffer.alloc(0), revokedAt: null, expiresAt: new Date(Date.now() + 1e9), meta: {} }) as never
@@ -165,4 +165,43 @@ test('the sign-in redirect never carries an address that leaves the site', async
     const next = new URL(r.headers.get('location')!).searchParams.get('next')
     assert.ok(next === null || (next.startsWith('/') && !next.startsWith('//')), `${path} -> ${next}`)
   }
+})
+
+test('a server with no declared bind trusts no one, even a client that sends X-Forwarded-For: 127.0.0.1', async () => {
+  delete process.env.RELIFE_BIND
+  try {
+    const minted: string[] = []
+    assert.equal(kind(await gate(req('/', { headers: { ...NAV, 'x-forwarded-for': '127.0.0.1' } }), deps({ minted }))), 'redirect /signin')
+    assert.equal(minted.length, 0)
+  } finally { process.env.RELIFE_BIND = '127.0.0.1' }
+})
+
+test('a write that rides on the session cookie must come from this site', async () => {
+  const cookie = { cookie: `relife=${GOOD}` }
+  const post = (path: string, headers: Record<string, string>) => gate(req(path, { method: 'POST', headers: { ...cookie, ...headers } }), deps())
+  // The cross-origin text/plain POST a web page on another port can make: the browser attaches the cookie and says where it came from.
+  for (const path of ['/api/v1/today/actions', '/api/companion', '/api/v1/activity', '/api/activity', '/api/ingest', '/api/v1/devices/abc/revoke']) {
+    const r = await post(path, { origin: 'http://127.0.0.1:3001', 'content-type': 'text/plain', 'sec-fetch-site': 'same-site' })
+    assert.equal(r.status, 403, path)
+    assert.equal((await post(path, { origin: 'https://evil.example', 'sec-fetch-site': 'cross-site' })).status, 403, path)
+    assert.equal((await post(path, { origin: 'http://evil.example' })).status, 403, `${path}: an Origin that is not Host, no Sec-Fetch`)
+    assert.equal((await post(path, { 'sec-fetch-site': 'cross-site' })).status, 403, `${path}: Sec-Fetch-Site alone`)
+  }
+  assert.equal(typeof (await (await post('/api/ingest', { origin: 'http://evil.example' })).json()).error, 'string', 'legacy routes keep the { error: string } body')
+  // The app's own pages, a curl, and the Mac app (no Origin) are fine.
+  assert.equal(kind(await post('/api/v1/today/actions', { origin: 'http://127.0.0.1:3030', 'sec-fetch-site': 'same-origin' })), 'next')
+  assert.equal(kind(await post('/api/v1/today/actions', { 'sec-fetch-site': 'none' })), 'next')
+  assert.equal(kind(await post('/api/v1/today/actions', {})), 'next')
+  assert.equal(kind(await gate(req('/api/v1/today', { headers: { ...cookie, 'sec-fetch-site': 'cross-site' } }), deps())), 'next', 'reads are not writes')
+  // A bearer is not a cookie: the extension and the Mac app are unaffected whatever they send.
+  const bearer = await gate(req('/api/companion', { method: 'POST', headers: { authorization: `Bearer ${GOOD}`, origin: 'chrome-extension://abc', 'sec-fetch-site': 'cross-site' } }), deps())
+  assert.equal(kind(bearer), 'next')
+})
+
+test('a Next-Action request is never public: /signin does not run server actions without a session', async () => {
+  const action = (path: string) => gate(req(path, { method: 'POST', headers: { 'next-action': 'abc' } }), deps({ requireSignIn: true }))
+  for (const path of ['/signin', '/pair', '/']) assert.equal((await action(path)).status, 401, path)
+  assert.equal(kind(await gate(req('/signin', { method: 'POST' }), deps())), 'next', 'a plain page request to /signin is still public')
+  const ok = await gate(req('/signin', { method: 'POST', headers: { 'next-action': 'abc', cookie: `relife=${GOOD}` } }), deps())
+  assert.equal(kind(ok), 'next', 'with a session an action works')
 })

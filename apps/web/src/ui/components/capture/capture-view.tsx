@@ -56,7 +56,7 @@ export function CaptureView({ layout, data, status, value, onValue, actions, onC
   autoFocus?: boolean
 }) {
   const typed = value.trim()
-  const q = typed ? parseQuickLog(typed) : null
+  const q = typed ? parseQuickLog(typed, data?.currency) : null // preview in the currency the save will use
   const { busy } = actions
   // Enter on a freshly opened, empty Capture does nothing: it never checks something off by accident. Arrow keys
   // or the pointer arm it, and typing arms it.

@@ -1,9 +1,10 @@
 import { and, eq, gte, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import type { ProposedAction } from '@/db/schema'
-import { ensureTracker } from './ingest'
+import type { Tx } from './recovery'
 import { localDate } from './time'
 import { RESTORE_MINUTES } from '@/domain/needs-you'
+import { validateRRule } from '@/domain/recurrence'
 import type { User } from './user'
 
 type NewInsight = Omit<typeof schema.insights.$inferInsert, 'userId'>
@@ -21,7 +22,11 @@ export async function addInsight(user: User, i: NewInsight) {
   return row
 }
 
-/** Approve: apply proposed actions (create schedules / trackers), then mark accepted. */
+/**
+ * Approve: apply proposed actions (create schedules / trackers) and mark accepted, in one transaction. The insight is
+ * claimed first (pending → accepted, one winner), so a double tap or a second device cannot add everything twice.
+ * Returns null when it cannot be approved here: a recovery or goal draft, or a proposal whose rule is not valid.
+ */
 export async function acceptInsight(user: User, id: string) {
   const [ins] = await db.select().from(schema.insights)
     .where(and(eq(schema.insights.id, id), eq(schema.insights.userId, user.id)))
@@ -30,12 +35,24 @@ export async function acceptInsight(user: User, id: string) {
   if (ins.payload.recovery) return null
   // Goal drafts become goals only through the Goals form (core/goals.ts saveGoal), never by approval.
   if (ins.payload.goalDraft) return null
-  for (const a of ins.payload.actions ?? []) await applyAction(user, a)
-  if (ins.kind === 'plan') {
-    await db.insert(schema.plans).values({ userId: user.id, goal: ins.title, insightId: ins.id })
-  }
-  const [row] = await db.update(schema.insights).set({ status: 'accepted' }).where(eq(schema.insights.id, id)).returning()
-  return row
+  // Proposed rules may omit DTSTART; anchor them to today in local time. A rule that does not validate is refused whole.
+  const today = localDate(new Date(), user.timezone)
+  const actions = ins.payload.actions ?? []
+  const rules = actions.map((a) => (a.type === 'schedule' ? validateRRule(a.rrule, today) : ''))
+  if (rules.includes(null)) return null
+  return db.transaction(async (tx) => {
+    const [row] = await tx.update(schema.insights).set({ status: 'accepted' })
+      .where(and(eq(schema.insights.id, id), eq(schema.insights.userId, user.id), eq(schema.insights.status, 'pending'))).returning()
+    if (!row) { // someone else decided first
+      const [now] = await tx.select().from(schema.insights).where(and(eq(schema.insights.id, id), eq(schema.insights.userId, user.id)))
+      return now
+    }
+    for (const [i, a] of actions.entries()) await applyAction(tx, user, a, rules[i]!)
+    if (ins.kind === 'plan') {
+      await tx.insert(schema.plans).values({ userId: user.id, goal: ins.title, insightId: ins.id })
+    }
+    return row
+  })
 }
 
 export async function dismissInsight(user: User, id: string) {
@@ -58,16 +75,16 @@ export async function restoreInsight(user: User, id: string, now = new Date()) {
   return rows.length > 0
 }
 
-async function applyAction(user: User, a: ProposedAction) {
+async function applyAction(tx: Tx, user: User, a: ProposedAction, rrule: string) {
   if (a.type === 'tracker') {
-    await ensureTracker(user.id, a.slug, { name: a.name, category: a.category, kind: a.kind, unit: a.unit, target: a.target, direction: a.direction })
+    // Like ensureTracker: an existing tracker with this slug is kept as it is.
+    await tx.insert(schema.trackers).values({
+      userId: user.id, slug: a.slug, name: a.name, category: a.category, kind: a.kind,
+      unit: a.unit, target: a.target, direction: a.direction ?? 'up', aggregate: 'sum',
+    }).onConflictDoNothing()
     return
   }
-  // Proposed rules may omit DTSTART; anchor them to today in local time.
-  const rrule = a.rrule.includes('DTSTART')
-    ? a.rrule
-    : `DTSTART:${localDate(new Date(), user.timezone).replaceAll('-', '')}T000000\n${a.rrule.startsWith('RRULE:') ? a.rrule : `RRULE:${a.rrule}`}`
-  await db.insert(schema.schedules).values({
+  await tx.insert(schema.schedules).values({
     userId: user.id, name: a.name, kind: a.kind, category: a.category, rrule,
     target: a.target ?? null, unit: a.unit ?? null, meta: { source: 'insight' },
   })

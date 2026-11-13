@@ -25,7 +25,7 @@ export function readJoinForm(fd: FormData) {
     interests: fd.getAll('interests').filter((v): v is string => typeof v === 'string'),
     platforms: fd.getAll('platforms').filter((v): v is string => typeof v === 'string'),
     ref: str('ref')?.toUpperCase() || undefined,
-    source: str('source') || undefined,
+    source: str('source')?.slice(0, 120) || undefined,
     utm: Object.keys(utm).length ? utm : undefined,
   }
 }

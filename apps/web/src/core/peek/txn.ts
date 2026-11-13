@@ -1,5 +1,6 @@
 import { and, eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
+import { ruleMatches } from '@/domain/merchant-rule'
 import { SPEND_CATEGORIES } from '../categorize'
 import { convert } from '../fx'
 import { formatDay, formatTime } from '../time'
@@ -12,7 +13,7 @@ const UUID = /^[0-9a-f-]{36}$/i
 export async function ruleFor(user: User, merchant: string | null, upiId: string | null) {
   const hay = `${merchant ?? ''} ${upiId ?? ''}`.toLowerCase()
   const rules = await db.select().from(schema.merchantRules).where(eq(schema.merchantRules.userId, user.id))
-  const hit = rules.find((r) => hay.includes(r.pattern))
+  const hit = rules.find((r) => ruleMatches(hay, r.pattern)) // same matching as categorize, or the peek names a rule that never applied
   return hit ? { pattern: hit.pattern, category: hit.category } : null
 }
 

@@ -21,21 +21,36 @@
   <main class="opt-main">
     <section class="card" aria-labelledby="connTitle">
       <div class="label" id="connTitle"><span class="tick"></span>Connection</div>
-      <form class="form" id="setupForm">
-        <div class="two">
-          <label class="field">
-            <span>ReLife address</span>
-            <input id="server" placeholder="http://127.0.0.1:3030" inputmode="url" />
-          </label>
+      <form class="form" id="pairForm">
+        <label class="field">
+          <span>Address</span>
+          <input id="server" placeholder="http://127.0.0.1:3030" inputmode="url" />
+        </label>
+        <p class="hint" id="pairHint">Press Connect and this browser shows a code. In the app, open <b>You › Connections → Laptop activity → Connect the Chrome extension</b> and type it there.</p>
+        <div class="row end">
+          <button class="btn primary" type="submit" id="pairBtn">Connect</button>
+        </div>
+      </form>
+      <div class="pair" id="pairing" hidden>
+        <div class="pair-code" id="pairCode" aria-live="polite"></div>
+        <p class="hint" id="pairStatus" role="status"></p>
+        <div class="row end">
+          <a class="btn" id="pairOpen" target="_blank" rel="noreferrer"><span class="ic" data-icon="open"></span>Open the approve page</a>
+          <button class="btn" type="button" id="pairCancel">Cancel</button>
+        </div>
+      </div>
+      <details class="paste">
+        <summary>Paste a token instead</summary>
+        <form class="form" id="setupForm">
           <label class="field">
             <span>Token</span>
             <input id="token" type="password" placeholder="From You › Connections → Laptop activity" autocomplete="off" />
           </label>
-        </div>
-        <div class="row end">
-          <button class="btn primary" type="submit">Save and test</button>
-        </div>
-      </form>
+          <div class="row end">
+            <button class="btn" type="submit">Save and test</button>
+          </div>
+        </form>
+      </details>
     </section>
 
     <section class="card" aria-labelledby="syncTitle">
@@ -51,6 +66,14 @@
       <label class="toggle">
         <input type="checkbox" id="badge" />
         <span><b>Show quests left on the toolbar icon</b><span class="hint">A number while routines and quests are open, a tick once they’re all done. Paused and offline always show.</span></span>
+      </label>
+    </section>
+
+    <section class="card" aria-labelledby="pagesTitle">
+      <div class="label" id="pagesTitle"><span class="tick"></span>Page details</div>
+      <label class="toggle solo">
+        <input type="checkbox" id="pages" />
+        <span><b>Read page details on websites</b><span class="hint" id="pagesHint">Lets the extension see whether a video is playing, the YouTube channel, and a course or show’s lesson and progress. Chrome asks you first. Without it, time on a site still counts by its address and title. It never runs on the address this extension connects to.</span></span>
       </label>
     </section>
 

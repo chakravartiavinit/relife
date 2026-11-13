@@ -7,6 +7,7 @@ import {
 } from '@/domain/quests'
 import { levelFor, type Area } from '@/domain/xp'
 import { activeDays } from './metrics'
+import { lockUser, type Tx } from './recovery'
 import { addDays, localDate } from './time'
 import type { User } from './user'
 
@@ -87,11 +88,13 @@ export async function questBoard(user: User, now = new Date()) {
   return { daily: q.today, weekly: q.week, chests: unopened, freezes: held, frozeOn: used.map((r) => r.d) }
 }
 
+type Exec = Tx | typeof db
+
 /** Freezes earned from opened chests, minus those used. */
-export async function freezesHeld(user: User) {
+export async function freezesHeld(user: User, x: Exec = db) {
   const [[got], [spent]] = await Promise.all([
-    db.select({ n: count() }).from(schema.chests).where(and(eq(schema.chests.userId, user.id), eq(schema.chests.freeze, true), isNotNull(schema.chests.openedAt))),
-    db.select({ n: count() }).from(schema.streakFreezes).where(eq(schema.streakFreezes.userId, user.id)),
+    x.select({ n: count() }).from(schema.chests).where(and(eq(schema.chests.userId, user.id), eq(schema.chests.freeze, true), isNotNull(schema.chests.openedAt))),
+    x.select({ n: count() }).from(schema.streakFreezes).where(eq(schema.streakFreezes.userId, user.id)),
   ])
   return Math.max(0, got.n - spent.n)
 }
@@ -114,11 +117,11 @@ export async function awardQuestChests(user: User, now = new Date()) {
 }
 
 /** An epic chest for each level reached. */
-export async function levelChests(user: User, before: number, after: number) {
+export async function levelChests(user: User, before: number, after: number, x: Exec = db) {
   for (let lv = before + 1; lv <= after; lv++) {
     const ref = `level:${lv}`
     const roll = rollChest('epic', ref)
-    await db.insert(schema.chests).values({ userId: user.id, rarity: 'epic', ref, xp: roll.xp, freeze: roll.freeze, reason: `Reached level ${lv}` })
+    await x.insert(schema.chests).values({ userId: user.id, rarity: 'epic', ref, xp: roll.xp, freeze: roll.freeze, reason: `Reached level ${lv}` })
       .onConflictDoNothing()
   }
 }
@@ -136,27 +139,30 @@ export type ChestOpened = { rarity: Rarity; xp: number; freeze: boolean; convert
 
 /** Open a chest once: pay its XP, keep its freeze (or turn it into XP at the cap). Returns the contents. */
 export async function openChest(user: User, id: string, now = new Date()): Promise<{ opened: ChestOpened; level: { before: number; after: number } } | null> {
-  const total = async () => {
-    const [r] = await db.select({ n: sql<number>`coalesce(sum(${schema.xpEvents.amount}), 0)::int` }).from(schema.xpEvents).where(eq(schema.xpEvents.userId, user.id))
-    return r.n
-  }
-  const before = levelFor(await total()).level
-  const held = await freezesHeld(user)
-  const [row] = await db.update(schema.chests).set({ openedAt: now })
-    .where(and(eq(schema.chests.id, id), eq(schema.chests.userId, user.id), isNull(schema.chests.openedAt))).returning()
-  if (!row) return null
-  let { xp, freeze } = row
-  const converted = freeze && held >= FREEZE_CAP
-  if (converted) {
-    xp += FREEZE_OVERFLOW_XP; freeze = false
-    await db.update(schema.chests).set({ xp, freeze }).where(eq(schema.chests.id, row.id))
-  }
-  await db.insert(schema.xpEvents).values({
-    userId: user.id, localDate: localDate(now, user.timezone), area: 'general', kind: 'bonus', source: 'chest', amount: xp, verified: true,
-    reason: `${row.rarity[0].toUpperCase()}${row.rarity.slice(1)} chest`, ref: `chest:${row.ref}`,
-  }).onConflictDoNothing()
-  const after = levelFor(await total()).level
-  await levelChests(user, before, after)
-  return { opened: { rarity: row.rarity, xp, freeze, converted, reason: row.reason }, level: { before, after } }
+  // Under the user's lock, so two chests opened together each see the other's freeze and FREEZE_CAP holds.
+  return db.transaction(async (tx) => {
+    await lockUser(tx, user.id)
+    const total = async () => {
+      const [r] = await tx.select({ n: sql<number>`coalesce(sum(${schema.xpEvents.amount}), 0)::int` }).from(schema.xpEvents).where(eq(schema.xpEvents.userId, user.id))
+      return r.n
+    }
+    const before = levelFor(await total()).level
+    const held = await freezesHeld(user, tx)
+    const [row] = await tx.update(schema.chests).set({ openedAt: now })
+      .where(and(eq(schema.chests.id, id), eq(schema.chests.userId, user.id), isNull(schema.chests.openedAt))).returning()
+    if (!row) return null
+    let { xp, freeze } = row
+    const converted = freeze && held >= FREEZE_CAP
+    if (converted) {
+      xp += FREEZE_OVERFLOW_XP; freeze = false
+      await tx.update(schema.chests).set({ xp, freeze }).where(eq(schema.chests.id, row.id))
+    }
+    await tx.insert(schema.xpEvents).values({
+      userId: user.id, localDate: localDate(now, user.timezone), area: 'general', kind: 'bonus', source: 'chest', amount: xp, verified: true,
+      reason: `${row.rarity[0].toUpperCase()}${row.rarity.slice(1)} chest`, ref: `chest:${row.ref}`,
+    }).onConflictDoNothing()
+    const after = levelFor(await total()).level
+    await levelChests(user, before, after, tx)
+    return { opened: { rarity: row.rarity, xp, freeze, converted, reason: row.reason }, level: { before, after } }
+  })
 }
-

@@ -1,5 +1,6 @@
-import { asc, sql } from 'drizzle-orm'
+import { asc, eq, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
+import type { UserProfile } from '@/db/schema'
 
 export type User = typeof schema.users.$inferSelect
 
@@ -31,3 +32,18 @@ async function load(): Promise<User> {
 }
 
 export function clearUserCache() { cached = undefined }
+
+/**
+ * Change some profile keys without touching the rest: the database merges the patch into the saved profile (`||`), so
+ * a concurrent write to another key (payments seen, celebrated level, theme) is never overwritten by a stale copy.
+ * A key in the patch replaces that key whole; a key set to `undefined` is left as it is. Pass `tx` to join a transaction.
+ */
+export async function mergeProfile(userId: string, patch: Partial<UserProfile>, tx: Pick<typeof db, 'update'> = db) {
+  await tx.update(schema.users).set({ profile: profileMerge(patch) }).where(eq(schema.users.id, userId))
+  if (tx === db) clearUserCache()
+}
+
+/** The SQL value for `users.profile` that merges `patch` into the saved profile. */
+export function profileMerge(patch: Partial<UserProfile>) {
+  return sql`coalesce(${schema.users.profile}, '{}'::jsonb) || ${JSON.stringify(patch)}::jsonb`
+}

@@ -26,6 +26,7 @@ export function NotificationChannel({ telegram, stats }: { telegram: boolean; st
       setResult(!r.ok ? { tone: 'bad', text: r.error }
         : r.result === 'sent' ? { tone: 'good', text: 'Sent. Check Telegram.' }
         : r.result === 'held' ? { tone: 'warn', text: 'Waiting for your quiet hours to end. It arrives then.' }
+        : r.result === 'failed' ? { tone: 'bad', text: 'Telegram did not take it. Check the bot token and chat id, then try again.' }
         : { tone: 'warn', text: 'Not sent: Progress messages are off or at today’s limit. Change it below.' })
     } catch {
       setResult({ tone: 'bad', text: 'Couldn’t send. Nothing was changed. Try again.' })

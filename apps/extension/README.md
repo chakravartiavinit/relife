@@ -8,10 +8,40 @@ page) and sends it to **your own** ReLife on this computer. Nothing goes anywher
 
 ## Install (Chrome, Arc, Brave, Edge)
 
-1. In ReLife, open **You › Connections → Laptop activity**, put any long random text in **Extension token**
-   (e.g. from `openssl rand -hex 24`) and press Connect.
-2. Open `chrome://extensions`, turn on **Developer mode**, press **Load unpacked** and choose this `apps/extension` folder.
-3. Click the ReLife icon in the toolbar, open **Connection**, paste the same token and press **Save and test**.
+1. Open `chrome://extensions`, turn on **Developer mode**, press **Load unpacked** and choose this `apps/extension` folder.
+2. Click the toolbar icon and press **Connect**. It opens the settings page, where the address defaults to
+   `http://127.0.0.1:3030` (change it for a server on another computer; Chrome asks before the extension may reach it).
+   Press **Connect** there: the page shows an 8-character code.
+3. In the app, open **You › Connections → Laptop activity → Connect the Chrome extension** and type the code. The
+   settings page notices within a couple of seconds, stores the sign-in and says **Connected**. (**Open the approve page**
+   opens the same screen from a link.) Keep the settings tab open until it does: the code lives for 10 minutes.
+
+The server gives the extension a device with the `companion` scope: it can record activity and read Today, never wealth
+data or connector keys. Disconnect it any time under **You › Settings → Devices**. A pairing request names this device
+("Chrome on macOS") so you know what you are approving.
+
+**Fallback: a pasted token.** Under **Paste a token instead** (settings page or popup) put a token from **You ›
+Connections → Laptop activity → Legacy token**, or the `ACTIVITY_TOKEN` in the server's `.env`, and press **Save and
+test**. Use it for a server older than the pairing flow (it answers 404 to `/api/v1/hello`) or when you cannot reach
+the app to type a code.
+
+The token, either way, is kept in `chrome.storage.local`, which only the extension's own pages and worker can read
+(content scripts in web pages cannot).
+
+## Which sites it can read
+
+At install the extension asks for **no website access**: Chrome shows only "Read your browsing history" (the `tabs`
+permission, which gives the address and title of the tab in front) and no "read and change all your data on all
+websites". The time tracking below works from that alone.
+
+**Page details** are opt-in. On the settings page, turn on **Read page details on websites** and Chrome asks to let the
+extension read all sites. Then a content script (`content.js`) is registered with `chrome.scripting.registerContentScripts`
+for the sites you allowed. It tells the extension whether a video is playing, the YouTube channel, and a course or show's
+lesson, episode and progress: what makes watching count as active time, and what feeds the Library. Without it, a
+site's time is still counted by address and title, but video time does not count as activity and the Library gets no
+episodes. It never runs on the address this extension connects to (the dashboard), and it does not run in
+incognito. Turn the switch off and the access is removed; reload open tabs to include or drop a page. Updating from a
+version before 0.8 turns this off: the old build ran on every site.
 
 ## Today, from the toolbar
 
@@ -80,11 +110,11 @@ checks, goal adds and quick logs go to `POST /api/companion`. The same token cov
 
 ## Updating
 
-After pulling a new version, press the reload arrow on the ReLife card in `chrome://extensions`, then refresh the
+After pulling a new version, press the reload arrow on the extension card in `chrome://extensions`, then refresh the
 tabs that were already open. Chrome keeps the old copy running in open tabs until they reload; it stops on its own
 and no longer logs "Extension context invalidated", but it doesn't track either.
 
-Uploads are clipped to what ReLife accepts, so an unusually long page title can't block the queue, and a long
+Uploads are clipped to what the server accepts, so an unusually long page title can't block the queue, and a long
 offline backlog goes out in batches.
 
 ## Developing

@@ -81,7 +81,8 @@ export type TrackerDefaults = {
   aggregate?: 'sum' | 'last'
 }
 
-export type RawEvent = { source: string; externalId: string; at: Date; body: unknown }
+/** `replace`: a re-read with a different body replaces the stored one and parses it again (day summaries always do). */
+export type RawEvent = { source: string; externalId: string; at: Date; body: unknown; replace?: boolean }
 
 export type ConnectorCtx = {
   user: User

@@ -1,5 +1,6 @@
 import type { Connector } from '@/core/types'
 import { env } from '@/core/env'
+import { isLocalHost } from '@/core/safe-fetch'
 import { localDate } from '@/core/time'
 import { emitDays, fillDays, syncWindow } from './daily'
 
@@ -43,17 +44,25 @@ const ankiUrl = (typed?: string) => {
   return t ? (/^https?:\/\//i.test(t) ? t : `http://${t}`) : 'http://127.0.0.1:8765'
 }
 
+/** The one answer for anything that is not AnkiConnect: what a wrong address did (status, body) is not echoed back. */
+const NOT_ANKI = 'That address is not AnkiConnect. Check the address.'
+
 async function call<T>(url: string, key: string | undefined, action: string, params: object = {}) {
+  // AnkiConnect runs on this computer (or your home network), and the address is typed by a person: refuse a public host,
+  // so the app cannot be pointed at someone else's server, and never follow a redirect elsewhere.
+  let u: URL
+  try { u = new URL(url) } catch { throw new Error(NOT_ANKI) }
+  if (!/^https?:$/.test(u.protocol) || !(await isLocalHost(u.hostname))) throw new Error('AnkiConnect must be on this computer or your home network. Use an address like http://127.0.0.1:8765.')
   let res: Response
   try {
-    res = await fetch(url, { method: 'POST', body: JSON.stringify({ action, version: 6, params, ...(key ? { key } : {}) }), signal: AbortSignal.timeout(30_000) })
+    res = await fetch(url, { method: 'POST', body: JSON.stringify({ action, version: 6, params, ...(key ? { key } : {}) }), redirect: 'error', signal: AbortSignal.timeout(30_000) })
   } catch {
     throw new Error(NOT_OPEN)
   }
-  if (!res.ok) throw new Error(`Anki answered HTTP ${res.status}. Is ${url} the AnkiConnect address?`)
+  if (!res.ok) throw new Error(NOT_ANKI)
   const body = (await res.json().catch(() => null)) as Reply<T> | null
-  if (!body || typeof body !== 'object' || !('error' in body)) throw new Error(`${url} is not AnkiConnect. Check the address.`)
-  if (body.error) throw new Error(/api key/i.test(body.error) ? 'AnkiConnect rejected the key. Check the API key set in the add-on config.' : `AnkiConnect: ${body.error}`)
+  if (!body || typeof body !== 'object' || !('error' in body)) throw new Error(NOT_ANKI)
+  if (body.error) throw new Error(/api key/i.test(body.error) ? 'AnkiConnect rejected the key. Check the API key set in the add-on config.' : `AnkiConnect: ${String(body.error).slice(0, 100)}`)
   return body.result
 }
 

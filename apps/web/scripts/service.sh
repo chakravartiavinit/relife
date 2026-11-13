@@ -29,7 +29,10 @@ case "${1:-}" in
   <key>ProgramArguments</key>
   <array><string>/bin/zsh</string><string>-c</string><string>exec npm start</string></array>
   <key>EnvironmentVariables</key>
-  <dict><key>PATH</key><string>$NODE_BIN:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string></dict>
+  <dict>
+    <key>PATH</key><string>$NODE_BIN:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>RELIFE_BIND</key><string>${RELIFE_BIND:-127.0.0.1}</string>
+  </dict>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
   <key>ThrottleInterval</key><integer>30</integer>
@@ -38,7 +41,7 @@ case "${1:-}" in
 </dict>
 </plist>
 PLIST
-    [ -d "$WEB/.next" ] || (cd "$WEB" && npm run build)
+    [ -f "$WEB/.next/BUILD_ID" ] || (cd "$WEB" && npm run build)
     launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
     # bootout returns before the old copy has stopped; wait for it so bootstrap doesn't fail.
     for _ in $(seq 1 20); do launchctl print "$DOMAIN/$LABEL" >/dev/null 2>&1 || break; sleep 0.5; done

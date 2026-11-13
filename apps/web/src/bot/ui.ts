@@ -1,5 +1,5 @@
 import brand from '@relife/brand/brand.json'
-import { and, desc, eq, isNull } from 'drizzle-orm'
+import { and, desc, eq, isNull, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { activeDays } from '@/core/metrics'
 import { env } from '@/core/env'
@@ -74,9 +74,20 @@ export async function withXp(user: User, change: () => Promise<unknown>) {
   return { gained, streak, line: parts.filter(Boolean).join(' · ') }
 }
 
+/** Atomically record `level` as celebrated (profile.celebratedLevel). False when that level or a higher one was already celebrated. */
+async function claimLevel(user: User, level: number) {
+  const U = schema.users
+  const claimed = await db.update(U)
+    .set({ profile: sql`${U.profile} || jsonb_build_object('celebratedLevel', ${level}::int)` })
+    .where(and(eq(U.id, user.id), sql`coalesce((${U.profile}->>'celebratedLevel')::int, 0) < ${level}`))
+    .returning({ id: U.id })
+  return claimed.length > 0
+}
+
 /** Level-ups, unlocked achievements and new chests, one message each. Chests open from a button. */
 export async function celebrate(user: User, news: XpNews) {
-  if (news.levelUp) {
+  // withXp (the bot) and the xp job can both see the same level-up: only the one that moves the stored level up tells you.
+  if (news.levelUp && await claimLevel(user, news.levelUp.level)) {
     const xp = await totalXp(user)
     const lv = levelFor(xp)
     await notify(user, 'events', { text: [

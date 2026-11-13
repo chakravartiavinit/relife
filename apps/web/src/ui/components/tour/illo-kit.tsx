@@ -211,12 +211,6 @@ export function Cursor({ move, press }: { move: string; press: string }) {
   )
 }
 
-/** Stops for a cursor that leaves `rest`, reaches `to` at `arrive`, stays until `leave`, and is back by `back`. */
-export function cursorPath(rest: [number, number], to: [number, number], [go, arrive, leave, back]: [number, number, number, number]): Stop[] {
-  const at = ([x, y]: [number, number]) => `transform:translate(${x}px,${y}px)`
-  return [[go, at(rest), 'move'], [arrive, at(to)], [leave, at(to), 'move'], [back, at(rest)]]
-}
-
 /** Stops for a press: down to 0.88 in 0.1s, back up in 0.25s. */
 export function pressAt(t: number): Stop[] {
   return [[t, 'transform:scale(1)', 'out'], [t + 0.1, 'transform:scale(.88)', 'out'], [t + 0.35, 'transform:scale(1)']]

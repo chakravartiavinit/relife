@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect } from 'react'
 import type { Event } from '@relife/contract'
 
 // One shared EventSource for the page (GET /api/v1/events, the session cookie rides along). Open only while something
@@ -47,8 +46,4 @@ export function onLiveEvent(h: Handler) {
   failures = 0
   open()
   return () => { handlers.delete(h); if (!handlers.size) close() }
-}
-
-export function useLiveEvent(h: Handler) {
-  useEffect(() => onLiveEvent(h))
 }

@@ -25,5 +25,17 @@ export default (phase: string): NextConfig => {
     poweredByHeader: false,
     devIndicators: false,
     images: { formats: ['image/avif', 'image/webp'] },
+    async headers() {
+      const common = [
+        { key: 'X-Frame-Options', value: 'DENY' },
+        { key: 'Content-Security-Policy', value: "frame-ancestors 'none'" },
+        { key: 'X-Content-Type-Options', value: 'nosniff' },
+      ]
+      return [
+        { source: '/:path*', headers: [...common, { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' }] },
+        // /w/<token> is a secret link: never let it leak in a Referer header. Later entries override earlier ones.
+        { source: '/w/:path*', headers: [{ key: 'Referrer-Policy', value: 'no-referrer' }] },
+      ]
+    },
   }
 }

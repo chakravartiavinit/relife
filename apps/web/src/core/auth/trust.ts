@@ -40,16 +40,19 @@ export function loopbackTrusted(h: Headers, opts: { mode?: Mode; requireSignIn?:
 
 type Env = Record<string, string | undefined>
 const LOOPBACK_BIND = /^(localhost|127(\.\d{1,3}){3}|\[?::1\]?)$/
-// What `-H` was given, as far as the app can tell: RELIFE_BIND says it outright; HOSTNAME counts when it is an address
-// (a container started with HOSTNAME=0.0.0.0). Next itself does not tell the app its bind address, so with neither set
-// the app assumes the 127.0.0.1 that every script in package.json passes.
+// What `-H` was given, as far as the app can tell: only RELIFE_BIND says it (package.json and service.sh set it next to
+// `-H`). Next does not tell the app its bind address, and a client can send `X-Forwarded-For: 127.0.0.1` itself, so
+// a server whose bind is unknown (`next start -H 0.0.0.0` with no RELIFE_BIND) must not be assumed to be loopback-only:
+// with nothing set the answer is no, and "trust this Mac" stays off. HOSTNAME counts too when it is an address (a
+// container started with HOSTNAME=0.0.0.0): a wide one overrides RELIFE_BIND.
 const ADDRESS = /^(\d{1,3}(\.\d{1,3}){3}|\[?[0-9a-f]*:[0-9a-f:]+\]?)$/i
 
-/** Whether the server listens on this Mac only. Anything wider means a request with a loopback Host may not be from this Mac. */
+/** Whether the server is declared to listen on this Mac only. Unset or anything wider means a loopback Host may not be from this Mac. */
 export function bindIsLoopback(env: Env = process.env) {
-  const hostname = env.HOSTNAME?.trim()
-  const v = (env.RELIFE_BIND?.trim() || (hostname && ADDRESS.test(hostname) ? hostname : '')).toLowerCase()
-  return !v || LOOPBACK_BIND.test(v)
+  const bind = env.RELIFE_BIND?.trim().toLowerCase()
+  if (!bind || !LOOPBACK_BIND.test(bind)) return false
+  const hostname = env.HOSTNAME?.trim().toLowerCase()
+  return !(hostname && ADDRESS.test(hostname) && !LOOPBACK_BIND.test(hostname))
 }
 
 /**

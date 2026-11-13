@@ -6,3 +6,6 @@ export const hideUrlQuery = (text: string) => text.replace(/(https?:\/\/[^\s?#]+
 
 /** First letter upper case, for titles that start with an id ("github sync is failing"). */
 export const sentenceCase = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
+
+/** True for absolute http(s) URLs only. Use before rendering a stored URL as a link (no javascript:, data:, ...). */
+export const isWebUrl = (url: string | null | undefined): url is string => !!url && /^https?:\/\/[^\s]+$/i.test(url.trim())

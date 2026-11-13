@@ -44,3 +44,21 @@ test('a cookie that is not valid percent-encoding is no token', () => {
   assert.equal(tokenOf(h({ host: '127.0.0.1:3030', cookie: 'relife=%' })), null)
   assert.equal(sessionCookieOf(h({ host: '127.0.0.1:3030', cookie: 'relife=rlf_b_a%2Db' })), 'rlf_b_a-b')
 })
+
+test('cookieWriteAllowed: only a same-site page may write with the cookie', async () => {
+  const { cookieWriteAllowed } = await import('./request')
+  for (const m of ['GET', 'HEAD', 'OPTIONS']) assert.ok(cookieWriteAllowed(m, h({ origin: 'http://evil.example', host: '127.0.0.1:3030', 'sec-fetch-site': 'cross-site' })), m)
+  const ok: Record<string, string>[] = [{}, { 'sec-fetch-site': 'same-origin' }, { 'sec-fetch-site': 'none' }, { origin: 'http://127.0.0.1:3030', 'sec-fetch-site': 'same-origin' }]
+  for (const o of ok) assert.ok(cookieWriteAllowed('POST', h({ host: '127.0.0.1:3030', ...o })), JSON.stringify(o))
+  const bad: Record<string, string>[] = [{ origin: 'http://127.0.0.1:3001', 'sec-fetch-site': 'same-site' }, { origin: 'null' }, { origin: 'http://evil.example' }, { 'sec-fetch-site': 'same-site' }, { 'sec-fetch-site': 'cross-site' }]
+  for (const o of bad) for (const m of ['POST', 'PATCH', 'PUT', 'DELETE']) assert.ok(!cookieWriteAllowed(m, h({ host: '127.0.0.1:3030', ...o })), `${m} ${JSON.stringify(o)}`)
+})
+
+test('pairOriginAllowed: this site, native clients and the extension may pair; another site may not', async () => {
+  const { pairOriginAllowed, fromExtension } = await import('./request')
+  const id = 'a'.repeat(32)
+  for (const o of [{}, { origin: 'http://127.0.0.1:3030' }, { origin: `chrome-extension://${id}` }] as Record<string, string>[]) assert.ok(pairOriginAllowed(h({ host: '127.0.0.1:3030', ...o })), JSON.stringify(o))
+  for (const o of [{ origin: 'http://evil.example' }, { origin: 'null' }, { origin: 'chrome-extension://short' }, { origin: `chrome-extension://${id}.evil.example` }, { origin: `moz-extension://${id}` }]) assert.ok(!pairOriginAllowed(h({ host: '127.0.0.1:3030', ...o })), JSON.stringify(o))
+  assert.ok(fromExtension(h({ origin: `chrome-extension://${id}` })))
+  assert.ok(!fromExtension(h({})))
+})

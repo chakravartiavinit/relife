@@ -6,11 +6,20 @@ import { aiEnabled, model } from './models'
 import { generate } from './run'
 import { COACH_SYSTEM, digestText } from './context'
 import { dataTools } from './tools'
+import { mask, maskValue } from './mask'
 
 export type AskResult = {
   answer: string; error?: string; sources?: CoachSource[]; insightIds?: string[]
   /** The question and the answer are both in `coach_messages`, so the thread already has them. False: the caller shows them itself. */
   saved?: boolean
+}
+
+/** The data tools, with what the model reads back masked (merchant UPI ids, account numbers). The saved results and the sources shown to you stay as they were. */
+function maskedTools(user: Parameters<typeof dataTools>[0]) {
+  const tools = dataTools(user)
+  return Object.fromEntries(Object.entries(tools).map(([name, t]) => [name, {
+    ...t, toModelOutput: ({ output }: { output: unknown }) => ({ type: 'json' as const, value: maskValue(output) as never }),
+  }])) as unknown as typeof tools
 }
 
 /**
@@ -33,8 +42,8 @@ export async function askData(question: string, { channel = 'app' }: { channel?:
       const res = await generate('chat', 'chat.ask', {
         model: model('chat'),
         system: `${COACH_SYSTEM}\nAnswer the question using the digest and tools. Use tools for exact numbers. If you suggest a new routine, call propose_schedule so the user can approve it. Never suggest medicine or dosage changes. For a medicine reminder, direct the user to the existing medicine form. Reply in plain text, under 120 words.\nDigest: ${await digestText(user)}`,
-        messages: [...history, { role: 'user', content: q }],
-        tools: dataTools(user),
+        messages: [...history, { role: 'user' as const, content: q }].map((m) => ({ ...m, content: mask(m.content) })),
+        tools: maskedTools(user),
         stopWhen: stepCountIs(6),
       })
       const answer = res.text.trim() || 'I could not find an answer in your data.'

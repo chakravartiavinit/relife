@@ -7,12 +7,13 @@ import { env } from './env'
 /** A callback button, or (only when RELIFE_PUBLIC_URL is set, see `openInReLife`) one that opens the app in the browser. */
 export type Button = { text: string; data: string } | { text: string; url: string }
 
-let api: Api | undefined
+let api: { token: string; client: Api } | undefined
 function client() {
   const token = env('TELEGRAM_BOT_TOKEN')
   if (!token) return null
-  api ??= new Api(token)
-  return api
+  // Cached per token value, so a token changed in Settings is used without a restart.
+  if (api?.token !== token) api = { token, client: new Api(token) }
+  return api.client
 }
 
 export function telegramConfigured() {

@@ -1,6 +1,7 @@
 import { and, asc, eq, isNull, lte, or, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { parsers } from '@/parsers'
+import { isDayEvent } from '@/parsers/util'
 import { categorize } from './categorize'
 import { localDate } from './time'
 import { getUser, type User } from './user'
@@ -15,14 +16,32 @@ export async function emitRaw(userId: string, e: RawEvent): Promise<boolean> {
   return rows.length > 0
 }
 
-/** Store many raw events in one statement. Duplicates are skipped. Returns how many were new. */
+/**
+ * Store many raw events in one statement. Duplicates are skipped, except day summaries (`dayEventId`) and events
+ * marked `replace` (shop orders): one whose body changed replaces the stored body and goes back to `new`, so it is
+ * parsed again. Returns how many were new or changed.
+ */
 export async function emitRawMany(userId: string, events: RawEvent[]): Promise<number> {
   if (!events.length) return 0
-  const rows = await db.insert(schema.rawEvents)
-    .values(events.map((e) => ({ userId, source: e.source, externalId: e.externalId, at: e.at, body: e.body as object })))
-    .onConflictDoNothing()
-    .returning({ id: schema.rawEvents.id })
-  return rows.length
+  const row = (e: RawEvent) => ({ userId, source: e.source, externalId: e.externalId, at: e.at, body: e.body as object })
+  const days = new Map<string, RawEvent>()
+  const rest: RawEvent[] = []
+  for (const e of events) { if (isDayEvent(e) || e.replace) days.set(`${e.source}\0${e.externalId}`, e); else rest.push(e) }
+  let n = 0
+  if (rest.length) {
+    n += (await db.insert(schema.rawEvents).values(rest.map(row)).onConflictDoNothing().returning({ id: schema.rawEvents.id })).length
+  }
+  if (days.size) {
+    const R = schema.rawEvents
+    n += (await db.insert(R).values([...days.values()].map(row))
+      .onConflictDoUpdate({
+        target: [R.userId, R.source, R.externalId],
+        set: { body: sql`excluded.body`, at: sql`excluded.at`, status: 'new', parserId: null, error: null, updatedAt: new Date() },
+        setWhere: sql`${R.body} is distinct from excluded.body`,
+      })
+      .returning({ id: R.id })).length
+  }
+  return n
 }
 
 /** Parse every `new` raw event. Returns counts for logging. */
@@ -30,7 +49,7 @@ export async function processNew(limit = 500) {
   const user = await getUser()
   const rows = await db.select().from(schema.rawEvents)
     .where(and(eq(schema.rawEvents.userId, user.id), eq(schema.rawEvents.status, 'new')))
-    .orderBy(asc(schema.rawEvents.at))
+    .orderBy(asc(schema.rawEvents.at), asc(schema.rawEvents.createdAt)) // same `at`: the order they arrived in
     .limit(limit)
   const counts = { parsed: 0, ignored: 0, failed: 0 }
   for (const row of rows) {
@@ -83,12 +102,20 @@ export async function persist(user: User, rec: Rec, rawEventId?: string) {
     case 'transaction': {
       const account = await ensureAccount(user.id, rec.account)
       const { merchant, category } = await categorize(user.id, rec.merchant, rec.upiId)
-      await db.insert(schema.transactions).values({
+      const insert = db.insert(schema.transactions).values({
         userId: user.id, accountId: account.id, at: rec.at, localDate: localDate(rec.at, user.timezone),
         amount: rec.amount, currency: rec.currency, merchant, upiId: rec.upiId,
         category: rec.amount > 0 && category === 'Uncategorized' ? 'Income' : category,
         source: rec.source, externalRef: rec.externalRef, rawEventId, meta: rec.meta ?? {},
-      }).onConflictDoNothing()
+      })
+      // An app order read again with another total (an item cancelled, a partial refund) follows it. Merchant,
+      // category and items stay as they are (you may have changed them). Any other record is stored once.
+      await (rec.meta?.appOrder
+        ? insert.onConflictDoUpdate({
+          target: [schema.transactions.userId, schema.transactions.source, schema.transactions.externalRef],
+          set: { amount: rec.amount, at: rec.at, localDate: localDate(rec.at, user.timezone) },
+        })
+        : insert.onConflictDoNothing())
       if (rec.balance !== undefined) await setBalance(account.id, rec.balance, rec.at)
       return
     }

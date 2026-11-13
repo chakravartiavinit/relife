@@ -1,6 +1,6 @@
 {
   "name": "@relife/extension",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "description": "ReLife Chrome extension (MV3, plain JS typed with JSDoc). Load this folder unpacked.",
   "scripts": {

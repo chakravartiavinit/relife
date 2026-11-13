@@ -2,6 +2,7 @@ import { Bot, type Context } from 'grammy'
 import { and, eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { emitRaw } from '@/core/ingest'
+import { requestJob } from '@/core/jobs'
 import { acceptInsight, dismissInsight } from '@/core/insights'
 import { esc, keyboard, type Button } from '@/core/notify'
 import { markAnswered } from '@/core/outbox'
@@ -59,9 +60,9 @@ export function startBot(): Bot | null {
   })
 
   const log = async (ctx: Context, text: string) => {
-    const q = parseQuickLog(text)
-    if (!q) return reply(ctx, 'Try <code>water 250</code>, <code>mood 4</code> or <code>spent 120 chai</code>.')
     const user = await getUser()
+    const q = parseQuickLog(text, user.baseCurrency)
+    if (!q) return reply(ctx, 'Try <code>water 250</code>, <code>mood 4</code> or <code>spent 120 chai</code>.')
     let done = ''
     const xp = await withXp(user, async () => { done = await applyQuickLog(user, q) })
     return reply(ctx, `✅ <b>${esc(done)}</b>${xp.line ? `\n<i>${esc(xp.line)}</i>` : ''}`)
@@ -73,7 +74,7 @@ export function startBot(): Bot | null {
     const user = await getUser()
     const at = new Date((ctx.message?.date ?? Date.now() / 1000) * 1000)
     await emitRaw(user.id, { source: 'sleep', externalId: `${event}:${at.toISOString()}`, at, body: { event, at: at.toISOString() } })
-    await (await import('@/jobs')).parseNow()
+    await requestJob('parse') // the parse job picks it up; running it inline would hold up every other tap
     return reply(ctx, event === 'start'
       ? head('🌙', `Bedtime logged at ${formatTime(at, user.timezone)}`, 'Sleep well. Send /wake when you are up.')
       : head('☀️', `Wake-up logged at ${formatTime(at, user.timezone)}`, 'Good morning.'), event === 'end' ? [[{ text: '📋 Today', data: 't:o' }]] : undefined)
@@ -81,11 +82,23 @@ export function startBot(): Bot | null {
   bot.command('sleep', (ctx) => sleepEvent(ctx, 'start'))
   bot.command('wake', (ctx) => sleepEvent(ctx, 'end'))
 
-  const ask = async (ctx: Context, q: string, replyTo?: number) => {
-    await ctx.replyWithChatAction('typing')
-    // The question and the answer land in the same thread the app's Coach page shows.
-    const r = await askData(q, { channel: 'telegram' })
-    return reply(ctx, r.error ? `⚠️ ${esc(r.error)}` : `💬 ${esc(r.answer)}`, openInReLife('/coach', 'See the conversation'), replyTo)
+  // Telegram refuses messages over 4096 characters; the full answer is in the Coach page.
+  const MAX_ANSWER = 3900
+  const clip = (t: string) => (t.length > MAX_ANSWER ? `${t.slice(0, MAX_ANSWER).trimEnd()}…\n(Cut short: open the app for the rest.)` : t)
+  // The bot handles updates one at a time, and an answer can take up to two minutes: run it in the background
+  // so button taps keep working, and reply when it is ready.
+  const ask = (ctx: Context, q: string, replyTo?: number) => {
+    void (async () => {
+      try {
+        await ctx.replyWithChatAction('typing')
+        // The question and the answer land in the same thread the app's Coach page shows.
+        const r = await askData(q, { channel: 'telegram' })
+        await reply(ctx, r.error ? `⚠️ ${esc(clip(r.error))}` : `💬 ${esc(clip(r.answer))}`, openInReLife('/coach', 'See the conversation'), replyTo)
+      } catch (e) {
+        console.error('[bot] ask failed:', e instanceof Error ? e.message : e)
+        await reply(ctx, '⚠️ Could not answer that right now.', undefined, replyTo).catch(() => {})
+      }
+    })()
   }
   bot.command('ask', (ctx) => ask(ctx, ctx.match, ctx.message?.message_id))
 
@@ -224,7 +237,7 @@ export function startBot(): Bot | null {
     }
     await ctx.answerCallbackQuery({ text: 'Asking your coach…' })
     await setButtons(ctx, [[{ text: '✓ Got it', data: `a:k:${id}` }]])
-    return ask(ctx, `Explain this alert using my data in 2–3 sentences, then suggest one small step for today.\nAlert: ${ins.title}\n${ins.body}`, ctx.callbackQuery.message?.message_id)
+    ask(ctx, `Explain this alert using my data in 2–3 sentences, then suggest one small step for today.\nAlert: ${ins.title}\n${ins.body}`, ctx.callbackQuery.message?.message_id)
   })
 
   // Chests: c:o:<chestId>

@@ -76,3 +76,23 @@ test('tradesFromStatement rebuilds trades from Binance statement lines', async (
     { base: 'SOL', quote: 'USDT', side: 'sell', qty: 1, price: 160, fee: 0, feeAsset: undefined },
   ])
 })
+
+test('app-order deletes the spend of a cancelled order only, and a cancelled order stays cancelled', async () => {
+  const { appOrder } = await import('./app-order')
+  const order = { platform: 'zepto', name: 'Zepto', orderId: 'Z1', at: '2026-11-11T06:00:00.000Z', total: 500, currency: 'INR', items: [{ name: 'Milk', qty: 1 }] }
+  const ev = (o: object) => ({ source: 'zepto', externalId: 'zepto:Z1', at: new Date(order.at), body: o })
+  let deleted = 0
+  let cancelledSeen: object[] = []
+  const select = () => ({ from: () => ({ where: () => ({ limit: async () => cancelledSeen }) }) })
+  const db = { delete: () => ({ where: async () => { deleted++ } }), select } as never
+  const live = await appOrder.parse(ev(order), { ...ctx, db })
+  assert.deepEqual(live.map((r) => r.kind === 'transaction' && [r.amount, r.externalRef]), [[-500, 'zepto:Z1']])
+  assert.deepEqual(await appOrder.parse(ev({ ...order, status: 'Cancelled' }), { ...ctx, db }), [])
+  assert.equal(deleted, 1)
+  assert.deepEqual(await appOrder.parse(ev({ ...order, status: 'Refunded' }), { ...ctx, db }), [], 'a refund records nothing')
+  assert.deepEqual(await appOrder.parse(ev({ ...order, status: 'Returned' }), { ...ctx, db }), [])
+  assert.equal(deleted, 1, 'a refund or return never deletes the spend')
+  cancelledSeen = [{ id: 'x' }]
+  assert.deepEqual(await appOrder.parse(ev(order), { ...ctx, db }), [], 'read again after its cancel: stays cancelled')
+  assert.equal(appOrder.enriches, true) // an empty result is still "parsed"
+})

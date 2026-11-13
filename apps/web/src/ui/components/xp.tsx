@@ -10,20 +10,6 @@ export const MEDAL_COLOR: Record<Medal | 'bronze' | 'silver' | 'gold', string> =
   sakura: 'var(--medal-sakura)',
 }
 
-/** The level number on an ink tile. Concentric: 12px radius on a 44px tile. */
-export function LevelMark({ level, size = 'md' }: { level: number; size?: 'sm' | 'md' | 'lg' }) {
-  const box = { sm: 'size-10 rounded-[10px]', md: 'size-12 rounded-[12px]', lg: 'size-20 rounded-[20px]' }[size]
-  const num = { sm: 'text-[17px]', md: 'text-[20px]', lg: 'text-[34px]' }[size]
-  return (
-    <span className={cn('grid shrink-0 place-items-center bg-ink text-bg shadow-[inset_0_1px_0_oklch(1_0_0/0.15)]', box)} aria-label={`Level ${level}`}>
-      <span className="flex flex-col items-center leading-none">
-        <span className={cn('font-medium uppercase opacity-60', size === 'lg' ? 'text-[11px] tracking-[0.12em]' : 'text-[8px] tracking-[0.1em]')}>Lv</span>
-        <span className={cn('font-display font-bold tabular-nums', num)}>{level}</span>
-      </span>
-    </span>
-  )
-}
-
 /** A medal with ribbon tails. Without a medal it shows an empty dashed slot. */
 export function MedalDisc({ medal, size = 28, label }: { medal: Medal | null; size?: number; label?: string }) {
   if (!medal) {

@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useId, useState, useTransition } from 'react'
 import { Activity, Archive, Check, Plus } from 'lucide-react'
 import { archiveTracker, createTracker, logEntry } from '@/app/actions'
-import { CATEGORIES } from '@/db/schema'
+import { CATEGORIES } from '@/domain/categories'
 import { CATEGORY } from '@/ui/tokens'
 import { Button } from '../button'
 import { Field, Input, Select } from '../form'

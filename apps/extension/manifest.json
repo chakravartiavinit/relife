@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ReLife",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "ReLife in your toolbar: today's quests, level and quick log, plus focused time on sites, videos and courses, kept on this computer.",
   "icons": {
     "16": "icons/icon16.png",
@@ -40,24 +40,16 @@
     "alarms",
     "storage",
     "favicon",
-    "contextMenus"
+    "contextMenus",
+    "scripting"
   ],
   "host_permissions": [
     "http://127.0.0.1/*",
     "http://localhost/*"
   ],
-  "content_scripts": [
-    {
-      "matches": [
-        "http://*/*",
-        "https://*/*"
-      ],
-      "js": [
-        "content.js"
-      ],
-      "run_at": "document_idle",
-      "all_frames": true
-    }
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
   ],
   "incognito": "not_allowed"
 }

@@ -66,7 +66,7 @@ async function Subscriptions() {
   ))
 
   const items = await Promise.all(list.map(async (s) => {
-    const due = s.active ? nextOccurrence(s.rrule, new Date(todayStart.getTime() - 1), user.timezone) : null
+    const due = s.active ? safeNext(s.rrule, new Date(todayStart.getTime() - 1), user.timezone) : null
     const daysLeft = due
       ? Math.round((Date.parse(`${localDate(due, user.timezone)}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000)
       : null
@@ -229,4 +229,12 @@ function SubscriptionsSkeleton() {
       </div>
     </div>
   )
+}
+
+/** A malformed stored rule shows as "no next date" instead of failing the whole page. */
+function safeNext(rule: string, after: Date, tz: string) {
+  try { return nextOccurrence(rule, after, tz) } catch (e) {
+    console.error('[subscriptions] bad rule:', e instanceof Error ? e.message : e)
+    return null
+  }
 }

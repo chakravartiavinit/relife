@@ -112,7 +112,7 @@ export async function buildDigest(user: User, now = new Date()) {
 }
 
 export async function digestText(user: User, now = new Date()) {
-  return mask(JSON.stringify(await buildDigest(user, now)))
+  return mask(JSON.stringify(await buildDigest(user, now)), true)
 }
 
 export const COACH_SYSTEM = [

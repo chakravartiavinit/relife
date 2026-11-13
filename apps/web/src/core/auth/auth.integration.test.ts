@@ -245,14 +245,18 @@ test('devices, pairing and legacy tokens against PostgreSQL', { skip: !enabled }
     assert.equal(await pairing.approveRequest({ id: e.id, userId: user.id, deviceId: null, now: new Date(Date.now() + 10 * MIN + 1000) }), null)
   })
 
-  await t.test('flow B: the same kind, name and IP replaces the old request; at most 5 wait at once', async () => {
+  await t.test('flow B: the same kind, name and IP replaces the old request; at most 10 wait at once, 3 per client', async () => {
     await db.delete(schema.pairings).where(eq(schema.pairings.method, 'request'))
     const first = await request({ name: `Same ${run}`, ip: ip(20) })
     const second = await request({ name: `Same ${run}`, ip: ip(20) })
     assert.equal(await pairing.requestById(first.id), null, 'replaced')
     assert.ok(await pairing.requestById(second.id))
-    for (let i = 0; i < 4; i++) await request({ name: `Many ${run} ${i}`, ip: ip(21 + i) })
-    await assert.rejects(request({ name: `Too many ${run}`, ip: ip(30) }), (e: unknown) => e instanceof pairing.PairError && e.code === 'rate_limited')
+    for (let i = 0; i < 9; i++) await request({ name: `Many ${run} ${i}`, ip: ip(21 + i) })
+    await assert.rejects(request({ name: `Too many ${run}`, ip: ip(50) }), (e: unknown) => e instanceof pairing.PairError && e.code === 'rate_limited')
+    await db.delete(schema.pairings).where(eq(schema.pairings.method, 'request'))
+    for (let i = 0; i < 3; i++) await request({ name: `Mine ${run} ${i}`, ip: ip(60) })
+    await assert.rejects(request({ name: `Mine ${run} 3`, ip: ip(60) }), (e: unknown) => e instanceof pairing.PairError && e.code === 'rate_limited', 'one client cannot fill every slot')
+    await request({ name: `Other ${run}`, ip: ip(61) })
     await db.delete(schema.pairings).where(eq(schema.pairings.method, 'request'))
   })
 

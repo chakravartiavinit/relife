@@ -4,7 +4,7 @@
 
 /** DOM glue: elements are looked up by id and used as whatever they are, so this stays untyped. The data is what is typed. */
 const $ = /** @type {(id: string) => any} */ ((id) => document.getElementById(id))
-const { DEFAULTS, KINDS, KIND, TYPES, TYPE_LABEL, AREA_COLOR, domainOf, progressOf, keyOf, under, esc, hm, ago, num, call, connect, toast } = self.RL
+const { DEFAULTS, KINDS, KIND, TYPES, TYPE_LABEL, AREA_COLOR, domainOf, progressOf, keyOf, under, esc, hm, ago, num, call, connect, toast, serverOf, allowServer } = self.RL
 // System quest ranks, as on Today (src/ui/components/system-quests.tsx).
 const RANK_HINT = { E: 'easy', D: 'light', C: 'steady', B: 'hard', A: 'very hard', S: 'rare' }
 
@@ -472,9 +472,20 @@ $('exclude').onclick = async () => {
 $('openSettings').onclick = () => setView('settings')
 $('closeSettings').onclick = () => setView('main')
 $('openOptions').onclick = () => chrome.runtime.openOptionsPage()
+// Pairing waits for you to type a code in the app, which closes this popup, so it runs on the settings page.
+$('pairOpen').onclick = async () => {
+  const server = serverOf($('server').value)
+  // A new address drops the old token: the background must never send one server's token to another.
+  if (server && server !== s.server) await chrome.storage.local.set({ server, token: '' })
+  void chrome.runtime.openOptionsPage()
+  window.close()
+}
 $('setupForm').onsubmit = async (e) => {
   e.preventDefault()
-  const r = await connect($('server').value, $('token').value)
+  const server = serverOf($('server').value)
+  if (!server) { toast('That doesn’t look like an address. Try http://127.0.0.1:3030.', 'bad'); return }
+  if (!(await allowServer(server))) { toast('Chrome needs your OK to reach that address.', 'bad'); return }
+  const r = await connect(server, $('token').value)
   toast(r.ok ? 'Connected to ReLife.' : r.status === 401 ? 'That token doesn’t match the one in ReLife.' : r.status ? `${r.error}.` : 'Can’t reach ReLife at that address. Is it running?', r.ok ? 'good' : 'bad')
   if (r.ok) { $('setupIntro').hidden = true; setView('main') }
   await refreshPage()

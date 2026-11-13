@@ -25,7 +25,8 @@ export async function applyQuickLog(user: User, q: QuickLog, now = new Date()): 
 /** Applies a log and says how to take it back. Telegram and the extension only need the message; Capture keeps the token. */
 export async function applyQuickLogWithUndo(user: User, q: QuickLog, now = new Date()): Promise<{ message: string; undo: QuickLogUndo }> {
   const date = localDate(now, user.timezone)
-  const externalRef = `manual:${now.getTime()}`
+  // A random tail keeps two logs in the same millisecond apart (the ref is the undo key).
+  const externalRef = `manual:${now.getTime()}-${crypto.randomUUID().slice(0, 8)}`
   const prev = q.type === 'entry' && LAST_VALUE.has(q.slug) ? await manualValue(user, q.slug, date) : null
   const undo = quickLogUndo(q, { date, prev, externalRef })
   return { message: await writeQuickLog(user, q, now, date, externalRef), undo }

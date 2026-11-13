@@ -1,6 +1,6 @@
-import { createHash } from 'node:crypto'
 import type { ConnectorCtx } from '@/core/types'
 import { addDays, localDate } from '@/core/time'
+import { dayEventId } from '@/parsers/util'
 import { fetchT } from './net'
 
 // Shared by the connectors that send one summary per day (WakaTime, Strava, Todoist, Last.fm, Steam…).
@@ -13,13 +13,14 @@ export function syncWindow(ctx: ConnectorCtx, backfillDays: number, recentDays =
   return { tz, today, backfilled, from: addDays(today, -(backfilled ? recentDays : backfillDays - 1)) }
 }
 
-/** One raw event per day. The id includes the numbers, so a day is parsed again only when it changes. */
-export async function emitDays(ctx: ConnectorCtx, source: string, days: Iterable<{ date: string }>) {
+/**
+ * One raw event per day and source, with a stable id: ingest replaces the stored day when its numbers change and
+ * leaves it alone when they don't, so a day that goes A to B to A (an uncompleted task, a deleted activity) ends on A.
+ * `source` is a name, or a function of the day for connectors that cover several sites.
+ */
+export async function emitDays<D extends { date: string }>(ctx: ConnectorCtx, source: string | ((d: D) => string), days: Iterable<D>) {
   const now = new Date()
-  for (const d of days) {
-    const hash = createHash('sha256').update(JSON.stringify(d)).digest('hex').slice(0, 12)
-    await ctx.emit({ source, externalId: `${d.date}:${hash}`, at: now, body: d })
-  }
+  for (const d of days) await ctx.emit({ source: typeof source === 'string' ? source : source(d), externalId: dayEventId(d.date), at: now, body: d })
 }
 
 /** fetch with a 30s limit and messages a person can act on: "timed out" and "Network problem" both mean "try again later". */
