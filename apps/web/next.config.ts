@@ -5,7 +5,7 @@ import type { NextConfig } from 'next'
 // The server runs from apps/web; .env and data/ live at the repo root. Load .env once here, with the same loader Next
 // uses (not a runtime process.env change). Next has already loaded apps/web's own (empty) env by now, so force a reload.
 // After editing .env, restart.
-const repoRoot = resolve(process.cwd(), '..', '..')
+const repoRoot = resolve(import.meta.dirname, '..', '..')
 loadEnvConfig(repoRoot, process.env.NODE_ENV !== 'production', undefined, true)
 
 const nextConfig: NextConfig = {
