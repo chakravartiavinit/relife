@@ -1,0 +1,15 @@
+{
+  "name": "Aarav Mehta",
+  "timezone": "America/New_York",
+  "prefs": {
+    "theme": "dark"
+  },
+  "device": {
+    "id": "0c9a4e72-31d8-4f5b-8a66-b0d1e7a3c5f2",
+    "kind": "extension",
+    "name": "Chrome extension",
+    "scopes": [
+      "companion"
+    ]
+  }
+}

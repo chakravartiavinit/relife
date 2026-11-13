@@ -1,0 +1,11 @@
+{
+  "app": "relife",
+  "apiVersion": 1,
+  "version": "0.1.0",
+  "mode": "self-host",
+  "name": null,
+  "minClient": {
+    "extension": "0.7.0",
+    "mac": "0.1.0"
+  }
+}

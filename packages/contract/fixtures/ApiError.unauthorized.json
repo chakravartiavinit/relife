@@ -1,0 +1,7 @@
+{
+  "ok": false,
+  "error": {
+    "code": "unauthorized",
+    "message": "Sign in again."
+  }
+}

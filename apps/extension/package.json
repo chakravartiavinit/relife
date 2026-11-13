@@ -1,0 +1,17 @@
+{
+  "name": "@relife/extension",
+  "version": "0.7.0",
+  "private": true,
+  "description": "ReLife Chrome extension (MV3, plain JS typed with JSDoc). Load this folder unpacked.",
+  "scripts": {
+    "typecheck": "tsc -p .",
+    "pack": "node scripts/pack.mjs",
+    "icons": "node scripts/icons.mjs"
+  },
+  "devDependencies": {
+    "@relife/contract": "*",
+    "@types/chrome": "^0.3.7",
+    "lucide-react": "^1.69.0",
+    "typescript": "^5"
+  }
+}

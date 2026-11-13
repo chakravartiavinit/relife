@@ -1,0 +1,21 @@
+{
+  "name": "@relife/contract",
+  "version": "0.0.0",
+  "private": true,
+  "description": "zod schemas for the /api/v1 device API, plus JSON fixtures the Swift app decodes in its tests.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "tsx": "^4.23.15",
+    "typescript": "^5"
+  }
+}

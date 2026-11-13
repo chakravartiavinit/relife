@@ -11,9 +11,9 @@ echo "$staged" | while IFS= read -r f; do
   case "$f" in
     .env.example) ;;
     .env|.env.*|*/.env|*/.env.*) echo "$f: env files hold secrets" ;;
-    data/*) echo "$f: data/ holds the encryption key for saved connector keys" ;;
+    data/*|apps/*/data/*) echo "$f: data/ holds the encryption key for saved connector keys" ;;
     *.pem|*.key|*.p12|*.dump|*.sql.gz|service-account*.json) echo "$f: key or database dump" ;;
-    node_modules/*|.next/*|.next-mock/*|coverage/*) echo "$f: build output" ;;
+    node_modules/*|*/node_modules/*|.next/*|.next-mock/*|apps/*/.next/*|apps/*/.next-mock/*|apps/mac/.build/*|coverage/*) echo "$f: build output" ;;
     *.DS_Store|*.log) echo "$f: OS or log file" ;;
   esac
   case "$(basename "$f")" in
@@ -34,7 +34,7 @@ done)
 [ -n "$big" ] && err "$big"
 
 # 3. Secret-looking strings in added lines.
-patterns='sk-ant-[A-Za-z0-9_-]{20,}|sk-(proj-)?[A-Za-z0-9_-]{32,}|sk-or-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|xox[abprs]-[A-Za-z0-9-]{10,}|[0-9]{8,10}:AA[0-9A-Za-z_-]{30,}|-----BEGIN [A-Z ]*PRIVATE KEY-----'
+patterns='sk-ant-[A-Za-z0-9_-]{20,}|sk-(proj-)?[A-Za-z0-9_-]{32,}|sk-or-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|xox[abprs]-[A-Za-z0-9-]{10,}|[0-9]{8,10}:AA[0-9A-Za-z_-]{30,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|rlf_[a-z]_[A-Za-z0-9_-]{40,}'
 hits=$(git diff --cached -U0 --no-color -- . ':(exclude).githooks/*' | grep -E '^\+[^+]' | grep -En "$patterns")
 if [ -n "$hits" ]; then
   err "possible secret in staged changes:"

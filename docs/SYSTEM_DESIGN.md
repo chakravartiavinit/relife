@@ -81,7 +81,16 @@ Two processes, one repo, one database:
 
 - **web**: Next.js App Router. Renders the dashboard, mutates via server actions, exposes a tiny HTTP surface (`/api/ingest`, `/api/health`).
 - **worker**: long-running Node process. Runs the bot and the job scheduler; every time-based or event-driven task
-  (syncs, parsing, reminders, rules, XP, AI) is a job in `src/jobs/index.ts`.
+  (syncs, parsing, reminders, rules, XP, AI) is a job in `apps/web/src/jobs/index.ts`.
+
+**Surfaces and devices.** Besides the dashboard in a browser, four more things talk to the same server: the Chrome extension, the native Mac app, the phone (an installable PWA now, native later) and shell scripts. Each one is a *device*: a row in `devices` holding a hashed, revocable token. Browsers carry it in a cookie, native clients send it as a bearer token. Devices join through one pairing protocol (scan a QR from a signed-in screen, or show a code a signed-in screen approves). The HTTP shapes live in `packages/contract` as zod schemas, with JSON fixtures that the Swift tests decode, so the web server, the extension and the Mac app cannot drift apart. (Devices and pairing are planned; the contract package and the monorepo layout below land first.)
+
+```
+  Browser / PWA ─┐
+  Chrome extension ─┤  cookie or bearer token       ┌─ web (Next.js, apps/web) ─ Postgres
+  ReLife for Mac ───┼──────── /api/v1 (contract) ──▶│      + worker
+  Shell (signin) ───┘                               └─ pairing, devices, events (SSE)
+```
 
 Why split: Next.js request handlers are not a good home for long-lived loops (bot polling, timers). Keeping them in a worker means the dashboard can restart freely without dropping reminders.
 
@@ -204,7 +213,7 @@ Time: every event stores a `timestamptz`; anything "per day" also stores `local_
 Four kinds of plug-in, all the same shape: one file, one line in an explicit list in `index.ts`. No dynamic loading.
 
 ```ts
-// src/core/types.ts
+// apps/web/src/core/types.ts
 export type Rec =
   | { kind: 'entry'; tracker: string; date: string; value: number; source: string; meta?: object }
   | { kind: 'transaction'; account: string; at: Date; amount: number; currency: string;
@@ -267,6 +276,8 @@ Testing: one `parsers.test.ts` loops over `fixtures/*.{txt,json}` and compares a
 | server actions | local session | all dashboard reads/writes |
 | `POST /api/ingest` | bearer `INGEST_TOKEN` | optional direct push from Shortcuts over Tailscale |
 | `GET /api/health` | none (localhost) | DB reachable, worker heartbeat age, last sync per connector |
+| `/api/activity`, `/api/companion` | bearer `ACTIVITY_TOKEN` | the Chrome extension (time, and the popup's Today tab); validated with `@relife/contract` |
+| `/api/v1/*` (planned) | device cookie or bearer token | one versioned API for every device: `hello`, `me`, `today`, `today/actions`, `activity`, `events` (SSE), `pair/*`. Shapes are zod schemas in `packages/contract`. `/api/activity` and `/api/companion` stay as aliases while old extensions exist. |
 
 The worker writes a heartbeat row every minute; the dashboard shows a banner if it is older than 3 minutes.
 
@@ -304,9 +315,10 @@ You              Progress · Connections · Notifications · Settings (profile, 
 |---|---|---|---|
 | Web dashboard | Next.js + Tailwind v4 + shadcn/ui (Radix) + `motion` | — | tokens, components, domain logic |
 | Mobile | PWA (installable via Tailscale HTTPS) | Expo (needed for HealthKit) or Capacitor | tokens (`tokens.json`), domain logic, API |
-| Desktop | — | Tauri wrapping the web app | everything (same UI) |
+| Desktop | Native SwiftUI Mac app (`apps/mac`, planned) | — | tokens (`Tokens.swift`), the `/api/v1` contract |
+| Extension | Chrome MV3 (`apps/extension`) | Firefox/Safari | tokens (`tokens.css`), the contract (types via JSDoc) |
 
-Rule that keeps every surface consistent: **design tokens live in one file** (`src/ui/tokens.ts`) and are compiled into Tailwind CSS variables now and React Native styles later. Domain logic (P&L, streaks, rrule, formatting) is pure TypeScript with no React imports, so any client can reuse it.
+Rule that keeps every surface consistent: **design tokens live in one file** (`packages/tokens/tokens.json`) and `npm run tokens` compiles them into CSS (web, site, extension), a Swift file (Mac app) and the JS easing curves; `apps/web/src/ui/tokens.ts` keeps the chart mappings that point at those CSS variables. Domain logic (P&L, streaks, rrule, formatting) is pure TypeScript with no React imports, so any client can reuse it (it stays in `apps/web` until a second TypeScript client needs it).
 
 Trade-off to decide at mobile time: Expo gives the best native feel and HealthKit, but means re-implementing components against the same tokens. Capacitor reuses the web UI exactly but feels less native. Defer until M7+.
 
@@ -337,7 +349,7 @@ Category colors (charts, chips, capsule fills), harmonized with the brand:
 | Wealth | cardigan gold (deepened for contrast) |
 | Relationships | sky teal |
 
-Logo: the wordmark with the "i" replaced by a capsule (blue top, white bottom, ink outline). App icon: the capsule on its own. Source: `assets/brand/relife-logo.png`; `node scripts/brand.mjs assets/brand/relife-logo.png` builds the light and dark logos, the app icons and the extension's toolbar icons (the capsule alone on transparent, also used in the README header). The capsule is also the core UI motif (below).
+Logo: the wordmark with the "i" replaced by a capsule (blue top, white bottom, ink outline). App icon: the capsule on its own. Source: `packages/brand/logo/relife-logo.png`; `npm run brand` builds the light and dark logos, the app icons and the extension's toolbar icons (the capsule alone on transparent, also used in the README header). The capsule is also the core UI motif (below).
 
 > IP note: the ReLIFE name, wordmark and capsule-"i" are from the anime (© YayoiSo/comico/ReLIFE Laboratory). The project uses the original logo as a fan tribute; it is excluded from the AGPL license (see README → Credits).
 
@@ -390,8 +402,12 @@ The project was briefly called Savepoint, with its own crystal logo, in November
 
 - Secrets in `.env` (gitignored from the first commit; `.env.example` committed). OAuth refresh tokens encrypted at rest with `ENCRYPTION_KEY` (AES-256-GCM, `node:crypto`).
 - Exchange keys are read-only; the Binance connector checks key permissions on first sync and refuses keys that can trade or withdraw.
-- Web binds to `127.0.0.1`; remote access only through Tailscale. No ports exposed to the internet. `src/proxy.ts` refuses
+- Web binds to `127.0.0.1`; remote access only through Tailscale. No ports exposed to the internet. `apps/web/src/proxy.ts` refuses
   any Host besides loopback, `*.ts.net` and `RELIFE_ALLOWED_HOSTS`, so a web page can't reach ReLife through DNS rebinding.
+- Sign-in (planned, `RELIFE_MODE=self-host`): the Mac the server runs on is trusted on loopback (no proxy headers); every other device pairs once, by QR or code. No passwords. Shell access means ownership (`npm run signin` prints a one-time link). A hosted cloud mode would add email sign-in codes and invites.
+- Devices: a token is `rlf_<kind>_<32 random bytes>`, stored only as SHA-256, shown once, scoped (`full`, `companion`, `ingest`), revocable per device, expiring 180 days after last use. The extension gets only `companion`, so a stolen extension token cannot read wealth data or connector keys. The pre-commit hook blocks anything shaped like a device token.
+- Pairing: codes are 8 Crockford base32 characters, single use, 2 minutes (offers) or 10 minutes (requests), five wrong tries and the pairing expires, and failed redeems are rate limited per IP. The QR secret travels in the URL fragment so it never reaches logs or link previews. The approve page names the device and where the request came from.
+- The key that encrypts saved connector keys lives in `data/secret.key` at the repo root (or `RELIFE_SECRET_KEY`). If it is missing while saved keys exist, ReLife refuses to start with a clear error instead of creating a new key.
 - Telegram bot ignores every chat except `TELEGRAM_ALLOWED_CHAT_ID`.
 - LLM: account numbers and UPI handles masked in digests by default; parsing can run on a local model (`LLM_PARSE=local:...`). Read tools enforce user scope in code; no model-written SQL runs. New AI logs store operational metadata, not prompt or response excerpts. Providers still receive selected context.
 - Disk: FileVault on. Daily `pg_dump` to an encrypted folder.
@@ -412,7 +428,7 @@ Observability is just tables: `jobs`, `sync_runs`, `llm_runs`, `raw_events.statu
 
 ### Jobs
 
-Every scheduled or event-driven task is one entry in `src/jobs/index.ts`; the engine is `src/core/jobs.ts`.
+Every scheduled or event-driven task is one entry in `apps/web/src/jobs/index.ts`; the engine is `apps/web/src/core/jobs.ts`.
 
 - **State in Postgres** (`jobs`): next run, last result, failures in a row, and a lease (`locked_until`). A run
   takes the lease with one conditional `UPDATE`, so the worker and the web's "Sync now" never run the same job
@@ -447,7 +463,8 @@ Single user: roughly 30 SMS + 20 emails + 50 manual logs + 100 connector events 
 | iPhone bridge | Shortcuts → iCloud file | Native iOS app | Zero app to build, survives laptop downtime. Cost: Shortcuts setup is manual, one-time. |
 | LLM access | Vercel AI SDK registry | Direct provider SDKs | Any provider by env var, structured output and tools across all. Cost: one abstraction layer. |
 | LLM context | Precomputed digest (jobs) + tools (chat) | Dump raw data | Cheap, deterministic, fits context. Cost: digest code to maintain. |
-| Desktop | Tauri | Electron | Small binary, reuses web UI. Cost: Rust toolchain. |
+| Desktop | Native SwiftUI | Tauri / Electron | Menu bar, global hotkeys, real Liquid Glass and Keychain are first-class; the web UI stays the deep-work surface. Cost: a second codebase, kept honest by the shared contract fixtures. |
+| Repo layout | npm workspaces, no Turborepo | pnpm, Turborepo | Three JS apps and a few source-only packages: nothing to build or cache. Cost: revisit if CI gets slow. |
 | Plug-ins | Explicit lists in `index.ts` | Dynamic plug-in loader | Greppable, typed, no magic. Revisit when strangers write connectors. |
 
 ---
@@ -469,23 +486,33 @@ Single user: roughly 30 SMS + 20 emails + 50 manual logs + 100 connector events 
 
 ```
 relife/
+  package.json                # workspace root: delegating scripts, git hooks (prepare)
   docker-compose.yml          # postgres
-  .env.example
-  CLAUDE.md                   # how to add connectors / parsers / rules / UI rules
-  docs/SYSTEM_DESIGN.md
-  src/
-    app/                      # Next.js routes (today, health, mind, skills, wealth, ...)
-      dev/ui/                 # component states gallery
-    ui/
-      tokens.ts               # single source of design tokens
-      components/             # shadcn-based, themed: Capsule, Stat, Chart, ...
-    db/schema.ts              # drizzle
-    core/                     # types, ingest, upsert, fx, time (local_date)
-    domain/                   # pure TS: pnl, streaks, rrule, money formatting
-    connectors/  parsers/  rules/
-    ai/                       # models, context, tools, jobs/
-    bot/telegram.ts
-    worker.ts                 # entry: bot + cron + inbox watcher + heartbeat
+  .env  data/                 # runtime state of the self-hosted server (gitignored, stay at the root)
+  AGENTS.md  CLAUDE.md        # repo-wide rules and the layout map
+  .githooks/  docs/  plans/
+  apps/
+    web/                      # Next.js dashboard + worker (own AGENTS.md)
+      src/
+        app/                  # Next.js routes (today, health, mind, skills, wealth, ...)
+          dev/ui/             # component states gallery
+        ui/
+          tokens.ts           # chart mappings onto the CSS token variables
+          components/         # shadcn-based, themed: Capsule, Stat, Chart, ...
+        db/schema.ts          # drizzle
+        core/                 # types, ingest, upsert, fx, time (local_date), paths (data folder)
+        domain/               # pure TS: pnl, streaks, rrule, money formatting
+        connectors/  parsers/  rules/
+        ai/                   # models, context, tools, jobs/
+        bot/telegram.ts
+        worker/               # entry: bot + cron + inbox watcher + heartbeat
+      public/  scripts/       # static files; mock, seed-demo, binance-import, service.sh
+    extension/                # Chrome MV3 extension, plain JS typed with JSDoc + checkJs
+    mac/                      # native SwiftUI app (planned; Swift package, no package.json)
+  packages/
+    tokens/                   # tokens.json + build.mjs -> CSS, extension CSS, Swift
+    contract/                 # zod schemas for /api/v1 + JSON fixtures shared with Swift tests
+    brand/                    # name, tagline, logo source, build.mjs (icons), publicReady flag
 ```
 
 ---

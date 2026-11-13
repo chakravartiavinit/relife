@@ -1,21 +1,24 @@
 # Dependencies
-/node_modules
+node_modules/
 /.pnp
 .pnp.*
 
 # Build output and caches
-/.next/
-/.next-mock/
+# Next build folders: the server's are apps/*/.next
+.next/
+.next-mock/
 /out/
 /build
 /coverage
 *.tsbuildinfo
+apps/mac/.build/
 next-env.d.ts
 
 # Secrets and local data: never commit these
 .env*
 !.env.example
 /data/
+apps/*/data/
 *.pem
 *.key
 *.p12
@@ -45,3 +48,4 @@ Thumbs.db
 
 # Deploy tooling
 .vercel
+apps/extension/dist/
