@@ -17,10 +17,15 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
 
 ## Layout
 
-- Pages: Today (`/`, the quest log: things to do now), Goals (`/goals`, up to 3 outcome goals with a baseline, linked actions and weekly review decisions; `/goals/[id]` and `/goals/review`), Activity (`/activity`, laptop time from `extension/` and
-  the Mac watcher), Progress (`/profile`, the character sheet: level, streak,
-  week, consistency, achievements, XP; `/overview` redirects here), Habits, Insights, and six areas (Health, Mind, Skills, Wealth,
-  Hobbies, People) that share one template (`AreaHeader` → `KpiStrip` → cards). Inbox, Connectors and Settings sit in the sidebar footer.
+- Pages: Today (`/`, the quest log: things to do now), Life (`/life`, the hub: every area this week, one click each),
+  six areas (Health, Mind, Skills, Wealth, Hobbies, People at `/people`) that share one template (`AreaHeader` →
+  `KpiStrip` → cards), Time (`/time`, laptop time from `extension/` and the Mac watcher), Plan (`/plan`, tabs:
+  Goals (up to 3 outcome goals with a baseline, linked actions and weekly review decisions), `/plan/routines`,
+  `/plan/trackers`, `/plan/review`; details at `/plan/goals/[id]` and `/plan/trackers/[slug]`), Coach (`/coach`: ask,
+  decisions, and the data ReLife couldn't sort; `?filter=decisions|data`) and You (`/you`, tabs: Progress (the character
+  sheet: level, streak, week, consistency, achievements, XP), `/you/connections`, `/you/notifications`, `/you/settings`).
+  Old URLs (`/goals`, `/habits`, `/insights`, `/inbox`, `/profile`, `/connectors`, `/settings`, `/activity`,
+  `/relationships`, ...) redirect (307) through `LEGACY_REDIRECTS` in `src/domain/routes.ts`; never link to them.
   Navigation lives in `src/ui/components/nav.tsx`. The game look comes from three banners: `CharacterBanner`
   (`hud.tsx`, Today and Progress), `AreaHeader` (area pages) and `PageHeader` (everything else). Routine
   pictures come from `src/ui/routine-icons.ts`.
@@ -108,7 +113,7 @@ Design and decisions: `docs/SYSTEM_DESIGN.md`. Read it before structural changes
 - Per-day values are keyed by the user's local date (`core/time.localDate`), never UTC dates.
 - Money is stored in its original currency; convert at read time with `core/fx.convert`.
 - Re-running any sync or parse must be safe: dedupe on `(source, externalId)` / `externalRef`.
-- Nothing syncs until the user connects it on /connectors. Keys typed there are stored encrypted in
+- Nothing syncs until the user connects it on /you/connections. Keys typed there are stored encrypted in
   `connections.secrets_encrypted` and loaded into a key map (`core/secrets.ts`); `.env` only fills blanks.
 - Keys can also come from a dotsafe vault: `npm run dev:vault` runs the app under `dotsafe run`, which injects
   them as environment variables (see docs/CONNECTORS.md). Never print or log their values.

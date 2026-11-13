@@ -220,7 +220,7 @@ export async function saveOAuthTokens(userId: string, id: string, tokens: OAuthT
   })
 }
 
-/** Which connections have signed in, for the Connectors page. */
+/** Which connections have signed in, for the Connections page. */
 export function signedIn(saved: Map<string, Record<string, string>>, id: string) {
   return !!saved.get(id)?.[OAUTH_KEY]
 }

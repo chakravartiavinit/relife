@@ -8,7 +8,7 @@ import { getUser } from '@/core/user'
 import { formatDay, formatTime, localDate } from '@/core/time'
 import { connectorStatus, recentSyncRuns } from '@/worker/sync'
 import { KEY_ENV, modelId, type Task } from '@/ai/models'
-import { PageHeader, Skeleton } from '@/ui/components/card'
+import { Skeleton } from '@/ui/components/card'
 import { ConnectorMarket, type ConnectorItem, type FieldView } from '@/ui/components/connector-market'
 import { envDefault, savedFields, signedIn } from '@/core/secrets'
 import { callbackPath, requestOrigin } from '@/core/oauth'
@@ -16,16 +16,14 @@ import { integration } from '@/core/integrations'
 import type { SetupField } from '@/core/types'
 import { env } from '@/core/env'
 
-export const metadata: Metadata = { title: 'Connectors' }
+export const metadata: Metadata = { title: 'Connections' }
 
-export default function ConnectorsPage() {
+export default function ConnectionsPage() {
   return (
     <>
-      <PageHeader
-        eyebrow="System"
-        title="Connectors"
-        description="Apps and devices that feed ReLife, sorted by what they track, plus Telegram and AI models. You bring the keys: they’re encrypted in your local database, and nothing syncs until you connect it."
-      />
+      <p className="mb-6 max-w-[60ch] text-body text-ink-2">
+        Apps and devices that feed ReLife, sorted by what they track, plus Telegram and AI models. You bring the keys: they’re encrypted in your local database, and nothing syncs until you connect it.
+      </p>
       <Suspense fallback={
         <div className="flex flex-col gap-6">
           <Skeleton className="h-8 w-72 rounded-full" />
@@ -38,7 +36,7 @@ export default function ConnectorsPage() {
           </div>
         </div>
       }>
-        <Connectors />
+        <Connections />
       </Suspense>
     </>
   )
@@ -73,7 +71,7 @@ const AI: { id: string; name: string; description: string; provides: string[] }[
   { id: 'local', name: 'Ollama or LM Studio', description: 'Runs on your machine, so nothing leaves your laptop. Any OpenAI-compatible server works.', provides: ['Private', 'Free', 'Offline'] },
 ]
 
-async function Connectors() {
+async function Connections() {
   await connection()
   const user = await getUser() // also applies connected keys to process.env
   const [sources, [heartbeat], runs, saved, rows, jobs] = await Promise.all([

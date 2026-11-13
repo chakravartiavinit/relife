@@ -3,15 +3,14 @@ import Link from 'next/link'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
 import { and, eq, gte, isNotNull, sql } from 'drizzle-orm'
-import { ArrowUpRight, BellRing, Bot, Swords, Brain, Database, KeyRound, Palette, ShieldCheck, UserRound, type LucideIcon } from 'lucide-react'
+import { ArrowUpRight, Bot, Swords, Brain, Database, KeyRound, Palette, ShieldCheck, UserRound, type LucideIcon } from 'lucide-react'
 import { databaseUrl, db, isMock, schema } from '@/db'
 import { getUser } from '@/core/user'
 import { aiEnabled, modelId, type Task } from '@/ai'
-import { Badge, PageHeader, Skeleton } from '@/ui/components/card'
+import { Badge, Skeleton } from '@/ui/components/card'
 import { buttonClass } from '@/ui/components/button'
 import { ProfileForm, ThemePicker } from '@/ui/components/settings-ui'
 import { SettingsRow, SettingsSection } from '@/ui/components/settings-layout'
-import { NotificationSettings } from '@/ui/components/notification-settings'
 import { SystemFocus } from '@/ui/components/system-focus'
 import { loadSignals } from '@/core/patterns'
 
@@ -21,7 +20,6 @@ const SECTIONS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: 'profile', label: 'Profile', icon: UserRound },
   { id: 'coaching', label: 'Goals & coaching', icon: Brain },
   { id: 'system', label: 'The System', icon: Swords },
-  { id: 'notifications', label: 'Notifications', icon: BellRing },
   { id: 'appearance', label: 'Appearance', icon: Palette },
   { id: 'ai', label: 'AI', icon: Bot },
   { id: 'privacy', label: 'Data & privacy', icon: ShieldCheck },
@@ -30,22 +28,20 @@ const SECTIONS: { id: string; label: string; icon: LucideIcon }[] = [
 const TASKS: { task: Task; label: string; hint: string }[] = [
   { task: 'parse', label: 'Reading messages', hint: 'Order pages the built-in rules can’t read.' },
   { task: 'plan', label: 'Plans and reviews', hint: 'Daily nudges, weekly reviews and plans.' },
-  { task: 'chat', label: 'Ask', hint: 'Questions on Insights and /ask on Telegram.' },
+  { task: 'chat', label: 'Ask', hint: 'Questions on Coach and /ask on Telegram.' },
 ]
 
 export default function SettingsPage() {
   return (
     <>
-      <PageHeader
-        eyebrow="Settings"
-        title="Settings"
-        description="Your profile, how ReLife looks, which AI it uses and where your data lives. Data sources and API keys are on Connectors."
-        actions={<>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <p className="max-w-[60ch] text-body text-ink-2">Your profile, how ReLife looks, which AI it uses and where your data lives. Data sources and API keys are in Connections; Telegram messages are in Notifications.</p>
+        <div className="flex items-center gap-2">
           {/* A full load: the tour opens from the address on arrival. */}
           <a href="/?tour" className={buttonClass({ variant: 'ghost', size: 'sm' })}>Take the tour</a>
           <Link href="/welcome" className={buttonClass({ variant: 'secondary', size: 'sm' })}>Run setup again</Link>
-        </>}
-      />
+        </div>
+      </div>
       <div className="grid gap-8 lg:grid-cols-[200px_minmax(0,1fr)] xl:gap-12">
         <nav aria-label="Settings sections" className="hidden lg:block">
           <ul className="sticky top-9 flex flex-col gap-0.5">
@@ -101,8 +97,6 @@ async function Settings() {
         stats={signals.filter((s) => s.direction !== 'none').map((s) => ({ id: s.id, name: s.name, area: s.area, better: s.direction === 'down' ? 'less' as const : 'more' as const }))}
       />
 
-      <NotificationSettings initial={user.profile.notifications} />
-
       <SettingsSection id="appearance" title="Appearance" description="Saved in this browser. The sun and moon button in the sidebar switches too.">
         <SettingsRow label="Theme" hint="System follows your Mac or phone.">
           <ThemePicker />
@@ -112,12 +106,12 @@ async function Settings() {
       <SettingsSection
         id="ai"
         title="AI"
-        description="The model you connect on Connectors handles everything. Use LLM_PARSE, LLM_PLAN or LLM_CHAT in .env to give one job a different model."
-        action={<Link href="/connectors" className={buttonClass({ variant: 'secondary', size: 'sm' })}>AI providers <ArrowUpRight className="size-4" strokeWidth={1.5} /></Link>}
+        description="The model you connect in Connections handles everything. Use LLM_PARSE, LLM_PLAN or LLM_CHAT in .env to give one job a different model."
+        action={<Link href="/you/connections" className={buttonClass({ variant: 'secondary', size: 'sm' })}>AI providers <ArrowUpRight className="size-4" strokeWidth={1.5} /></Link>}
       >
         {!TASKS.some(({ task }) => modelId(task)) ? (
           <SettingsRow label="No model yet" hint="Reading odd messages, plans, reviews and Ask all need one.">
-            <Link href="/connectors" className={buttonClass({ variant: 'primary', size: 'sm' })}>Connect an AI model</Link>
+            <Link href="/you/connections" className={buttonClass({ variant: 'primary', size: 'sm' })}>Connect an AI model</Link>
           </SettingsRow>
         ) : TASKS.map(({ task, label, hint }) => {
           const id = modelId(task)
@@ -144,7 +138,7 @@ async function Settings() {
         <SettingsRow label="Your data" hint="Every routine, entry, payment and XP point.">
           <Fact icon={Database}>Postgres on this Mac, database <code className="rounded-xs bg-surface-2 px-1 text-[12.5px]">{dbName}</code>{isMock ? <Badge color="var(--warn)" className="ml-2">Mock</Badge> : null}</Fact>
         </SettingsRow>
-        <SettingsRow label="Saved keys" hint="Keys you enter on Connectors.">
+        <SettingsRow label="Saved keys" hint="Keys you enter in Connections.">
           <Fact icon={KeyRound}>
             {keys.n ? `${keys.n} connection${keys.n === 1 ? '' : 's'} with saved keys, ` : 'No saved keys yet. When you add some, they’re '}
             encrypted with AES-256-GCM using {process.env.RELIFE_SECRET_KEY ? <code className="rounded-xs bg-surface-2 px-1 text-[12.5px]">RELIFE_SECRET_KEY</code> : <code className="rounded-xs bg-surface-2 px-1 text-[12.5px]">data/secret.key</code>}. Back it up with your database.

@@ -20,7 +20,7 @@ import { EmptyState } from '@/ui/components/empty'
 import { buttonClass } from '@/ui/components/button'
 import { KIND_COLOR } from '@/ui/activity-colors'
 
-export const metadata: Metadata = { title: 'Activity' }
+export const metadata: Metadata = { title: 'Time' }
 
 
 /** Focus and distraction, as the Today page and the System count them. */
@@ -37,7 +37,7 @@ export default function ActivityPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Activity"
+        eyebrow="Time"
         title="Where your time goes"
         description="Everything you do on this Mac, every site and app, sorted into learning, work, play and the rest. Recorded by the ReLife extension and app watcher; nothing leaves it."
       />
@@ -190,12 +190,12 @@ function Setup({ connected, seen }: { connected: boolean; seen: Date | null }) {
         description={
           <>
             {connected && seen ? <span className="mb-2 block font-medium text-ink-2">The extension last reached ReLife {ago(seen)}. Time shows here after a few minutes on a site.</span> : null}
-            1. On <Link href="/connectors" className="font-medium text-pill-ink hover:underline">Connectors → Laptop activity</Link>, set a token.{' '}
+            1. On <Link href="/you/connections" className="font-medium text-pill-ink hover:underline">You › Connections → Laptop activity</Link>, set a token.{' '}
             2. In Chrome open <code className="rounded-xs bg-surface-2 px-1">chrome://extensions</code>, turn on Developer mode, choose Load unpacked and pick the <code className="rounded-xs bg-surface-2 px-1">extension</code> folder in ReLife.{' '}
             3. Open the extension and paste the same token. Mac apps are recorded by ReLife’s worker on its own.
           </>
         }
-        action={<Link href="/connectors" className={buttonClass({ variant: 'primary', size: 'sm' })}>{connected ? 'Check the connection' : 'Set it up'}</Link>}
+        action={<Link href="/you/connections" className={buttonClass({ variant: 'primary', size: 'sm' })}>{connected ? 'Check the connection' : 'Set it up'}</Link>}
       />
     </Card>
   )

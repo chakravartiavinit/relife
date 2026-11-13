@@ -66,14 +66,14 @@ export async function loadBriefing(user: User, payments: DueItem[], now = new Da
   for (const m of schedules) {
     const stock = (m.meta as ScheduleMeta).stock
     if (typeof stock === 'number' && stock <= ((m.meta as ScheduleMeta).refillAt ?? MEDICINE_LOW)) {
-      attention.push({ key: `med:${m.id}`, tone: stock <= 2 ? 'bad' : 'warn', kind: 'medicine', href: '/habits', title: `${m.name}: ${stock} left`, detail: 'Time to refill' })
+      attention.push({ key: `med:${m.id}`, tone: stock <= 2 ? 'bad' : 'warn', kind: 'medicine', href: '/plan/routines', title: `${m.name}: ${stock} left`, detail: 'Time to refill' })
     }
   }
   if (failing.length) {
-    attention.push({ key: 'sync', tone: 'warn', kind: 'sync', href: '/connectors', title: `${failing.length} connector${failing.length === 1 ? '' : 's'} failing to sync`, detail: failing.map((f) => f.id).join(', ') })
+    attention.push({ key: 'sync', tone: 'warn', kind: 'sync', href: '/you/connections', title: `${failing.length} connector${failing.length === 1 ? '' : 's'} failing to sync`, detail: failing.map((f) => f.id).join(', ') })
   }
   const nudges = unread[0]?.n ?? 0
-  if (nudges) attention.push({ key: 'nudges', tone: 'info', kind: 'nudge', href: '/insights', title: `${nudges} nudge${nudges === 1 ? '' : 's'} to look at`, detail: 'From your live data' })
+  if (nudges) attention.push({ key: 'nudges', tone: 'info', kind: 'nudge', href: '/coach', title: `${nudges} nudge${nudges === 1 ? '' : 's'} to look at`, detail: 'From your live data' })
 
   // Yesterday in four numbers.
   const yRoutines = yAgenda.filter((i) => !['subscription', 'bill', 'renewal'].includes(i.schedule.kind) && !(i.schedule.meta as ScheduleMeta).trackerSlug)

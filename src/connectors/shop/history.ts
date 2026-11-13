@@ -15,7 +15,7 @@ export const zomatoHistory: History = async ({ full, tz }) => {
   let page = 1
   await walk('zomato', `https://www.zomato.com/webroutes/user/orders?page=1`, async (json) => {
     const sec = json.map((j) => (j as { sections?: { SECTION_USER_ORDER_HISTORY?: { totalPages?: number } } })?.sections?.SECTION_USER_ORDER_HISTORY).find(Boolean)
-    if (!sec) { if (page === 1) throw new Error('Logged out of Zomato. Open Connectors and log in again.'); return null }
+    if (!sec) { if (page === 1) throw new Error('Logged out of Zomato. Open You › Connections and log in again.'); return null }
     orders.push(...ordersFromZomato(json, (w) => wallToUtc(w, tz)))
     page++
     return page <= (sec.totalPages ?? 0) && (full || page <= RECENT_PAGES) ? `https://www.zomato.com/webroutes/user/orders?page=${page}` : null
@@ -29,7 +29,7 @@ export const swiggyHistory: History = async ({ full }) => {
   let calls = 0
   await walk('swiggy', 'https://www.swiggy.com/dapi/order/all?order_id=', async (json) => {
     const list = (json[0] as { data?: { orders?: { order_id?: unknown }[] } })?.data?.orders
-    if (!Array.isArray(list)) { if (!calls) throw new Error('Logged out of Swiggy. Open Connectors and log in again.'); return null }
+    if (!Array.isArray(list)) { if (!calls) throw new Error('Logged out of Swiggy. Open You › Connections and log in again.'); return null }
     calls++
     orders.push(...ordersFromJson(json))
     const last = list.at(-1)?.order_id
@@ -90,6 +90,6 @@ export const makemytripHistory: History = async () => {
     }
     return out
   }) as unknown as () => unknown[])
-  if (!pages.length) throw new Error('Logged out of MakeMyTrip. Open Connectors and log in again.')
+  if (!pages.length) throw new Error('Logged out of MakeMyTrip. Open You › Connections and log in again.')
   return ordersFromMakeMyTrip(pages)
 }

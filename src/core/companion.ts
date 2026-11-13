@@ -16,7 +16,7 @@ import { xpSummary } from './xp'
 // The browser extension's side of ReLife: its token check, its "last seen" mark, and the Today tab's data
 // (character, today's quests and routines). Routes: /api/activity (time) and /api/companion (Today).
 
-/** The bearer token matches ACTIVITY_TOKEN (Connectors → Laptop activity), compared in constant time. */
+/** The bearer token matches ACTIVITY_TOKEN (You › Connections → Laptop activity), compared in constant time. */
 export function extensionAuthorized(req: Request) {
   const token = env('ACTIVITY_TOKEN')
   if (!token) return false
@@ -27,8 +27,8 @@ export function extensionAuthorized(req: Request) {
 
 /** 503 before Laptop activity is connected, else 401 for a token that doesn't match. */
 export const extensionDenied = () => env('ACTIVITY_TOKEN')
-  ? Response.json({ error: 'unauthorized: the token doesn’t match the one on Connectors → Laptop activity' }, { status: 401 })
-  : Response.json({ error: 'Laptop activity is not connected. Set a token on the Connectors page.' }, { status: 503 })
+  ? Response.json({ error: 'unauthorized: the token doesn’t match the one on You › Connections → Laptop activity' }, { status: 401 })
+  : Response.json({ error: 'Laptop activity is not connected. Set a token on the Connections page.' }, { status: 503 })
 
 /** The extension posts every 30 seconds while the browser is open; the Activity page shows when it last did. */
 /** Best effort: a failed mark never fails the request that carries the extension's data. */

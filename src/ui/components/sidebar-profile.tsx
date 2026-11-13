@@ -16,7 +16,7 @@ export async function SidebarProfile() {
   return (
     // Panel padding 12, radius 24: this card uses 12; its 10px padding leaves the bar's pill ends.
     <Link
-      href="/profile"
+      href="/you"
       aria-label={`${user.name}, level ${xp.level} ${xp.title}. ${formatNumber(left)} XP to level ${xp.level + 1}. Open Progress.`}
       className="group flex items-center gap-3 rounded-[12px] bg-surface p-2.5 shadow-1 transition-[background-color,scale] duration-150 ease-[var(--ease-out-quint)] hover:bg-surface-2 active:scale-[0.98]"
     >

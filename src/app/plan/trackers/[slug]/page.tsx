@@ -19,7 +19,7 @@ import { ArchiveTrackerButton, QuickLog } from '@/ui/components/forms/tracker-fo
 
 export const metadata: Metadata = { title: 'Tracker' }
 
-export default function TrackerPage({ params }: PageProps<'/trackers/[slug]'>) {
+export default function TrackerPage({ params }: PageProps<'/plan/trackers/[slug]'>) {
   return (
     <Suspense fallback={<DetailSkeleton />}>
       <TrackerDetail params={params} />
@@ -27,7 +27,7 @@ export default function TrackerPage({ params }: PageProps<'/trackers/[slug]'>) {
   )
 }
 
-async function TrackerDetail({ params }: { params: PageProps<'/trackers/[slug]'>['params'] }) {
+async function TrackerDetail({ params }: { params: PageProps<'/plan/trackers/[slug]'>['params'] }) {
   await connection()
   const [{ slug: raw }, user] = await Promise.all([params, getUser()])
   const slug = decodeURIComponent(raw)
@@ -51,7 +51,7 @@ async function TrackerDetail({ params }: { params: PageProps<'/trackers/[slug]'>
   return (
     <div>
       <nav aria-label="Breadcrumb" className="mb-4 flex items-center gap-1 text-[13px] text-ink-3">
-        <Link href="/habits?tab=trackers" className="rounded-sm hover:text-ink">Trackers</Link>
+        <Link href="/plan/trackers" className="rounded-sm hover:text-ink">Trackers</Link>
         <ChevronRight className="size-3.5" strokeWidth={1.5} />
         <span className="text-ink-2">{t.name}</span>
       </nav>

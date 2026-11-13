@@ -144,7 +144,7 @@ test('checkClient sends the app with a made-up code and only a wrong client is a
 })
 
 test('apiError turns a rejected token into advice for the service and passes other errors on', () => {
-  assert.throws(() => apiError('Oura', ' Needs a membership.')(new Error('The key was rejected. Check it')), /^Error: Oura rejected the sign-in\. Needs a membership\. Sign in again on Connectors\.$/)
+  assert.throws(() => apiError('Oura', ' Needs a membership.')(new Error('The key was rejected. Check it')), /^Error: Oura rejected the sign-in\. Needs a membership\. Sign in again in You › Connections\.$/)
   assert.throws(() => apiError('Oura')(new Error('HTTP 500')), /^Error: HTTP 500$/)
 })
 

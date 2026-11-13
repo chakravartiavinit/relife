@@ -2,7 +2,7 @@
 
 import { Switch } from '@/ui/beui/motion/switch'
 import { useActionState, useEffect, useId, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Plus, Repeat, X } from 'lucide-react'
 import { saveSchedule } from '@/app/actions'
 import { CATEGORIES } from '@/db/schema'
@@ -250,10 +250,13 @@ function ScheduleForm({ initial, onDone }: { initial: ScheduleInitial; onDone: (
   )
 }
 
-/** "New routine" button; also opens itself for `/habits?new=1`. */
-export function NewScheduleButton({ today, autoOpen = false }: { today: string; autoOpen?: boolean }) {
-  const [open, setOpen] = useState(autoOpen)
+/** "New routine" button; also open while the URL is `/plan/routines?new=1` (state from the URL, so a kept-alive page never shows a stale dialog). */
+export function NewScheduleButton({ today, listenToUrl = false }: { today: string; listenToUrl?: boolean }) {
+  const [open, setOpen] = useState(false)
   const router = useRouter()
+  const pathname = usePathname()
+  const params = useSearchParams()
+  const fromUrl = listenToUrl && pathname === '/plan/routines' && params.get('new') === '1'
   return (
     <>
       <Button variant="primary" onClick={() => setOpen(true)}>
@@ -261,11 +264,11 @@ export function NewScheduleButton({ today, autoOpen = false }: { today: string; 
         New routine
       </Button>
       <ScheduleDialog
-        open={open}
+        open={open || fromUrl}
         initial={blankSchedule(today)}
         onClose={() => {
           setOpen(false)
-          if (autoOpen) router.replace('/habits', { scroll: false })
+          if (fromUrl) router.replace(pathname, { scroll: false })
         }}
       />
     </>

@@ -281,11 +281,14 @@ Mind             mood, screen time, journal
 Skills           GitHub, learning items, practice time
 Wealth           net worth · Spending (category, merchant, trends) · Portfolio (Binance P&L)
                  · Subscriptions (next due, monthly/yearly total)
-Relationships    people, last contacted, quality time
-Goals            up to 3 outcome goals: baseline → now → target, linked actions, weekly review decisions
-Insights         weekly reviews, pending suggestions, plans
-Inbox            failed parses / needs review, merchant categorization
-Settings         profile, connectors, LLM models, reminders, theme
+People           people, last contacted, quality time (/people)
+Life             hub: every area this week, one click each (/life)
+Time             laptop time from the extension and the Mac watcher (/time)
+Plan             Goals (up to 3 outcome goals: baseline → now → target, linked actions) · Routines · Trackers ·
+                 Review (weekly decisions)  (/plan, /plan/routines, /plan/trackers, /plan/review)
+Coach            ask your data · decisions (reviews, suggestions, plans) · data to sort (failed parses,
+                 merchant categorization)  (/coach, ?filter=decisions|data)
+You              Progress · Connections · Notifications · Settings (profile, LLM models, theme)  (/you, /you/*)
 ⌘K               log anything, jump anywhere, ask your data
 ```
 
@@ -399,7 +402,7 @@ The project was briefly called Savepoint, with its own crystal logo, in November
 |---|---|
 | Laptop asleep/off | iCloud inbox and Gmail queue data; connectors resume from `connections.cursor`; reminders send a single catch-up digest. |
 | Connector error | Recorded in `sync_runs`; retry with backoff on next tick; Telegram alert after 3 consecutive failures. |
-| Parser miss | Regex parsers → LLM fallback → `raw_events.status = failed` → Inbox "Needs review". |
+| Parser miss | Regex parsers → LLM fallback → `raw_events.status = failed` → Coach "Data to sort". |
 | LLM down / no key | AI jobs skip silently; rules still alert. |
 | Worker dead | Heartbeat banner on dashboard; `launchd` agent restarts it on login. |
 

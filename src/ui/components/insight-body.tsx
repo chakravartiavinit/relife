@@ -92,7 +92,7 @@ function GoalPoints({ goals }: { goals: NonNullable<ReviewContent['goals']> }) {
           </li>
         ))}
       </ul>
-      <Link href="/goals/review" className={cn(buttonClass({ variant: 'secondary', size: 'md' }), 'mt-3')}>Decide on Goals</Link>
+      <Link href="/plan/review" className={cn(buttonClass({ variant: 'secondary', size: 'md' }), 'mt-3')}>Decide on Goals</Link>
     </section>
   )
 }

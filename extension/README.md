@@ -8,7 +8,7 @@ page) and sends it to **your own** ReLife on this computer. Nothing goes anywher
 
 ## Install (Chrome, Arc, Brave, Edge)
 
-1. In ReLife, open **Connectors → Laptop activity**, put any long random text in **Extension token**
+1. In ReLife, open **You › Connections → Laptop activity**, put any long random text in **Extension token**
    (e.g. from `openssl rand -hex 24`) and press Connect.
 2. Open `chrome://extensions`, turn on **Developer mode**, press **Load unpacked** and choose this `extension` folder.
 3. Click the ReLife icon in the toolbar, open **Connection**, paste the same token and press **Save and test**.

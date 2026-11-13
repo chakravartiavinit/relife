@@ -32,7 +32,7 @@ export function useGoalActions(g: GoalViewData) {
     const res = await setGoalStatusAction({ goalId: g.id, version: g.version, status })
     toast(res.ok ? { active: 'Goal resumed', paused: 'Goal paused', finished: 'Goal finished' }[status] : res.error, res.ok ? 'good' : 'bad')
   })
-  const reviewNow = () => !pending && start(async () => { await reviewGoalNowAction(g.id); router.push('/goals/review') })
+  const reviewNow = () => !pending && start(async () => { await reviewGoalNowAction(g.id); router.push('/plan/review') })
   return { pending, set, reviewNow }
 }
 
@@ -50,7 +50,7 @@ export function OutcomeGoalCard({ g, picker, today }: { g: GoalViewData; picker:
           <IconChip color={color}><Target strokeWidth={1.5} /></IconChip>
           <div className="min-w-0">
             <h3 id={`goal-${g.id}`} className="text-[15px] leading-7 font-semibold tracking-[-0.01em] text-ink">
-              <Link href={`/goals/${g.id}`} className="rounded-sm hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">{g.title}</Link>
+              <Link href={`/plan/goals/${g.id}`} className="rounded-sm hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">{g.title}</Link>
             </h3>
             <p className="-mt-0.5 text-[13px] text-ink-3">{measureLine(g)}</p>
           </div>
@@ -108,7 +108,7 @@ export function ReviewDueCard({ count, date }: { count: number; date: string }) 
     <Card>
       <CardHeader icon={<CalendarCheck strokeWidth={1.5} />} color="var(--pill)" title="Weekly review" description={weekday(date)} />
       <p className="text-[13.5px] leading-relaxed text-ink-2">Compare what you did with how each outcome moved, then keep, change, pause or finish each goal.</p>
-      <Link href="/goals/review" className={buttonClass({ variant: 'secondary', size: 'md', className: 'mt-4' })}>Review {count} {count === 1 ? 'goal' : 'goals'}</Link>
+      <Link href="/plan/review" className={buttonClass({ variant: 'secondary', size: 'md', className: 'mt-4' })}>Review {count} {count === 1 ? 'goal' : 'goals'}</Link>
     </Card>
   )
 }
@@ -123,7 +123,7 @@ export function SuggestDraftCard({ profileGoals, atCap }: { profileGoals: string
       <CardHeader icon={<Sparkles strokeWidth={1.5} />} color="var(--pill)" title="Draft from your profile" />
       <p className="text-[13.5px] leading-relaxed text-ink-2">Your coach can turn your profile goals into a goal draft. Nothing starts until you approve it.</p>
       {profileGoals ? <p className="mt-2 line-clamp-2 text-[12.5px] text-ink-3">From your profile: “{profileGoals}”</p>
-        : <p className="mt-2 text-[12.5px] text-ink-3">Add your goals in <Link href="/settings" className="underline">Settings</Link> first.</p>}
+        : <p className="mt-2 text-[12.5px] text-ink-3">Add your goals in <Link href="/you/settings" className="underline">Settings</Link> first.</p>}
       {pending ? (
         <div className="mt-4 flex flex-col gap-2" role="status">
           <span className="text-[12.5px] text-ink-3">Drafting a goal from your profile…</span>
@@ -186,7 +186,7 @@ function PausedRow({ g, atCap }: { g: GoalViewData; atCap: boolean }) {
     <li className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
       <IconChip color={CATEGORY[g.area].color}><Target strokeWidth={1.5} /></IconChip>
       <div className="min-w-0 flex-1">
-        <Link href={`/goals/${g.id}`} className="block truncate text-[14px] font-medium text-ink hover:underline">{g.title}</Link>
+        <Link href={`/plan/goals/${g.id}`} className="block truncate text-[14px] font-medium text-ink hover:underline">{g.title}</Link>
         <p className="truncate text-[12.5px] text-ink-3 tabular-nums">{when} · {cur != null ? `latest ${value(cur, g.unit)}, ` : ''}baseline {value(g.baselineValue, g.unit)}, target {target(g)}</p>
       </div>
       {g.status === 'paused' ? (

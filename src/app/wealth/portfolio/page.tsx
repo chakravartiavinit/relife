@@ -49,8 +49,8 @@ async function Portfolio({ searchParams }: { searchParams: PageProps<'/wealth/po
       <Card>
         <EmptyState
           title="No crypto connected" icon={Coins} color={'var(--cat-wealth)'}
-          description="Add a read-only Binance API key in Connectors. Holdings, futures, trades, P2P orders and transfers sync automatically."
-          action={<Link href="/connectors" className={buttonClass({ variant: 'primary' })}>Connect Binance</Link>}
+          description="Add a read-only Binance API key in You › Connections. Holdings, futures, trades, P2P orders and transfers sync automatically."
+          action={<Link href="/you/connections" className={buttonClass({ variant: 'primary' })}>Connect Binance</Link>}
         />
       </Card>
     )

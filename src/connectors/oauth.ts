@@ -22,9 +22,9 @@ export async function token(ctx: ConnectorCtx, c: Connector) {
 
 /**
  * `.catch(apiError('Oura', ' …'))` on a `fetchJson` call: a rejected token becomes advice for this service (what to
- * do on Connectors) instead of the generic "key was rejected". `extra` goes after the rejection.
+ * do in You › Connections) instead of the generic "key was rejected". `extra` goes after the rejection.
  */
-export const apiError = (name: string, extra = '') => rejectedAs(`${name} rejected the sign-in.${extra} Sign in again on Connectors.`)
+export const apiError = (name: string, extra = '') => rejectedAs(`${name} rejected the sign-in.${extra} Sign in again in You › Connections.`)
 
 /** Connect-dialog check of the client ID and secret. Lazy for the same reason as `token`. */
 export async function checkApp(name: string, c: Connector, get: (env: string) => string | undefined) {

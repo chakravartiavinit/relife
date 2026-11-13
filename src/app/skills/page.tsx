@@ -110,7 +110,7 @@ async function Skills() {
         { label: 'Days practised, 28 days', value: `${practisedDays28}/28`, sub: streak.current ? `${streak.current}-day streak` : 'Start a streak today' },
         { label: 'Learning, 28 days', value: hm(sumLast(learningMin, 28)), sub: `${learning.length} in progress` },
         { label: 'Coding, 28 days', value: formatNumber(sumLast(coding, 28)), sub: `${formatNumber(sumLast(commits, 7))} commits this week` },
-        { label: 'Problems solved, 28 days', value: formatNumber(sumLast(solved, 28)), sub: cpActive ? `${cpActive} active days` : cpSites.length ? 'None this month yet' : 'Connect a judge on Connectors' },
+        { label: 'Problems solved, 28 days', value: formatNumber(sumLast(solved, 28)), sub: cpActive ? `${cpActive} active days` : cpSites.length ? 'None this month yet' : 'Connect a judge in You › Connections' },
       ]} />
       <Card>
         <CardHeader title="Training log" icon={<Activity strokeWidth={2} />} color="var(--cat-skills)" description={`Every way you practise on one timeline, ${LOG_WEEKS} weeks. Taller means more, compared with that row’s busiest day.`} />
@@ -118,7 +118,7 @@ async function Skills() {
       </Card>
 
       <Card>
-        <CardHeader title="Sources" icon={<Cable strokeWidth={2} />} color="var(--cat-skills)" description="Where the training log comes from" action={<Link href="/connectors" className={buttonClass({ variant: 'ghost', size: 'sm' })}>Connectors</Link>} />
+        <CardHeader title="Sources" icon={<Cable strokeWidth={2} />} color="var(--cat-skills)" description="Where the training log comes from" action={<Link href="/you/connections" className={buttonClass({ variant: 'ghost', size: 'sm' })}>Connections</Link>} />
         <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {sources.map((src) => (
             <li key={src.name} className="flex items-center gap-3 rounded-[14px] bg-surface-2 p-3">
@@ -136,7 +136,7 @@ async function Skills() {
                     <span className="truncate text-[12px] text-ink-3">{src.sub}</span>
                   </span>
                 ) : (
-                  <Link href="/connectors" className="text-[13px] font-medium text-pill-ink hover:underline">Connect</Link>
+                  <Link href="/you/connections" className="text-[13px] font-medium text-pill-ink hover:underline">Connect</Link>
                 )}
               </span>
             </li>
