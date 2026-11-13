@@ -10,7 +10,7 @@ echo "pre-push: tests" >&2
 npm test --silent > /tmp/relife-prepush.log 2>&1 || { tail -30 /tmp/relife-prepush.log >&2; echo "Tests failed. Push blocked." >&2; exit 1; }
 
 # Mac app and the shared contract fixtures: only where Swift exists and only when they changed.
-if [ "$(uname)" = "Darwin" ] && command -v swift >/dev/null 2>&1; then
+if [ "$(uname)" = "Darwin" ] && [ -f apps/mac/Package.swift ] && command -v swift >/dev/null 2>&1; then
   upstream=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || echo origin/main)
   if git diff --name-only "$upstream"...HEAD 2>/dev/null | grep -qE '^(apps/mac/|packages/contract/fixtures/)'; then
     echo "pre-push: swift test" >&2

@@ -1,6 +1,10 @@
 // Writes apps/extension/icons.js: the Lucide icons the popup and options page use, as inline SVG strings (the
 // extension has no build step). Add a name below and run: npm run icons -w apps/extension
 import { readFileSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
+import { dirname, join } from 'node:path'
+
+const lucide = dirname(createRequire(import.meta.url).resolve('lucide-react/package.json'))
 
 const ICONS = {
   settings: 'settings', back: 'arrow-left', open: 'arrow-up-right', plus: 'plus', check: 'check', pause: 'pause', play: 'play',
@@ -16,7 +20,7 @@ const svg = (node) => {
 
 /** An icon's drawing; renamed icons (trash-2 → trash) re-export the new name, so follow that. */
 function nodeOf(file) {
-  const src = readFileSync(new URL(`../../../node_modules/lucide-react/dist/esm/icons/${file}.mjs`, import.meta.url), 'utf8')
+  const src = readFileSync(join(lucide, `dist/esm/icons/${file}.mjs`), 'utf8')
   const alias = /export \{ default \} from '\.\/(.+)\.mjs'/.exec(src)
   if (alias) return nodeOf(alias[1])
   const m = /const __iconData = (\{[\s\S]*?\n\});/.exec(src)
