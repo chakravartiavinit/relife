@@ -1,10 +1,10 @@
-import { apiError, authenticate, denied } from '@/core/auth/request'
+import { apiError, authenticateAny, denied } from '@/core/auth/request'
 import { isDeviceId, revokeDevice } from '@/core/auth/devices'
 
-// Sign a device out for good. `me` is the caller itself (a client's own "Sign out").
+// Sign a device out for good. `me` is the caller itself (a client's own "Sign out"), open to any scope: an ingest-only device signs itself out too.
 
 export async function POST(req: Request, ctx: RouteContext<'/api/v1/devices/[id]/revoke'>) {
-  const a = await authenticate(req, 'companion')
+  const a = await authenticateAny(req)
   if (!a.ok) return denied(a)
   const { id } = await ctx.params
   if (id !== 'me' && !isDeviceId(id)) return apiError(404, 'not_found', 'That device wasn’t found.')

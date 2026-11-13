@@ -19,7 +19,8 @@ export async function POST(req: Request) {
     const r = await redeem({
       ...body.data, ip: clientIp(req.headers), bucket: limitKey(req.headers), userAgent: req.headers.get('user-agent') ?? '', via: host ? hostName(host) : '',
     })
-    const native = r.device.kind === 'mac' || r.device.kind === 'extension' || r.device.kind === 'cli'
+    // A device without the `full` scope (the Android app) cannot use a cookie, so it gets the token too.
+    const native = r.device.kind === 'mac' || r.device.kind === 'extension' || r.device.kind === 'cli' || !r.device.scopes.includes('full')
     const result: PairRedeemResult = native ? { ok: true, device: toInfo(r.device), token: r.token } : { ok: true, device: toInfo(r.device), next: '/' }
     const res = NextResponse.json(result)
     if (!native && !fromExtension(req.headers)) { const c = sessionCookie(r.token, req.headers); res.cookies.set(c.name, c.value, c.options) }
