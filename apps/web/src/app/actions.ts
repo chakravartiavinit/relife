@@ -20,6 +20,9 @@ import type { XpNews } from '@/core/xp'
 import type { AskResult } from '@/ai/ask'
 import { isWebUrl } from '@/domain/text'
 import { connectorUnavailable } from '@/core/platform'
+import { requestJob } from '@/core/jobs'
+import { DEMO_OFF, isDemo } from '@/core/data/demo'
+import { WIPE_CONFIRM, wipeUserData } from '@/core/data/wipe'
 
 // Local single-user app: the server binds to 127.0.0.1 / Tailscale, and every action scopes
 // writes to getUser(). When multi-user lands, getUser() becomes the session check.
@@ -552,6 +555,29 @@ export async function saveAreas(ids: string[]) {
   await mergeProfile(user.id, { areas: parsed.data })
   refresh()
   return { ok: true as const }
+}
+
+// ── Data & privacy (Settings → Data & privacy) ─────────────────────────────────────────────────────
+
+/** Delete everything. The client must send the exact word, so a stray call cannot wipe a life's data. */
+export async function wipeAllData(confirm: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (isDemo()) return { ok: false, error: DEMO_OFF }
+  if (confirm !== WIPE_CONFIRM) return { ok: false, error: 'Nothing was deleted: the confirmation did not match.' }
+  try {
+    await wipeUserData(await getUser())
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Could not delete your data.' }
+  }
+  refresh()
+  return { ok: true }
+}
+
+/** "Back up now": the worker takes the `backup` job as soon as it can. */
+export async function backupNowAction(): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (isDemo()) return { ok: false, error: DEMO_OFF }
+  await requestJob('backup')
+  refresh()
+  return { ok: true }
 }
 
 /** Settings → The System: which stats to train first. */
