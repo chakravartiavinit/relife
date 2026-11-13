@@ -6,6 +6,8 @@
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 /* A wide but short window (a 13" laptop): onboarding tightens its spacing here so each step still fits. */
 @custom-variant short (@media (min-width: 64rem) and (max-height: 52.5rem));
+/* The shell's saved sidebar state, on <html> before first paint (shell/sidebar-script.ts): no layout flash. */
+@custom-variant rail (html[data-sidebar="rail"] &);
 
 /*
  * ReLife design tokens: the ReLIFE capsule. Ink black, clean white and capsule blue, light-first,
@@ -68,12 +70,37 @@
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-outfit), var(--font-inter), ui-sans-serif, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+
+  /* Type scale. Use these instead of text-[Npx]: `text-title font-display`, `text-label font-mono uppercase`. */
+  --text-display: 34px;
+  --text-display--line-height: 40px;
+  --text-display--font-weight: 800;
+  --text-display--letter-spacing: -0.03em;
+  --text-title: 24px;
+  --text-title--line-height: 30px;
+  --text-title--font-weight: 700;
+  --text-title--letter-spacing: -0.02em;
+  --text-heading: 17px;
+  --text-heading--line-height: 24px;
+  --text-heading--font-weight: 600;
+  --text-body: 14px;
+  --text-body--line-height: 20px;
+  --text-small: 13px;
+  --text-small--line-height: 18px;
+  --text-caption: 12px;
+  --text-caption--line-height: 16px;
+  --text-label: 11px;
+  --text-label--line-height: 14px;
+  --text-label--font-weight: 600;
+  --text-label--letter-spacing: 0.08em;
 
   --shadow-1: var(--elev-1);
   --shadow-2: var(--elev-2);
   --shadow-3: var(--elev-3);
   --shadow-inset: var(--elev-inset);
   --color-glass: var(--glass);
+  --color-scrim: var(--scrim);
 }
 
 @layer base {
@@ -266,6 +293,26 @@
   .mote { animation: none; }
 }
 
+/* The day-complete card: five capsule pieces fall once (1.4s) over the card. Gone under reduced motion. */
+@keyframes day-confetti {
+  from { translate: 0 -14px; rotate: 0deg; opacity: 0; }
+  15% { opacity: 1; }
+  to { translate: var(--dx) 72px; rotate: var(--rot); opacity: 0; }
+}
+.confetti {
+  position: absolute;
+  top: 0;
+  width: 8px;
+  height: 15px;
+  border-radius: 9999px;
+  opacity: 0;
+  pointer-events: none;
+  animation: day-confetti 1.4s var(--ease-out-strong) var(--d) 1 both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .confetti { display: none; }
+}
+
 /* <details> content fades in with its rotating chevron. Opacity only, so it needs no reduced-motion
    variant; browsers without ::details-content simply open instantly. */
 details::details-content {
@@ -292,3 +339,24 @@ details[open]::details-content { opacity: 1; }
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 10px, #000 calc(100% - 28px), transparent);
   mask-image: linear-gradient(to bottom, transparent 0, #000 10px, #000 calc(100% - 28px), transparent);
 }
+
+/* Big numbers (KPI values, totals): display face, bold, digits that line up. */
+@utility num {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Where the desktop Sheet panel starts from the top of the viewport: the shell's top bar (72px) plus the 12px
+   inset, so the panel sits below it. On a phone the sheet is a bottom sheet and ignores it. */
+:root { --sheet-top: 12px; --topbar-h: 72px; --tabbar-h: calc(64px + max(20px, env(safe-area-inset-bottom))); }
+@media (min-width: 1024px) { :root { --sheet-top: calc(var(--topbar-h) + 12px); } }
+
+/* Sidebar, before hydration: a saved rail is drawn at once from <html data-sidebar>, ignoring the width and label
+   state React has not caught up with yet. `data-sidebar-ready` (set shortly after load) hands control back to
+   the spring so collapsing animates. */
+html[data-sidebar="rail"]:not([data-sidebar-ready]) aside[data-slot="sidebar"] { width: var(--sidebar-width-icon) !important; }
+html[data-sidebar="rail"]:not([data-sidebar-ready]) [data-slot="sidebar-label"] { opacity: 0 !important; }
+
+/* The Life group's area list unfolds with a height reveal so the rows below slide rather than jump. */
+html[data-life="closed"] .nav-sub[data-open] { grid-template-rows: 0fr; opacity: 0; }

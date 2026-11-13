@@ -6,7 +6,7 @@ const O = 'http://127.0.0.1:3030'
 
 test('a path on this site is kept', () => {
   assert.equal(safeNext('/goals', O), '/goals')
-  assert.equal(safeNext('/settings/devices?x=1#top', O), '/settings/devices?x=1#top')
+  assert.equal(safeNext('/you/settings/devices?x=1#top', O), '/you/settings/devices?x=1#top')
   assert.equal(safeNext('http://127.0.0.1:3030/goals?a=b', O), '/goals?a=b', 'the same origin, written out')
   assert.equal(safeNext('/a/../goals', O), '/goals')
 })

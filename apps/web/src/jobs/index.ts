@@ -96,6 +96,13 @@ export const JOBS: Job[] = [
     await (await import('@/core/auth/pairing')).cleanup()
   } },
 
+  // The Ask conversation (app and Telegram share one) is kept 180 days.
+  { id: 'coach-messages-prune', schedule: { cron: '50 3 * * *' }, catchUpMinutes: 12 * 60, run: async () => {
+    const { pruneCoachMessages } = await import('@/core/coach-messages')
+    const n = await pruneCoachMessages(await getUser())
+    return n ? `removed ${n} messages older than 180 days` : undefined
+  } },
+
   // XP and quests: from fresh data, at least every 5 minutes.
   { id: 'xp', schedule: { everyMinutes: 5 }, on: ['data.changed'], run: async () => {
     const [{ refreshXp }, { celebrate }] = await Promise.all([import('@/core/xp'), import('@/bot/ui')])
@@ -130,6 +137,12 @@ export const JOBS: Job[] = [
   { id: 'activity:classify', schedule: { everyMinutes: 60 }, catchUpMinutes: 60, enabled: async () => { await loadKeys(); return (await import('@/ai/models')).aiEnabled('parse') }, run: async () => {
     const { classifySites } = await import('@/ai/jobs/classify-sites')
     return (await classifySites(await getUser())) ?? undefined
+  } },
+  // The one-liner under every area title and Life tile. Rules write it, so it runs without a model; a model (parse) rewords it when set.
+  { id: 'ai:area-briefs', schedule: { cron: '30 6 * * *' }, catchUpMinutes: 6 * 60, on: ['data.changed'], run: async () => {
+    await loadKeys()
+    const { areaBriefs } = await import('@/ai/jobs/area-briefs')
+    return await areaBriefs(await getUser())
   } },
   // Runs without a model too: outcome goal reviews use a rule-based template (src/domain/goals.ts).
   { id: 'ai:weekly-review', schedule: { cron: '0 21 * * 0' }, catchUpMinutes: 12 * 60, run: async () => {

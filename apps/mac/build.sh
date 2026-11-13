@@ -1,0 +1,63 @@
+#!/bin/zsh
+# Builds the app and installs it to ~/Applications/<app name>.app (the name comes from tools/env.sh).
+# Build products live in ~/Library/Developer/<app name>, outside the repo
+# (and outside Dropbox or iCloud, which would try to sync them).
+#
+# Usage: ./build.sh            release build, install
+#        ./build.sh --debug    debug build, install
+#        ./build.sh --open     install, then quit the running copy and open the new one
+set -euo pipefail
+here=${0:A:h}
+source "$here/tools/env.sh"
+name=$APP_NAME
+scratch="$HOME/Library/Developer/$name/build"
+config=release
+[[ " $* " == *" --debug "* ]] && config=debug
+
+# Sign with your Apple Development certificate when you have one (Xcode >
+# Settings > Accounts). Otherwise sign ad hoc, which is fine for your own Mac.
+identity="${SIGN_IDENTITY:-}"
+if [[ -z "$identity" ]]; then
+  identity=$(security find-identity -v -p codesigning 2>/dev/null | grep -m1 -o '"Apple Development: [^"]*"' | tr -d '"' || true)
+fi
+[[ -n "$identity" ]] || identity=-
+
+build_log=$(mktemp)
+build_ok=1
+swift build -c "$config" --package-path "$here" --scratch-path "$scratch" > "$build_log" 2>&1 || build_ok=0
+grep -E "error|warning|Build complete" "$build_log" | grep -v "^\[" || true
+rm -f "$build_log"
+[[ "$build_ok" == 1 ]] || { echo "build failed"; exit 1; }
+bin="$scratch/$config/$SWIFT_EXE"
+[[ -x "$bin" ]] || { echo "build failed"; exit 1; }
+# swift build can report success while an edited file failed to compile. Catch that.
+stale=$(find "$here/Sources" -name '*.swift' -newer "$bin" | head -1)
+if [[ -n "$stale" ]]; then
+  echo "build failed: binary is older than $stale"
+  swift build -c $config --package-path "$here" --scratch-path "$scratch" 2>&1 | grep -E "error" | head -20
+  exit 1
+fi
+
+app="$HOME/Applications/$name.app"
+mkdir -p "$HOME/Applications"
+rm -rf "$app"
+mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
+cp "$bin" "$app/Contents/MacOS/$name"
+sed -e "s/__BUILD__/$(date +%Y%m%d%H%M)/" -e "s/__APP_NAME__/$name/g" "$here/Info.plist.in" > "$app/Contents/Info.plist"
+# The icon: Icon/AppIcon.icon -> Resources/Assets.car + AppIcon.icns, rebuilt when it changed.
+if [[ -d "$here/Icon/AppIcon.icon" ]]; then
+  car="$here/Resources/Assets.car"
+  if [[ ! -f "$car" || -n "$(find "$here/Icon/AppIcon.icon" -newer "$car" | head -1)" ]]; then
+    "$here/tools/make_icon.sh"
+  fi
+  cp -X "$car" "$here/Resources/AppIcon.icns" "$app/Contents/Resources/"
+fi
+xattr -cr "$app"
+codesign --force --sign "$identity" "$app" 2>&1 | grep -v "replacing existing signature" || true
+echo "installed $app (signed: ${identity})"
+
+if [[ " $* " == *" --open "* ]]; then
+  osascript -e "quit app \"$name\"" 2>/dev/null || true
+  sleep 0.5
+  open "$app"
+fi

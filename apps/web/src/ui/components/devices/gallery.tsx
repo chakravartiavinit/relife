@@ -15,7 +15,7 @@ const sample = (soon: string): WaitingDevice => ({
   askedAt: soon, expiresAt: soon,
 })
 
-const Label = ({ children }: { children: React.ReactNode }) => <div className="mb-2 text-[13px] text-ink-2">{children}</div>
+const Label = ({ children }: { children: React.ReactNode }) => <div className="mb-2 text-small text-ink-2">{children}</div>
 
 /** `now` is the time of the request (the page is rendered per request, so a countdown has something real to count). */
 export function DevicesGallery({ now }: { now: number }) {

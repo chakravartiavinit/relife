@@ -19,7 +19,7 @@ const expand = (p: string) => (p.startsWith('~') ? homedir() + p.slice(1) : p)
 /** Blocked by macOS privacy settings (background processes need permission for iCloud Drive). */
 const blocked = (path: string) => new Error(`macOS blocked reading ${path.replace(homedir(), '~')}. Give Node Full Disk Access: System Settings → Privacy & Security → Full Disk Access → + → ${process.execPath}`)
 
-/** A readable file. Permission errors are thrown, not treated as "no file", so they show on Connectors. */
+/** A readable file. Permission errors are thrown, not treated as "no file", so they show in You › Connections. */
 function isFile(p: string) {
   try { return statSync(p).isFile() } catch (e) {
     const code = (e as NodeJS.ErrnoException).code
@@ -29,7 +29,7 @@ function isFile(p: string) {
 }
 
 /**
- * The file set on Connectors (or in .env) when it exists; otherwise iCloud Drive/relife/inbox.txt or the Shortcuts
+ * The file set in You › Connections (or in .env) when it exists; otherwise iCloud Drive/relife/inbox.txt or the Shortcuts
  * folder's inbox.txt, whichever exists. A setting that points nowhere (a folder name, a typo) falls back too.
  */
 export function inboxPath(set = env('ICLOUD_INBOX_PATH')) {
@@ -58,7 +58,7 @@ export function consumable(buf: Buffer) {
 /**
  * One inbox line → raw event. JSON lines: {type:'steps', value, date?} · {type:'health', metric, value, unit?, date?}
  * · {type:'sleep', event:'start'|'end', at?}. Also used by POST /api/ingest. Bank texts and screenshot text
- * (plain lines, type 'sms' or 'ocr') are skipped: spending comes from the order apps on Connectors.
+ * (plain lines, type 'sms' or 'ocr') are skipped: spending comes from the order apps in You › Connections.
  */
 export function lineToRawEvent(raw: string, now: Date, tz = 'UTC'): RawEvent | null {
   const line = raw.trim()

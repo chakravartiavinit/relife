@@ -119,7 +119,7 @@ export async function LifeKpis({ user, now }: { user: User; now: Date }) {
 
   // Skills: commits this week.
   const commits = series('github.commits')
-  let skills: Tile = { cat: 'skills', href: '/skills', label: 'Commits, 7 days', value: null, sub: 'Connect GitHub in Connectors' }
+  let skills: Tile = { cat: 'skills', href: '/skills', label: 'Commits, 7 days', value: null, sub: 'Connect GitHub in You › Connections' }
   if (commits) {
     const [prev, cur] = week(commits)
     const a = sum(cur), b = sum(prev)
@@ -152,11 +152,11 @@ export async function LifeKpis({ user, now }: { user: User; now: Date }) {
   const overdue = tracked.filter((p) => !p.lastContactedAt || daysBetween(localDate(p.lastContactedAt, user.timezone), today) > p.contactEveryDays!).length
   const relationships: Tile = tracked.length
     ? {
-      cat: 'relationships', href: '/relationships', label: 'In touch', ratio: [tracked.length - overdue, tracked.length],
+      cat: 'relationships', href: '/people', label: 'In touch', ratio: [tracked.length - overdue, tracked.length],
       value: <span>{tracked.length - overdue}<span className="text-ink-3">/{tracked.length}</span></span>,
       sub: overdue ? `${overdue} to reach out to` : 'Everyone’s in rhythm',
     }
-    : { cat: 'relationships', href: '/relationships', label: 'In touch', value: null, sub: 'Add people you want to stay close to' }
+    : { cat: 'relationships', href: '/people', label: 'In touch', value: null, sub: 'Add people you want to stay close to' }
 
   // Hobbies: practice minutes this week, across every hobby.
   const practice = new Map<string, number>()
@@ -239,7 +239,7 @@ function StreakTile({ current, best, doneToday, days }: {
   const lit = current > 0
   return (
     <Link
-      href="/habits"
+      href="/plan/routines"
       className={cn(TILE, 'relative isolate col-span-2 flex min-w-0 flex-col overflow-hidden bg-surface md:col-span-1')}
     >
       <div aria-hidden className={cn('absolute inset-0 -z-10', lit && 'bg-[radial-gradient(220px_140px_at_100%_0%,color-mix(in_oklch,var(--sky)_40%,transparent),transparent_70%)]')} />

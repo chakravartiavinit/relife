@@ -8,7 +8,7 @@ import { env } from '@/core/env'
 // Bring your own key: pick any model per task with env vars like
 //   LLM_DEFAULT=anthropic:claude-sonnet-5-5
 //   LLM_PARSE=local:llama3.1     (Ollama / LM Studio, OpenAI-compatible)
-// Provider keys come from env() (Connectors page, then .env).
+// Provider keys come from env() (Connections page, then .env).
 
 export type Task = 'parse' | 'plan' | 'chat'
 
@@ -21,7 +21,7 @@ export const KEY_ENV: Record<string, string | null> = {
   local: null, // no key needed
 }
 
-// Built per call with explicit keys: keys come from the Connectors page and can change while running.
+// Built per call with explicit keys: keys come from the Connections page and can change while running.
 function makeRegistry() {
   return createProviderRegistry({
     anthropic: createAnthropic({ apiKey: env('ANTHROPIC_API_KEY') }),

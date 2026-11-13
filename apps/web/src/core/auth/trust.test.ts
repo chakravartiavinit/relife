@@ -57,7 +57,7 @@ test('scopes: full opens everything, the others only themselves', () => {
 
 test('public paths', () => {
   for (const p of ['/signin', '/pair', '/api/v1/hello', '/api/v1/pair/redeem', '/api/v1/pair/requests/abc/poll', '/_next/static/x.js', '/brand/logo.png', '/manifest.webmanifest']) assert.ok(isPublicPath(p), p)
-  for (const p of ['/', '/pair/approve', '/api/v1/today', '/api/v1/devices', '/api/companion', '/settings/devices', '/api/health']) assert.ok(!isPublicPath(p), p)
+  for (const p of ['/', '/pair/approve', '/api/v1/today', '/api/v1/devices', '/api/companion', '/you/settings/devices', '/api/health']) assert.ok(!isPublicPath(p), p)
 })
 
 test('loopback trust is off once other hosts are allowed or the server listens beyond loopback', () => {

@@ -50,8 +50,8 @@ export function ApproveCard({ device, onResult, className }: { device: WaitingDe
       <div role="status" className={cn('flex items-center gap-3 rounded-[16px] bg-pill-wash p-4', className)}>
         <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-full bg-good/15 text-good"><Check className="size-5" strokeWidth={2} /></span>
         <div className="min-w-0">
-          <p className="text-[15px] font-semibold text-ink">{device.name} is connected</p>
-          <p className="text-[13px] text-ink-3">It stays signed in until you disconnect it in Settings → Devices.</p>
+          <p className="text-heading font-semibold text-ink">{device.name} is connected</p>
+          <p className="text-small text-ink-3">It stays signed in until you disconnect it in Settings → Devices.</p>
         </div>
       </div>
     )
@@ -60,7 +60,7 @@ export function ApproveCard({ device, onResult, className }: { device: WaitingDe
     return (
       <div role="status" className={cn('flex items-center gap-3 rounded-[16px] bg-surface-2 p-4', className)}>
         <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-full bg-bad/10 text-bad"><X className="size-5" strokeWidth={2} /></span>
-        <p className="text-[15px] font-semibold text-ink">You turned {device.name} away</p>
+        <p className="text-heading font-semibold text-ink">You turned {device.name} away</p>
       </div>
     )
   }
@@ -70,32 +70,32 @@ export function ApproveCard({ device, onResult, className }: { device: WaitingDe
       <div className="flex items-start gap-4">
         <DeviceTile kind={device.kind} className="size-11" />
         <div className="min-w-0 flex-1">
-          <h3 className="font-display text-[20px] font-bold tracking-[-0.02em] text-ink">Approve {title}?</h3>
-          <p className="mt-1 text-[13px] text-ink-3">It asked to connect to your {brand.name} {ago(device.askedAt)}.</p>
+          <h3 className="font-display text-title font-bold tracking-[-0.02em] text-ink">Approve {title}?</h3>
+          <p className="mt-1 text-small text-ink-3">It asked to connect to your {brand.name} {ago(device.askedAt)}.</p>
         </div>
       </div>
 
       <div className="mt-4 flex flex-col items-center gap-3 rounded-[16px] bg-surface-2 px-4 py-4 text-center">
         <SystemLabel>Check the code</SystemLabel>
         <ConnectCode code={device.code} size="lg" struck={expired} />
-        <p className="text-[13px] text-ink-3">It should match the code on {kind.label === 'Browser' ? 'that browser' : `the ${kind.label}`}’s screen.</p>
+        <p className="text-small text-ink-3">It should match the code on {kind.label === 'Browser' ? 'that browser' : `the ${kind.label}`}’s screen.</p>
       </div>
 
-      <dl className="mt-4 grid grid-cols-[84px_minmax(0,1fr)] gap-x-4 gap-y-2 text-[14px]">
+      <dl className="mt-4 grid grid-cols-[84px_minmax(0,1fr)] gap-x-4 gap-y-2 text-body">
         <dt className="text-ink-3">Device</dt>
-        <dd className="text-ink">{device.name}{device.platform ? <span className="text-[13px] text-ink-3"> · {device.platform}</span> : null}</dd>
+        <dd className="text-ink">{device.name}{device.platform ? <span className="text-small text-ink-3"> · {device.platform}</span> : null}</dd>
         <dt className="text-ink-3">From</dt>
-        <dd className="text-ink">{device.ip === 'local' ? 'This computer' : device.ip}{device.via ? <span className="text-[13px] text-ink-3"> · via {device.via}</span> : null}</dd>
+        <dd className="text-ink">{device.ip === 'local' ? 'This computer' : device.ip}{device.via ? <span className="text-small text-ink-3"> · via {device.via}</span> : null}</dd>
         <dt className="text-ink-3">Can</dt>
         <dd className="text-ink">{CAN[device.kind] ?? CAN.default}</dd>
         <dt className="text-ink-3">Signed in</dt>
         <dd className="text-ink">Until you disconnect it in Settings → Devices</dd>
       </dl>
 
-      {error ? <p role="alert" className="mt-4 rounded-md bg-bad/8 px-3 py-2 text-[13px] text-bad">{error}</p> : null}
+      {error ? <p role="alert" className="mt-4 rounded-md bg-bad/8 px-3 py-2 text-small text-bad">{error}</p> : null}
 
       <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-divider pt-4">
-        <span className="mr-auto flex items-center gap-1.5 text-[12.5px] text-ink-3 tabular-nums">
+        <span className="mr-auto flex items-center gap-1.5 text-caption text-ink-3 tabular-nums">
           <Clock className="size-3.5" strokeWidth={1.5} aria-hidden />
           {left === null ? 'Request expires soon' : expired ? 'This request expired. Ask the device to connect again.' : `Request expires in ${mmss(left)}`}
         </span>

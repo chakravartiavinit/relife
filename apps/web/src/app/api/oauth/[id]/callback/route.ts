@@ -7,7 +7,7 @@ import { exchangeCode } from '@/core/oauth'
 import { getUser } from '@/core/user'
 
 // Step 2: the service sends the browser back with a code. Check the state, trade the code for tokens,
-// start the first sync and go back to Connectors, which shows how it went.
+// start the first sync and go back to You › Connections, which shows how it went.
 export async function GET(req: Request, ctx: RouteContext<'/api/oauth/[id]/callback'>) {
   const a = await authenticate(req, 'full')
   if (!a.ok) return denied(a)
@@ -17,7 +17,7 @@ export async function GET(req: Request, ctx: RouteContext<'/api/oauth/[id]/callb
   const done = (error?: string) => new Response(null, {
     status: 303,
     headers: {
-      Location: new URL(`/connectors?oauth=${id}${error ? `&error=${encodeURIComponent(error)}` : ''}`, requestOrigin(req.headers)).toString(),
+      Location: new URL(`/you/connections?oauth=${id}${error ? `&error=${encodeURIComponent(error)}` : ''}`, requestOrigin(req.headers)).toString(),
       'Set-Cookie': `relife_oauth=; Path=/api/oauth; Max-Age=0; HttpOnly; SameSite=Lax${requestOrigin(req.headers).startsWith('https:') ? '; Secure' : ''}`,
     },
   })
@@ -25,7 +25,7 @@ export async function GET(req: Request, ctx: RouteContext<'/api/oauth/[id]/callb
   const raw = req.headers.get('cookie')?.match(/(?:^|;\s*)relife_oauth=([^;]+)/)?.[1]
   let saved: { id?: string; state?: string; redirectUri?: string } = {}
   try { saved = raw ? JSON.parse(Buffer.from(raw, 'base64url').toString('utf8')) : {} } catch { /* treated as missing */ }
-  // State first: only a sign-in this browser started may put the service's words on the Connectors page.
+  // State first: only a sign-in this browser started may put the service's words on the Connections page.
   if (!saved.state || saved.id !== id || saved.state !== url.searchParams.get('state') || !saved.redirectUri) {
     return done('The sign-in expired or came from somewhere else. Try again.')
   }

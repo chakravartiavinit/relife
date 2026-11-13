@@ -33,9 +33,9 @@ async function Request({ searchParams }: { searchParams: PageProps<'/pair/approv
     return (
       <Card className="flex flex-col items-center gap-3 p-8 text-center">
         <span aria-hidden className="grid size-12 place-items-center rounded-full bg-surface-2 text-ink-3"><Clock className="size-6" strokeWidth={1.5} /></span>
-        <h1 className="font-display text-[20px] font-bold tracking-[-0.02em] text-ink">This request is no longer open</h1>
-        <p className="max-w-[40ch] text-[13.5px] text-ink-3">It expired, or someone already answered it. Ask the device to connect again, and a new request will show up here.</p>
-        <Link href="/settings/devices" className={buttonClass({ variant: 'secondary' })}>Open Devices</Link>
+        <h1 className="font-display text-title font-bold tracking-[-0.02em] text-ink">This request is no longer open</h1>
+        <p className="max-w-[40ch] text-small text-ink-3">It expired, or someone already answered it. Ask the device to connect again, and a new request will show up here.</p>
+        <Link href="/you/settings/devices" className={buttonClass({ variant: 'secondary' })}>Open Devices</Link>
       </Card>
     )
   }

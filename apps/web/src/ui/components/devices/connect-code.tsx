@@ -10,7 +10,7 @@ export function ConnectCode({ code, size = 'md', struck, className }: { code: st
           key={i} aria-hidden
           className={cn(
             'grid place-items-center rounded-[10px] bg-surface-2 font-mono font-bold text-ink shadow-inset tabular-nums',
-            size === 'lg' ? 'h-12 w-9 text-[24px]' : size === 'sm' ? 'h-9 w-[26px] text-[17px]' : 'h-10 w-[30px] text-[20px]',
+            size === 'lg' ? 'h-12 w-9 text-title' : size === 'sm' ? 'h-9 w-[26px] text-heading' : 'h-10 w-[30px] text-title',
             struck && 'text-ink-3 line-through decoration-ink-3',
             i === 3 && 'mr-2',
           )}

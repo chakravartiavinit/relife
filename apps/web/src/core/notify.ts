@@ -4,7 +4,8 @@ import { env } from './env'
 // Outbound Telegram messages. Used by the worker, rules, AI jobs and the web app.
 // Without TELEGRAM_BOT_TOKEN + TELEGRAM_ALLOWED_CHAT_ID it logs instead of sending.
 
-export type Button = { text: string; data: string }
+/** A callback button, or (only when RELIFE_PUBLIC_URL is set, see `openInReLife`) one that opens the app in the browser. */
+export type Button = { text: string; data: string } | { text: string; url: string }
 
 let api: Api | undefined
 function client() {
@@ -22,7 +23,7 @@ export function keyboard(rows?: Button[][]) {
   if (!rows?.length) return undefined
   const kb = new InlineKeyboard()
   rows.forEach((row, i) => {
-    for (const b of row) kb.text(b.text, b.data)
+    for (const b of row) { if ('url' in b) kb.url(b.text, b.url); else kb.text(b.text, b.data) }
     if (i < rows.length - 1) kb.row()
   })
   return kb

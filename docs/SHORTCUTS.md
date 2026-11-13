@@ -13,7 +13,7 @@ processed later, so nothing is lost. Lines are de-duplicated, so a repeated line
 
 Newer iOS versions save **Append to Text File** into the Shortcuts folder instead (File Path `inbox.txt` →
 **iCloud Drive/Shortcuts/inbox.txt**, `~/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents/inbox.txt`
-on the Mac). ReLife finds either file on its own. Set **Inbox file** on the Connectors page (or `ICLOUD_INBOX_PATH`)
+on the Mac). ReLife finds either file on its own. Set **Inbox file** on You → Connections (or `ICLOUD_INBOX_PATH`)
 only if you keep it somewhere else. iOS puts its line break before each entry, so the newest line has none after it; ReLife reads it as soon as it is complete JSON.
 
 ## Line formats
@@ -33,7 +33,7 @@ Known `metric` values: `weight`, `resting_hr`, `active_energy`, `distance`, `fli
 **Build JSON with a Dictionary action, not by typing text.** Shortcuts then escapes quotes and keeps
 each entry on one line.
 
-Bank SMS and screenshot text are not read (spending comes from the order apps on Connectors); lines of that
+Bank SMS and screenshot text are not read (spending comes from the order apps on You → Connections); lines of that
 kind are skipped. You can delete any bank-message automations.
 
 For dates, use a **Format Date** action with format **ISO 8601** (include time).

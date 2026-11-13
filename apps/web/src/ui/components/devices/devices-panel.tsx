@@ -76,14 +76,14 @@ export function DevicesPanel({ initial, waiting: initialWaiting, requireSignIn, 
     <div className="flex flex-col gap-8">
       {waiting.length ? (
         <section aria-labelledby="waiting-h">
-          <h2 id="waiting-h" className="mb-3 px-1 text-[17px] font-semibold tracking-[-0.01em] text-ink">Waiting to connect</h2>
+          <h2 id="waiting-h" className="mb-3 px-1 text-heading font-semibold tracking-[-0.01em] text-ink">Waiting to connect</h2>
           <ul className="flex flex-col gap-2">
             {waiting.map((w) => (
               <li key={w.id} className="flex flex-wrap items-center gap-3.5 rounded-[20px] bg-pill-wash p-3.5 shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--pill)_25%,transparent),var(--elev-1)]">
                 <DeviceTile kind={w.kind} />
                 <div className="min-w-0 flex-1 basis-56">
-                  <p className="text-[14px] font-semibold text-ink">{KIND[w.kind].label} “{w.name}” wants to connect</p>
-                  <p className="mt-0.5 text-[12.5px] text-ink-3">Asked {ago(w.askedAt)} · from {w.ip === 'local' ? 'this computer' : w.ip} · code <span className="font-mono tabular-nums">{w.code}</span></p>
+                  <p className="text-body font-semibold text-ink">{KIND[w.kind].label} “{w.name}” wants to connect</p>
+                  <p className="mt-0.5 text-caption text-ink-3">Asked {ago(w.askedAt)} · from {w.ip === 'local' ? 'this computer' : w.ip} · code <span className="font-mono tabular-nums">{w.code}</span></p>
                 </div>
                 <div className="flex gap-2">
                   <Button size="sm" variant="secondary" onClick={async () => { await denyDevice(w.id); void refresh() }}>Deny</Button>
@@ -119,7 +119,7 @@ export function DevicesPanel({ initial, waiting: initialWaiting, requireSignIn, 
         </SettingsSection>
       ) : null}
 
-      <ConnectDialog open={connect} onClose={() => { setConnect(false); void refresh(); if (approveCode) router.replace('/settings/devices') }} initialCode={approveCode} />
+      <ConnectDialog open={connect} onClose={() => { setConnect(false); void refresh(); if (approveCode) router.replace('/you/settings/devices') }} initialCode={approveCode} />
 
       <Dialog open={!!reviewing} onClose={() => { setReviewing(null); void refresh() }} width="max-w-[520px]" title="Connect a device" description="Check the code, then let it in.">
         {reviewing ? <ApproveCard device={reviewing} onResult={() => void refresh()} /> : null}
@@ -155,15 +155,15 @@ function DeviceRow({ d, editing, onEdit, onSave, onCancel, onLeave }: {
       <DeviceTile kind={d.kind} quiet={!d.current && age > 7 * 86_400_000} />
       <div className="min-w-0 flex-1 basis-48">
         {editing ? <RenameField name={d.name} onSave={onSave} onCancel={onCancel} /> : (
-          <p className="flex flex-wrap items-center gap-2 text-[14px] font-medium text-ink">
+          <p className="flex flex-wrap items-center gap-2 text-body font-medium text-ink">
             <span className="truncate">{d.name}</span>
             {d.current ? <Badge color="var(--pill)">This device</Badge> : null}
           </p>
         )}
-        <p className="mt-0.5 truncate text-[12.5px] text-ink-3">{detail}</p>
-        {d.legacy ? <p className="mt-1 flex items-center gap-2 text-[12.5px] text-ink-3"><Badge color="var(--warn)">Old token</Badge>Remove it once the extension is updated.</p> : null}
+        <p className="mt-0.5 truncate text-caption text-ink-3">{detail}</p>
+        {d.legacy ? <p className="mt-1 flex items-center gap-2 text-caption text-ink-3"><Badge color="var(--warn)">Old token</Badge>Remove it once the extension is updated.</p> : null}
       </div>
-      <span className="flex items-center gap-2 text-[13px] text-ink-2 tabular-nums">
+      <span className="flex items-center gap-2 text-small text-ink-2 tabular-nums">
         <span aria-hidden className={cn('size-[7px] rounded-full', tone)} />{seen}
       </span>
       <RowMenu label={d.name} items={items} />
@@ -193,13 +193,13 @@ function GetEverywhere({ onConnect }: { onConnect: () => void }) {
   ]
   return (
     <div className="py-6">
-      <h3 className="font-display text-[17px] font-bold tracking-[-0.015em] text-ink">Get {brand.name} everywhere</h3>
-      <p className="mt-1 text-[13px] text-ink-3">This browser is the only device so far.</p>
+      <h3 className="font-display text-heading font-bold tracking-[-0.015em] text-ink">Get {brand.name} everywhere</h3>
+      <p className="mt-1 text-small text-ink-3">This browser is the only device so far.</p>
       <ul className="mt-4 grid gap-3 sm:grid-cols-3">
         {cards.map(({ icon: Icon, title, text, action }) => (
           <li key={title} className="flex flex-col gap-3 rounded-[16px] bg-surface-2 p-4">
             <span aria-hidden className="grid size-9 place-items-center rounded-[10px] bg-pill-wash text-pill-ink"><Icon className="size-[18px]" strokeWidth={1.5} /></span>
-            <div className="flex-1"><p className="text-[14px] font-semibold text-ink">{title}</p><p className="mt-0.5 text-[12.5px] leading-relaxed text-ink-3">{text}</p></div>
+            <div className="flex-1"><p className="text-body font-semibold text-ink">{title}</p><p className="mt-0.5 text-caption leading-relaxed text-ink-3">{text}</p></div>
             <Button size="sm" onClick={onConnect}>{action}</Button>
           </li>
         ))}

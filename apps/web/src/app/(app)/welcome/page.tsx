@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { connection } from 'next/server'
+import { headers } from 'next/headers'
 import { Suspense } from 'react'
 import { and, eq, inArray } from 'drizzle-orm'
 import { db, schema } from '@/db'
@@ -7,6 +8,8 @@ import { getUser } from '@/core/user'
 import { localDate } from '@/core/time'
 import { TEMPLATES } from '@/core/onboarding'
 import { quietHours } from '@/domain/notify'
+import { loadConnectorItems } from '@/core/connector-items'
+import { requestOrigin } from '@/core/auth/trust'
 import { OnboardingFlow } from '@/ui/components/onboarding-flow'
 
 export const metadata: Metadata = { title: 'Welcome' }
@@ -23,10 +26,11 @@ export default function WelcomePage() {
 async function Welcome() {
   await connection()
   const user = await getUser()
-  const [schedules, trackers] = await Promise.all([
+  const [schedules, trackers, { items }] = await Promise.all([
     db.select({ name: schema.schedules.name, target: schema.schedules.target, meta: schema.schedules.meta }).from(schema.schedules).where(eq(schema.schedules.userId, user.id)),
     db.select({ slug: schema.trackers.slug, target: schema.trackers.target }).from(schema.trackers)
       .where(and(eq(schema.trackers.userId, user.id), inArray(schema.trackers.slug, ['sleep.hours', 'steps']))),
+    loadConnectorItems(user, requestOrigin(await headers())),
   ])
   const target = (slug: string) => trackers.find((t) => t.slug === slug)?.target ?? undefined
   const water = schedules.find((s) => (s.meta as { trackerSlug?: string }).trackerSlug && s.target)?.target ?? undefined
@@ -38,6 +42,8 @@ async function Welcome() {
       today={localDate(new Date(), user.timezone)}
       fresh={!p.onboardedAt}
       templates={TEMPLATES}
+      // The Connect step offers a few of these for the picked areas. The sync history stays on the server.
+      sources={items.filter((c) => c.section !== 'ai').map((c) => ({ ...c, syncs: undefined }))}
       existing={schedules.map((s) => s.name.toLowerCase())}
       timezones={Intl.supportedValuesOf('timeZone')}
       currencies={Intl.supportedValuesOf('currency')}

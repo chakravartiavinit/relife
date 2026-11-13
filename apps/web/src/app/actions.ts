@@ -1,18 +1,22 @@
 'use server'
 
+import brand from '@relife/brand/brand.json'
 import { and, eq, inArray, sql } from 'drizzle-orm'
 import { refresh } from 'next/cache'
 import { z } from 'zod'
 import { db, schema } from '@/db'
 import { CATEGORIES } from '@/db/schema'
 import { getUser } from '@/core/user'
+import { recategorizeTxns, undoRecategorizeTxns, type RecategorizeUndo } from '@/core/recategorize'
 import { addGoalProgress, setCheck } from '@/core/schedules'
-import { applyQuickLog, parseQuickLog, slugify } from '@/core/quicklog'
+import { applyQuickLogWithUndo, parseQuickLog, slugify, undoQuickLogWrite } from '@/core/quicklog'
+import type { QuickLogUndo } from '@/domain/quicklog'
 import { persist, processOne } from '@/core/ingest'
 import { localDate } from '@/core/time'
 import { buildRRule, WEEKDAYS } from '@/domain/recurrence'
 import { acceptInsight, dismissInsight } from '@/core/insights'
 import type { XpNews } from '@/core/xp'
+import type { AskResult } from '@/ai/ask'
 
 // Local single-user app: the server binds to 127.0.0.1 / Tailscale, and every action scopes
 // writes to getUser(). When multi-user lands, getUser() becomes the session check.
@@ -64,14 +68,32 @@ export async function setGoalTarget(scheduleId: string, target: number) {
   refresh()
 }
 
-export async function quickLog(text: string): Promise<{ ok: boolean; message: string; news?: XpNews }> {
-  const q = parseQuickLog(text)
+/** Applies a typed quick log. `undo` is the token the toast's Undo button sends back to `undoQuickLog`. */
+export async function quickLog(text: string): Promise<{ ok: boolean; message: string; news?: XpNews; undo?: QuickLogUndo }> {
+  const q = parseQuickLog(z.string().max(200).parse(text))
   if (!q) return { ok: false, message: 'Try “water 250”, “mood 4” or “spent 120 chai”' }
   const user = await getUser()
-  const message = await applyQuickLog(user, q)
+  const { message, undo } = await applyQuickLogWithUndo(user, q)
   const news = await xpAfterLog(user)
   refresh()
-  return { ok: true, message, news }
+  return { ok: true, message, news, undo }
+}
+
+const manualRef = z.string().regex(/^manual:\d{10,16}$/)
+const undoToken = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('entry'), slug: slugArg, date: ymd, ref: manualRef }),
+  z.object({ kind: z.literal('set'), slug: slugArg, date: ymd, prev: logValue.nullable() }),
+  z.object({ kind: z.literal('spend'), externalRef: manualRef }),
+])
+
+/** Takes a quick log back: the token comes from `quickLog`. Rescoring replaces the day's XP, so XP goes too. */
+export async function undoQuickLog(token: QuickLogUndo): Promise<XpNews> {
+  const u = undoToken.parse(token)
+  const user = await getUser()
+  await undoQuickLogWrite(user, u)
+  const news = await xpAfterLog(user)
+  refresh()
+  return news
 }
 
 const scheduleForm = z.object({
@@ -225,6 +247,16 @@ export async function logEntry(slug: string, value: number, date?: string) {
   return news
 }
 
+/** A tracker's daily target (the metric Peek's “Target” row). `null` clears it, so the chart draws no target line. */
+export async function setTrackerTarget(slug: string, target: number | null) {
+  slugArg.parse(slug)
+  const t = z.number().positive().max(1_000_000).nullable().parse(target)
+  const user = await getUser()
+  await db.update(schema.trackers).set({ target: t })
+    .where(and(eq(schema.trackers.userId, user.id), eq(schema.trackers.slug, slug)))
+  refresh()
+}
+
 export async function archiveTracker(id: string) {
   const user = await getUser()
   await db.update(schema.trackers).set({ archivedAt: new Date() })
@@ -232,21 +264,29 @@ export async function archiveTracker(id: string) {
   refresh()
 }
 
-/** Re-categorize a transaction and remember the rule for that merchant / UPI id. */
-export async function recategorize(transactionId: string, category: string, remember: boolean) {
+export type { RecategorizeUndo } from '@/core/recategorize'
+
+/**
+ * Re-categorize a transaction and, with `remember`, write the rule for that merchant / UPI id and move its other
+ * payments too. Returns what it changed so the caller can offer Undo.
+ */
+export async function recategorize(transactionId: string, category: string, remember: boolean): Promise<RecategorizeUndo> {
   category = z.string().trim().min(1).max(60).parse(category)
-  const user = await getUser()
-  const [t] = await db.update(schema.transactions).set({ category })
-    .where(and(eq(schema.transactions.id, transactionId), eq(schema.transactions.userId, user.id)))
-    .returning()
-  const pattern = (t?.upiId ?? t?.merchant ?? '').toLowerCase().trim()
-  if (t && remember && pattern) {
-    await db.insert(schema.merchantRules).values({ userId: user.id, pattern, merchant: t.merchant ?? pattern, category })
-      .onConflictDoUpdate({ target: [schema.merchantRules.userId, schema.merchantRules.pattern], set: { category } })
-    // Apply to other transactions from the same merchant.
-    const same = t.upiId ? eq(schema.transactions.upiId, t.upiId) : eq(schema.transactions.merchant, t.merchant ?? '')
-    await db.update(schema.transactions).set({ category }).where(and(eq(schema.transactions.userId, user.id), same))
-  }
+  const undo = await recategorizeTxns(await getUser(), transactionId, category, remember)
+  refresh()
+  return undo
+}
+
+const recategorizeUndo = z.object({
+  moved: z.array(z.object({ id: z.string().uuid(), from: z.string().max(60).nullable() })).max(5000),
+  to: z.string().trim().min(1).max(60),
+  pattern: z.string().max(200).nullable(),
+  prevRule: z.string().max(60).nullable().optional(),
+})
+
+/** Undo a `recategorize`: the rule goes back to what it was (or goes), and every payment it moved gets its category back. */
+export async function undoRecategorize(undo: RecategorizeUndo) {
+  await undoRecategorizeTxns(await getUser(), recategorizeUndo.parse(undo))
   refresh()
 }
 
@@ -272,6 +312,22 @@ export async function resolveInsight(id: string, decision: 'accept' | 'dismiss')
   const user = await getUser()
   if (decision === 'accept') await acceptInsight(user, id)
   else await dismissInsight(user, id)
+  refresh()
+}
+
+/** Undo a dismiss from Needs you: back to pending, only within RESTORE_MINUTES of dismissing it. */
+export async function restoreInsight(id: string) {
+  z.string().uuid().parse(id)
+  const { restoreInsight: restore } = await import('@/core/insights')
+  const ok = await restore(await getUser(), id)
+  refresh()
+  return { ok }
+}
+
+/** Coach: clear the Ask conversation (the app and Telegram share it). */
+export async function clearConversation() {
+  const { clearCoachMessages } = await import('@/core/coach-messages')
+  await clearCoachMessages(await getUser())
   refresh()
 }
 
@@ -447,6 +503,18 @@ export async function chooseQuestRecovery(input: unknown) {
   }
 }
 
+/** Settings → Areas: which areas show in Life, quests and suggestions. Hiding one keeps its data. */
+export async function saveAreas(ids: string[]) {
+  const user = await getUser()
+  const parsed = z.array(z.enum(CATEGORIES)).min(1).safeParse(ids)
+  if (!parsed.success) return { ok: false as const, error: 'Keep at least one area.' }
+  await db.update(schema.users).set({ profile: { ...(await freshProfile(user.id)), areas: parsed.data } }).where(eq(schema.users.id, user.id))
+  const { clearUserCache } = await import('@/core/user')
+  clearUserCache()
+  refresh()
+  return { ok: true as const }
+}
+
 /** Settings → The System: which stats to train first. */
 export async function saveSystemFocus(ids: string[]) {
   const user = await getUser()
@@ -466,6 +534,21 @@ export async function saveTheme(choice: 'light' | 'dark' | 'system') {
   const { clearUserCache } = await import('@/core/user')
   clearUserCache()
   return { ok: true as const }
+}
+
+/**
+ * You › Notifications: send one message through the outbox (category `events`, so the user's own delivery choice,
+ * quiet hours and daily cap apply, exactly like the real ones). `sent` is false when those rules hold it back.
+ */
+export async function sendTestMessage() {
+  // getUser() loads the saved keys first, so the Telegram check below reads the current ones.
+  const user = await getUser()
+  const { telegramConfigured } = await import('@/core/notify')
+  if (!telegramConfigured()) return { ok: false as const, error: 'Telegram isn’t connected yet. Connect it first.' }
+  const { notify, outcome } = await import('@/core/outbox')
+  const ref = `test:${crypto.randomUUID()}`
+  await notify(user, 'events', { text: `⭐ Test message from ${brand.name}\nIf you can read this, Progress messages reach you here.`, ref })
+  return { ok: true as const, result: await outcome(user.id, ref) }
 }
 
 /** Settings → Notifications: quiet hours and per-category delivery. The worker reads it each minute. */
@@ -529,11 +612,11 @@ export async function disconnectIntegration(id: string) {
   refresh()
 }
 
-export async function ask(question: string): Promise<{ answer: string; error?: string }> {
+export async function ask(question: string): Promise<AskResult> {
   const q = question.trim().slice(0, 1000)
   if (!q) return { answer: '', error: 'Ask a question about your data.' }
   const { askData } = await import('@/ai/ask')
-  const r = await askData(q)
+  const r = await askData(q, { channel: 'app' })
   refresh()
   return r
 }

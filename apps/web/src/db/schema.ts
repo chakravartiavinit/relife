@@ -6,6 +6,7 @@ import { DEVICE_KINDS, SCOPES, type DeviceKind, type Scope } from '@relife/contr
 import type { NotifyCategory, NotifyPrefs } from '@/domain/notify'
 import type { Agg, Op, QuestStatus, Rank, SystemKind } from '@/domain/system'
 import type { RecoveryPayload } from '@/domain/recovery'
+import type { CoachMessagePayload } from '@/domain/coach-thread'
 import type {
   GoalActionLink, GoalCadence, GoalDecision, GoalDirection, GoalDraft, GoalFields, GoalMeasureKind, GoalProposal,
   GoalReviewPoint, GoalSnapshot, GoalStatus,
@@ -591,7 +592,7 @@ export const notifications = pgTable('notifications', {
   userId: userId(),
   category: text('category').$type<NotifyCategory>().notNull(),
   text: text('text').notNull(),
-  buttons: jsonb('buttons').$type<{ text: string; data: string }[][]>(),
+  buttons: jsonb('buttons').$type<({ text: string; data: string } | { text: string; url: string })[][]>(),
   /** What it is about ("reminder:<id>", "insight:<id>"), to stop repeats once it's dealt with elsewhere. */
   ref: text('ref'),
   status: text('status').$type<'queued' | 'sent' | 'answered' | 'done' | 'skipped'>().notNull().default('queued'),
@@ -682,3 +683,34 @@ export const streakFreezes = pgTable('streak_freezes', {
   localDate: date('local_date').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [uniqueIndex('streak_freezes_user_date').on(t.userId, t.localDate)])
+
+/**
+ * The one-line summary under each area title, Today's header and Life tiles (scope `today`, an area, `time`),
+ * once per scope per local day. Written by the `ai:area-briefs` job (rules first, a model rewords it when one is
+ * set); pages only read it. `why` holds the numbers it was built from, shown by the "Why?" Peek.
+ */
+export type BriefWhy = { facts: { label: string; value: string; peek?: string }[]; source: 'rules' | 'ai'; model?: string; hash: string }
+export const briefs = pgTable('briefs', {
+  id: id(),
+  userId: userId(),
+  scope: text('scope').$type<'today' | Category | 'time'>().notNull(),
+  localDate: date('local_date').notNull(),
+  text: text('text').notNull(),
+  why: jsonb('why').$type<BriefWhy>().notNull(),
+  ...stamps(),
+}, (t) => [uniqueIndex('briefs_user_scope_date').on(t.userId, t.scope, t.localDate)])
+
+/**
+ * The Ask conversation: one thread shared by the app and Telegram. A question and its answer are two rows. Kept 180
+ * days (the `coach-messages-prune` job); "Clear conversation" deletes them all. Writes fail soft, so an answer is
+ * still returned if this table is missing.
+ */
+export const coachMessages = pgTable('coach_messages', {
+  id: id(),
+  userId: userId(),
+  role: text('role').$type<'user' | 'assistant'>().notNull(),
+  text: text('text').notNull(),
+  channel: text('channel').$type<'app' | 'telegram'>().notNull().default('app'),
+  payload: jsonb('payload').$type<CoachMessagePayload>().notNull().default({}),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index('coach_messages_user_created').on(t.userId, t.createdAt)])

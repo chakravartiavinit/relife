@@ -1,23 +1,26 @@
-import brand from '@relife/brand/brand.json'
 import { RootHtml, rootMetadata, rootViewport } from '@/ui/root-html'
-import Link from 'next/link'
+import brand from '@relife/brand/brand.json'
 import { Suspense } from 'react'
-import { Wordmark } from '@/ui/components/logo'
 import { cn } from '@/ui/cn'
-import { NavPlaceholder, SystemNavPlaceholder, TabBar } from '@/ui/components/nav'
-import { NavForUser, SystemNavWithCounts } from '@/ui/components/system-nav-server'
-import { CommandButton, CommandMenu } from '@/ui/components/command-menu'
+import { Capture } from '@/ui/components/capture/capture'
+import { PeekHost } from '@/ui/components/peek/peek-host'
+import { Sidebar, SidebarProvider, AreaLinksPlaceholder } from '@/ui/components/shell/sidebar'
+import { PhoneTopBar, TopBar } from '@/ui/components/shell/top-bar'
+import { TabBar } from '@/ui/components/shell/tab-bar'
+import { SIDEBAR_SCRIPT } from '@/ui/components/shell/sidebar-script'
+import { Avatar, CoachBellStatus, CoachCount, SidebarAreas, SyncStatus, TodayDate } from '@/ui/components/shell/shell-status'
+import { SyncDot } from '@/ui/components/shell/sync-dot'
+import { CoachBell } from '@/ui/components/shell/coach-bell'
+import { AvatarRing } from '@/ui/components/shell/avatar-ring'
 import { Tour } from '@/ui/components/tour/tour'
-import { ThemeToggle } from '@/ui/components/theme-toggle'
 import { ThemeFromServer } from '@/ui/components/theme-sync'
+import { WaitingBanner } from '@/ui/components/devices/waiting-banner'
 import { ToastProvider } from '@/ui/components/toast'
 import { AppMotion } from '@/ui/components/motion-config'
 import { Celebration } from '@/ui/components/petals'
 import { Celebrations } from '@/ui/components/celebrate'
 import { PaymentToasts } from '@/ui/components/payment-toasts'
 import { LiveRefresh } from '@/ui/components/live-refresh'
-import { WaitingBanner } from '@/ui/components/devices/waiting-banner'
-import { SidebarProfile, SidebarProfileSkeleton } from '@/ui/components/sidebar-profile'
 
 export const metadata = rootMetadata
 export const viewport = rootViewport
@@ -42,41 +45,38 @@ function MockBadge({ wide = false }: { wide?: boolean }) {
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <RootHtml>
+    <RootHtml head={<script dangerouslySetInnerHTML={{ __html: SIDEBAR_SCRIPT }} />}>
         <AppMotion>
         <ToastProvider>
-          <div className="mx-auto flex min-h-dvh max-w-[1480px]">
-            <aside className="sticky top-0 hidden h-dvh w-[264px] shrink-0 p-3 lg:block">
-              {/* Floating glass panel: radius 24 with 12px padding, so inner rows use 12. */}
-              <div className="flex h-full flex-col gap-4 rounded-xl bg-glass p-3 shadow-2 backdrop-blur-xl">
-                <div className="flex items-center justify-between pt-2 pr-1 pl-2.5">
-                  <Link href="/" aria-label={`${brand.name}, Today`} className="rounded-sm">
-                    <Wordmark className="h-[30px]" />
-                  </Link>
-                  <ThemeToggle />
-                </div>
-                <CommandButton />
-                <MockBadge wide />
-                <div className="scroll-fade -mx-1 -my-2 min-h-0 flex-1 overflow-y-auto px-1 pt-2 pb-7">
-                  {/* Nav reads the pathname; keep it out of the static shell's blocking path. */}
-                  <Suspense fallback={<NavPlaceholder />}><NavForUser /></Suspense>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Suspense fallback={<SystemNavPlaceholder />}><SystemNavWithCounts /></Suspense>
-                  <Suspense fallback={<SidebarProfileSkeleton />}><SidebarProfile /></Suspense>
-                </div>
+          <SidebarProvider>
+            {/* Each status piece is its own Suspense island; they share one `loadShellStatus` per request. */}
+            <Sidebar
+              coachBadge={<Suspense fallback={null}><CoachCount /></Suspense>}
+              coachDot={<Suspense fallback={null}><CoachCount variant="dot" /></Suspense>}
+              areas={<Suspense fallback={<AreaLinksPlaceholder />}><SidebarAreas /></Suspense>}
+              mock={<MockBadge wide />}
+            />
+            <main className="min-w-0 flex-1">
+              <TopBar
+                date={<Suspense fallback={null}><TodayDate /></Suspense>}
+                sync={<Suspense fallback={<SyncDot tone="loading" />}><SyncStatus /></Suspense>}
+                bell={<Suspense fallback={<CoachBell />}><CoachBellStatus /></Suspense>}
+                avatar={<Suspense fallback={<AvatarRing initial="R" />}><Avatar /></Suspense>}
+              />
+              <div className="px-5 pb-[calc(var(--tabbar-h)+16px)] sm:px-8 lg:pt-2 lg:pr-10 lg:pb-9 lg:pl-7">
+                <PhoneTopBar
+                  extra={<MockBadge />}
+                  sync={<Suspense fallback={<SyncDot tone="loading" />}><SyncStatus /></Suspense>}
+                  avatar={<Suspense fallback={<AvatarRing initial="R" />}><Avatar /></Suspense>}
+                />
+                {children}
               </div>
-            </aside>
-            <main className="min-w-0 flex-1 px-5 pt-6 pb-32 sm:px-8 lg:py-9 lg:pr-10 lg:pl-7">
-              <div className="mb-6 flex items-center justify-between lg:hidden">
-                <Link href="/" aria-label={`${brand.name}, Today`}><Wordmark className="h-7" /></Link>
-                <div className="flex items-center gap-1"><MockBadge /><ThemeToggle /></div>
-              </div>
-              {children}
             </main>
-          </div>
-          <Suspense fallback={null}><TabBar /></Suspense>
-          <CommandMenu />
+          </SidebarProvider>
+          <TabBar coachBadge={<Suspense fallback={null}><CoachCount className="h-[18px] min-w-[18px] px-1 text-label shadow-[0_0_0_2px_var(--surface)]" /></Suspense>} />
+          <Capture />
+          {/* useSearchParams needs a Suspense boundary under Cache Components; nothing to show while it resolves. */}
+          <Suspense fallback={null}><PeekHost /></Suspense>
           <Tour />
           <Celebration />
           <Celebrations />

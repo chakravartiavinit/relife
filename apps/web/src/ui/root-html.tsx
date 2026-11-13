@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, Outfit } from 'next/font/google'
+import { Inter, JetBrains_Mono, Outfit } from 'next/font/google'
 import brand from '@relife/brand/brand.json'
 import { THEME_SCRIPT } from '@/ui/components/theme-toggle'
 import '@/app/globals.css'
@@ -9,6 +9,7 @@ import '@/app/globals.css'
 // Keeping them apart means a visitor's page never renders anything of the owner's: no name, level or counts.
 
 const inter = Inter({ variable: '--font-inter', subsets: ['latin'], display: 'swap' })
+const jetbrains = JetBrains_Mono({ variable: '--font-jetbrains', subsets: ['latin'], weight: ['600'], display: 'swap' })
 const outfit = Outfit({ variable: '--font-outfit', subsets: ['latin'], weight: ['600', '700', '800', '900'], display: 'swap' })
 
 export const rootMetadata: Metadata = {
@@ -25,11 +26,13 @@ export const rootViewport: Viewport = {
   viewportFit: 'cover',
 }
 
-export function RootHtml({ children }: { children: React.ReactNode }) {
+/** `head`: extra tags for this layout only (the dashboard adds the sidebar script that runs before paint). */
+export function RootHtml({ children, head }: { children: React.ReactNode; head?: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${outfit.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} ${outfit.variable} ${jetbrains.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        {head}
       </head>
       <body className="min-h-dvh">{children}</body>
     </html>

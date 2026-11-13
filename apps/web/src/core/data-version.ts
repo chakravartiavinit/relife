@@ -18,7 +18,9 @@ export async function dataVersionFor(userId: string) {
     (select max(updated_at) from schedules where user_id = ${userId}),
     (select max(updated_at) from insights where user_id = ${userId}),
     (select max(created_at) from system_quests where user_id = ${userId}),
-    (select max(created_at) from xp_events where user_id = ${userId})
+    (select max(created_at) from xp_events where user_id = ${userId}),
+    (select max(updated_at) from briefs where user_id = ${userId}),
+    (select max(created_at) from coach_messages where user_id = ${userId})
   )::text as v`)
   return r?.v ?? null
 }

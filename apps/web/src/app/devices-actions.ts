@@ -87,21 +87,21 @@ export async function waitingById(id: string): Promise<WaitingDevice | null> {
 export async function approveDevice(id: string) {
   const device = await requireDevice()
   const p = await approveRequest({ id: z.uuid().parse(id), userId: device.userId, deviceId: device.id })
-  revalidatePath('/settings/devices')
+  revalidatePath('/you/settings/devices')
   return p ? { ok: true as const, name: p.deviceName ?? 'Device' } : { ok: false as const, error: 'This request expired or was already answered. Ask the device to connect again.' }
 }
 
 export async function denyDevice(id: string) {
   const device = await requireDevice()
   const ok = await denyRequest({ id: z.uuid().parse(id), userId: device.userId })
-  revalidatePath('/settings/devices')
+  revalidatePath('/you/settings/devices')
   return { ok }
 }
 
 export async function renameMyDevice(id: string, name: string) {
   const device = await requireDevice()
   const ok = await renameDevice(device.userId, z.uuid().parse(id), z.string().trim().min(1).max(80).parse(name))
-  revalidatePath('/settings/devices')
+  revalidatePath('/you/settings/devices')
   return { ok }
 }
 
@@ -116,7 +116,7 @@ export async function disconnectDevice(id: string) {
     jar.delete(cookieName(false))
     jar.delete(cookieName(true))
   }
-  revalidatePath('/settings/devices')
+  revalidatePath('/you/settings/devices')
   return { ok, self }
 }
 
@@ -134,6 +134,6 @@ export async function setRequireSignIn(on: boolean) {
   await db.update(schema.users).set({ profile: { ...u?.profile, requireSignIn: z.boolean().parse(on) } }).where(eq(schema.users.id, user.id))
   const { clearUserCache } = await import('@/core/user')
   clearUserCache()
-  revalidatePath('/settings/devices')
+  revalidatePath('/you/settings/devices')
   return { ok: true as const }
 }

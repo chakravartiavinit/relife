@@ -27,7 +27,7 @@ export function WaitingBanner() {
     return () => { off(); clearInterval(poll) }
   }, [refresh])
 
-  const hidden = path === '/settings/devices' || path.startsWith('/pair')
+  const hidden = path === '/you/settings/devices' || path.startsWith('/pair')
   const w = hidden ? null : list[0]
   return (
     <>
@@ -40,8 +40,8 @@ export function WaitingBanner() {
           >
             <DeviceTile kind={w.kind} />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[14px] font-semibold text-ink">“{w.name}” wants to connect</p>
-              <p className="truncate text-[12.5px] text-ink-3">Code <span className="font-mono tabular-nums">{w.code}</span>{list.length > 1 ? ` · ${list.length - 1} more waiting` : ''}</p>
+              <p className="truncate text-body font-semibold text-ink">“{w.name}” wants to connect</p>
+              <p className="truncate text-caption text-ink-3">Code <span className="font-mono tabular-nums">{w.code}</span>{list.length > 1 ? ` · ${list.length - 1} more waiting` : ''}</p>
             </div>
             <Button size="sm" variant="secondary" onClick={async () => { await denyDevice(w.id); refresh() }}>Deny</Button>
             <Button size="sm" variant="primary" onClick={() => setReview(w)}>Review</Button>

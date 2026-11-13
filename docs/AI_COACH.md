@@ -58,7 +58,7 @@ Active old penalties become `cancelled`, shown as Retired. Existing failed rows 
 
 ## Outcome goals and weekly reviews
 
-Outcome goals (`apps/web/src/domain/goals.ts`, `apps/web/src/core/goals.ts`, page `/goals`) close the loop: choose an outcome, record a baseline, link 1–3 existing routines or trackers, review, decide. At most 3 are active.
+Outcome goals (`apps/web/src/domain/goals.ts`, `apps/web/src/core/goals.ts`, page `/plan`) close the loop: choose an outcome, record a baseline, link 1–3 existing routines or trackers, review, decide. At most 3 are active.
 
 - Code owns every number. A tracker baseline is the mean of recorded days in the 28 complete days before the start (at least 7); missing days are skipped, never zero. A check-in goal uses the user's own baseline. The measure and baseline are locked once the goal starts.
 - Status compares the period's outcome with baseline and target. Movement of at least 10% of the gap is toward (or away); less is flat. Too few records is "Not enough data", never a miss. Activity counts are flagged as weak outcome measures but allowed.
@@ -66,6 +66,14 @@ Outcome goals (`apps/web/src/domain/goals.ts`, `apps/web/src/core/goals.ts`, pag
 - The Sunday `ai:weekly-review` job runs without a model too. Without one it writes a rule-based "Goal check-in" only when a goal review is due. With one, the model adds an optional note and at most one proposal per goal (target, range, date or cadence). Proposals are dropped for sensitive goals or when they fail validation, and are applied only when the user saves the Change form. Decisions happen in the app, not through Telegram buttons.
 - AI drafts: "Suggest a draft" asks the plan model for one goal from the profile goals text, using only listed tracker slugs and routine IDs. Drafts never carry a baseline. `checkGoalDraft` rejects medical, body, weight, calorie and medication content, health outcomes other than steps, unknown references and out-of-range dates. A draft is a pending insight; only saving it in the Goals form starts a goal (generic accept, Insights and Telegram cannot).
 - Daily quests rank validated candidates linked to an active goal first (`prefer` in `questCandidates`/`selectQuests`). Linking only reorders: every check, the sensitive-measure exclusion, the 3-quest cap and the recovery pause still apply. Goals add no XP.
+
+## Ask history and Needs you
+
+- Ask is one conversation for the app and Telegram, stored in `coach_messages` (role, text, channel, `payload`: `sources`, `insightIds`, `error`). Messages are kept 180 days (`coach-messages-prune`, daily 03:50); Clear conversation deletes them all. A failed call is saved as an error answer, so Retry works from the thread.
+- `askData` sends the last 6 messages (at most 2,000 characters, a failed answer dropped with its question) so "and last month?" works. Sources come from the tools the model really called, never from the model's own text: a tracker with a slug opens its metric Peek, a merchant opens the merchant Peek, the rest are labels. Missing days stay missing.
+- The coach changes nothing from Ask. A routine it proposes is a pending `plan` insight shown under the answer with Approve and Dismiss; AI-generated medicine schedules stay excluded.
+- Needs you is the one queue of decisions and data to sort (recovery, alerts, the weekly review, goal drafts, proposals, nudges, messages ReLife could not read, payments with no category). A nudge leaves the queue and the Coach badge after 3 days (it stays in History). Uncategorised payments count once per merchant. Dismiss can be undone for 10 minutes (`restoreInsight`; a recovery choice cannot be dismissed). Goal drafts have no generic Approve: Review draft opens the goal form and the baseline is still the user's.
+- Telegram "Open in ReLife" buttons appear only when `RELIFE_PUBLIC_URL` is set.
 
 ## Model and tool boundaries
 

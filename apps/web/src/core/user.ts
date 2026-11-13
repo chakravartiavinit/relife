@@ -25,7 +25,7 @@ async function load(): Promise<User> {
       baseCurrency: process.env.RELIFE_BASE_CURRENCY || 'INR',
     }).returning())[0]
   })
-  // Connected keys (saved in the Connectors dialog) go into the key map before anything reads it.
+  // Connected keys (saved in the Connections dialog) go into the key map before anything reads it.
   await (await import('./secrets')).applySecrets(user.id)
   return user
 }
