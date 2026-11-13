@@ -7,7 +7,8 @@ import { db, schema } from '@/db'
 import { CATEGORIES } from '@/db/schema'
 import { getUser } from '@/core/user'
 import { addGoalProgress, setCheck } from '@/core/schedules'
-import { applyQuickLog, parseQuickLog, slugify } from '@/core/quicklog'
+import { applyQuickLogWithUndo, parseQuickLog, slugify, undoQuickLogWrite } from '@/core/quicklog'
+import type { QuickLogUndo } from '@/domain/quicklog'
 import { persist, processOne } from '@/core/ingest'
 import { localDate } from '@/core/time'
 import { buildRRule, WEEKDAYS } from '@/domain/recurrence'
@@ -64,14 +65,32 @@ export async function setGoalTarget(scheduleId: string, target: number) {
   refresh()
 }
 
-export async function quickLog(text: string): Promise<{ ok: boolean; message: string; news?: XpNews }> {
-  const q = parseQuickLog(text)
+/** Applies a typed quick log. `undo` is the token the toast's Undo button sends back to `undoQuickLog`. */
+export async function quickLog(text: string): Promise<{ ok: boolean; message: string; news?: XpNews; undo?: QuickLogUndo }> {
+  const q = parseQuickLog(z.string().max(200).parse(text))
   if (!q) return { ok: false, message: 'Try “water 250”, “mood 4” or “spent 120 chai”' }
   const user = await getUser()
-  const message = await applyQuickLog(user, q)
+  const { message, undo } = await applyQuickLogWithUndo(user, q)
   const news = await xpAfterLog(user)
   refresh()
-  return { ok: true, message, news }
+  return { ok: true, message, news, undo }
+}
+
+const manualRef = z.string().regex(/^manual:\d{10,16}$/)
+const undoToken = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('entry'), slug: slugArg, date: ymd, ref: manualRef }),
+  z.object({ kind: z.literal('set'), slug: slugArg, date: ymd, prev: logValue.nullable() }),
+  z.object({ kind: z.literal('spend'), externalRef: manualRef }),
+])
+
+/** Takes a quick log back: the token comes from `quickLog`. Rescoring replaces the day's XP, so XP goes too. */
+export async function undoQuickLog(token: QuickLogUndo): Promise<XpNews> {
+  const u = undoToken.parse(token)
+  const user = await getUser()
+  await undoQuickLogWrite(user, u)
+  const news = await xpAfterLog(user)
+  refresh()
+  return news
 }
 
 const scheduleForm = z.object({

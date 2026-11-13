@@ -35,3 +35,21 @@ export function parseQuickLog(text: string): QuickLog | null {
 export function slugify(s: string) {
   return s.trim().toLowerCase().replace(/[^a-z0-9.]+/g, '-').replace(/^-|-$/g, '')
 }
+
+/**
+ * What it takes to take a quick log back (the toast's Undo). Carried to the client and sent back to
+ * `undoQuickLog`, which validates it. `date` is the local day the log landed on, so an Undo after midnight
+ * still reverses the right day. An add log carries its own `ref` (also kept on the entry), so Undo takes back that
+ * one log exactly once, however many times it is sent.
+ */
+export type QuickLogUndo =
+  | { kind: 'entry'; slug: string; date: string; ref: string }
+  | { kind: 'set'; slug: string; date: string; prev: number | null }
+  | { kind: 'spend'; externalRef: string }
+
+/** The token for a log that has just been applied. `prev` is the manual value the day had before a set-not-add log. */
+export function quickLogUndo(q: QuickLog, ctx: { date: string; prev: number | null; externalRef: string }): QuickLogUndo {
+  if (q.type === 'spend') return { kind: 'spend', externalRef: ctx.externalRef }
+  if (LAST_VALUE.has(q.slug)) return { kind: 'set', slug: q.slug, date: ctx.date, prev: ctx.prev }
+  return { kind: 'entry', slug: q.slug, date: ctx.date, ref: ctx.externalRef }
+}

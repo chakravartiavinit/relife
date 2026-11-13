@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Inter, JetBrains_Mono, Outfit } from 'next/font/google'
 import { Suspense } from 'react'
 import { cn } from '@/ui/cn'
-import { CommandMenu } from '@/ui/components/command-menu'
+import { Capture } from '@/ui/components/capture/capture'
 import { Sidebar, SidebarProvider, AreaLinksPlaceholder } from '@/ui/components/shell/sidebar'
 import { PhoneTopBar, TopBar } from '@/ui/components/shell/top-bar'
 import { TabBar } from '@/ui/components/shell/tab-bar'
@@ -93,7 +93,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
             </main>
           </SidebarProvider>
           <TabBar coachBadge={<Suspense fallback={null}><CoachCount className="h-[18px] min-w-[18px] px-1 text-label shadow-[0_0_0_2px_var(--surface)]" /></Suspense>} />
-          <CommandMenu />
+          <Capture />
           <Tour />
           <Celebration />
           <Celebrations />

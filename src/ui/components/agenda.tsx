@@ -271,6 +271,8 @@ export type GoalRow = {
   step: number
   color: string
   area?: string
+  /** The tracker the goal counts into (water → `water`), so Capture can tell it from a plain log. */
+  slug?: string
   /** The next reminder time today, if any. */
   next?: string
 }

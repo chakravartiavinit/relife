@@ -5,10 +5,10 @@ import { usePathname } from 'next/navigation'
 import { Suspense, type ReactNode } from 'react'
 import { Plus } from 'lucide-react'
 import { cn } from '../../cn'
+import { openCapture, prefetchCapture } from '../capture/capture-data'
 import { isActive, LIFE_CHILDREN, LIFE_HUB, NAV } from '../nav'
 
 // Phone tab bar: Today, Life, a raised ink + (Capture), Plan, Coach with its count. You is the avatar in the top bar.
-// For now the + opens the command menu; Capture replaces it.
 
 const ALL = NAV.flatMap((g) => g.items)
 const tab = (href: string) => ALL.find((i) => i.href === href)!
@@ -51,7 +51,10 @@ function TabBarView({ path, coachBadge }: { path: string; coachBadge: ReactNode 
         type="button"
         aria-label="Capture: log, check off or ask"
         aria-haspopup="dialog"
-        onClick={() => window.dispatchEvent(new Event('relife:command'))}
+        onClick={() => openCapture()}
+        onPointerEnter={prefetchCapture}
+        onFocus={prefetchCapture}
+        onTouchStart={prefetchCapture}
         className="group relative flex h-14 -translate-y-3.5 items-center justify-center focus-visible:outline-none"
       >
         <span className="grid size-[60px] place-items-center rounded-full bg-ink text-bg shadow-[0_0_0_4px_var(--bg),var(--elev-2)] transition-[scale] duration-150 ease-out-quint group-active:scale-96 group-focus-visible:outline-2 group-focus-visible:outline-offset-4 group-focus-visible:outline-pill">
