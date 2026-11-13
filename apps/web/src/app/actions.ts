@@ -6,7 +6,7 @@ import { refresh } from 'next/cache'
 import { z } from 'zod'
 import { db, schema } from '@/db'
 import { CATEGORIES } from '@/db/schema'
-import { getUser } from '@/core/user'
+import { getUser, mergeProfile, profileMerge } from '@/core/user'
 import { recategorizeTxns, undoRecategorizeTxns, type RecategorizeUndo } from '@/core/recategorize'
 import { addGoalProgress, setCheck, undoLastGoalStep } from '@/core/schedules'
 import { applyQuickLogWithUndo, parseQuickLog, slugify, undoQuickLogWrite } from '@/core/quicklog'
@@ -504,18 +504,13 @@ export async function saveProfile(_prev: FormState, form: FormData): Promise<For
     name: get('name') || user.name,
     timezone: tz,
     baseCurrency: cur,
-    // Merge into the saved profile: replacing it would drop setup, areas, XP start and notification choices.
-    profile: { ...(await freshProfile(user.id)), goals: get('goals'), constraints: get('constraints'), notes: get('notes') },
+    // Merge only these keys into the saved profile: replacing it would drop setup, areas, XP start and notification choices.
+    profile: profileMerge({ goals: get('goals'), constraints: get('constraints'), notes: get('notes') }),
   }).where(eq(schema.users.id, user.id))
   const { clearUserCache } = await import('@/core/user')
   clearUserCache()
   refresh()
   return { ok: true }
-}
-
-async function freshProfile(userId: string) {
-  const [u] = await db.select({ profile: schema.users.profile }).from(schema.users).where(eq(schema.users.id, userId))
-  return u?.profile ?? {}
 }
 
 const deliverySchema = z.object({
@@ -553,9 +548,7 @@ export async function saveAreas(ids: string[]) {
   const user = await getUser()
   const parsed = z.array(z.enum(CATEGORIES)).min(1).safeParse(ids)
   if (!parsed.success) return { ok: false as const, error: 'Keep at least one area.' }
-  await db.update(schema.users).set({ profile: { ...(await freshProfile(user.id)), areas: parsed.data } }).where(eq(schema.users.id, user.id))
-  const { clearUserCache } = await import('@/core/user')
-  clearUserCache()
+  await mergeProfile(user.id, { areas: parsed.data })
   refresh()
   return { ok: true as const }
 }
@@ -564,9 +557,7 @@ export async function saveAreas(ids: string[]) {
 export async function saveSystemFocus(ids: string[]) {
   const user = await getUser()
   const improve = z.array(z.string().max(80)).max(20).parse(ids)
-  await db.update(schema.users).set({ profile: { ...(await freshProfile(user.id)), improve } }).where(eq(schema.users.id, user.id))
-  const { clearUserCache } = await import('@/core/user')
-  clearUserCache()
+  await mergeProfile(user.id, { improve })
   return { ok: true as const }
 }
 
@@ -574,8 +565,10 @@ export async function saveSystemFocus(ids: string[]) {
 export async function saveTheme(choice: 'light' | 'dark' | 'system') {
   const theme = z.enum(['light', 'dark', 'system']).parse(choice)
   const user = await getUser()
-  const profile = await freshProfile(user.id)
-  await db.update(schema.users).set({ profile: { ...profile, prefs: { ...profile.prefs, theme } } }).where(eq(schema.users.id, user.id))
+  // `prefs` holds more than the theme later on: merge inside it too.
+  await db.update(schema.users).set({
+    profile: sql`${schema.users.profile} || jsonb_build_object('prefs', coalesce(${schema.users.profile}->'prefs', '{}'::jsonb) || jsonb_build_object('theme', ${theme}::text))`,
+  }).where(eq(schema.users.id, user.id))
   const { clearUserCache } = await import('@/core/user')
   clearUserCache()
   return { ok: true as const }
@@ -605,9 +598,7 @@ export async function saveNotifications(input: unknown) {
   }).safeParse(input)
   if (!parsed.success) return { ok: false as const, error: 'Those settings look wrong. Reload and try again.' }
   const user = await getUser()
-  await db.update(schema.users).set({ profile: { ...(await freshProfile(user.id)), notifications: parsed.data } }).where(eq(schema.users.id, user.id))
-  const { clearUserCache } = await import('@/core/user')
-  clearUserCache()
+  await mergeProfile(user.id, { notifications: parsed.data })
   return { ok: true as const }
 }
 
@@ -750,9 +741,7 @@ export async function aiReady() {
 /** Today → Finish setting up → Hide: the checklist stays away for good. */
 export async function hideSetupChecklist() {
   const user = await getUser()
-  await db.update(schema.users).set({ profile: { ...(await freshProfile(user.id)), setupHiddenAt: new Date().toISOString() } }).where(eq(schema.users.id, user.id))
-  const { clearUserCache } = await import('@/core/user')
-  clearUserCache()
+  await mergeProfile(user.id, { setupHiddenAt: new Date().toISOString() })
   refresh()
 }
 
