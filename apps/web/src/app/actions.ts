@@ -17,6 +17,7 @@ import { buildRRule, WEEKDAYS } from '@/domain/recurrence'
 import { acceptInsight, dismissInsight } from '@/core/insights'
 import type { XpNews } from '@/core/xp'
 import type { AskResult } from '@/ai/ask'
+import { isWebUrl } from '@/domain/text'
 
 // Local single-user app: the server binds to 127.0.0.1 / Tailscale, and every action scopes
 // writes to getUser(). When multi-user lands, getUser() becomes the session check.
@@ -334,7 +335,7 @@ export async function clearConversation() {
 const learningForm = z.object({
   title: z.string().trim().min(1).max(120),
   provider: z.string().trim().max(60).optional(),
-  url: z.string().trim().url().optional().or(z.literal('').transform(() => undefined)),
+  url: z.string().trim().url().refine(isWebUrl, 'Use an http(s) link').optional().or(z.literal('').transform(() => undefined)),
   cost: z.coerce.number().nonnegative().optional().or(z.literal('').transform(() => undefined)),
   currency: z.string().trim().toUpperCase().max(5).optional(),
   progressTotal: z.coerce.number().int().positive().optional().or(z.literal('').transform(() => undefined)),
