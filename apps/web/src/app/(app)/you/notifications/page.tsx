@@ -7,6 +7,7 @@ import { NotificationSettings } from '@/ui/components/notification-settings'
 import { NotificationChannel } from '@/ui/components/notification-channel'
 import { telegramConfigured } from '@/core/notify'
 import { weeklyNotifications } from '@/core/outbox'
+import { pushDeviceCount } from '@/core/push'
 
 export const metadata: Metadata = { title: 'Notifications' }
 
@@ -22,10 +23,13 @@ async function Notifications() {
   await connection()
   const user = await getUser()
   const stats = await weeklyNotifications(user).catch(() => ({ sent: 0, held: 0, skipped: 0 }))
+  // Before `npm run db:push` adds push_subscriptions there are simply no push devices.
+  const pushDevices = await pushDeviceCount(user.id).catch(() => 0)
+  const telegram = telegramConfigured()
   return (
     <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-      <div className="min-w-0 max-lg:order-2"><NotificationSettings initial={user.profile.notifications} /></div>
-      <div className="max-lg:order-1 lg:sticky lg:top-6"><NotificationChannel telegram={telegramConfigured()} stats={stats} /></div>
+      <div className="min-w-0 max-lg:order-2"><NotificationSettings initial={user.profile.notifications} both={telegram && pushDevices > 0} /></div>
+      <div className="max-lg:order-1 lg:sticky lg:top-6"><NotificationChannel telegram={telegram} stats={stats} pushDevices={pushDevices} /></div>
     </div>
   )
 }

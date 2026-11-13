@@ -3,20 +3,25 @@
 import Link from 'next/link'
 import { useState, useTransition } from 'react'
 import { BellRing, Check, Loader2, MessageSquare, Send } from 'lucide-react'
+import type { Channel } from '@/domain/notify'
 import { sendTestMessage } from '@/app/actions'
 import { Button, buttonClass } from './button'
 import { Card, SystemLabel } from './card'
 import { cn } from '../cn'
+import { PushControl } from './push-control'
 
 export type ChannelStats = { sent: number; held: number; skipped: number }
 type Result = { tone: 'good' | 'warn' | 'bad'; text: string }
 
+const NAME: Record<Channel, string> = { telegram: 'Telegram', push: 'push' }
+
 /**
- * Where messages go: Telegram (on or not, with a test), the app's own copy in Coach › History, and what the
- * last 7 days did. The test goes through the same outbox as real messages, so it obeys the user's own settings
- * and says so when they hold it back.
+ * Where messages go: Telegram (on or not), push on this device, the app's own copy in Coach › History, a test that goes
+ * through the outbox, and what the last 7 days did. The test obeys the user's own settings like real messages do, and says
+ * which channels took it, or when they hold it back. `push` stands in for the live push row (the gallery draws its states).
  */
-export function NotificationChannel({ telegram, stats }: { telegram: boolean; stats: ChannelStats }) {
+export function NotificationChannel({ telegram, stats, pushDevices, push }: { telegram: boolean; stats: ChannelStats; pushDevices: number; push?: React.ReactNode }) {
+  const [devices, setDevices] = useState(pushDevices)
   const [pending, start] = useTransition()
   const [result, setResult] = useState<Result | null>(null)
   const test = () => start(async () => {
@@ -24,9 +29,9 @@ export function NotificationChannel({ telegram, stats }: { telegram: boolean; st
     try {
       const r = await sendTestMessage()
       setResult(!r.ok ? { tone: 'bad', text: r.error }
-        : r.result === 'sent' ? { tone: 'good', text: 'Sent. Check Telegram.' }
+        : r.result === 'sent' ? { tone: 'good', text: `Sent. Check ${r.channels.length ? r.channels.map((c) => NAME[c]).join(' and ') : 'your notifications'}.` }
         : r.result === 'held' ? { tone: 'warn', text: 'Waiting for your quiet hours to end. It arrives then.' }
-        : r.result === 'failed' ? { tone: 'bad', text: 'Telegram did not take it. Check the bot token and chat id, then try again.' }
+        : r.result === 'failed' ? { tone: 'bad', text: 'Nothing took it. Check the Telegram bot token and chat id, or turn push off and on again, then try again.' }
         : { tone: 'warn', text: 'Not sent: Progress messages are off or at today’s limit. Change it below.' })
     } catch {
       setResult({ tone: 'bad', text: 'Couldn’t send. Nothing was changed. Try again.' })
@@ -36,7 +41,7 @@ export function NotificationChannel({ telegram, stats }: { telegram: boolean; st
     <Card as="section" aria-labelledby="channel-h" className="flex flex-col gap-4">
       <div>
         <SystemLabel>Where they go</SystemLabel>
-        <h2 id="channel-h" className="mt-1.5 text-heading text-ink">Telegram and the app</h2>
+        <h2 id="channel-h" className="mt-1.5 text-heading text-ink">Telegram, push and the app</h2>
       </div>
       <div className="flex items-start gap-3">
         <span aria-hidden className="mt-1.5 size-2 shrink-0 rounded-full" style={{ background: telegram ? 'var(--good)' : 'var(--ink-3)' }} />
@@ -45,11 +50,12 @@ export function NotificationChannel({ telegram, stats }: { telegram: boolean; st
           <p className="text-small text-ink-3">{telegram ? 'Messages go to your chat, with buttons you can tap.' : 'Connect it to get these on your phone. Everything still shows in Coach.'}</p>
         </div>
       </div>
+      <div className="border-t border-divider pt-4">{push ?? <PushControl devices={pushDevices} onCount={setDevices} />}</div>
       <div className="flex items-start gap-3">
         <MessageSquare aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-3" strokeWidth={1.5} />
         <p className="text-small text-ink-2">In the app: <Link href="/coach/history" className="font-medium text-pill-ink hover:underline">Coach › History</Link> keeps every message, even ones Telegram doesn’t get.</p>
       </div>
-      {telegram ? (
+      {telegram || devices > 0 ? (
         <div className="flex flex-col gap-2">
           <Button onClick={test} disabled={pending} className="w-full">
             {pending ? <Loader2 className="size-4 animate-spin" strokeWidth={1.5} aria-hidden /> : <Send className="size-4" strokeWidth={1.5} aria-hidden />}
@@ -59,8 +65,9 @@ export function NotificationChannel({ telegram, stats }: { telegram: boolean; st
             {result ? <span className="inline-flex items-start gap-1.5">{result.tone === 'good' ? <Check className="mt-0.5 size-3.5 shrink-0" strokeWidth={2} aria-hidden /> : null}{result.text}</span> : null}
           </p>
         </div>
-      ) : (
-        <Link href="/you/connections?peek=connector:telegram" className={buttonClass({ variant: 'primary', className: 'w-full' })}><BellRing className="size-4" strokeWidth={1.5} aria-hidden />Connect Telegram</Link>
+      ) : null}
+      {telegram ? null : (
+        <Link href="/you/connections?peek=connector:telegram" className={buttonClass({ variant: devices > 0 ? 'secondary' : 'primary', className: 'w-full' })}><BellRing className="size-4" strokeWidth={1.5} aria-hidden />Connect Telegram</Link>
       )}
       <dl className="grid grid-cols-3 gap-3 border-t border-divider pt-4 text-center">
         {([['Sent', stats.sent], ['Held', stats.held], ['Dropped', stats.skipped]] as const).map(([label, n]) => (
