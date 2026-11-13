@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Check, CalendarCheck, Plug, Send, Smartphone, Target, type LucideIcon } from 'lucide-react'
+import { Check, CalendarCheck, Compass, Plug, Send, Smartphone, Target, type LucideIcon } from 'lucide-react'
 import { hideSetupChecklist } from '@/app/actions'
 import type { Step } from '../onboarding'
 import { Capsule } from '../capsule'
@@ -46,10 +46,16 @@ export function SetupCard({ steps }: { steps: Step[] }) {
           )
         })}
       </ol>
-      <form action={hideSetupChecklist} className="mt-4 flex flex-wrap items-center gap-x-1 text-caption text-ink-3">
-        Not now? Every source stays in You › Connections.
-        <button type="submit" className="inline-flex h-10 items-center rounded-md px-1 font-semibold text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-pill">Hide this card</button>
-      </form>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-x-6">
+        <form action={hideSetupChecklist} className="flex flex-wrap items-center gap-x-1 text-caption text-ink-3">
+          Not now? Every source stays in You › Connections.
+          <button type="submit" className="inline-flex h-10 items-center rounded-md px-1 font-semibold text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-pill">Hide this card</button>
+        </form>
+        {/* A full load: the tour opens from the address on arrival. Setup no longer ends on its own "Show me around". */}
+        <a href="/?tour" className="inline-flex h-10 items-center gap-1.5 rounded-md px-1 text-caption font-semibold text-ink-2 hover:text-ink hover:underline focus-visible:outline-2 focus-visible:outline-pill">
+          <Compass className="size-3.5" strokeWidth={2} aria-hidden />Take the tour
+        </a>
+      </div>
     </Card>
   )
 }

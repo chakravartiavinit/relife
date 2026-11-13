@@ -12,6 +12,7 @@ import { latestBrief } from '@/core/briefs'
 import { addDays, daysBetween, formatDay, formatTime, localDate, localHour } from '@/core/time'
 import { dayState, greeting, planLine, recapLine } from '@/domain/day-plan'
 import { weekStart } from '@/domain/quests'
+import { formatMoney } from '@/domain/money'
 import { questBoard, type QuestView } from '@/core/quests'
 import { systemBoard } from '@/core/system'
 import { xpSummary } from '@/core/xp'
@@ -143,7 +144,7 @@ async function DayEnd({ user }: { user: User }) {
       <DayComplete done={plan.done} total={plan.total} streak={streak.current} xp={xp.today} chests={quests.chests.map((c) => ({ id: c.id, rarity: c.rarity, reason: c.reason }))} />
       <TomorrowCard
         date={formatDay(addDays(plan.today, 1), { weekday: 'short', day: 'numeric', month: 'short' })} rows={tomorrow}
-        renewal={next ? { name: next.schedule.name, when: next.daysLeft === 1 ? 'tomorrow' : formatDay(addDays(plan.today, next.daysLeft), { weekday: 'short' }), amount: next.amount ? `${next.currency ?? user.baseCurrency} ${next.amount.toLocaleString('en-IN')}` : undefined } : undefined}
+        renewal={next ? { name: next.schedule.name, when: next.daysLeft === 1 ? 'tomorrow' : formatDay(addDays(plan.today, next.daysLeft), { weekday: 'short' }), amount: next.amount ? formatMoney(next.amount, next.currency ?? user.baseCurrency) : undefined } : undefined}
       />
     </>
   )

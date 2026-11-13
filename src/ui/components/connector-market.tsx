@@ -399,7 +399,7 @@ export function SyncButton({ id, name, compact }: { id: string; name: string; /*
  * One dialog per service (beui.dev center-morph-modal: unfolds from its centre). Connected: status,
  * recent syncs, Sync now, then settings. Not connected: what it gives you and how to connect.
  */
-function ConnectorDialog({ c, trigger }: { c: ConnectorItem; trigger: React.ReactElement }) {
+export function ConnectorDialog({ c, trigger }: { c: ConnectorItem; trigger: React.ReactElement }) {
   const [open, setOpen] = useState(false)
   const uid = useId()
   const status = STATUS[c.status]
