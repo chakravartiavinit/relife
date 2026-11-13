@@ -3,7 +3,9 @@
 fail=0
 err() { printf '\033[31m✗ %s\033[0m\n' "$1" >&2; fail=1; }
 
-staged=$(git diff --cached --name-only --diff-filter=ACMR)
+# Checks the staged files. CI passes a range instead (`.githooks/pre-commit origin/main...HEAD`) to check a whole PR.
+range=${1:---cached}
+staged=$(git diff "$range" --name-only --diff-filter=ACMR)
 [ -z "$staged" ] && exit 0
 
 # 1. Files that must never be committed.
@@ -35,7 +37,7 @@ done)
 
 # 3. Secret-looking strings in added lines.
 patterns='sk-ant-[A-Za-z0-9_-]{20,}|sk-(proj-)?[A-Za-z0-9_-]{32,}|sk-or-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|xox[abprs]-[A-Za-z0-9-]{10,}|[0-9]{8,10}:AA[0-9A-Za-z_-]{30,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|rlf_[a-z]_[A-Za-z0-9_-]{40,}|re_[A-Za-z0-9]{8,}_[A-Za-z0-9]{16,}|postgres(ql)?://[^:@/]+:[^@/]{8,}@'
-hits=$(git diff --cached -U0 --no-color -- . ':(exclude).githooks/*' | grep -E '^\+[^+]' | grep -En "$patterns")
+hits=$(git diff "$range" -U0 --no-color -- . ':(exclude).githooks/*' | grep -E '^\+[^+]' | grep -En "$patterns")
 if [ -n "$hits" ]; then
   err "possible secret in staged changes:"
   echo "$hits" | cut -c1-120 >&2
