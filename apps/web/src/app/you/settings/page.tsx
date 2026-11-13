@@ -1,3 +1,4 @@
+import brand from '@relife/brand/brand.json'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { connection } from 'next/server'
@@ -37,7 +38,7 @@ export default function SettingsPage() {
   return (
     <>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <p className="max-w-[60ch] text-body text-ink-2">Your profile, how ReLife looks, which AI it uses and where your data lives. Data sources and API keys are in Connections; Telegram messages are in Notifications.</p>
+        <p className="max-w-[60ch] text-body text-ink-2">Your profile, how {brand.name} looks, which AI it uses and where your data lives. Data sources and API keys are in Connections; Telegram messages are in Notifications.</p>
         <div className="flex items-center gap-2">
           {/* A full load: the tour opens from the address on arrival. */}
           <a href="/?tour" className={buttonClass({ variant: 'ghost', size: 'sm' })}>Take the tour</a>
@@ -138,7 +139,7 @@ async function Settings() {
         </SettingsRow>
       </SettingsSection>
 
-      <SettingsSection id="privacy" title="Data & privacy" description="ReLife is local-first. Nothing leaves this Mac unless you connect a service.">
+      <SettingsSection id="privacy" title="Data & privacy" description={`${brand.name} is local-first. Nothing leaves this Mac unless you connect a service.`}>
         <SettingsRow label="Your data" hint="Every routine, entry, payment and XP point.">
           <Fact icon={Database}>Postgres on this Mac, database <code className="rounded-xs bg-surface-2 px-1 text-[12.5px]">{dbName}</code>{isMock ? <Badge color="var(--warn)" className="ml-2">Mock</Badge> : null}</Fact>
         </SettingsRow>

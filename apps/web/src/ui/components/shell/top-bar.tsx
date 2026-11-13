@@ -1,5 +1,6 @@
 'use client'
 
+import brand from '@relife/brand/brand.json'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Suspense, type ReactNode } from 'react'
@@ -28,7 +29,7 @@ export function TopBar({ date, sync, bell, avatar }: { date: ReactNode; sync: Re
 export function PhoneTopBar({ sync, avatar, extra }: { sync: ReactNode; avatar: ReactNode; extra?: ReactNode }) {
   return (
     <header className="flex h-14 items-center justify-between lg:hidden">
-      <Link href="/" aria-label="ReLife, Today" className="relative rounded-sm after:absolute after:inset-[-6px] after:content-[''] focus-visible:outline-2 focus-visible:outline-pill"><Wordmark className="h-7" /></Link>
+      <Link href="/" aria-label={`${brand.name}, Today`} className="relative rounded-sm after:absolute after:inset-[-6px] after:content-[''] focus-visible:outline-2 focus-visible:outline-pill"><Wordmark className="h-7" /></Link>
       <div className="-mr-2 flex items-center">{extra}{sync}{avatar}</div>
     </header>
   )

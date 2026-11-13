@@ -4,7 +4,7 @@ import { env } from './env'
 // Outbound Telegram messages. Used by the worker, rules, AI jobs and the web app.
 // Without TELEGRAM_BOT_TOKEN + TELEGRAM_ALLOWED_CHAT_ID it logs instead of sending.
 
-/** A callback button, or (only when RELIFE_PUBLIC_URL is set, see `openInReLife`) one that opens ReLife in the browser. */
+/** A callback button, or (only when RELIFE_PUBLIC_URL is set, see `openInReLife`) one that opens the app in the browser. */
 export type Button = { text: string; data: string } | { text: string; url: string }
 
 let api: Api | undefined

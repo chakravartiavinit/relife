@@ -1,3 +1,4 @@
+import brand from '@relife/brand/brand.json'
 import { and, eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { esc, type Button } from '@/core/notify'
@@ -189,10 +190,10 @@ export async function statusView(user: User, now = new Date()): Promise<{ text: 
   return { text, buttons: [...OPEN_SYSTEM, ...(needs ? openInReLife('/coach', 'Open Coach') : [])] }
 }
 
-/** "3 things need you in ReLife → Coach": the same count as the app's Coach badge, or '' when nothing waits. */
+/** "3 things need you in the app → Coach": the same count as the app's Coach badge, or '' when nothing waits. */
 export async function needsYouLine(user: User): Promise<string> {
   const n = (await loadShellStatus(user)).needsYou.total
-  return n ? `🧭 <b>${n} ${n === 1 ? 'thing needs' : 'things need'} you</b> in ReLife → Coach` : ''
+  return n ? `🧭 <b>${n} ${n === 1 ? 'thing needs' : 'things need'} you</b> in ${brand.name} → Coach` : ''
 }
 
 /** /help: the guide, plus what waits in Coach. */
@@ -202,7 +203,7 @@ export async function helpView(user: User): Promise<{ text: string; buttons: But
 }
 
 export const HELP = [
-  '👋 <b>ReLife</b>',
+  `👋 <b>${brand.name}</b>`,
   '<i>Your life as a game: the System sets quests from your own data.</i>',
   '',
   '<b>The System</b>',

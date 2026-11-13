@@ -1,3 +1,4 @@
+import brand from '@relife/brand/brand.json'
 import type { Metadata } from 'next'
 import { connection } from 'next/server'
 import { notFound } from 'next/navigation'
@@ -57,7 +58,7 @@ async function Detail({ params }: { params: PageProps<'/plan/goals/[id]'>['param
               <span>{move?.since ?? 'No current value yet'}</span><span>{move?.left ?? ''}</span>
             </div>
             <p className="mt-4 text-[12.5px] text-ink-3 tabular-nums">{coverageLine(g)} · Baseline: {g.baselineHow}</p>
-            {g.sensitive ? <p className="mt-2 text-[12.5px] text-ink-3">ReLife won’t set quests or suggest changes for this measure.</p> : null}
+            {g.sensitive ? <p className="mt-2 text-[12.5px] text-ink-3">{brand.name} won’t set quests or suggest changes for this measure.</p> : null}
             {g.measureKind === 'check_in' ? (
               <div className="mt-5">
                 <h3 className="mb-2 font-mono text-[11.5px] font-semibold tracking-[0.08em] text-ink-2 uppercase">Check-ins</h3>

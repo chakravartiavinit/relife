@@ -1,5 +1,6 @@
 'use client'
 
+import brand from '@relife/brand/brand.json'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useId, useState } from 'react'
 import { BedDouble, Check, Clock, Droplet, Footprints, Lock, Sparkles, Sun, Wallet, type LucideIcon } from 'lucide-react'
@@ -64,7 +65,7 @@ export function StepYou({ v, set, suggested, timezones, currencies, nameError }:
   const cur = v.baseCurrency.toUpperCase()
   return (
     <>
-      <Title step={0} title="Start your save file" body="ReLife turns your days into a character you level up. Setup takes about two minutes." />
+      <Title step={0} title="Start your save file" body={`${brand.name} turns your days into a character you level up. Setup takes about two minutes.`} />
       <motion.div variants={item}>
         <BeuiInput
           id={`${id}-n`} label="What should we call you?" value={v.name} onChange={(n) => set('name', n)} placeholder="First name" autoComplete="given-name" maxLength={60} autoFocus

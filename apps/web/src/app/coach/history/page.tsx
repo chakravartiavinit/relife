@@ -1,3 +1,4 @@
+import brand from '@relife/brand/brand.json'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { connection } from 'next/server'
@@ -103,7 +104,7 @@ async function History({ searchParams }: { searchParams: PageProps<'/coach/histo
           <div className="flex items-start justify-between gap-3 px-5 pb-3">
             <div>
               <h2 id="data-h" className={sectionTitle}>Data</h2>
-              <p className="mt-1 text-small text-ink-3 tabular-nums">ReLife read {h.readByItself.toLocaleString('en')} messages by itself.</p>
+              <p className="mt-1 text-small text-ink-3 tabular-nums">{brand.name} read {h.readByItself.toLocaleString('en')} messages by itself.</p>
             </div>
             {h.waiting.length ? <RetryAll ids={h.waiting.map((e) => e.id)} label={h.waiting.length > 1 ? 'Try all now' : 'Try now'} /> : null}
           </div>

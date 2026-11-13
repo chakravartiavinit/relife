@@ -9,7 +9,7 @@ export type HistoryEvent = typeof schema.rawEvents.$inferSelect
 
 /**
  * What Coach keeps after it leaves Needs you: decided insights, nudges that ran out their three days, active plans, and
- * the messages ReLife is still waiting on or that were skipped (read-only, with Try now).
+ * the messages the app is still waiting on or that were skipped (read-only, with Try now).
  */
 export async function loadCoachHistory(user: User, now = new Date()) {
   const I = schema.insights, R = schema.rawEvents

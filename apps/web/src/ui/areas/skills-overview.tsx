@@ -1,3 +1,4 @@
+import brand from '@relife/brand/brand.json'
 import { Activity, Code, GitCommitHorizontal, GraduationCap, Keyboard, Languages, Laptop, Terminal } from 'lucide-react'
 import { AREAS } from '@/core/areas'
 import { hm, loadSkills, sumLast } from '@/core/areas/skills'
@@ -41,7 +42,7 @@ export async function SkillsOverview({ user, today }: { user: User; today: strin
         />
         <LibraryGrid
           items={s.learning}
-          empty={<EmptyState title="Nothing in progress" icon={GraduationCap} color={def.color} description="Add a course, a cohort or a book, or press Track this in the ReLife browser extension on any course page." />}
+          empty={<EmptyState title="Nothing in progress" icon={GraduationCap} color={def.color} description={`Add a course, a cohort or a book, or press Track this in the ${brand.name} browser extension on any course page.`} />}
         />
         {s.finished.length ? <p className="mt-4 text-small text-ink-3">{s.finished.length} finished</p> : null}
       </Card>
