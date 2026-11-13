@@ -56,7 +56,7 @@ const STATUS: Record<Kind, ToastStatus> = { good: 'success', bad: 'error', neutr
  * Bottom right on a laptop, in line with the page's right edge and clear of the content and the Settings save
  * bar; on a phone, centred above the tab bar.
  */
-const STACK_CLASS = 'bottom-24 w-[min(380px,calc(100vw-24px))] max-w-none lg:right-[calc(max(0px,(100vw_-_1480px)/2)_+_2.5rem)] lg:bottom-8 lg:left-auto lg:translate-x-0'
+const STACK_CLASS = 'bottom-[calc(var(--tabbar-h)+16px)] w-[min(380px,calc(100vw-24px))] max-w-none lg:right-[calc(max(0px,(100vw_-_1480px)/2)_+_2.5rem)] lg:bottom-8 lg:left-auto lg:translate-x-0'
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<Item[]>([])

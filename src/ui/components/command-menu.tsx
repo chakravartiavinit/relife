@@ -207,18 +207,3 @@ const itemClass = 'group/item flex min-h-12 cursor-pointer items-center gap-3 ro
 const kbdClass = 'inline-grid h-5 min-w-5 place-items-center rounded-[5px] bg-surface px-1.5 text-[11px] font-medium text-ink-3 shadow-[inset_0_0_0_1px_var(--hairline),0_1px_0_var(--hairline)]'
 // Only the selected row shows its Enter key, so the hint follows the keyboard.
 const enterClass = `${kbdClass} opacity-0 transition-[opacity] duration-150 group-data-[selected=true]/item:opacity-100`
-
-export function CommandButton() {
-  return (
-    <button
-      type="button"
-      data-tour="command"
-      onClick={() => window.dispatchEvent(new Event('relife:command'))}
-      className="flex h-10 w-full items-center gap-2.5 rounded-md bg-ink/[0.035] px-3 text-sm text-ink-3 shadow-inset transition-[background-color,color] duration-150 hover:bg-ink/[0.06] hover:text-ink-2 dark:bg-white/[0.04] dark:hover:bg-white/[0.07]"
-    >
-      <Search className="size-4" strokeWidth={1.5} />
-      <span className="flex-1 text-left">Log or search</span>
-      <kbd className="rounded-xs bg-surface px-1.5 text-[11px] leading-5 font-medium text-ink-2 shadow-1">⌘K</kbd>
-    </button>
-  )
-}

@@ -24,6 +24,9 @@ import { Button } from './button'
 import { PeekLink } from './peek/peek-link'
 import { SegmentTabs } from './segment-tabs'
 import { Sheet } from './sheet'
+import { AvatarRing } from './shell/avatar-ring'
+import { CoachBell, CountPill } from './shell/coach-bell'
+import { SyncDot } from './shell/sync-dot'
 
 /** A labelled cell, so every sample says what it is. */
 function Demo({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) {
@@ -130,6 +133,42 @@ export function PeekLinkDemo() {
         Clicking swaps the URL without a server trip. Middle-click opens it in a new tab. Back closes it.
       </div>
     </div>
+  )
+}
+
+/** The shell's status pieces in each state: the sync dot, the Coach count, the level avatar and an area dot. */
+export function ShellDemo() {
+  const dot = (status: 'done' | 'due' | 'none') => (
+    <span aria-hidden className={`size-1.5 rounded-full ${status === 'none' ? 'opacity-30' : ''}`} style={{ background: status === 'due' ? 'transparent' : 'var(--cat-health)', boxShadow: status === 'due' ? 'inset 0 0 0 1.5px var(--cat-health)' : undefined }} />
+  )
+  return (
+    <Grid>
+      <Demo title="SyncDot (good, warn, bad, loading)">
+        <div className="flex flex-wrap items-center gap-2">
+          <SyncDot tone="good" label="Synced 2 min ago" />
+          <SyncDot tone="warn" label="2 need a fix" />
+          <SyncDot tone="bad" label="Sync paused 2 h" />
+          <SyncDot tone="loading" />
+        </div>
+      </Demo>
+      <Demo title="CoachBell and CountPill (0, 4, 120)">
+        <div className="flex items-center gap-4">
+          <CoachBell /><CoachBell count={4} /><CoachBell count={120} />
+          <CountPill n={4} /><CountPill n={120} />
+        </div>
+      </Demo>
+      <Demo title="AvatarRing (loading, level 1, level 12 at 62%, level 24 at 100%)">
+        <div className="flex items-center gap-4">
+          <AvatarRing initial="R" />
+          <AvatarRing initial="A" level={1} progress={0.02} />
+          <AvatarRing initial="A" level={12} progress={0.62} />
+          <AvatarRing initial="A" level={24} progress={1} />
+        </div>
+      </Demo>
+      <Demo title="Area dot (filled: all done, ring: something due, faint: nothing due)">
+        <div className="flex items-center gap-4 text-small text-ink-2"><span className="flex items-center gap-2">{dot('done')}Health</span><span className="flex items-center gap-2">{dot('due')}Mind</span><span className="flex items-center gap-2">{dot('none')}Wealth</span></div>
+      </Demo>
+    </Grid>
   )
 }
 

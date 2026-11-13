@@ -7,6 +7,7 @@ import { and, count, desc, eq } from 'drizzle-orm'
 import { BellDot, Cpu, Inbox, Repeat, Target } from 'lucide-react'
 import { db, schema } from '@/db'
 import { getUser } from '@/core/user'
+import { pendingInsight } from '@/core/needs-you'
 import { aiEnabled, modelId } from '@/ai'
 import { describe } from '@/domain/recurrence'
 import { sentenceCase } from '@/domain/text'
@@ -44,14 +45,13 @@ async function Coach({ searchParams }: { searchParams: PageProps<'/coach'>['sear
   // `?filter=data` is the old Inbox (messages ReLife couldn't read, payments to sort); `?filter=decisions` is everything else.
   const filter = sp.filter === 'data' || sp.filter === 'decisions' ? sp.filter : null
   const user = await getUser()
-  const mine = eq(schema.insights.userId, user.id)
-  const isPending = eq(schema.insights.status, 'pending')
+  const pendingNow = pendingInsight(user.id)
   const [pending, counts, plans] = await Promise.all([
     db.select().from(schema.insights)
-      .where(and(mine, isPending, show ? eq(schema.insights.kind, show) : undefined))
+      .where(and(pendingNow, show ? eq(schema.insights.kind, show) : undefined))
       .orderBy(desc(schema.insights.createdAt)).limit(30),
     db.select({ kind: schema.insights.kind, n: count() }).from(schema.insights)
-      .where(and(mine, isPending)).groupBy(schema.insights.kind),
+      .where(pendingNow).groupBy(schema.insights.kind),
     db.select().from(schema.plans)
       .where(and(eq(schema.plans.userId, user.id), eq(schema.plans.status, 'active')))
       .orderBy(desc(schema.plans.createdAt)),

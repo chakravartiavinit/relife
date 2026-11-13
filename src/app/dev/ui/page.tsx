@@ -15,7 +15,7 @@ import { BeuiGallery } from '@/ui/components/gallery-beui'
 import { PositionCard } from '@/ui/components/wealth/position-card'
 import { IlloGallery } from '@/ui/components/tour/illos'
 import { ToastGallery } from '@/ui/components/toast'
-import { InstalledBeuiGallery, PeekLinkDemo, SegmentTabsDemo, SheetDemo, TypeScale } from '@/ui/components/gallery-foundations'
+import { InstalledBeuiGallery, PeekLinkDemo, SegmentTabsDemo, SheetDemo, ShellDemo, TypeScale } from '@/ui/components/gallery-foundations'
 import { RecoveryPanel, SystemQuests } from '@/ui/components/system-quests'
 import type { RecoveryView } from '@/domain/recovery'
 import { GOAL_FOOTNOTE, goalSnapshot } from '@/domain/goals'
@@ -149,6 +149,10 @@ export default function UiGallery() {
 
       <Section title="Peek link">
         <PeekLinkDemo />
+      </Section>
+
+      <Section title="Shell pieces">
+        <ShellDemo />
       </Section>
 
       <Section title="beUI: installed for the redesign">

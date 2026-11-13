@@ -1,5 +1,6 @@
 import { and, eq, inArray, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
+import { pendingInsight } from './needs-you'
 import type { User } from './user'
 import { trackerDays, transactionsBetween, isSpend } from './metrics'
 import { dayAgenda, type DueItem, type ScheduleMeta } from './schedules'
@@ -30,7 +31,7 @@ export async function loadBriefing(user: User, payments: DueItem[], now = new Da
     loadPortfolio(user),
     db.select().from(schema.schedules).where(and(eq(schema.schedules.userId, user.id), eq(schema.schedules.active, true), eq(schema.schedules.kind, 'medicine'))),
     db.select({ id: schema.connections.connectorId }).from(schema.connections).where(and(eq(schema.connections.userId, user.id), eq(schema.connections.enabled, true), eq(schema.connections.status, 'error'))),
-    db.select({ n: sql<number>`count(*)::int` }).from(schema.insights).where(and(eq(schema.insights.userId, user.id), eq(schema.insights.status, 'pending'), inArray(schema.insights.kind, ['alert', 'nudge']))),
+    db.select({ n: sql<number>`count(*)::int` }).from(schema.insights).where(and(pendingInsight(user.id), inArray(schema.insights.kind, ['alert', 'nudge']))),
   ])
 
   // Trackers: today and yesterday.
