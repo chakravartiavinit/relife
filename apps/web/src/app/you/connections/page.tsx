@@ -1,3 +1,4 @@
+import brand from '@relife/brand/brand.json'
 import type { Metadata } from 'next'
 import { connection } from 'next/server'
 import { headers } from 'next/headers'
@@ -14,7 +15,7 @@ export default function ConnectionsPage() {
   return (
     <>
       <p className="mb-6 max-w-[60ch] text-body text-ink-2">
-        Apps and devices that feed ReLife, sorted by what they track, plus Telegram and AI models. You bring the keys: they’re encrypted in your local database, and nothing syncs until you connect it.
+        Apps and devices that feed {brand.name}, sorted by what they track, plus Telegram and AI models. You bring the keys: they’re encrypted in your local database, and nothing syncs until you connect it.
       </p>
       <Suspense fallback={
         <div className="flex flex-col gap-6">

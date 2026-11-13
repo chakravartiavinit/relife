@@ -1,3 +1,4 @@
+import brand from '@relife/brand/brand.json'
 import type { Metadata } from 'next'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
@@ -54,7 +55,7 @@ async function Goals() {
             <Card>
               <EmptyState icon={Target}
                 title={nothing ? 'No goals yet' : 'No active goals'}
-                description={nothing ? 'Pick one outcome you want to change, like sleep or savings. ReLife records where you start and checks in every week.' : 'Resume a paused goal or create a new one.'}
+                description={nothing ? `Pick one outcome you want to change, like sleep or savings. ${brand.name} records where you start and checks in every week.` : 'Resume a paused goal or create a new one.'}
                 action={<NewGoalButton today={data.today} picker={data.picker} activeCount={data.activeCount} />} />
             </Card>
           )}
@@ -62,7 +63,7 @@ async function Goals() {
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-surface-2 p-4">
               <div className="min-w-0">
                 <p className="text-body font-semibold text-ink">{MAX_ACTIVE - data.activeCount} {MAX_ACTIVE - data.activeCount === 1 ? 'slot' : 'slots'} free</p>
-                <p className="text-small text-ink-3">Start from the coach draft or any tracker ReLife already fills.</p>
+                <p className="text-small text-ink-3">Start from the coach draft or any tracker {brand.name} already fills.</p>
               </div>
               <NewGoalButton today={data.today} picker={data.picker} activeCount={data.activeCount} />
             </div>

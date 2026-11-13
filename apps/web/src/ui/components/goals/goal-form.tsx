@@ -1,5 +1,6 @@
 'use client'
 
+import brand from '@relife/brand/brand.json'
 import { useActionState, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Check, ChartLine, ClipboardCheck, Info, Plus, Target, TriangleAlert, type LucideIcon } from 'lucide-react'
@@ -90,7 +91,7 @@ export function GoalDialog({ open, onClose, mode, initial, picker, today, drafts
   )
 }
 
-/** New goal in two steps: pick what to change (a coach draft, a tracker ReLife already fills, or a check-in), then the prefilled form. */
+/** New goal in two steps: pick what to change (a coach draft, a tracker the app already fills, or a check-in), then the prefilled form. */
 function CreateSteps({ mode, initial, picker, today, drafts, onDone }: {
   mode: Extract<Mode, { kind: 'create' }>; initial: GoalFormInitial; picker: GoalPickerData; today: string; drafts: DraftOffer[]; onDone: () => void
 }) {
@@ -133,7 +134,7 @@ function GoalStartPicker({ picker, activeCount, drafts, onDraft, onTracker, onCh
         </div>
       ) : null}
       <div>
-        <h3 className="mb-2 text-small font-semibold text-ink-2">Trackers ReLife already fills</h3>
+        <h3 className="mb-2 text-small font-semibold text-ink-2">Trackers {brand.name} already fills</h3>
         <ul className="flex flex-col gap-2">
           {shown.map((t) => {
             const ok = t.observations >= MIN_DAYS && !!t.baseline
@@ -311,7 +312,7 @@ function GoalForm({ mode, initial, picker, today, onDone, onBack }: { mode: Mode
         </div>
       </Section>
 
-      <Section title="Measure" hint={locked ? 'To measure something else, finish this goal and start a new one.' : 'Use a tracker ReLife already fills, or record a check-in yourself.'}>
+      <Section title="Measure" hint={locked ? 'To measure something else, finish this goal and start a new one.' : `Use a tracker ${brand.name} already fills, or record a check-in yourself.`}>
         {locked ? (
           <p className="text-[13.5px] text-ink-2">{goal!.measureKind === 'tracker' ? `${goal!.measureName} tracker` : `Check-in · ${goal!.measureName}`}{goal!.unit ? ` · ${goal!.unit}` : ''}</p>
         ) : (
@@ -342,7 +343,7 @@ function GoalForm({ mode, initial, picker, today, onDone, onBack }: { mode: Mode
               </div>
             )}
             {measureKind === 'tracker' && tracker?.activity ? <Notice tone="warn">This counts activity. A result measure or a check-in shows progress better.</Notice> : null}
-            {measureKind === 'tracker' && tracker?.sensitive ? <Notice>ReLife won’t set quests or suggest changes for this measure.</Notice> : null}
+            {measureKind === 'tracker' && tracker?.sensitive ? <Notice>{brand.name} won’t set quests or suggest changes for this measure.</Notice> : null}
           </>
         )}
       </Section>

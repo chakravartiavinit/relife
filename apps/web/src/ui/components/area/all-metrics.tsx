@@ -1,3 +1,4 @@
+import brand from '@relife/brand/brand.json'
 import Link from 'next/link'
 import { ChevronDown } from 'lucide-react'
 import type { AreaDef } from '@/core/areas'
@@ -27,7 +28,7 @@ export async function AllMetrics({ user, def, today }: { user: User; def: AreaDe
     <Card className="@container">
       <CardHeader
         title={<>All metrics <span className="ms-1 text-small font-normal text-ink-3 tabular-nums">{count}</span></>}
-        description={count ? 'Every number ReLife tracks here, from every source. Tap one for its trend.' : undefined}
+        description={count ? `Every number ${brand.name} tracks here, from every source. Tap one for its trend.` : undefined}
         action={<Link href="/plan/trackers" className={buttonClass({ variant: 'ghost', size: 'sm' })}>Trackers</Link>}
       />
       {count ? (

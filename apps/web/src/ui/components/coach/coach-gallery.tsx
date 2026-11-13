@@ -1,5 +1,6 @@
 'use client'
 
+import brand from '@relife/brand/brand.json'
 import type { RecoveryView } from '@/domain/recovery'
 import type { NeedsYouItem } from '@/domain/needs-you'
 import { Card } from '../card'
@@ -47,7 +48,7 @@ export function CoachGallery() {
         <Card className="px-0 py-0 divide-y divide-divider">
           <ResolvedItem text="Dismissed: Food delivery is up 32% this month" undo={<span className="text-small font-medium text-ink-2">Undo</span>} />
           <ResolvedItem text="Blinkit filed under Groceries · remembered" />
-          <QueueItem kind="unread" label="Bank SMS · now" title="A message ReLife couldn’t read" busy>Trying again…</QueueItem>
+          <QueueItem kind="unread" label="Bank SMS · now" title={`A message ${brand.name} couldn’t read`} busy>Trying again…</QueueItem>
         </Card>
       </div>
       <div className="flex flex-col gap-3">

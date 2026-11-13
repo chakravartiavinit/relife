@@ -1,5 +1,6 @@
 'use client'
 
+import brand from '@relife/brand/brand.json'
 import Link from 'next/link'
 import { CircleAlert, CircleCheck, CircleDashed, RefreshCw, Sparkles } from 'lucide-react'
 import type { BriefPeek, SyncPeek } from '@/core/peek/types'
@@ -69,7 +70,7 @@ export function BriefPeekView({ data: d }: { data: BriefPeek }) {
     return (
       <div>
         <PeekNote icon={Sparkles} label="No summary yet">
-          ReLife has not written a summary for {scopeName(d.scope)} yet. It writes one once there is data to describe, and shows the numbers it came from here.
+          {brand.name} has not written a summary for {scopeName(d.scope)} yet. It writes one once there is data to describe, and shows the numbers it came from here.
         </PeekNote>
         <div className="mt-5"><Link href={`/coach?ask=${encodeURIComponent(`How is my ${scopeName(d.scope).toLowerCase()} going?`)}`} className={buttonClass({ variant: 'secondary' })}>Ask Coach instead</Link></div>
       </div>

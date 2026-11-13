@@ -41,7 +41,7 @@ const original = (body: unknown) => (typeof body === 'string' ? body : JSON.stri
 
 /**
  * Everything waiting for the user, ranked: pending insights (alerts, nudges, proposals, goal drafts, the weekly review,
- * the recovery choice), messages ReLife could not read, and payments with no category (one item per merchant). The three
+ * the recovery choice), messages the app could not read, and payments with no category (one item per merchant). The three
  * queries mirror the SQL behind the shell badge, so the list and the count agree.
  */
 export async function loadNeedsYou(user: User, now = new Date()): Promise<{ items: NeedsYouItem[]; categories: string[] }> {

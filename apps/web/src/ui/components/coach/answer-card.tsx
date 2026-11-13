@@ -1,5 +1,6 @@
 'use client'
 
+import brand from '@relife/brand/brand.json'
 import { useId, useState } from 'react'
 import { ChartNoAxesColumn, ChevronDown, RotateCcw, Sparkles } from 'lucide-react'
 import { parsePeek } from '@/domain/peek'
@@ -60,7 +61,7 @@ export function AnswerCard({ text, sources = [], error, onRetry, footer, classNa
         <div id={whyId} className="mt-3 rounded-md bg-surface-2 px-3 py-2.5 text-small text-ink-2 text-pretty">
           <span className="font-semibold text-ink">How I got this: </span>
           {sources.length
-            ? `I read ${sources.map((s) => s.label).join(', ')} through ReLife’s data tools, so the numbers come from your records, not from memory. Missing days count as missing, not zero.`
+            ? `I read ${sources.map((s) => s.label).join(', ')} through ${brand.name}’s data tools, so the numbers come from your records, not from memory. Missing days count as missing, not zero.`
             : 'No data tools were needed. This comes from the summary of your week, not from a new lookup.'}
         </div>
       ) : null}

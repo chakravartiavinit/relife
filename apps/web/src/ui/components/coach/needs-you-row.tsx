@@ -1,5 +1,6 @@
 'use client'
 
+import brand from '@relife/brand/brand.json'
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { Check, ChevronRight, CircleAlert, RefreshCw, Repeat } from 'lucide-react'
@@ -172,7 +173,7 @@ function UnreadRow({ item, ctx }: { item: Extract<NeedsYouItem, { kind: 'unread'
   return (
     <QueueItem
       kind="unread" label={<>{s.title}{' '}<span aria-hidden>·</span> {when(item.at, ctx)}</>} busy={pending}
-      title={s.amount ? <>A payment message ReLife couldn’t read <span className="font-normal text-ink-3 tabular-nums">· {formatMoney(s.amount.value, s.amount.currency)}</span></> : 'A message ReLife couldn’t read'}
+      title={s.amount ? <>A payment message {brand.name} couldn’t read <span className="font-normal text-ink-3 tabular-nums">· {formatMoney(s.amount.value, s.amount.currency)}</span></> : 'A message {brand.name} couldn’t read'}
       actions={
         <>
           <Button size="sm" disabled={pending} onClick={retry}><RefreshCw className={cn('size-3.5', pending && 'animate-spin motion-reduce:animate-none')} strokeWidth={1.5} aria-hidden />{pending ? 'Trying…' : 'Retry'}</Button>
@@ -250,7 +251,7 @@ function CategoriseRow({ item, ctx }: { item: Extract<NeedsYouItem, { kind: 'cat
     >
       <p className="text-body text-ink-2 text-pretty">
         <span className="tabular-nums">{item.count} {item.count === 1 ? 'payment' : 'payments'} · {formatMoney(item.total, item.currency)}.</span>{' '}
-        Pick once and ReLife files the next ones itself.
+        Pick once and {brand.name} files the next ones itself.
       </p>
     </QueueItem>
   )

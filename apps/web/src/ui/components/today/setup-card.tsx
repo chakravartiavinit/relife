@@ -1,3 +1,4 @@
+import brand from '@relife/brand/brand.json'
 import Link from 'next/link'
 import { Check, CalendarCheck, Compass, Plug, Send, Smartphone, Target, type LucideIcon } from 'lucide-react'
 import { hideSetupChecklist } from '@/app/actions'
@@ -20,7 +21,7 @@ export function SetupCard({ steps }: { steps: Step[] }) {
         <div className="min-w-0 max-w-[52ch]">
           <SystemLabel>Setup · {done} of {steps.length}</SystemLabel>
           <h2 id="setup-h" className="mt-0.5 font-display text-title text-ink">Fill in your life pulse</h2>
-          <p className="mt-1 text-body text-ink-2">Each source switches on numbers here and on its area page. Until then, check things off below and ReLife learns your day.</p>
+          <p className="mt-1 text-body text-ink-2">Each source switches on numbers here and on its area page. Until then, check things off below and {brand.name} learns your day.</p>
         </div>
         <div className="w-full sm:w-64">
           <Capsule value={done} max={steps.length} size="sm" color="var(--pill)" label="Setup progress" />

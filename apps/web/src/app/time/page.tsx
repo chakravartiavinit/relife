@@ -1,3 +1,4 @@
+import brand from '@relife/brand/brand.json'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { connection } from 'next/server'
@@ -136,13 +137,13 @@ async function Time() {
 
       <Card>
         <CardHeader title="Library" icon={<LibraryBig strokeWidth={2} />} color="var(--pill)" description="Courses, shows and series you track from the extension (press Track this on any page)" />
-        <LibraryGrid items={library} empty={<p className="text-[13px] text-ink-3">Nothing tracked yet. Open a course or show, click the ReLife extension and press Track this.</p>} />
+        <LibraryGrid items={library} empty={<p className="text-[13px] text-ink-3">Nothing tracked yet. Open a course or show, click the {brand.name} extension and press Track this.</p>} />
       </Card>
     </div>
   )
 }
 
-/** "2 min ago", for when the extension last reached ReLife. */
+/** "2 min ago", for when the extension last reached the app. */
 function ago(d: Date) {
   const m = Math.round((Date.now() - d.getTime()) / 60_000)
   return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 48 * 60 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`
@@ -156,10 +157,10 @@ function Setup({ connected, seen }: { connected: boolean; seen: Date | null }) {
         title={connected ? 'Waiting for the first minutes' : 'Track your laptop time'}
         description={
           <>
-            {connected && seen ? <span className="mb-2 block font-medium text-ink-2">The extension last reached ReLife {ago(seen)}. Time shows here after a few minutes on a site.</span> : null}
+            {connected && seen ? <span className="mb-2 block font-medium text-ink-2">The extension last reached {brand.name} {ago(seen)}. Time shows here after a few minutes on a site.</span> : null}
             1. On <Link href="/you/connections" className="font-medium text-pill-ink hover:underline">You › Connections → Laptop activity</Link>, set a token.{' '}
-            2. In Chrome open <code className="rounded-xs bg-surface-2 px-1">chrome://extensions</code>, turn on Developer mode, choose Load unpacked and pick the <code className="rounded-xs bg-surface-2 px-1">apps/extension</code> folder in ReLife.{' '}
-            3. Open the extension and paste the same token. Mac apps are recorded by ReLife’s worker on its own.
+            2. In Chrome open <code className="rounded-xs bg-surface-2 px-1">chrome://extensions</code>, turn on Developer mode, choose Load unpacked and pick the <code className="rounded-xs bg-surface-2 px-1">apps/extension</code> folder in {brand.name}.{' '}
+            3. Open the extension and paste the same token. Mac apps are recorded by {brand.name}’s worker on its own.
           </>
         }
         action={<Link href="/you/connections" className={buttonClass({ variant: 'primary', size: 'sm' })}>{connected ? 'Check the connection' : 'Set it up'}</Link>}

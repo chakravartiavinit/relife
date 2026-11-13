@@ -1,5 +1,6 @@
 'use client'
 
+import brand from '@relife/brand/brand.json'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Suspense, useEffect, type ReactNode } from 'react'
@@ -65,7 +66,7 @@ export function Sidebar(slots: Slots) {
         {/* Floating glass panel: radius 24 with 12px padding, so rows inside use 12. */}
         <div className="flex h-full min-h-0 flex-col gap-4 rounded-xl bg-glass px-3 py-4 shadow-1 backdrop-blur-xl rail:px-1">
           <div className="flex h-10 shrink-0 items-center px-2 rail:justify-center rail:px-0">
-            <Link href="/" aria-label="ReLife, Today" className="relative rounded-sm after:absolute after:inset-[-4px] after:content-[''] focus-visible:outline-2 focus-visible:outline-pill">
+            <Link href="/" aria-label={`${brand.name}, Today`} className="relative rounded-sm after:absolute after:inset-[-4px] after:content-[''] focus-visible:outline-2 focus-visible:outline-pill">
               <Wordmark className="h-[30px] rail:hidden" />
               <CapsuleMark className="hidden size-9 rail:block" />
             </Link>
