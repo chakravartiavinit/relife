@@ -2,12 +2,30 @@
 // Safe to re-run; it skips schedules that already exist by name.
 import { and, eq } from 'drizzle-orm'
 import { db, schema, sql } from '@/db'
+import { seedDemoAllowed } from '@/core/demo'
 import { getUser } from '@/core/user'
 import { buildRRule } from '@/domain/recurrence'
 import { localDate } from '@/core/time'
 import { persist } from '@/core/ingest'
 
+// The sample rows go into whatever database DATABASE_URL names. If it already holds your own data (rows not from
+// source 'demo'), this stops unless you pass --force. It never runs inside the read-only demo.
+async function guard() {
+  const [{ name }] = await sql`select current_database() as name`
+  const [c] = await sql`select
+    (select count(*)::int from schedules) as schedules,
+    (select count(*)::int from entries where source <> 'demo') as entries,
+    (select count(*)::int from transactions where source <> 'demo') as transactions,
+    (select count(*)::int from entries where source = 'demo') as seeded`
+  // Schedules have no source: once this script has run (it leaves demo entries), its own schedules don't count as yours.
+  const counts = { schedules: c.seeded > 0 ? 0 : c.schedules, entries: c.entries, transactions: c.transactions }
+  const r = seedDemoAllowed({ dbName: String(name), counts, force: process.argv.includes('--force') })
+  if (!r.ok) { console.error(r.reason); await sql.end(); process.exit(1) }
+  console.log(`Seeding "${name}" (${counts.schedules} schedules, ${counts.entries} entries, ${counts.transactions} transactions of yours already there).`)
+}
+
 async function main() {
+  await guard()
   const user = await getUser()
   const today = localDate(new Date(), user.timezone)
   const day1 = `${today.slice(0, 8)}01`

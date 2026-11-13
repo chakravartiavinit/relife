@@ -14,6 +14,10 @@ import { pendingRequests } from '@/core/auth/pairing'
 import { viewerDevice } from '@/core/auth/viewer'
 import { isLoopbackHost } from '@/core/auth/trust'
 import { getUser } from '@/core/user'
+import { isDemo } from '@/core/demo'
+import { inContainer } from '@/core/platform'
+import { EmptyState } from '@/ui/components/empty'
+import { MonitorOff } from 'lucide-react'
 
 export const metadata: Metadata = { title: 'Devices' }
 
@@ -35,6 +39,7 @@ export default function DevicesPage({ searchParams }: PageProps<'/you/settings/d
 
 async function Devices({ searchParams }: { searchParams: PageProps<'/you/settings/devices'>['searchParams'] }) {
   await connection()
+  if (isDemo()) return <DevicesOff />
   const user = await getUser()
   const me = await viewerDevice()
   const q = await searchParams
@@ -47,6 +52,7 @@ async function Devices({ searchParams }: { searchParams: PageProps<'/you/setting
       loopbackTrust={mode() === 'self-host' && isLoopbackHost((await headers()).get('host'))}
       approveCode={typeof q.approve === 'string' ? q.approve.slice(0, 16) : undefined}
       openConnect={q.connect !== undefined}
+      container={inContainer()}
     />
   )
 }
@@ -57,4 +63,9 @@ function DevicesSkeleton() {
       <Skeleton className="h-[340px] rounded-lg" />
     </div>
   )
+}
+
+/** The read-only demo has no devices: nobody signs in. */
+function DevicesOff() {
+  return <EmptyState icon={MonitorOff} title="Devices are off in the demo" description="Nobody signs in to the demo, so there is nothing to connect or disconnect. Run your own copy to pair your phone and laptop." />
 }

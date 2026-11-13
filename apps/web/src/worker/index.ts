@@ -10,6 +10,9 @@ import { missingEnv } from './sync'
 import { startScheduler } from '@/core/jobs'
 import { JOBS } from '@/jobs'
 import { env } from '@/core/env'
+import { isDemo } from '@/core/demo'
+import { localAiStatus } from '@/ai/local'
+import { modelId } from '@/ai/models'
 
 // The worker runs the bot, laptop activity and the job scheduler (src/jobs): syncs, parsing, reminders, rules, AI.
 
@@ -17,6 +20,8 @@ import { env } from '@/core/env'
 process.on('unhandledRejection', (reason) => console.error('[worker] unhandled rejection:', reason))
 
 async function main() {
+  // The read-only demo has no worker: nothing syncs, nothing is sent.
+  if (isDemo()) { console.log('[worker] demo mode: not starting'); process.exit(0) }
   // Re-read every minute: Settings saves (time zone, notifications, the System's focus) happen in the web app,
   // whose cache clear never reaches this process.
   let user = await getUser()
@@ -30,6 +35,7 @@ async function main() {
     if (m.length) console.log(`[worker] ${c.id} not connected`)
   }
   if (!aiEnabled('plan')) console.log('[worker] AI jobs off: connect an AI provider with a default model')
+  else if (modelId('plan')?.startsWith('local:')) { const s = await localAiStatus(); if (!s.ok) console.log(`[worker] ${s.message}`) }
 
   // ponytail: the bot starts once a token is connected; changing or removing the token needs a worker restart.
   let bot = startBot()

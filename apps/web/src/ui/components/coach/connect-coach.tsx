@@ -1,7 +1,9 @@
+import brand from '@relife/brand/brand.json'
 import Link from 'next/link'
 import { Check, Lock, MessageCircle, Plug, Sparkles } from 'lucide-react'
 import { buttonClass } from '../button'
 import { Card } from '../card'
+import { DEMO_LINK } from '../demo-banner'
 
 /** What still works with no model: the list is the promise, so it only names things that run without one. */
 const WITHOUT_MODEL = [
@@ -12,7 +14,7 @@ const WITHOUT_MODEL = [
 ]
 
 /** No model yet: one clear next step, then what works without one. */
-export function ConnectCoach({ compact = false }: { compact?: boolean }) {
+export function ConnectCoach({ compact = false, demo = false }: { compact?: boolean; /** The read-only demo has no model: say so instead of offering one. */ demo?: boolean }) {
   return (
     <div className="flex flex-col gap-4">
       <Card className="p-5">
@@ -21,10 +23,12 @@ export function ConnectCoach({ compact = false }: { compact?: boolean }) {
             {[Sparkles, MessageCircle, Plug].map((Icon, i) => <span key={i} className="grid size-10 place-items-center rounded-full bg-surface-2 text-ink-2"><Icon className="size-[18px]" strokeWidth={1.5} /></span>)}
           </div>
         )}
-        <h2 className="text-heading font-semibold text-ink text-pretty">Connect an AI model to ask questions</h2>
-        <p className="mt-1.5 text-body text-ink-2 text-pretty">Then ask anything about your data, get a nudge each morning and a coach note on Sunday reviews. Your data stays in your database; the model provider receives only what each question needs.</p>
-        <Link href="/you/connections" className={buttonClass({ variant: 'primary', className: 'mt-4 w-full' })}>Choose a model</Link>
-        <p className="mt-2 text-center text-small text-ink-3">Opens You › Connections › AI models</p>
+        <h2 className="text-heading font-semibold text-ink text-pretty">{demo ? 'Coach is off in the demo' : 'Connect an AI model to ask questions'}</h2>
+        <p className="mt-1.5 text-body text-ink-2 text-pretty">{demo ? 'The demo has no AI model, and nothing typed here is sent anywhere. Run your own copy to ask about your data, get a nudge each morning and a coach note on Sunday reviews.' : 'Then ask anything about your data, get a nudge each morning and a coach note on Sunday reviews. Your data stays in your database; the model provider receives only what each question needs.'}</p>
+        {demo
+          ? <a href={DEMO_LINK} className={buttonClass({ variant: 'primary', className: 'mt-4 w-full' })}>Get {brand.name} →</a>
+          : <Link href="/you/connections" className={buttonClass({ variant: 'primary', className: 'mt-4 w-full' })}>Choose a model</Link>}
+        {demo ? null : <p className="mt-2 text-center text-small text-ink-3">Opens You › Connections › AI models</p>}
       </Card>
       {compact ? null : (
         <Card className="p-5">

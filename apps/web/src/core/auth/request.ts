@@ -5,18 +5,21 @@ import { db, schema } from '@/db'
 import { getUser, type User } from '../user'
 import { findByToken, touchIfDue, type Device } from './devices'
 import { COOKIE_MAX_AGE_S } from './mode'
+import { DEMO_MESSAGE, demoDevice, demoMethodAllowed, isDemo } from '../demo'
 import { cookieName, isSecureRequest, scopeAllows, tokenOf } from './trust'
 
 // Checks used by route handlers, server actions and server components. The edge check is src/proxy.ts; a route always
 // calls authenticate() itself (defense in depth).
 
-export type AuthFail = 'missing' | 'invalid' | 'revoked' | 'expired' | 'scope' | 'csrf'
+export type AuthFail = 'missing' | 'invalid' | 'revoked' | 'expired' | 'scope' | 'csrf' | 'demo'
 export type Authed = { ok: true; device: Device; user: User; via: 'bearer' | 'cookie' }
 export type Denied = { ok: false; reason: AuthFail }
 
 /** `Authorization: Bearer` first, then the cookie. Writes last_seen at most every 5 minutes. */
 export async function authenticate(req: Request, scope: Scope): Promise<Authed | Denied> {
-  await getUser() // loads saved keys; with them the legacy ACTIVITY_TOKEN and INGEST_TOKEN rows exist before the lookup
+  const me = await getUser() // loads saved keys; with them the legacy ACTIVITY_TOKEN and INGEST_TOKEN rows exist before the lookup
+  // The read-only demo: everyone is one synthetic browser, for reads only (the gate has already refused the rest).
+  if (isDemo()) return demoMethodAllowed(req.method) && req.method !== 'OPTIONS' ? { ok: true, device: demoDevice(me.id), user: me, via: 'cookie' } : { ok: false, reason: 'demo' }
   const t = tokenOf(req.headers)
   if (!t) return { ok: false, reason: 'missing' }
   const found = await findByToken(t.token)
@@ -36,6 +39,7 @@ const MESSAGES: Record<AuthFail, [ApiError['error']['code'], number, string]> = 
   expired: ['expired', 401, 'Your sign-in ended. Connect this device again.'],
   scope: ['forbidden', 403, 'This device isn’t allowed to do that.'],
   csrf: ['forbidden', 403, 'This request did not come from this site.'],
+  demo: ['forbidden', 403, DEMO_MESSAGE],
 }
 
 /** A JSON error. `legacy` keeps the old `{ error: string }` body that extensions before 0.7 read. */
