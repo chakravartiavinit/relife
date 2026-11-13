@@ -55,9 +55,13 @@ export async function loadAdherence(
   return list.map((s) => {
     const meta = s.meta as ScheduleMeta
     const byDay = new Map<string, Date[]>()
-    for (const o of occurrencesBetween(s.rrule, start, new Date(end.getTime() - 1), user.timezone)) {
-      const d = localDate(o, user.timezone)
-      byDay.set(d, [...(byDay.get(d) ?? []), o])
+    try {
+      for (const o of occurrencesBetween(s.rrule, start, new Date(end.getTime() - 1), user.timezone)) {
+        const d = localDate(o, user.timezone)
+        byDay.set(d, [...(byDay.get(d) ?? []), o])
+      }
+    } catch (e) { // a bad stored rule: this routine shows no days instead of breaking the page
+      console.error(`[adherence] skipping "${s.name}" (${s.id}): bad rule`, e instanceof Error ? e.message : e)
     }
     const goal = meta.trackerSlug && s.target ? goalDays.find((t) => t.tracker.slug === meta.trackerSlug) : undefined
     const statuses = new Map<string, DayStatus>()

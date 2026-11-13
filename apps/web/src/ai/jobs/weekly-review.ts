@@ -7,6 +7,7 @@ import { esc } from '@/core/notify'
 import { notify } from '@/core/outbox'
 import { fold, head } from '@/bot/ui'
 import { localDate } from '@/core/time'
+import { validateRRule } from '@/domain/recurrence'
 import type { User } from '@/core/user'
 import { inputOf, prepareGoalReviews, reviewPoint, type Goal, type GoalReview } from '@/core/goals'
 import { db, schema } from '@/db'
@@ -161,7 +162,8 @@ export async function weeklyReview(user: User, now = new Date()) {
   const r = res.output as (z.infer<typeof schema_> & { goalNotes?: { goalId: string; note: string; proposal?: GoalProposal }[] }) | undefined
   if (!r) return template()
   if (due.length && r.goalNotes) await saveCoachNotes(due, r.goalNotes, today)
-  const actions = r.actions.filter((action) => action.type !== 'schedule' || isSafeAiScheduleProposal(action.kind, action.name, action.unit))
+  // Rules are checked here and again when the user approves: a model-made rule can be malformed or fire every minute.
+  const actions = r.actions.filter((action) => action.type !== 'schedule' || (isSafeAiScheduleProposal(action.kind, action.name, action.unit) && validateRRule(action.rrule, today)))
   const review: ReviewContent = { wins: r.wins, watch: r.problems, focus: r.focus, plan: r.plan, ...(due.length ? { goals: goalPoints(due) } : {}) }
   // Plain text too, for "Why?", search and anything that can't lay out the parts.
   const body = [

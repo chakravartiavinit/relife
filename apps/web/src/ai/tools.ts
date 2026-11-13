@@ -7,6 +7,7 @@ import { addInsight } from '@/core/insights'
 import { trackerDays, transactionsBetween, isSpend } from '@/core/metrics'
 import { upcomingPayments } from '@/core/schedules'
 import { localDate, localDayRange } from '@/core/time'
+import { MAX_PER_DAY, validateRRule } from '@/domain/recurrence'
 import type { User } from '@/core/user'
 import { netWorthNow } from '@/core/net-worth'
 import { topCoins } from '@/core/portfolio'
@@ -21,7 +22,7 @@ function proposedSchedule() {
     name: z.string().trim().min(1).max(120),
     kind: z.enum(allowedScheduleKinds()),
     category: z.enum(CATEGORIES),
-    rrule: z.string().trim().min(1).max(500).describe('RFC 5545 RRULE line, e.g. "FREQ=DAILY;BYHOUR=22;BYMINUTE=30"'),
+    rrule: z.string().trim().min(1).max(500).describe(`RFC 5545 RRULE line without DTSTART, e.g. "FREQ=DAILY;BYHOUR=22;BYMINUTE=30". FREQ must be DAILY, WEEKLY, MONTHLY or YEARLY, with at most ${MAX_PER_DAY} times a day.`),
     target: z.number().finite().optional(),
     unit: z.string().trim().max(40).optional(),
   })
@@ -150,6 +151,9 @@ export function dataTools(user: User) {
       execute: async ({ title, why, schedule }) => {
         if (!isSafeAiScheduleProposal(schedule.kind, title, why, schedule.name, schedule.unit)) {
           return { pending: false, reason: 'AI cannot create medicine or dosage reminders. Use the medicine form instead.' }
+        }
+        if (!validateRRule(schedule.rrule, today)) {
+          return { pending: false, reason: `Invalid rrule. Use FREQ=DAILY, WEEKLY, MONTHLY or YEARLY (never hourly or faster), with at most ${MAX_PER_DAY} times a day, e.g. FREQ=DAILY;BYHOUR=22;BYMINUTE=30.` }
         }
         const row = await addInsight(user, { kind: 'plan', title, body: why, payload: { actions: [{ type: 'schedule', ...schedule }] } })
         return row ? { pending: true, id: row.id } : { pending: false, reason: 'similar suggestion exists' }
