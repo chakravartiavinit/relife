@@ -19,6 +19,7 @@ import { acceptInsight, dismissInsight } from '@/core/insights'
 import type { XpNews } from '@/core/xp'
 import type { AskResult } from '@/ai/ask'
 import { isWebUrl } from '@/domain/text'
+import { connectorUnavailable } from '@/core/platform'
 
 // Local single-user app: the server binds to 127.0.0.1 / Tailscale, and every action scopes
 // writes to getUser(). When multi-user lands, getUser() becomes the session check.
@@ -636,6 +637,8 @@ export async function openAppLogin(id: string): Promise<{ ok: true } | { ok: fal
   const { PLATFORMS } = await import('@/connectors/shop')
   const p = PLATFORMS.find((x) => x.id === id)
   if (!p) return { ok: false, error: 'Unknown app' }
+  const unavailable = connectorUnavailable(p)
+  if (unavailable) return { ok: false, error: unavailable }
   try {
     const { openLoginWindow } = await import('@/connectors/shop/browser')
     await openLoginWindow(p.id, p.login)

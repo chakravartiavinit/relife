@@ -7,6 +7,12 @@
 #   npm run service -- logs       follow the log
 set -euo pipefail
 
+# A LaunchAgent is a Mac feature. Everywhere else, Docker Compose keeps it running (`restart: unless-stopped`).
+if [ "$(uname)" != "Darwin" ]; then
+  echo "On Linux or Windows, run it with Docker Compose: docs/SELF_HOSTING.md" >&2
+  exit 1
+fi
+
 LABEL=com.relife.app
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 LOG_DIR="$HOME/Library/Logs/ReLife"

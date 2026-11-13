@@ -1,0 +1,19 @@
+# The image never contains your keys, data or git history.
+**/node_modules
+**/.next
+.git
+.env*
+!.env.example
+data/
+**/data/
+apps/mac
+docs
+plans
+.claude
+.agents
+*.log
+# The extension and the site are built elsewhere; npm only needs their package.json to read the lockfile.
+apps/extension/*
+!apps/extension/package.json
+apps/site/*
+!apps/site/package.json

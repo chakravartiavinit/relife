@@ -29,7 +29,7 @@ const REASON: Record<string, string> = {
  * `/signin` runs flow B itself (plan §3): this browser shows a code (and a QR for a signed-in phone), and a screen that is
  * signed in approves it in Settings → Devices. Or type a code from a signed-in screen (flow A). There is no password.
  */
-export function SigninClient({ next, reason }: { next?: string; reason?: string }) {
+export function SigninClient({ next, reason, container }: { next?: string; reason?: string; /** Running in Docker: the code comes from `docker compose exec`, not `npm run signin`. */ container?: boolean }) {
   const [st, setSt] = useState<State>({ s: 'idle' })
   const [error, setError] = useState<string | null>(null)
   const [typing, setTyping] = useState(false)
@@ -111,7 +111,9 @@ export function SigninClient({ next, reason }: { next?: string; reason?: string 
 
       <p className="mt-6 flex items-start gap-2.5 border-t border-divider pt-4 text-caption leading-relaxed text-ink-3">
         <Terminal className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} aria-hidden />
-        <span>Signing in on this Mac? Use the address in your terminal: run <code className="rounded-xs bg-surface-2 px-1 font-mono text-caption">npm run signin</code>.</span>
+        {container
+          ? <span>First time? Run <code className="rounded-xs bg-surface-2 px-1 font-mono text-caption">docker compose exec web relife signin</code> on the server for a code.</span>
+          : <span>Signing in on this Mac? Use the address in your terminal: run <code className="rounded-xs bg-surface-2 px-1 font-mono text-caption">npm run signin</code>.</span>}
       </p>
     </div>
   )
