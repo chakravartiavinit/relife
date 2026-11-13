@@ -37,12 +37,17 @@ async function main() {
   if (!aiEnabled('plan')) console.log('[worker] AI jobs off: connect an AI provider with a default model')
   else if (modelId('plan')?.startsWith('local:')) { const s = await localAiStatus(); if (!s.ok) console.log(`[worker] ${s.message}`) }
 
-  // ponytail: the bot starts once a token is connected; changing or removing the token needs a worker restart.
+  // The bot starts once a token is connected and stops when it is removed; changing the token needs a worker restart.
   let bot = startBot()
   // Keys typed on /connectors since the last minute; start the bot once its token arrives.
   const secrets = setInterval(() => {
     clearUserCache() // getUser() reloads the user and the saved keys
-    void getUser().then((u) => { user = u; if (!bot && env('TELEGRAM_BOT_TOKEN')) bot = startBot() }).catch((e) => console.error('[secrets]', e))
+    void getUser().then((u) => {
+      user = u
+      if (!bot && env('TELEGRAM_BOT_TOKEN')) bot = startBot()
+      // The token was removed (Settings, or a wipe): stop answering on it.
+      else if (bot && !env('TELEGRAM_BOT_TOKEN')) { void bot.stop().catch(() => {}); bot = null }
+    }).catch((e) => console.error('[secrets]', e))
   }, 60_000)
 
   // XP: back-fill history once; the xp job keeps today and yesterday current.
