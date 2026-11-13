@@ -1,7 +1,7 @@
 // Pure rules for the app shell: the sync dot, the area dots and the level ring.
 
 import type { Category } from '@/db/schema'
-import { CATEGORIES } from '@/db/schema'
+import { CATEGORIES } from '@/domain/categories'
 
 export type SyncTone = 'good' | 'warn' | 'bad'
 

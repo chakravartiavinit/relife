@@ -3,6 +3,7 @@ import {
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 import { DEVICE_KINDS, SCOPES, type DeviceKind, type Scope } from '@relife/contract'
+import { CATEGORIES, type Category } from '@/domain/categories'
 import type { NotifyCategory, NotifyPrefs } from '@/domain/notify'
 import type { Agg, Op, QuestStatus, Rank, SystemKind } from '@/domain/system'
 import type { RecoveryPayload } from '@/domain/recovery'
@@ -30,8 +31,7 @@ const stamps = () => ({
 })
 const meta = () => jsonb('meta').$type<Record<string, unknown>>().notNull().default({})
 
-export const CATEGORIES = ['health', 'mind', 'skills', 'wealth', 'hobbies', 'relationships'] as const
-export type Category = (typeof CATEGORIES)[number]
+export { CATEGORIES, type Category }
 
 /** Set in onboarding (/welcome) and Settings. The AI reads the whole object before every plan. */
 /** A weekly review in parts, so the app and Telegram can lay it out (src/ai/jobs/weekly-review.ts). */

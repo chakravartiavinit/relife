@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { Check, Loader2 } from 'lucide-react'
 import { saveAreas } from '@/app/actions'
-import { CATEGORIES, type Category } from '@/db/schema'
+import { CATEGORIES, type Category } from '@/domain/categories'
 import { Switch } from '@/ui/beui/motion/switch'
 import { CATEGORY } from '../tokens'
 import { AREA_ICON, CapsuleIcon } from './capsule-icon'

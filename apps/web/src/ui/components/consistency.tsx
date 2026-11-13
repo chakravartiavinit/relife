@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { CalendarCheck } from 'lucide-react'
-import { CATEGORIES, type Category } from '@/db/schema'
+import { CATEGORIES, type Category } from '@/domain/categories'
 import type { User } from '@/core/user'
 import { addDays, formatDay, localDate } from '@/core/time'
 import { loadAdherence } from '@/core/adherence'
