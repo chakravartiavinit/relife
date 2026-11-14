@@ -41,5 +41,5 @@ test('every route handler is public on purpose or authenticates', () => {
 
 test('the public routes are the ones meant to be', () => {
   const pub = routes.map(urlOf).filter((u) => isPublicPath(u) || u === '/api/health').sort()
-  assert.deepEqual(pub, ['/api/health', '/api/v1/hello', '/api/v1/pair/redeem', '/api/v1/pair/requests', '/api/v1/pair/requests/x/poll'])
+  assert.deepEqual(pub, ['/api/health', '/api/v1/hello', '/api/v1/pair/join', '/api/v1/pair/redeem', '/api/v1/pair/requests', '/api/v1/pair/requests/x/poll'])
 })
