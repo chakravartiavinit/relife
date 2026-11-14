@@ -1,6 +1,6 @@
-import { chmod, cp, mkdir, mkdtemp, readFile, rename, rm } from 'node:fs/promises'
+import { chmod, cp, mkdir, mkdtemp, readdir, readFile, rename, rm, lstat } from 'node:fs/promises'
 import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, relative } from 'node:path'
 import { isMock, sql } from '@/db'
 import { backupDir, dataDir } from '../paths'
 import { decrypt } from '../secrets'
@@ -50,6 +50,22 @@ async function databaseIsEmpty(): Promise<boolean> {
   } catch { return true }
 }
 
+/** The unpacked files are copied into data/ later: refuse anything that is not a plain file or folder (a symlink could point outside). */
+export async function checkUnpacked(dir: string): Promise<void> {
+  const key = join(dir, 'data', 'secret.key')
+  const k = await lstat(key).catch(() => null)
+  if (k && !k.isFile()) throw new Error("This backup is not safe to restore: data/secret.key is not a plain file.")
+  const walk = async (d: string): Promise<void> => {
+    for (const e of await readdir(d, { withFileTypes: true })) {
+      if (e.isDirectory()) await walk(join(d, e.name))
+      else if (!e.isFile()) throw new Error(`This backup is not safe to restore: data/library/${join(relative(join(dir, 'data', 'library'), d), e.name)} is a link or special file.`)
+    }
+  }
+  const lib = await lstat(join(dir, 'data', 'library')).catch(() => null)
+  if (lib && !lib.isDirectory()) throw new Error('This backup is not safe to restore: data/library is not a folder.')
+  if (lib) await walk(join(dir, 'data', 'library'))
+}
+
 export async function restoreBackup(file: string, o: RestoreOptions = {}): Promise<RestoreResult> {
   const log = o.log ?? (() => {})
   if (isDemo()) throw new Error(DEMO_OFF)
@@ -76,6 +92,8 @@ export async function restoreBackup(file: string, o: RestoreOptions = {}): Promi
     const manifest = JSON.parse(await readFile(join(dir, 'manifest.json'), 'utf8')) as BackupManifest
     if (manifest.format !== BACKUP_FORMAT) throw new Error(`This is not a ${brand.name} backup.`)
     if (typeof manifest.version !== 'number' || manifest.version > BACKUP_VERSION) throw new Error(`This backup is version ${manifest.version}, newer than this ${brand.name} understands (${BACKUP_VERSION}). Update ${brand.name} first.`)
+
+    await checkUnpacked(dir)
 
     // 2. The key that will be in effect afterwards has to open the saved keys the backup holds.
     const backupKey = join(dir, 'data', 'secret.key')
