@@ -721,7 +721,8 @@ happened, one action, and a small footer. The full numbers are kept in the insig
   <tr><td>Telegram</td><td>The bot ignores every chat except yours.</td></tr>
   <tr><td>LLM</td><td>Only summaries go out, with account numbers masked. Parsing can use a local model.</td></tr>
   <tr><td>Endpoints</td><td><code>/api/ingest</code> and <code>/api/activity</code> need a bearer token.</td></tr>
-  <tr><td>Git</td><td>Hooks block secrets, <code>.env</code>, <code>data/</code>, dumps and big files on commit, and run typecheck and tests on push.</td></tr>
+  <tr><td>Export, wipe and privacy</td><td>Settings → Data &amp; privacy (<code>/you/settings/data</code>) exports a ZIP without keys, deletes everything into a fresh user row, and lists what each source and AI call sends, built from the real registries (<code>src/core/data/tables.ts</code>, <code>src/ai/uses.ts</code>, <code>Connector.reach</code>). See <code>docs/PRIVACY.md</code>.</td></tr>
+  <tr><td>Git</td><td>Hooks block secrets, <code>.env</code>, <code>data/</code>, backups and exports, dumps and big files on commit, and run typecheck and tests on push.</td></tr>
 </table>
 
 <!-- 18 -->
@@ -734,6 +735,7 @@ happened, one action, and a small footer. The full numbers are kept in the insig
   <tr><td>Parser miss</td><td>Regex parsers, then the LLM, then Inbox "Needs review". Retried daily at 03:30.</td></tr>
   <tr><td>Duplicate data</td><td>Impossible by design: unique keys on raw events and on every derived table.</td></tr>
   <tr><td>LLM down or no key</td><td>AI jobs skip; rules and rule-based quests keep working.</td></tr>
+  <tr><td>Disk lost or a bad upgrade</td><td>A backup runs nightly at 03:30 (<code>src/core/data/backup.ts</code>): <code>pg_dump</code> plus <code>secret.key</code> and library covers in one <code>.tar.gz</code> in <code>RELIFE_BACKUP_DIR</code>, the newest 7 and 4 weekly kept, encrypted when <code>RELIFE_BACKUP_PASSPHRASE</code> is set. <code>npm run restore</code> checks the archive and the key first and takes a safety backup. A separate, secret-free export (<code>GET /api/export</code>) is for people and for <code>npm run import</code>.</td></tr>
   <tr><td>Worker dead</td><td>Heartbeat older than 3 minutes shows a banner in the app.</td></tr>
   <tr><td>Notification spam</td><td>Daily caps, quiet hours, once-a-day dedupe per alert, and the watch budget of 2 a day.</td></tr>
 </table>
@@ -783,12 +785,13 @@ The Connectors page shows "syncing now…", "synced 5 min ago · next in 55 min"
   <tr><td>A new scheduled or event job</td><td>One entry in <code>JOBS</code>: <code>id</code>, <code>schedule</code>, <code>run()</code>, optional <code>on</code> and <code>enabled</code></td><td>A few lines</td></tr>
   <tr><td>A new AI job</td><td><code>src/ai/jobs/&lt;id&gt;.ts</code>, using <code>model(task)</code>, added to <code>JOBS</code></td><td>1 file</td></tr>
   <tr><td>A new Telegram message</td><td><code>notify(user, category, …)</code>, never <code>sendMessage</code></td><td>One call</td></tr>
+  <tr><td>A new table</td><td>Classify it in <code>src/core/data/tables.ts</code> (export, wipe). A test fails until you do.</td><td>1 line</td></tr>
   <tr><td>A new achievement</td><td>Append to <code>src/achievements/index.ts</code></td><td>A few lines</td></tr>
 </table>
 <pre><code>// A new job, start to finish (src/jobs/index.ts)
-{ id: 'backup', schedule: { cron: '0 3 * * *' }, catchUpMinutes: 6 * 60, run: async () => {
-  const { backup } = await import('@/core/backup')
-  return backup()  // a short summary for the jobs table
+{ id: 'backup', schedule: { cron: '30 3 * * *' }, catchUpMinutes: 12 * 60, timeoutMinutes: 60, run: async () => {
+  const { backupNow } = await import('@/core/data/backup')
+  return (await backupNow({ reason: 'daily' })).message  // "12.3 MB · 9 kept", shown in the jobs table
 } },</code></pre>
 <p>Commands: <code>npm run dev</code> (port 3030 plus the worker), <code>npm run dev:mock</code>, <code>npm test</code>, <code>npm run typecheck</code>, <code>npm run db:push</code>.</p>
 

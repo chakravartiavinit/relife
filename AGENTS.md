@@ -30,7 +30,7 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
   Goals (up to 3 outcome goals with a baseline, linked actions and weekly review decisions), `/plan/routines`,
   `/plan/trackers`, `/plan/review`; details at `/plan/goals/[id]` and `/plan/trackers/[slug]`), Coach (`/coach`: Needs you and
   Ask side by side, `/coach/patterns`, `/coach/history`; `?filter=decisions|data`, `?ask=`, `?view=ask`) and You (`/you`, tabs: Progress (the character
-  sheet: level, streak, week, consistency, achievements, XP), `/you/connections`, `/you/notifications`, `/you/settings`).
+  sheet: level, streak, week, consistency, achievements, XP), `/you/connections`, `/you/notifications`, `/you/settings`, and `/you/settings/data`, Data & privacy: export, backups, what each source and AI call sends, delete everything; `apps/web/src/core/data/`).
   Old URLs (`/goals`, `/habits`, `/insights`, `/inbox`, `/profile`, `/connectors`, `/settings`, `/activity`,
   `/relationships`, ...) redirect (307) through `LEGACY_REDIRECTS` in `apps/web/src/domain/routes.ts`; never link to them.
   Navigation data (`NAV`, `isActive`) lives in `apps/web/src/ui/components/nav.tsx`; the shell is in `apps/web/src/ui/components/shell/`: a
@@ -220,6 +220,10 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
   `pinned` and `connectors`; the template, the Life tile and the brief pick it up. Add its Overview cards to `apps/web/src/ui/areas/`.
 - **Outcome goals:** rules in `apps/web/src/domain/goals.ts` (tested), wiring in `apps/web/src/core/goals.ts`, UI in `apps/web/src/ui/components/goals/`.
   Separate from `plans`. Every write locks the user row and checks `version`; the AI only drafts and proposes (see docs/AI_COACH.md).
+- **New table:** classify it in `apps/web/src/core/data/tables.ts` (export, wipe, import order); the test fails until you do.
+  A new `generate('<task>', '<label>')` call needs an entry in `apps/web/src/ai/uses.ts` the same way (the privacy page
+  lists it). A new connector may set `reach: 'local' | 'lan' | 'public'` when its data never leaves this machine or
+  network; without it the privacy page counts it as an online service.
 - **Odd fields:** put them in the `meta` JSON column; promote to a real column only when queried.
 
 ## Data rules
@@ -248,6 +252,8 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
   (try/catch or `.catch` reaching `toast.error()`): in the demo `ToastProvider` turns that into the one demo toast.
   `RELIFE_CONTAINER=1` marks the Docker image (shopping connectors are skipped there, sign-in hints name
   `docker compose exec web relife signin`).
+- Exports never include secrets: no `secrets_encrypted`, cursors, token hashes or saved keys (`core/data/tables.ts` drops them).
+  A backup is exact and holds `data/secret.key`; it is encrypted when `RELIFE_BACKUP_PASSPHRASE` is set and is never offered as a download.
 
 ## Gamification
 
@@ -293,7 +299,7 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
 ## Git and commits
 
 - Never commit: `.env` or any real key, `data/` (holds the key that encrypts saved connector keys),
-  database dumps, real bank messages or account numbers (fixtures use fake numbers), screenshots of
+  `backups/` and export ZIPs, database dumps, real bank messages or account numbers (fixtures use fake numbers), screenshots of
   real data, `.next/`, `node_modules/`, or editor and OS files.
 - Files named like `routes 2.ts` or `BUILD_ID 3` are iCloud sync duplicates. Delete them; never commit them.
 - Git hooks in `.githooks/` enforce this. `npm install` turns them on (`core.hooksPath`).
@@ -330,5 +336,9 @@ All from the repo root (they delegate to `apps/web` with `-w apps/web`).
 - `npm run service -- install|restart|stop|logs`: the production app as a LaunchAgent (macOS only; starts at login). Stop it
   before `npm run dev`; they share port 3030. After the move into `apps/web`, run `install` once more so the
   LaunchAgent's working directory is `apps/web`.
+- `npm run backup` writes a backup now (`pg_dump` plus `secret.key` and library covers, in `RELIFE_BACKUP_DIR`; the nightly `backup`
+  job does it at 03:30, needs the PostgreSQL 16 client tools, `RELIFE_PG_BIN` if they are not on PATH). `npm run restore` lists them,
+  `npm run restore -- <file> [--yes] [--force] [--no-safety-backup]` restores one with ReLife stopped. `npm run import -- <export.zip>`
+  restores an export into an empty install.
 - Scripts under `apps/web/scripts/` run from `apps/web`: `npx tsx --env-file=../../.env scripts/<file>.ts`.
 - If the checkout is in iCloud Drive, pause sync while moving folders; delete any "file 2" duplicates it makes.
