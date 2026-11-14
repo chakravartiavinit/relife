@@ -267,6 +267,8 @@ export const transactions = pgTable('transactions', {
   uniqueIndex('transactions_source_ref').on(t.userId, t.source, t.externalRef),
   index('transactions_user_date').on(t.userId, t.localDate),
   index('transactions_user_updated').on(t.userId, t.updatedAt), // dataVersionFor
+  // One order is the same payment as one bank row, even when two links race.
+  uniqueIndex('transactions_linked_to').on(t.linkedTo).where(sql`${t.linkedTo} is not null`),
   // Needs you and the shell count the rows still waiting for a category.
   index('transactions_uncategorized').on(t.userId).where(sql`${t.category} = 'Uncategorized'`),
 ])

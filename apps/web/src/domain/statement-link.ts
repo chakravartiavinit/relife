@@ -4,7 +4,8 @@ import { round2 } from './statement'
 // De-duplication of a bank row against an app order: the same payment seen twice. Pure and deterministic.
 
 export type LinkRow = { id: string; localDate: string; amount: number; currency: string; description: string; rejected?: string[] }
-export type LinkOrder = { id: string; localDate: string; amount: number; currency: string; platform?: string | null }
+/** `needsName`: a spend typed in Capture links only when the bank description holds its name (an amount alone is too weak). */
+export type LinkOrder = { id: string; localDate: string; amount: number; currency: string; platform?: string | null; needsName?: boolean }
 export type Link = { rowId: string; orderId: string }
 
 /**
@@ -26,6 +27,7 @@ export function matchStatementRows(rows: LinkRow[], orders: LinkOrder[], opts: {
       const gap = daysBetween(order.localDate, row.localDate)
       if (Math.abs(gap) > maxDays) continue
       const named = !!order.platform && row.description.toLowerCase().includes(order.platform.toLowerCase())
+      if (order.needsName && !named) continue
       cands.push({ row, order, score: Math.abs(gap) - (named ? 0.5 : 0), after: gap >= 0 ? 0 : 1 })
     }
   }

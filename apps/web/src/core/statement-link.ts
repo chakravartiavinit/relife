@@ -28,10 +28,25 @@ export async function linkStatements(user: User, range: { from: string; to: stri
   const linkOrders: LinkOrder[] = orders.filter((o) => !taken.has(o.id)).map((o) => ({
     id: o.id, localDate: o.localDate, amount: o.amount, currency: o.currency,
     platform: (o.meta as { platform?: string }).platform ?? o.merchant, // a manual spend: its note
+    needsName: o.source === 'manual',
   }))
   const links = matchStatementRows(linkRows, linkOrders)
-  for (const l of links) await db.update(T).set({ linkedTo: l.orderId }).where(and(eq(T.id, l.rowId), isNull(T.linkedTo)))
-  return links.length
+  let n = 0
+  for (const l of links) {
+    try {
+      const r = await db.update(T).set({ linkedTo: l.orderId }).where(and(eq(T.id, l.rowId), isNull(T.linkedTo)))
+      n += r.count
+    } catch (e) {
+      if (!isUniqueViolation(e)) throw e // another run linked that order first: skip this pair
+    }
+  }
+  return n
+}
+
+/** Postgres 23505: a unique index refused the write. */
+export const isUniqueViolation = (e: unknown) => {
+  const x = e as { code?: string; cause?: { code?: string } }
+  return x?.code === '23505' || x?.cause?.code === '23505'
 }
 
 const rejectedOf = (meta: unknown) => (Array.isArray((meta as { linkRejected?: unknown })?.linkRejected) ? (meta as { linkRejected: string[] }).linkRejected : [])
@@ -55,7 +70,12 @@ export async function setTransactionLink(user: User, id: string, orderId: string
       const [taken] = await tx.select({ id: T.id }).from(T).where(and(eq(T.linkedTo, orderId), sql`${T.id} <> ${id}`)).limit(1)
       if (taken) throw new Error('Another bank row already matches that order.')
     }
-    await tx.update(T).set({ linkedTo: orderId, meta: { ...(row.meta as object), linkRejected: [...new Set(rejected)] } }).where(eq(T.id, id))
+    try {
+      await tx.update(T).set({ linkedTo: orderId, meta: { ...(row.meta as object), linkRejected: [...new Set(rejected)] } }).where(eq(T.id, id))
+    } catch (e) {
+      if (isUniqueViolation(e)) throw new Error('Another bank row already matches that order.')
+      throw e
+    }
     return { before }
   })
 }
