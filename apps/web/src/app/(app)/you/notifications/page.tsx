@@ -8,6 +8,7 @@ import { NotificationChannel } from '@/ui/components/notification-channel'
 import { telegramConfigured } from '@/core/notify'
 import { weeklyNotifications } from '@/core/outbox'
 import { pushDeviceCount } from '@/core/push'
+import { DEMO_MESSAGE, isDemo } from '@/core/demo'
 
 export const metadata: Metadata = { title: 'Notifications' }
 
@@ -29,7 +30,7 @@ async function Notifications() {
   return (
     <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
       <div className="min-w-0 max-lg:order-2"><NotificationSettings initial={user.profile.notifications} both={telegram && pushDevices > 0} /></div>
-      <div className="max-lg:order-1 lg:sticky lg:top-6"><NotificationChannel telegram={telegram} stats={stats} pushDevices={pushDevices} /></div>
+      <div className="max-lg:order-1 lg:sticky lg:top-6"><NotificationChannel telegram={telegram} stats={stats} pushDevices={pushDevices} locked={isDemo() ? DEMO_MESSAGE : undefined} /></div>
     </div>
   )
 }

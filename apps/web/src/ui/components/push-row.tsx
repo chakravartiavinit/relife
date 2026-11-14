@@ -21,12 +21,14 @@ const COPY: Record<PushState, { icon: typeof Bell; title: string; body: string }
  * The "Push on this device" row in You › Notifications and on the phone page: what this browser can do about push right now,
  * in six states, with the one action that fits. It only draws; PushControl reads the browser and runs the actions.
  */
-export function PushRow({ state, devices, ios, pending, result, onTurnOn, onTest, onTurnOff }: {
+export function PushRow({ state, devices, ios, locked, pending, result, onTurnOn, onTest, onTurnOff }: {
   state: PushState
   /** How many devices get push, this one included. */
   devices: number
   /** iPhone or iPad: no action buttons, Home Screen app only. */
   ios?: boolean
+  /** Why push can't be changed here (the read-only demo): the action is disabled and this is the wording under it. */
+  locked?: string
   pending?: 'on' | 'test' | 'off' | null
   result?: PushResult | null
   onTurnOn?: () => void
@@ -48,22 +50,22 @@ export function PushRow({ state, devices, ios, pending, result, onTurnOn, onTest
       </div>
       {link ? <Link href={PHONE_PAGE} className="inline-flex h-10 items-center self-start rounded-md px-1 text-small font-medium text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-pill">Ways to reach your phone</Link> : null}
       {state === 'off' ? (
-        <Button variant="primary" onClick={onTurnOn} disabled={!!pending} className="w-full">
+        <Button variant="primary" onClick={onTurnOn} disabled={!!pending || !!locked} className="w-full">
           {pending === 'on' ? <Loader2 className="size-4 animate-spin" strokeWidth={1.5} aria-hidden /> : <Bell className="size-4" strokeWidth={1.5} aria-hidden />}
           {pending === 'on' ? 'Asking…' : 'Turn on'}
         </Button>
       ) : null}
       {state === 'on' ? (
         <div className="flex flex-wrap gap-2">
-          <Button onClick={onTest} disabled={!!pending} className="min-w-0 flex-1">
+          <Button onClick={onTest} disabled={!!pending || !!locked} className="min-w-0 flex-1">
             {pending === 'test' ? <Loader2 className="size-4 animate-spin" strokeWidth={1.5} aria-hidden /> : <Send className="size-4" strokeWidth={1.5} aria-hidden />}
             {pending === 'test' ? 'Sending…' : 'Send a test to this device'}
           </Button>
-          <Button variant="ghost" onClick={onTurnOff} disabled={!!pending}>{pending === 'off' ? 'Turning off…' : 'Turn off'}</Button>
+          <Button variant="ghost" onClick={onTurnOff} disabled={!!pending || !!locked}>{pending === 'off' ? 'Turning off…' : 'Turn off'}</Button>
         </div>
       ) : null}
-      <p role="status" aria-live="polite" className={cn('min-h-5 text-small', result?.tone === 'good' && 'text-good', result?.tone === 'warn' && 'text-warn', result?.tone === 'bad' && 'text-bad')}>
-        {result ? <span className="inline-flex items-start gap-1.5">{result.tone === 'good' ? <Check className="mt-0.5 size-3.5 shrink-0" strokeWidth={2} aria-hidden /> : null}{result.text}</span> : null}
+      <p role="status" aria-live="polite" className={cn('min-h-5 text-small', locked && 'text-ink-3', result?.tone === 'good' && 'text-good', result?.tone === 'warn' && 'text-warn', result?.tone === 'bad' && 'text-bad')}>
+        {locked ? locked : result ? <span className="inline-flex items-start gap-1.5">{result.tone === 'good' ? <Check className="mt-0.5 size-3.5 shrink-0" strokeWidth={2} aria-hidden /> : null}{result.text}</span> : null}
       </p>
     </div>
   )

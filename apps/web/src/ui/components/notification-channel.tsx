@@ -20,7 +20,7 @@ const NAME: Record<Channel, string> = { telegram: 'Telegram', push: 'push' }
  * through the outbox, and what the last 7 days did. The test obeys the user's own settings like real messages do, and says
  * which channels took it, or when they hold it back. `push` stands in for the live push row (the gallery draws its states).
  */
-export function NotificationChannel({ telegram, stats, pushDevices, push }: { telegram: boolean; stats: ChannelStats; pushDevices: number; push?: React.ReactNode }) {
+export function NotificationChannel({ telegram, stats, pushDevices, push, locked }: { telegram: boolean; stats: ChannelStats; pushDevices: number; push?: React.ReactNode; locked?: string }) {
   const [devices, setDevices] = useState(pushDevices)
   const [pending, start] = useTransition()
   const [result, setResult] = useState<Result | null>(null)
@@ -50,7 +50,7 @@ export function NotificationChannel({ telegram, stats, pushDevices, push }: { te
           <p className="text-small text-ink-3">{telegram ? 'Messages go to your chat, with buttons you can tap.' : 'Connect it to get these on your phone. Everything still shows in Coach.'}</p>
         </div>
       </div>
-      <div className="border-t border-divider pt-4">{push ?? <PushControl devices={pushDevices} onCount={setDevices} />}</div>
+      <div className="border-t border-divider pt-4">{push ?? <PushControl devices={pushDevices} onCount={setDevices} locked={locked} />}</div>
       <div className="flex items-start gap-3">
         <MessageSquare aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-3" strokeWidth={1.5} />
         <p className="text-small text-ink-2">In the app: <Link href="/coach/history" className="font-medium text-pill-ink hover:underline">Coach › History</Link> keeps every message, even ones Telegram doesn’t get.</p>

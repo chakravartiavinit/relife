@@ -33,9 +33,15 @@ async function look(): Promise<Seen> {
 
 /**
  * Push on this browser: reads what it can do, asks for permission inside the click (iOS requires that), subscribes, and tells the
- * server. `devices` is how many devices already get push, for the count under the row.
+ * server. `devices` is how many devices already get push, for the count under the row. `locked` (the demo) draws it disabled.
  */
-export function PushControl({ devices, onCount }: { devices: number; onCount?: (n: number) => void }) {
+export function PushControl({ locked, ...rest }: { devices: number; onCount?: (n: number) => void; locked?: string }) {
+  // The read-only demo: show the row off and disabled with the demo's wording, and never ask the browser or the server anything.
+  if (locked) return <PushRow state="off" devices={rest.devices} locked={locked} />
+  return <PushLive {...rest} />
+}
+
+function PushLive({ devices, onCount }: { devices: number; onCount?: (n: number) => void }) {
   const [seen, setSeen] = useState<Seen | null>(null)
   const [count, setCountState] = useState(devices)
   const setCount = (f: (n: number) => number) => setCountState((n) => { const next = f(n); onCount?.(next); return next })
