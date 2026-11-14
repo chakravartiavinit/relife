@@ -57,9 +57,9 @@ export function ImportRail({ current, labels = IMPORT_STEPS }: { current: 0 | 1 
             <span className="relative block h-1.5 w-full overflow-hidden rounded-full bg-ink/[0.08] dark:bg-white/[0.1]">
               <span className={cn('absolute inset-0 rounded-full bg-pill transition-[translate] duration-300 ease-[var(--ease-out-strong)] motion-reduce:transition-none', state === 'next' ? '-translate-x-[101%]' : 'translate-x-0')} />
             </span>
-            <span className={cn('flex items-center gap-1 truncate text-caption', state === 'now' ? 'font-semibold text-ink' : state === 'done' ? 'text-ink-2' : 'text-ink-3')}>
+            <span className={cn('flex min-w-0 items-center gap-1 text-caption', state === 'now' ? 'font-semibold text-ink' : state === 'done' ? 'text-ink-2' : 'text-ink-3')}>
               {state === 'done' ? <Check aria-hidden className="size-3 shrink-0" strokeWidth={2.5} /> : null}
-              {label}
+              <span className="truncate">{label}</span>
               <span className="sr-only">{state === 'done' ? ' (done)' : state === 'now' ? ' (current)' : ''}</span>
             </span>
           </li>
@@ -293,7 +293,7 @@ export function StatementTable({ preview }: { preview: StatementPreview }) {
               {preview.sample.map((r, k) => (
                 <tr key={k} className="h-11 text-small">
                   <td className="px-3 whitespace-nowrap text-ink-2">{fmtDay(r.date)}</td>
-                  <td className="max-w-[14rem] truncate px-3 text-ink">{r.merchant}</td>
+                  <td title={r.merchant} className="max-w-[9rem] truncate px-3 text-ink">{r.merchant}</td>
                   <td className={cn('px-3 text-end font-semibold whitespace-nowrap tabular-nums', r.amount > 0 ? 'text-good' : 'text-ink')}>{formatMoney(r.amount, preview.mapping.currency, { sign: true })}</td>
                   <td className="px-3 whitespace-nowrap"><span className="inline-flex h-6 items-center rounded-full bg-surface-2 px-2 text-caption text-ink-2">{r.category}</span></td>
                   <td className="px-3 whitespace-nowrap">
