@@ -41,11 +41,6 @@ async function main() {
       else if (local.state !== 'not-local') console.log(`[worker] local AI not running: ${local.message}`)
     })
   }
-  else {
-    const local = await localAiStatus('plan')
-    if (local.state === 'ok') console.log(`[worker] local AI ready (${local.model})`)
-    else if (local.state !== 'not-local') console.log(`[worker] local AI not running: ${local.message}`)
-  }
 
   // The bot starts once a token is connected and stops when it is removed; changing the token needs a worker restart.
   let bot = startBot()
