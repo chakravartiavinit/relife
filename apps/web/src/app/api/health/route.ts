@@ -2,7 +2,6 @@ import { connection } from 'next/server'
 import { sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { localAiStatus } from '@/ai/local'
-import { modelId } from '@/ai/models'
 import { isDemo } from '@/core/demo'
 
 // Local status probe: database, worker heartbeat, connector sync state.
@@ -20,7 +19,8 @@ export async function GET() {
     lastSyncAt: schema.connections.lastSyncAt, failures: schema.connections.failures, lastError: schema.connections.lastError,
   }).from(schema.connections)
   // Only when the default model is the local one: the answer says whether the Compose `ai` profile is up.
-  const localAi = !isDemo() && modelId('chat')?.startsWith('local:') ? await localAiStatus() : undefined
+  const local = isDemo() ? null : await localAiStatus()
+  const localAi = local && local.state !== 'not-local' ? { state: local.state, model: local.model, ...(local.message ? { message: local.message } : {}) } : undefined
   return Response.json({
     db: true,
     ...(localAi ? { localAi } : {}),

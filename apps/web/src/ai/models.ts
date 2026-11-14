@@ -22,13 +22,17 @@ export const KEY_ENV: Record<string, string | null> = {
   local: null, // no key needed
 }
 
+/** Where the local server is: LOCAL_LLM_URL, else Ollama on this machine. The one place that reads it. */
+export const DEFAULT_LOCAL_URL = 'http://localhost:11434/v1'
+export const localUrl = () => (env('LOCAL_LLM_URL')?.trim() || DEFAULT_LOCAL_URL).replace(/\/+$/, '')
+
 // Built per call with explicit keys: keys come from the Connections page and can change while running.
 function makeRegistry() {
   return createProviderRegistry({
     anthropic: createAnthropic({ apiKey: env('ANTHROPIC_API_KEY') }),
     openai: createOpenAI({ apiKey: env('OPENAI_API_KEY') }),
     google: createGoogleGenerativeAI({ apiKey: env('GOOGLE_GENERATIVE_AI_API_KEY') }),
-    local: createOpenAICompatible({ name: 'local', baseURL: env('LOCAL_LLM_URL') ?? 'http://localhost:11434/v1' }),
+    local: createOpenAICompatible({ name: 'local', baseURL: localUrl() }),
     openrouter: createOpenAICompatible({ name: 'openrouter', baseURL: 'https://openrouter.ai/api/v1', apiKey: env('OPENROUTER_API_KEY') }),
   })
 }

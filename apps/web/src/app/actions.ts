@@ -785,7 +785,7 @@ export async function suggestOnboardingRoutines(input: { prompt: string; areas: 
 export async function aiReady() {
   await getUser() // loads saved keys
   const { aiEnabled, modelId } = await import('@/ai')
-  const { localAiStatus } = await import('@/core/local-ai')
+  const { localAiStatus } = await import('@/ai/local')
   const local = await localAiStatus('plan')
   // Only the state and the fix: not the server's URL or its model list.
   return { ready: aiEnabled('plan') && (local.state === 'not-local' || local.state === 'ok'), model: modelId('plan') ?? null, local: { state: local.state, message: local.state === 'down' || local.state === 'no-model' ? local.message : undefined } }
@@ -801,7 +801,7 @@ export type LocalAiResult = { ok: true; state: 'ok' | 'down' | 'no-model'; model
  */
 export async function chooseLocalAi(): Promise<LocalAiResult> {
   const user = await getUser()
-  const { DEFAULT_LOCAL_URL, localAiStatus, planLocalAi } = await import('@/core/local-ai')
+  const { DEFAULT_LOCAL_URL, localAiStatus, planLocalAi } = await import('@/ai/local')
   const plan = await planLocalAi()
   // A local model that is already chosen stays: this only runs again to point at the server, never to swap the model.
   const { modelId } = await import('@/ai')
@@ -821,7 +821,7 @@ export async function chooseLocalAi(): Promise<LocalAiResult> {
 /** Setup's AI step: how the free local AI would answer, before anything is saved. */
 export async function checkLocalAi(): Promise<LocalAiResult> {
   await getUser()
-  const { planLocalAi } = await import('@/core/local-ai')
+  const { planLocalAi } = await import('@/ai/local')
   const p = await planLocalAi()
   return { ok: true, state: p.state, model: p.model, url: p.url, ms: p.ms, message: p.message }
 }
@@ -829,7 +829,7 @@ export async function checkLocalAi(): Promise<LocalAiResult> {
 /** "Check again": asks the local server now instead of using the last answer. */
 export async function recheckLocalAi(): Promise<LocalAiResult> {
   await getUser()
-  const { localAiStatus } = await import('@/core/local-ai')
+  const { localAiStatus } = await import('@/ai/local')
   const s = await localAiStatus('chat', { fresh: true })
   refresh()
   return s.state === 'not-local' ? { ok: false, error: 'Local AI isn’t the chat model.' } : { ok: true, state: s.state, model: s.model, url: s.url, ms: s.ms, message: s.message }

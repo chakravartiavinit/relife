@@ -7,7 +7,7 @@ import { generate } from './run'
 import { COACH_SYSTEM, digestText } from './context'
 import { dataTools } from './tools'
 import { mask, maskValue } from './mask'
-import { localErrorMessage } from '@/core/local-ai'
+import { localErrorMessage } from '@/ai/local'
 
 export type AskResult = {
   answer: string; error?: string; sources?: CoachSource[]; insightIds?: string[]

@@ -13,7 +13,7 @@ import { integration } from '@/core/integrations'
 import type { SetupField } from '@/core/types'
 import { env } from '@/core/env'
 import { connectorUnavailable } from '@/core/platform'
-import { localAiDown, localAiStatus } from '@/core/local-ai'
+import { localAiDown, localAiStatus } from '@/ai/local'
 
 // Every connector as the Connections page and the connector Peek show it: status, last syncs, the fields the
 // connect form needs (secret values are never sent), and how the worker is doing.

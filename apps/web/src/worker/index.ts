@@ -11,7 +11,7 @@ import { startScheduler } from '@/core/jobs'
 import { JOBS } from '@/jobs'
 import { env } from '@/core/env'
 import { isDemo } from '@/core/demo'
-import { localAiStatus } from '@/core/local-ai'
+import { localAiStatus } from '@/ai/local'
 
 // The worker runs the bot, laptop activity and the job scheduler (src/jobs): syncs, parsing, reminders, rules, AI.
 
