@@ -58,7 +58,7 @@ test('a table that points at itself lists the column as selfRef', () => {
 
 test('users come first, global tables are wiped, the rest of the registry helpers', () => {
   assert.equal(names[0], 'users')
-  assert.deepEqual(wipeGlobalTables().sort(), ['idempotency', 'llm_runs', 'sync_runs'])
+  assert.deepEqual(wipeGlobalTables().sort(), ['idempotency'])
   assert.equal(exportTables().length, TABLES.filter((t) => t.export).length)
   assert.match(schemaHash(), /^[0-9a-f]{64}$/)
 })

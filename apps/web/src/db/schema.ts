@@ -2,7 +2,7 @@ import {
   pgTable, uuid, text, timestamp, numeric, boolean, jsonb, date, integer, bigint, uniqueIndex, index, customType, type AnyPgColumn,
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
-import { DEVICE_KINDS, SCOPES, type DeviceKind, type Scope } from '@relife/contract'
+import { DEVICE_KINDS, SCOPES, type DeviceKind, type PartyShare, type Scope } from '@relife/contract'
 import { CATEGORIES, type Category } from '@/domain/categories'
 import type { Channel, NotifyCategory, NotifyPrefs } from '@/domain/notify'
 import type { Agg, Op, QuestStatus, Rank, SystemKind } from '@/domain/system'
@@ -66,7 +66,13 @@ export type UserProfile = {
   prefs?: { theme?: 'light' | 'dark' | 'system' }
   /** Self-host: ask every browser on this Mac to connect too, instead of trusting loopback ("Require sign-in on this Mac"). */
   requireSignIn?: boolean
+  /** This person's Telegram chat, saved when they send the bot `/start <code>` (src/core/telegram-link.ts). */
+  telegram?: { chatId: string; linkedAt: string }
+  /** Server-wide settings, kept on the owner's row. `shareAi` (default on): the other people on this server may use the owner's AI model. */
+  instance?: { shareAi?: boolean }
 }
+
+export type UserRole = 'owner' | 'member'
 
 export const users = pgTable('users', {
   id: id(),
@@ -76,6 +82,10 @@ export const users = pgTable('users', {
   /** Cloud sign-in address. Optional in self-host. */
   email: text('email'),
   profile: jsonb('profile').$type<UserProfile>().notNull().default({}),
+  /** The person who runs this server (the first user). Everyone else is a member (src/core/multi-user.ts). */
+  role: text('role').$type<UserRole>().notNull().default('member'),
+  /** A disabled person keeps their data but their devices stop working and no job runs for them. */
+  disabledAt: timestamp('disabled_at', { withTimezone: true }),
   ...stamps(),
 }, (t) => [uniqueIndex('users_email').on(t.email)]) // an index, not .unique(): push adds it to a filled table without asking to truncate
 
@@ -118,7 +128,7 @@ export const pushSubscriptions = pgTable('push_subscriptions', {
   ...stamps(),
 }, (t) => [uniqueIndex('push_endpoint').on(t.endpoint), index('push_user').on(t.userId)])
 
-export type PairingMethod = 'offer' | 'request' | 'email' | 'cli'
+export type PairingMethod = 'offer' | 'request' | 'email' | 'cli' | 'invite' | 'telegram'
 export type PairingStatus = 'pending' | 'approved' | 'redeemed' | 'denied' | 'expired'
 
 /** One row per pairing, either direction: an offer (a signed-in screen shows a QR) or a request (the new device shows a code). */
@@ -144,6 +154,30 @@ export const pairings = pgTable('pairings', {
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   ...stamps(),
 }, (t) => [uniqueIndex('pairings_secret').on(t.secretHash), index('pairings_code').on(t.userCode)])
+
+// Party mode (src/core/party.ts): people on this server who opted in to show each other a few numbers. `share` says which
+// ones, per member (packages/contract/src/party.ts); the only cross-user reader in the code is `partyView`.
+export const parties = pgTable('parties', {
+  id: id(),
+  name: text('name').notNull(),
+  /** Set null when that person is wiped or removed: the party goes on for the others. */
+  createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+  ...stamps(),
+})
+
+export type PartyStatus = 'invited' | 'active' | 'left'
+
+export const partyMembers = pgTable('party_members', {
+  id: id(),
+  partyId: uuid('party_id').notNull().references(() => parties.id, { onDelete: 'cascade' }),
+  userId: userId(),
+  status: text('status').$type<PartyStatus>().notNull().default('invited'),
+  invitedBy: uuid('invited_by').references(() => users.id, { onDelete: 'set null' }),
+  /** What the others see. Everything off but name and level until the person accepts and chooses. */
+  share: jsonb('share').$type<PartyShare>().notNull().default({ name: true, level: true, streak: false, today: false, quests: false, achievements: false }),
+  joinedAt: timestamp('joined_at', { withTimezone: true }),
+  ...stamps(),
+}, (t) => [uniqueIndex('party_members_party_user').on(t.partyId, t.userId), index('party_members_user').on(t.userId)])
 
 /** A client-made key per write: the stored response is replayed on a retry, so a quick log is not counted twice. */
 export const idempotency = pgTable('idempotency', {
@@ -429,6 +463,8 @@ export const connections = pgTable('connections', {
 
 export const syncRuns = pgTable('sync_runs', {
   id: id(),
+  /** Whose connection ran. Null on rows from before several people could share a server (migration 0004 fills them in). */
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
   connectorId: text('connector_id').notNull(),
   startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
   finishedAt: timestamp('finished_at', { withTimezone: true }),
@@ -539,6 +575,8 @@ export const goalReviews = pgTable('goal_reviews', {
 
 export const llmRuns = pgTable('llm_runs', {
   id: id(),
+  /** Who the call was for (Settings shows runs per person). Null when no one was signed in to the call. */
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
   task: text('task').notNull(),
   model: text('model').notNull(),
   inputTokens: integer('input_tokens'),

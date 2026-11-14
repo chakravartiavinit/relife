@@ -27,7 +27,8 @@ const user = (name: string, csv?: CsvName): Rule => ({ name, export: { where: 'u
 const viaSchedule = (name: string, csv?: CsvName): Rule => ({ name, export: { where: 'via-schedule', csv }, wipe: 'cascade' })
 
 export const TABLES: Rule[] = [
-  { name: 'users', export: { where: 'self' }, wipe: 'replace' },
+  // The role and the disabled flag stay out: an export restored into a new install makes its one person the owner.
+  { name: 'users', export: { where: 'self', drop: ['role', 'disabled_at'] }, wipe: 'replace' },
   user('trackers'),
   user('schedules'),
   viaSchedule('reminders'),
@@ -64,13 +65,16 @@ export const TABLES: Rule[] = [
   user('streak_freezes'),
   user('briefs'),
   user('coach_messages'),
-  // Global (no user_id): task, model, tokens and time only. Prompts are never stored (ai/runtime-policy.ts); the two payload columns are left out anyway.
-  { name: 'llm_runs', export: { where: 'all', drop: ['request', 'response'] }, wipe: 'all' },
+  // Task, model, tokens and time only. Prompts are never stored (ai/runtime-policy.ts); the two payload columns are left out anyway.
+  { name: 'llm_runs', export: { where: 'user', drop: ['request', 'response'] }, wipe: 'cascade' },
   { name: 'devices', export: false, wipe: 'keep', why: 'Token hashes: pair each device again instead.' },
   { name: 'push_subscriptions', export: false, wipe: 'cascade', why: 'Push addresses of each browser, tied to its device: turn notifications on again on each one.' },
   { name: 'pairings', export: false, wipe: 'cascade', why: 'Short-lived pairing codes.' },
+  // Shared with other people on this server, so one person's export cannot carry them (an import elsewhere would point at strangers). A wipe removes the person from every party.
+  { name: 'parties', export: false, wipe: 'keep', why: 'Shared with other people on this server: join again after you import.' },
+  { name: 'party_members', export: false, wipe: 'cascade', why: 'Which parties you are in and what you share with them: shared with other people, join again after you import.' },
   { name: 'idempotency', export: false, wipe: 'all', why: 'Operational: replay keys for retried writes.' },
-  { name: 'sync_runs', export: false, wipe: 'all', why: 'Operational: each source’s recent sync attempts.' },
+  { name: 'sync_runs', export: false, wipe: 'cascade', why: 'Operational: each source’s recent sync attempts.' },
   { name: 'rate_limits', export: false, wipe: 'keep', why: 'Operational: sign-in attempt counters.' },
   { name: 'jobs', export: false, wipe: 'keep', why: 'Operational: when each job last ran.' },
   { name: 'heartbeats', export: false, wipe: 'keep', why: 'Operational: whether the worker is alive.' },

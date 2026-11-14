@@ -29,6 +29,13 @@
       "when": 1794623176690,
       "tag": "0003_tracker_meta",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794624176690,
+      "tag": "0004_multi_user_party",
+      "breakpoints": true
     }
   ]
 }
