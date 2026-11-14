@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test, { after } from 'node:test'
+import { readFile, rm } from 'node:fs/promises'
 import { and, eq, sql } from 'drizzle-orm'
 
 /**
@@ -11,6 +12,8 @@ import { and, eq, sql } from 'drizzle-orm'
  */
 const enabled = process.env.RELIFE_IMPORT_INTEGRATION === '1'
 after(async () => { if (enabled) await (await import('@/db')).sql.end() })
+
+const inList = (xs: string[]) => sql.join(xs.map((x) => sql`${x}`), sql`, `)
 
 const CSV = (d: string, e: string) => `Date,Narration,Debit,Credit
 ${d},UPI/412345678901/SWIGGY ORDER,250.00,
@@ -200,4 +203,150 @@ test('setup with the Fitness pack adds exactly one pending goal draft, linked to
   } finally {
     await db.delete(schema.users).where(eq(schema.users.id, user.id))
   }
+})
+
+test('a spend typed in Capture links only when the bank description holds its name, and two links to one order cannot both stand', { skip: !enabled }, async () => {
+  const { db, schema, user } = await setup()
+  const { persist } = await import('./ingest')
+  const { linkStatements, setTransactionLink } = await import('./statement-link')
+  const { addDays, localDate } = await import('./time')
+  const T = schema.transactions
+  const day = addDays(localDate(new Date(), user.timezone), -1)
+  const acc = { key: 'statement:test-unique', kind: 'bank' as const, name: 'Test unique' }
+  const refs = ['statement:test-unique:1', 'statement:test-unique:2', 'statement:test-unique:3', 'manual:test-unique', 'swiggy:TEST-UNIQUE']
+  const bank = (n: number, desc: string, amount = -91) => persist(user, { kind: 'transaction', account: acc, at: new Date(`${day}T06:30:00Z`), amount, currency: 'INR', merchant: desc, source: 'statement', externalRef: `statement:test-unique:${n}`, meta: { description: desc } })
+  const row = async (ref: string) => (await db.select().from(T).where(and(eq(T.userId, user.id), eq(T.externalRef, ref))))[0]
+  try {
+    // An amount alone is not enough for a manual spend.
+    await bank(1, 'UNRELATED SHOP')
+    await persist(user, { kind: 'transaction', account: { key: 'manual:cash', kind: 'manual_asset', name: 'Cash & manual' }, at: new Date(`${day}T10:00:00Z`), amount: -91, currency: 'INR', merchant: 'bakery', source: 'manual', externalRef: 'manual:test-unique' })
+    assert.equal(await linkStatements(user, { from: day, to: day }), 0, 'no name, no link')
+    await db.delete(T).where(eq(T.externalRef, 'manual:test-unique'))
+    await db.delete(T).where(eq(T.externalRef, 'statement:test-unique:1'))
+
+    // Two bank rows, one app order, two link runs at once: exactly one row is linked and nothing throws.
+    await persist(user, { kind: 'transaction', account: { key: 'app:swiggy', kind: 'wallet', name: 'Swiggy orders' }, at: new Date(`${day}T08:00:00Z`), amount: -91, currency: 'INR', merchant: 'Swiggy', source: 'swiggy', externalRef: 'swiggy:TEST-UNIQUE', meta: { platform: 'swiggy', appOrder: true } })
+    await bank(2, 'SWIGGY ORDER A'); await bank(3, 'SWIGGY ORDER B')
+    const runs = await Promise.all([1, 2, 3].map(() => linkStatements(user, { from: day, to: day })))
+    assert.ok(runs.reduce((a, b) => a + b, 0) <= 1, `at most one link was made: ${runs}`)
+    const order = await row('swiggy:TEST-UNIQUE')
+    const linked = await db.select().from(T).where(and(eq(T.userId, user.id), eq(T.linkedTo, order.id)))
+    assert.equal(linked.length, 1)
+    // The database refuses a second row for the same order, and the by-hand action says so in words.
+    const other = linked[0].externalRef === 'statement:test-unique:2' ? await row('statement:test-unique:3') : await row('statement:test-unique:2')
+    await assert.rejects(db.update(T).set({ linkedTo: order.id }).where(eq(T.id, other.id)), (e: unknown) => (e as { code?: string; cause?: { code?: string } }).code === '23505' || (e as { cause?: { code?: string } }).cause?.code === '23505')
+    await assert.rejects(setTransactionLink(user, other.id, order.id), /Another bank row already matches/)
+  } finally {
+    await db.delete(T).where(and(eq(T.userId, user.id), sql`${T.externalRef} in (${inList(refs)})`))
+    await db.delete(schema.accounts).where(and(eq(schema.accounts.userId, user.id), sql`${schema.accounts.key} in ('statement:test-unique', 'app:swiggy')`))
+  }
+})
+
+test('upload chunks: another user gets 404, a wrong offset says where to resume, a big chunk and extra bytes are refused, two writers at one offset cannot both win', { skip: !enabled }, async () => {
+  const { db, schema, user, imports } = await setup()
+  const { CHUNK_BYTES } = await import('@/domain/imports')
+  const [stranger] = await db.insert(schema.users).values({ name: 'Chunk stranger', timezone: 'Asia/Kolkata', baseCurrency: 'INR' }).returning()
+  const csv = Buffer.from('Date,Narration,Debit\n2024-01-01,FAKE,1.00\n2024-01-02,FAKE,2.00\n')
+  const { id } = await imports.createImport(user, { kind: 'statement', fileName: 'chunky-test.csv', size: csv.length })
+  try {
+    assert.deepEqual(await imports.appendChunk(stranger, id, 0, csv), { ok: false, status: 404, error: 'Import not found' })
+    assert.deepEqual(await imports.appendChunk(user, id, 5, csv.subarray(0, 10)), { ok: false, status: 409, error: 'Out of order', expected: 0 })
+    const big = await imports.appendChunk(user, id, 0, Buffer.alloc(CHUNK_BYTES + 1))
+    assert.equal(!big.ok && big.status, 413)
+    const more = await imports.appendChunk(user, id, 0, Buffer.concat([csv, Buffer.from('x')]))
+    assert.equal(!more.ok && more.status, 400)
+    // Two requests for the same offset: one writes, the other is told where the file stands.
+    const both = await Promise.all([imports.appendChunk(user, id, 0, csv.subarray(0, 20)), imports.appendChunk(user, id, 0, csv.subarray(0, 20))])
+    assert.equal(both.filter((r) => r.ok).length, 1)
+    assert.deepEqual(both.find((r) => !r.ok), { ok: false, status: 409, error: 'Out of order', expected: 20 })
+    // Resume from where the server says, and the finished file is exactly what was sent.
+    assert.deepEqual(await imports.appendChunk(user, id, 20, csv.subarray(20)), { ok: true, received: csv.length })
+    const preview = await imports.finishUpload(user, id)
+    assert.equal(preview.ok, true, JSON.stringify(preview))
+    assert.equal(preview.ok && 'rows' in preview ? preview.rows : -1, 2)
+    assert.equal((await readFile(imports.uploadPath(id))).equals(csv), true)
+    assert.equal((await imports.appendChunk(user, id, csv.length, Buffer.from('x'))).ok, false, 'a finished upload takes no more')
+  } finally {
+    await db.delete(schema.imports).where(eq(schema.imports.id, id))
+    await db.delete(schema.users).where(eq(schema.users.id, stranger.id))
+    await rm(imports.importDir(id), { recursive: true, force: true })
+  }
+})
+
+test('Undo and Remove work on a failed import and on a stale running one; a fresh running one is refused', { skip: !enabled }, async () => {
+  const { db, schema, user, imports } = await setup()
+  const T = schema.transactions
+  const csv = Buffer.from('Date,Narration,Debit,Credit,Undo test\n2024-02-01,UNDO FAKE A,10.00,,\n2024-02-02,UNDO FAKE B,20.00,,\n')
+  const ids: string[] = []
+  try {
+    for (const how of ['failed', 'stale'] as const) {
+      const { id } = await upload(imports, user, 'statement', `undo-${how}-test.csv`, csv)
+      ids.push(id)
+      assert.equal((await db.select().from(T).where(sql`${T.meta}->>'importId' = ${id}`)).length, 2)
+      await db.update(schema.imports).set(how === 'failed' ? { status: 'failed', error: 'stopped half way' } : { status: 'running', updatedAt: new Date(Date.now() - 2 * 3_600_000) }).where(eq(schema.imports.id, id))
+      const listed = (await imports.listImports(user, 50)).find((r) => r.id === id)!
+      assert.equal(listed.status, 'failed', 'a stale run is listed as failed so it can be removed')
+      await imports.cancelImport(user, id) // Remove: undoes what it wrote
+      assert.equal((await db.select().from(T).where(sql`${T.meta}->>'importId' = ${id}`)).length, 0, `${how}: rows removed`)
+      const [after] = await db.select().from(schema.imports).where(eq(schema.imports.id, id))
+      assert.equal(after.status, 'undone')
+    }
+    const { id } = await upload(imports, user, 'statement', 'undo-fresh-test.csv', csv)
+    ids.push(id)
+    await db.update(schema.imports).set({ status: 'running' }).where(eq(schema.imports.id, id))
+    await assert.rejects(imports.undoImport(user, id), /Only a finished or failed import/)
+    await imports.cancelImport(user, id) // nothing to cancel while it runs
+    assert.equal((await db.select().from(T).where(sql`${T.meta}->>'importId' = ${id}`)).length, 2)
+  } finally {
+    for (const id of ids) await db.delete(T).where(sql`${T.meta}->>'importId' = ${id}`)
+    await db.delete(schema.rawEvents).where(and(eq(schema.rawEvents.userId, user.id), sql`${schema.rawEvents.body}->>'importId' in (${inList(ids)})`))
+    await db.delete(schema.imports).where(and(eq(schema.imports.userId, user.id), sql`${schema.imports.fileName} like 'undo-%-test.csv'`))
+    await db.delete(schema.accounts).where(and(eq(schema.accounts.userId, user.id), sql`${schema.accounts.key} like 'statement:undo-%-test'`))
+  }
+})
+
+test('a Dr / Cr file imports with the right signs and the day\'s last balance, an ambiguous date waits for a choice, and the same file twice warns', { skip: !enabled }, async () => {
+  const { db, schema, user, imports } = await setup()
+  const T = schema.transactions
+  const drcr = Buffer.from('Tran Date,Description,Amount,Dr / Cr,Balance\n2024-03-05,DRCR FAKE SHOP,120.00,Dr,880.00\n2024-03-05,DRCR FAKE EMPLOYER,30.00,Cr,910.00\n2024-03-05,DRCR FAKE CAFE,60.00,Dr,850.00\n')
+  const ids: string[] = []
+  try {
+    const first = await upload(imports, user, 'statement', 'drcr-test.csv', drcr)
+    ids.push(first.id)
+    assert.equal(first.preview.ok && first.preview.kind === 'statement' ? first.preview.mapping.columns.sign : -1, 3)
+    const rows = await db.select().from(T).where(sql`${T.meta}->>'importId' = ${first.id}`)
+    assert.deepEqual(rows.map((r) => r.amount).sort((a, b) => a - b), [-120, -60, 30])
+    const [account] = await db.select().from(schema.accounts).where(and(eq(schema.accounts.userId, user.id), eq(schema.accounts.key, 'statement:drcr-test')))
+    assert.equal(account.latestBalance, 850, 'the last row of the day sets the balance')
+    // The same file again: a warning on the preview (not a stop).
+    const again = await upload(imports, user, 'statement', 'drcr-test-again.csv', drcr)
+    ids.push(again.id)
+    assert.equal(again.preview.ok && again.preview.repeat?.fileName, 'drcr-test.csv')
+
+    // 01/02, 02/02, 03/02 reads in order both as DD/MM and as MM/DD: nothing is ready until the user picks.
+    const amb = Buffer.from('Posting Date,Narration,Debit,Credit,Amb Test\n01/02/2024,AMB FAKE,5.00,,\n02/02/2024,AMB FAKE,6.00,,\n03/02/2024,AMB FAKE,7.00,,\n')
+    const { id } = await imports.createImport(user, { kind: 'statement', fileName: 'amb-test.csv', size: amb.length })
+    ids.push(id)
+    await imports.appendChunk(user, id, 0, amb)
+    const p = await imports.finishUpload(user, id)
+    assert.ok(p.ok && p.kind === 'statement')
+    assert.equal(p.ready, false)
+    assert.equal(p.dateChoices.length, 2)
+    const chosen = await imports.previewImport(user, id, { ...p.mapping, dateFormat: 'DD/MM/YYYY' })
+    assert.ok(chosen.ok && chosen.kind === 'statement' && chosen.ready && chosen.dateChoices.length === 0)
+  } finally {
+    for (const id of ids) await db.delete(T).where(sql`${T.meta}->>'importId' = ${id}`)
+    await db.delete(schema.rawEvents).where(and(eq(schema.rawEvents.userId, user.id), sql`${schema.rawEvents.body}->>'importId' in (${inList(ids)})`))
+    await db.delete(schema.imports).where(and(eq(schema.imports.userId, user.id), sql`${schema.imports.fileName} in ('drcr-test.csv', 'drcr-test-again.csv', 'amb-test.csv')`))
+    await db.delete(schema.accounts).where(and(eq(schema.accounts.userId, user.id), sql`${schema.accounts.key} in ('statement:drcr-test', 'statement:drcr-test-again', 'statement:amb-test')`))
+  }
+})
+
+test('built-in rules: a card bill from the bank is a transfer, a shop that says card payment or autopay is still spending', { skip: !enabled }, async () => {
+  const { categorize } = await import('./categorize')
+  const id = '00000000-0000-4000-8000-000000000000'
+  assert.equal((await categorize(id, 'CREDIT CARD PAYMENT BANK')).category, 'Transfers')
+  assert.equal((await categorize(id, 'CREDIT CARD AUTOPAY HDFC')).category, 'Transfers')
+  assert.equal((await categorize(id, 'CARD PAYMENT TO TESCO')).category, 'Uncategorized')
+  assert.equal((await categorize(id, 'ACH/NACH AUTOPAY NETFLIX')).category, 'Subscriptions')
 })
