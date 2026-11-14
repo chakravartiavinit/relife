@@ -3,6 +3,7 @@ import { mkdir, open, rm, stat, statfs, appendFile } from 'node:fs/promises'
 import { and, desc, eq, inArray, isNull, lt, ne, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { db, schema } from '@/db'
+import { DEMO_MESSAGE, isDemo } from '@/core/demo'
 import { env } from '@/core/env'
 import { emitRawMany } from '@/core/ingest'
 import { dataDir } from '@/core/paths'
@@ -50,6 +51,7 @@ async function owned(user: User, id: string): Promise<ImportRow> {
 
 /** Starts an upload. Refuses a file over the limit or one the disk can't hold (with room to unpack and parse). */
 export async function createImport(user: User, input: { kind: ImportKind; fileName: string; size: number }) {
+  if (isDemo()) throw new Error(DEMO_MESSAGE) // the gate and the read-only connection refuse it too; this says why
   const limit = isCsvKind(input.kind) ? Math.min(CSV_MAX_MB, maxMb()) : maxMb()
   if (!(input.size > 0)) throw new Error('That file is empty')
   if (input.size > limit * 1024 * 1024) {

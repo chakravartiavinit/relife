@@ -238,6 +238,8 @@ test('demo: every write is refused with "Demo: changes are off", whatever its pa
       // The phone: a Health Connect batch, a push subscription (add and remove) and a tapped notification button.
       ['/api/v1/health', { method: 'POST' }], ['/api/v1/push/subscription', { method: 'POST' }], ['/api/v1/push/subscription', { method: 'DELETE' }],
       ['/api/v1/push/action', { method: 'POST' }],
+      // Imports: a chunk of an upload and its cancel.
+      ['/api/import/00000000-0000-4000-8000-000000000001', { method: 'PUT' }], ['/api/import/00000000-0000-4000-8000-000000000001', { method: 'DELETE' }],
     ] as [string, { method?: string; headers?: Record<string, string> }][]) {
       const r = await gate(req(path, o), deps())
       assert.equal(r.status, 403, `${o.method} ${path}`)
