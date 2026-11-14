@@ -1,3 +1,4 @@
+import brand from '@relife/brand/brand.json'
 import { Bot, type Context } from 'grammy'
 import { and, eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
@@ -35,7 +36,7 @@ export function startBot(): Bot | null {
     const code = text.match(/^\/start(?:@\w+)?\s+(\S+)/)?.[1]
     if (code) {
       const r = await redeemLinkCode(code, chat)
-      await ctx.reply(r.ok ? `Linked to ${esc(r.user.name)}. Send /today to try it.` : r.reason === 'rate_limited' ? 'Too many tries. Wait a few minutes.' : 'That code did not work. Make a new one in ReLife under You › Notifications.', { parse_mode: 'HTML' })
+      await ctx.reply(r.ok ? `Linked to ${esc(r.user.name)}. Send /today to try it.` : r.reason === 'rate_limited' ? 'Too many tries. Wait a few minutes.' : `That code did not work. Make a new one in ${brand.name} under You › Notifications.`, { parse_mode: 'HTML' })
       return
     }
     const user = await userForChat(chat)
@@ -43,12 +44,12 @@ export function startBot(): Bot | null {
     if (text.startsWith('/start')) {
       await ctx.reply(
         (await anyoneLinked())
-          ? "This chat isn't linked to anyone on this ReLife. Open You › Notifications in ReLife and tap Link Telegram."
-          : `Your chat id is <code>${esc(chat)}</code>.\nPaste it into Telegram → Manage in ReLife, under You › Connections, or tap Link Telegram under You › Notifications.`,
+          ? `This chat isn't linked to anyone on this ${brand.name}. Open You › Notifications in ${brand.name} and tap Link Telegram.`
+          : `Your chat id is <code>${esc(chat)}</code>.\nPaste it into Telegram → Manage in ${brand.name}, under You › Connections, or tap Link Telegram under You › Notifications.`,
         { parse_mode: 'HTML' },
       )
     } else if (ctx.chat) {
-      await ctx.reply("This chat isn't linked to anyone on this ReLife.").catch(() => {})
+      await ctx.reply(`This chat isn't linked to anyone on this ${brand.name}.`).catch(() => {})
     }
   })
 
