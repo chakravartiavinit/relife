@@ -23,6 +23,7 @@ import { AreaGallery } from '@/ui/components/area/area-gallery'
 import { TodayGallery } from '@/ui/components/today/today-gallery'
 import { PlanYouGallery } from '@/ui/components/plan-you-gallery'
 import { OnboardingGallery } from '@/ui/components/onboarding-gallery'
+import { builtInPacks } from '@/core/packs'
 import { TEMPLATES } from '@/core/onboarding'
 import { InstalledBeuiGallery, PeekLinkDemo, SegmentTabsDemo, SheetDemo, ShellDemo, TypeScale } from '@/ui/components/gallery-foundations'
 import { RecoveryPanel, SystemQuests } from '@/ui/components/system-quests'
@@ -195,7 +196,7 @@ export default function UiGallery() {
       </Section>
 
       <Section title="Setup: the four steps and the save file">
-        <OnboardingGallery templates={TEMPLATES} />
+        <OnboardingGallery templates={TEMPLATES} packs={builtInPacks()} />
       </Section>
 
       <Section title="Shell pieces">

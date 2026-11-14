@@ -3,16 +3,18 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { ArrowLeft, ArrowRight, Check, CornerDownLeft, LoaderCircle } from 'lucide-react'
+import type { Pack } from '@relife/contract'
 import type { Category } from '@/db/schema'
 import type { Template } from '@/core/onboarding'
 import { pickSources } from '@/domain/onboarding'
-import { aiReady, finishOnboarding, skipOnboardingAction } from '@/app/actions'
+import { applyPack } from '@/domain/packs'
+import { aiReady, checkLocalAi, chooseLocalAi, finishOnboarding, skipOnboardingAction, type LocalAiResult } from '@/app/actions'
 import { Button } from './button'
 import { Wordmark } from './logo'
 import { ThemeToggle } from './theme-toggle'
 import type { ConnectorItem } from './connector-market'
 import { Backdrop, SaveFile, SaveStrip } from './onboarding-preview'
-import { StepAreas, StepConnect, StepRoutines, StepYou, type Ai, type Set } from './onboarding-steps'
+import { StepAi, StepAreas, StepConnect, StepPack, StepRoutines, StepYou, type Ai, type Set } from './onboarding-steps'
 import { FOCUS, SWAP, stepMotion } from './onboarding-ui'
 import { AT, IMPROVE, LAST, MAX_IMPROVE, STEPS, canonTz, clamp, type Initial, type V } from './onboarding-data'
 import { cn } from '../cn'
@@ -22,21 +24,25 @@ import { EASE_OUT } from '@/ui/beui/lib/ease'
 const AREAS_STEP = STEPS.findIndex((s) => s.key === 'areas')
 const ALL_AREAS = Object.keys(CATEGORY) as Category[]
 
-// One-time setup, as a split screen. On the left, one short group of questions at a time: four steps (You,
-// Areas, Connect, Routines), each filled in already so Enter walks straight through. On the right, the player's
+// One-time setup, as a split screen. On the left, one short group of questions at a time: six steps (You, Pack,
+// Areas, Connect, AI, Routines), each filled in already so Enter walks straight through (Pack starts on Custom). On the right, the player's
 // save file builds itself from the answers (onboarding-preview.tsx), so every choice shows what it changes. On a
 // phone the preview shrinks to one line above the questions. Answers survive a reload until setup is finished.
 // Finishing lands on Today, where the first-day card carries what is left to set up.
 // The questions are in onboarding-steps.tsx; their shared look is in onboarding-ui.tsx.
 
-const DRAFT = 'relife:setup-draft:v2'
+const DRAFT = 'relife:setup-draft:v3'
 
-export function OnboardingFlow({ initial, templates, existing, timezones, currencies, today, fresh, sources }: {
+export function OnboardingFlow({ initial, templates, existing, timezones, currencies, today, fresh, sources, packs, providers }: {
   initial: Initial; templates: Template[]; existing: string[]; timezones: string[]; currencies: string[]; today: string
   /** First time through (finishing clears earlier XP for a fresh start at Level 1): start from this device's time zone. */
   fresh: boolean
   /** Every data source and Telegram, as Connections shows them. The Connect step picks a few for the chosen areas. */
   sources: ConnectorItem[]
+  /** The starter packs the Pack step offers. */
+  packs: Pack[]
+  /** The AI providers (cloud keys and the local server), as Connections shows them. */
+  providers: ConnectorItem[]
 }) {
   const [i, setI] = useState(0)
   // Past the Areas step at least once: only then does setup save the area picks (Skip before it keeps every area).
@@ -46,7 +52,7 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
     ...initial,
     areas: initial.areas.length ? initial.areas : (['health', 'mind', 'skills'] as Category[]),
     // The routine lists decide on arrival at the last step.
-    templates: [], generated: [], routineMode: null, generatedFor: '', starterSeeded: false, sleepTouched: false,
+    templates: [], generated: [], routineMode: null, generatedFor: '', starterSeeded: false, sleepTouched: false, pack: null, aiChoice: null,
   })
   const [error, setError] = useState<string | null>(null)
   const [nudge, setNudge] = useState(0) // bumps when a fourth training pick is refused, to shake the line
@@ -55,7 +61,16 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
   const [leaving, setLeaving] = useState(false)
   const pane = useRef<HTMLDivElement>(null)
   const [ai, setAi] = useState<Ai | null>(null)
-  useEffect(() => { aiReady().then(setAi).catch(() => setAi({ ready: false, model: null })) }, [])
+  // Asked again when a provider connects (the cloud key dialog on the AI step refreshes `providers`).
+  const connectedKey = providers.map((p) => `${p.id}:${p.connected}`).join()
+  useEffect(() => { aiReady().then(setAi) }, [connectedKey])
+  // The free local AI: checked when its card is showing, saved on Continue.
+  const [local, setLocal] = useState<LocalAiResult | null>(null)
+  const [checking, setChecking] = useState(false)
+  const runCheck = () => {
+    setChecking(true)
+    checkLocalAi().catch(() => ({ ok: false as const, error: 'Couldn’t check for Ollama. Try again.' })).then(setLocal).finally(() => setChecking(false))
+  }
 
   // After mount: pick up a draft from this tab (a reload keeps every answer), else start from this device's
   // time zone. (Its currency would only be a guess from the browser's language, so that is just suggested
@@ -102,7 +117,8 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
   // The rows on Connect are chosen from how things stood on arrival and stay put while a source connects (its row
   // flips to a check in place); each row then reads the live state.
   const [first] = useState(() => sources.filter((c) => !c.unavailable))
-  const order = useMemo(() => pickSources(first, v.areas).map((c) => c.id), [first, v.areas])
+  const pack = packs.find((p) => p.id === v.pack) ?? null
+  const order = useMemo(() => pickSources(first, v.areas, undefined, pack?.sources ?? []).map((c) => c.id), [first, v.areas, pack])
   const rows = order.flatMap((id) => sources.find((c) => c.id === id) ?? [])
   const connected = rows.filter((c) => c.connected).length
 
@@ -131,6 +147,7 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
       wake: hours ? v.wake : undefined, sleep: hours ? v.sleep : undefined,
       sleepHours: changed('sleepHours'), steps: changed('steps'), waterMl: full ? v.waterMl : undefined,
       templates: full ? routines : [], generated: full ? v.generated : [],
+      pack: full && v.pack ? v.pack : undefined,
     }
   }
   const finish = (full: boolean) => start(async () => {
@@ -143,9 +160,23 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
   const next = () => {
     const e = check()
     if (e) return setError(e)
+    // Free local AI: saving it on the way out of the AI step. It saves even when the server isn't answering yet.
+    if (i === AT.ai && !ai?.ready && (v.aiChoice ?? 'local') === 'local') {
+      return start(async () => {
+        const r = await chooseLocalAi().catch(() => ({ ok: false as const, error: 'Couldn’t save that. Try again.' }))
+        if (!r.ok) return setError(r.error)
+        setLocal(r)
+        setAi(await aiReady())
+        to(i + 1)
+      })
+    }
     if (i < LAST) return to(i + 1)
     finish(true)
   }
+  // First sight of the AI step with free local AI showing: look for the server.
+  useEffect(() => {
+    if (i === AT.ai && ready && ai && !ai.ready && (v.aiChoice ?? 'local') === 'local' && !local && !checking) runCheck()
+  }) // eslint-disable-line react-hooks/exhaustive-deps -- runs while the AI step shows and no answer is in yet
   // Skip saves what is filled in so far (a name and region), then lands on Today with the checklist. Without a name
   // there is nothing to save. Running setup again from Settings just goes back.
   const skip = () => {
@@ -170,8 +201,13 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
 
   // One line beside the action: what's missing, a count, or a note.
   const refused = i === AT.areas && nudge > 0
+  const aiChoice = v.aiChoice ?? 'local'
+  const aiDown = i === AT.ai && !ai?.ready && aiChoice === 'local' && !checking && !!local?.ok && local.state !== 'ok'
   const line = error
     ?? (i === AT.you ? 'You can change all of this later in Settings.'
+      : i === AT.pack ? (pack ? `${pack.name} · ${pack.routines.length} routines, ${pack.goals.length} goal${pack.goals.length === 1 ? '' : 's'}` : 'Custom · you choose everything')
+      : i === AT.ai ? (ai?.ready ? 'A model is connected' : aiChoice === 'skip' ? 'No model. Add one any time in You › Connections.' : aiChoice === 'cloud' ? 'Paste a key above, or continue and add one later.'
+        : checking || !local ? 'Looking for Ollama…' : aiDown ? 'Local AI isn’t answering. Continue and it stays off until it does.' : 'Local AI is ready · nothing leaves this machine')
       : i === AT.areas ? (refused ? 'Up to three. Drop one to swap.' : `${v.areas.length} area${v.areas.length === 1 ? '' : 's'} · ${picks.length} of ${MAX_IMPROVE} to train`)
       : i === AT.connect ? `${connected} connected. More any time in You › Connections.`
       : routines.length ? `${routines.length} routine${routines.length === 1 ? '' : 's'} on` : 'None on. Add routines anytime in Plan.')
@@ -202,8 +238,10 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
               {ready ? (
                 <motion.section key={i} custom={dir} variants={stepMotion} initial="enter" animate="center" exit="exit" aria-live="polite">
                   {i === AT.you ? <StepYou v={v} set={set} suggested={device} timezones={timezones} currencies={currencies} nameError={!!error && !v.name.trim()} />
+                    : i === AT.pack ? <StepPack v={v} packs={packs} sourceName={(id) => sources.find((c) => c.id === id)?.name} onPick={(id) => { setV((s) => applyPack(s, packs.find((p) => p.id === id) ?? null)); setError(null) }} />
                     : i === AT.areas ? <StepAreas v={v} set={set} picks={picks} options={options} onRefuse={() => setNudge((n) => n + 1)} />
                     : i === AT.connect ? <StepConnect rows={rows} />
+                    : i === AT.ai ? <StepAi v={v} set={set} ai={ai} providers={providers} local={local} checking={checking} onCheck={runCheck} />
                     : <StepRoutines v={v} set={set} mode={mode} kind={kind} building={building} setBuilding={setBuilding} starters={starters} existing={existing} today={today} ai={ai} picksSig={picksSig} />}
                 </motion.section>
               ) : null}
@@ -226,12 +264,12 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
             {/* A refused pick shakes the line once. */}
             <motion.p key={nudge} role={error ? 'alert' : undefined} aria-live="polite"
               initial={false} animate={refused ? { x: [0, -5, 5, -3, 3, 0] } : { x: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}
-              className={cn('min-w-0 flex-1 text-caption text-pretty tabular-nums', error || refused ? 'font-medium text-bad' : 'text-ink-3 max-sm:flex-none')}>
+              className={cn('min-w-0 flex-1 text-caption text-pretty tabular-nums', error || refused ? 'font-medium text-bad' : aiDown ? 'font-medium text-warn' : 'text-ink-3 max-sm:flex-none')}>
               {/* On a phone only what's missing shows, so the bar stays one row. */}
-              <span className={cn(!(error || refused) && 'max-sm:sr-only')}>{line}</span>
+              <span className={cn(!(error || refused || aiDown) && 'max-sm:sr-only')}>{line}</span>
             </motion.p>
             <Button variant="primary" size="lg" onClick={next} disabled={busy} aria-disabled={!valid} aria-busy={busy}
-              className={cn('h-10 min-w-[132px] text-body aria-disabled:opacity-50', !(error || refused) && 'max-sm:flex-1')}>
+              className={cn('h-10 min-w-[132px] text-body aria-disabled:opacity-50', !(error || refused || aiDown) && 'max-sm:flex-1')}>
               {busy ? <><LoaderCircle className="size-4 animate-spin [animation-duration:0.7s]" aria-hidden />{leaving ? 'Opening Today…' : 'Saving…'}</>
                 : i < LAST ? <>Continue<kbd aria-hidden className="ms-0.5 grid h-5 place-items-center rounded-[5px] bg-white/15 px-1 font-sans text-label max-sm:hidden dark:bg-black/10"><CornerDownLeft className="size-3" strokeWidth={2} /></kbd></>
                 : <>Start Level 1<ArrowRight className="size-4 rtl:-scale-x-100" strokeWidth={2} /></>}
@@ -246,7 +284,7 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
           <Backdrop progress={i / LAST} areas={v.areas} />
           <div className="relative flex h-full flex-col items-center overflow-y-auto px-8 py-10 [scrollbar-width:none]">
             <div className="my-auto flex w-full justify-center">
-              <SaveFile v={v} step={i} picks={picks} routines={routines} starters={starters} sources={rows} />
+              <SaveFile v={v} step={i} picks={picks} routines={routines} starters={starters} sources={rows} pack={pack} ai={{ choice: v.aiChoice ?? (ai?.ready ? null : 'local'), connected: ai?.ready ? ai.model : null, local }} />
             </div>
           </div>
         </div>
@@ -255,10 +293,10 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
   )
 }
 
-/** The four steps as labelled capsules. Finished ones jump back. */
+/** The six steps as labelled capsules. Finished ones jump back. */
 export function Rail({ current, onJump }: { current: number; onJump: (k: number) => void }) {
   return (
-    <ol aria-label="Setup steps" className="grid grid-cols-4 gap-1.5">
+    <ol aria-label="Setup steps" className="grid grid-cols-6 gap-1.5">
       {STEPS.map((s, k) => {
         const state = k < current ? 'done' : k === current ? 'now' : 'next'
         return (

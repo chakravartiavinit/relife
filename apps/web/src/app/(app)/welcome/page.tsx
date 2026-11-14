@@ -7,6 +7,7 @@ import { db, schema } from '@/db'
 import { getUser } from '@/core/user'
 import { localDate } from '@/core/time'
 import { TEMPLATES } from '@/core/onboarding'
+import { builtInPacks } from '@/core/packs'
 import { quietHours } from '@/domain/notify'
 import { loadConnectorItems } from '@/core/connector-items'
 import { requestOrigin } from '@/core/auth/trust'
@@ -44,6 +45,9 @@ async function Welcome() {
       templates={TEMPLATES}
       // The Connect step offers a few of these for the picked areas. The sync history stays on the server.
       sources={items.filter((c) => c.section !== 'ai').map((c) => ({ ...c, syncs: undefined }))}
+      packs={builtInPacks()}
+      // The AI step: cloud providers open their own connect dialog; the free local server is checked on its own.
+      providers={items.filter((c) => c.section === 'ai').map((c) => ({ ...c, syncs: undefined }))}
       existing={schedules.map((s) => s.name.toLowerCase())}
       timezones={Intl.supportedValuesOf('timeZone')}
       currencies={Intl.supportedValuesOf('currency')}

@@ -2,7 +2,9 @@
 
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
-import { Check, Moon, Sun } from 'lucide-react'
+import { Check, Flag, Lock, Moon, Sun } from 'lucide-react'
+import type { Pack } from '@relife/contract'
+import type { LocalAiResult } from '@/app/actions'
 import type { Category } from '@/db/schema'
 import type { Template } from '@/core/onboarding'
 import { CATEGORY } from '../tokens'
@@ -81,8 +83,10 @@ export function DayBar({ wake, sleep, compact }: { wake: string; sleep: string; 
 }
 
 /** One part of the save file. `at` is the step that fills it. */
-function Part({ label, at, step, empty, children }: {
+function Part({ label, at, step, empty, children, fromPack }: {
   label: string; at: number; step: number; empty: string | null; children: React.ReactNode
+  /** The starter pack filled this part in: a small "+ Pack" tag says so. */
+  fromPack?: boolean
 }) {
   const now = step === at
   const ahead = step < at
@@ -93,9 +97,12 @@ function Part({ label, at, step, empty, children }: {
         now ? 'bg-pill-wash shadow-[0_0_0_1.5px_var(--pill)]' : 'bg-transparent', ahead && 'opacity-60')}>
       <p className="mb-2 flex items-center justify-between gap-2 font-mono text-label text-ink-3 uppercase">
         {label}
-        <AnimatePresence initial={false}>
-          {now ? <motion.span key="now" {...appear} className="rounded-full bg-pill px-1.5 font-sans text-label tracking-normal text-white normal-case">Editing</motion.span> : null}
-        </AnimatePresence>
+        <span className="flex items-center gap-1.5">
+          {fromPack && !empty ? <span className="font-mono text-label text-pill-ink">+ Pack</span> : null}
+          <AnimatePresence initial={false}>
+            {now ? <motion.span key="now" {...appear} className="rounded-full bg-pill px-1.5 font-sans text-label tracking-normal text-white normal-case">Editing</motion.span> : null}
+          </AnimatePresence>
+        </span>
       </p>
       <AnimatePresence mode="popLayout" initial={false}>
         {empty ? (
@@ -109,8 +116,12 @@ function Part({ label, at, step, empty, children }: {
 }
 
 /** The player's save file as it will look, built from the answers so far. */
-export function SaveFile({ v, step, picks, routines, starters, sources }: {
+export function SaveFile({ v, step, picks, routines, starters, sources, pack, ai }: {
   v: V; step: number
+  /** The starter pack picked on the Pack step, if any. */
+  pack: Pack | null
+  /** The AI step's answer: what was picked, the model already connected, and how the local server answered. */
+  ai: { choice: V['aiChoice']; connected: string | null; local: LocalAiResult | null }
   /** Training picks valid for the chosen areas, in priority order. */
   picks: string[]
   /** Ids of the ticked routines in the list on screen. */
@@ -166,7 +177,14 @@ export function SaveFile({ v, step, picks, routines, starters, sources }: {
 
       <Fluid>
         <div className="flex flex-col gap-1 border-t border-divider p-2">
-          <Part label="Areas" at={AT.areas} step={step} empty={reached(AT.areas) ? null : 'The parts of life you level up'}>
+          <Part label="Starting pack" at={AT.pack} step={step} empty={reached(AT.pack) ? null : 'A starter pack fills in the next steps'}>
+            <p className="text-caption font-semibold text-ink">{pack?.name ?? 'Custom'}</p>
+            <p className="text-caption text-ink-3 tabular-nums">
+              {pack ? `${pack.routines.length} routines · ${pack.goals.length} goal${pack.goals.length === 1 ? '' : 's'}${pack.sources?.length ? ` · ${pack.sources.length} sources` : ''}` : 'You pick the areas, routines and targets'}
+            </p>
+          </Part>
+
+          <Part label="Areas" at={AT.areas} step={step} fromPack={!!pack} empty={reached(AT.areas) ? null : 'The parts of life you level up'}>
             <ul className="flex flex-wrap gap-1.5">
               {v.areas.map((c: Category) => {
                 const Icon = AREA_ICON[c]
@@ -182,7 +200,7 @@ export function SaveFile({ v, step, picks, routines, starters, sources }: {
             </ul>
           </Part>
 
-          <Part label="Sources" at={AT.connect} step={step} empty={reached(AT.connect) ? (sources.length ? null : 'Nothing to connect for these areas') : 'Apps and devices that fill in your numbers'}>
+          <Part label="Sources" at={AT.connect} step={step} fromPack={!!pack?.sources?.length} empty={reached(AT.connect) ? (sources.length ? null : 'Nothing to connect for these areas') : 'Apps and devices that fill in your numbers'}>
             <ul className="flex flex-col gap-1">
               <AnimatePresence initial={false}>
                 {on.map((c) => (
@@ -204,7 +222,11 @@ export function SaveFile({ v, step, picks, routines, starters, sources }: {
             ) : null}
           </Part>
 
-          <Part label="The System · daily quests" at={AT.areas} step={step}
+          <Part label="Coach · AI model" at={AT.ai} step={step} empty={reached(AT.ai) ? null : 'Optional: a free local model, or your own key'}>
+            <AiLine ai={ai} />
+          </Part>
+
+          <Part label="The System · daily quests" at={AT.areas} step={step} fromPack={!!pack}
             empty={picks.length ? null : reached(AT.connect) ? 'The System picks whatever is slipping most' : 'Up to three things to train first'}>
             <ol className="flex flex-col gap-1">
               {picks.map((id, k) => {
@@ -218,6 +240,16 @@ export function SaveFile({ v, step, picks, routines, starters, sources }: {
               })}
             </ol>
           </Part>
+
+          {pack?.goals[0] ? (
+            <Part label="First goal" at={AT.pack} step={step} fromPack empty={reached(AT.pack) ? null : 'A starter pack brings one to approve'}>
+              <p className="flex items-center gap-2 text-caption">
+                <Flag aria-hidden className="size-4 shrink-0 text-pill-ink" strokeWidth={1.5} />
+                <span className="min-w-0 flex-1 truncate font-medium text-ink">{pack.goals[0].title}</span>
+              </p>
+              <p className="mt-1 ps-6 text-caption text-ink-3">A draft on Plan. Nothing starts until you approve it.</p>
+            </Part>
+          ) : null}
 
           <Part label="Your day" at={AT.routines} step={step} empty={reached(AT.routines) ? null : 'Your hours and what a good day looks like'}>
             <DayBar wake={v.wake} sleep={v.sleep} compact />
@@ -235,7 +267,7 @@ export function SaveFile({ v, step, picks, routines, starters, sources }: {
             </ul>
           </Part>
 
-          <Part label="Today’s routines" at={AT.routines} step={step}
+          <Part label="Today’s routines" at={AT.routines} step={step} fromPack={!!pack}
             empty={picked.length ? null : reached(AT.routines) ? 'No routines yet. Add them anytime in Plan.' : 'Next step: a few routines, each with a reminder and a streak'}>
             <ul className="flex flex-col gap-1">
               <AnimatePresence initial={false}>
@@ -256,6 +288,26 @@ export function SaveFile({ v, step, picks, routines, starters, sources }: {
         </div>
       </Fluid>
     </div>
+  )
+}
+
+/** The Coach · AI model part: the model, or why there is none, in the voice of the AI step. */
+function AiLine({ ai }: { ai: { choice: V['aiChoice']; connected: string | null; local: LocalAiResult | null } }) {
+  const down = ai.choice !== 'cloud' && ai.choice !== 'skip' && ai.local?.ok && ai.local.state !== 'ok'
+  const [title, sub] = ai.connected ? [ai.connected, 'Connected. Change it in You › Connections.']
+    : ai.choice === 'skip' ? ['None for now', 'Rules run nudges and quests.']
+    : ai.choice === 'cloud' ? ['Your own key', 'Paste it on this step or later in You › Connections.']
+    : down ? ['Local AI · not answering', 'Rules run until it’s back.']
+    : [`Local AI${ai.local?.ok ? ` · ${ai.local.model}` : ''}`, 'On this machine. Nothing leaves it.']
+  return (
+    <p className="flex items-center gap-2.5 rounded-[8px] bg-surface-2 p-2">
+      <AppLogo id={ai.connected && !ai.connected.startsWith('local:') ? ai.connected.split(':')[0] : 'local'} size="xs" />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-caption font-semibold text-ink">{title}</span>
+        <span className="block truncate text-caption text-ink-3">{sub}</span>
+      </span>
+      {down ? <span aria-hidden className="size-2 shrink-0 rounded-full bg-warn" /> : <Lock aria-hidden className="size-3.5 shrink-0 text-ink-3" strokeWidth={1.5} />}
+    </p>
   )
 }
 
