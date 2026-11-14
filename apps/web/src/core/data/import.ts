@@ -54,6 +54,7 @@ const BATCH_ROWS = 1000
 const BATCH_BYTES = 8 * 1024 * 1024
 
 export const NOT_EMPTY = 'This install already has data. Delete it first (Settings → Data & privacy) or use an empty database.'
+export const SHARED_SERVER = 'Other people are on this server, and an import would replace them. Restore a backup into a fresh install instead.'
 
 export async function importExport(path: string, o: { allowMock?: boolean; log?: (line: string) => void } = {}): Promise<ImportResult> {
   if (isDemo()) throw new Error('Import is off in the demo.')
@@ -76,6 +77,9 @@ export async function importExport(path: string, o: { allowMock?: boolean; log?:
 
     /** The target must be a fresh install: nothing of yours in it, and setup not finished. */
     async function assertEmpty() {
+      // The imported person replaces the install's one user; with others on the server that would delete them.
+      const [{ people }] = await tx`select count(*)::int as people from users`
+      if (people > 1) throw new Error(SHARED_SERVER)
       const [u] = await tx`select coalesce(bool_or(profile->>'onboardedAt' is not null), false) as onboarded from users`
       if (u.onboarded) throw new Error(NOT_EMPTY)
       for (const t of order) {
@@ -117,6 +121,7 @@ export async function importExport(path: string, o: { allowMock?: boolean; log?:
         const id = rows[0].id as string
         await tx`update devices set user_id = ${id} where user_id <> ${id}`
         await tx`delete from users where id <> ${id}`
+        await tx`update users set role = 'owner' where id = ${id}` // the export drops the role; a fresh install's one person owns it
       }
     }
 

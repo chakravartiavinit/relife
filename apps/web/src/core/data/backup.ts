@@ -8,7 +8,7 @@ import { sql } from '@/db'
 import { backupName, humanSize, pickExpired, type BackupReason } from '@/domain/backups'
 import { backupDir, dataDir } from '../paths'
 import { utcToWall } from '../time'
-import { getUser } from '../user'
+import { ownerUser } from '../multi-user'
 import { encryptStream } from './crypto'
 import { removeOldRestoreDirs, removeStale } from './backup-tmp'
 import { DEMO_MESSAGE, isDemo } from '../demo'
@@ -63,7 +63,7 @@ export async function backupNow(o: { reason: BackupReason; now?: Date } = { reas
 
 async function write(reason: BackupReason, now: Date): Promise<BackupResult> {
   const pgDump = await requirePgTool('pg_dump')
-  const user = await getUser()
+  const user = await ownerUser() // a whole-server backup belongs to the owner; the timezone is theirs
   const dir = backupDir()
   await mkdir(dir, { recursive: true, mode: 0o700 })
   await removeStale(dir) // we hold the lock, so nothing else is writing: leftovers are from a run that was cut off

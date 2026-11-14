@@ -29,9 +29,11 @@ import { requestJob } from '@/core/jobs'
 import { DEMO_MESSAGE, isDemo } from '@/core/demo'
 import { WIPE_CONFIRM } from '@/core/data/wipe-confirm'
 import { wipeUserData } from '@/core/data/wipe'
+import { runAs } from '@/core/context'
+import { requireOwner } from '@/core/people'
 
-// Local single-user app: the server binds to 127.0.0.1 / Tailscale, and every action scopes
-// writes to getUser(). When multi-user lands, getUser() becomes the session check.
+// Every action scopes its reads and writes to getUser(): the signed-in person (core/user.ts), never an id from the client
+// alone. An id that arrives from the browser is looked up together with that person's id.
 // Server actions are plain POST endpoints, so arguments are checked here, not only in the forms.
 
 /** A logged amount: finite and within a sane range, so NaN or 1e308 never reaches a tracker. */
@@ -594,6 +596,7 @@ export async function wipeAllData(confirm: string): Promise<{ ok: true } | { ok:
 /** "Back up now": the worker takes the `backup` job as soon as it can. */
 export async function backupNowAction(): Promise<{ ok: true } | { ok: false; error: string }> {
   if (isDemo()) return { ok: false, error: DEMO_MESSAGE }
+  requireOwner(await getUser()) // a backup is the whole server: every person's data and the keys
   await requestJob('backup')
   refresh()
   return { ok: true }
@@ -629,7 +632,7 @@ export async function sendTestMessage() {
   const user = await getUser()
   const { telegramConfigured } = await import('@/core/notify')
   const { pushDeviceCount } = await import('@/core/push')
-  if (!telegramConfigured() && !(await pushDeviceCount(user.id))) return { ok: false as const, error: 'Nothing is connected yet. Connect Telegram, or turn on push on a device.' }
+  if (!telegramConfigured(user) && !(await pushDeviceCount(user.id))) return { ok: false as const, error: 'Nothing is connected yet. Connect Telegram, or turn on push on a device.' }
   const { notify, outcome, channelsFor } = await import('@/core/outbox')
   const ref = `test:${crypto.randomUUID()}`
   await notify(user, 'events', { text: `⭐ Test message from ${brand.name}\nIf you can read this, Progress messages reach you here.`, ref })
@@ -686,9 +689,10 @@ export async function openAppLogin(id: string): Promise<{ ok: true } | { ok: fal
   if (!p) return { ok: false, error: 'Unknown app' }
   const unavailable = connectorUnavailable(p)
   if (unavailable) return { ok: false, error: unavailable }
+  const user = await getUser()
   try {
     const { openLoginWindow } = await import('@/connectors/shop/browser')
-    await openLoginWindow(p.id, p.login)
+    await runAs(user, () => openLoginWindow(p.id, p.login)) // the login is kept in this person's own folder
     return { ok: true }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
@@ -1056,14 +1060,15 @@ export async function previewImportAction(id: string, mapping: unknown) {
 
 export async function startImportAction(id: string, mapping?: unknown) {
   idArg.parse(id)
+  const user = await getUser() // read here: `after()` cannot read the request
   try {
     const { startImport } = await import('@/core/imports')
-    await startImport(await getUser(), id, mapping)
+    await startImport(user, id, mapping)
   } catch (e) {
     return { ok: false as const, error: e instanceof z.ZodError ? (e.issues[0]?.message ?? 'Check the column choices.') : e instanceof Error ? e.message : 'The import could not start.' }
   }
   // Runs here too, so an import works without a worker (dev:mock). The job lease stops a second run.
-  after(async () => { try { await (await import('@/jobs')).runNow('import') } catch (e) { console.error('[import]', e instanceof Error ? e.message : e) } })
+  after(async () => { try { await (await import('@/jobs')).runNow('import', user) } catch (e) { console.error('[import]', e instanceof Error ? e.message : e) } })
   return { ok: true as const }
 }
 
