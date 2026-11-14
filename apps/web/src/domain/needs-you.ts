@@ -25,6 +25,8 @@ export type InsightLite = {
   id: string; kind: 'alert' | 'nudge' | 'review' | 'plan'; title: string; body: string; at: string
   /** "Health · Today": the area and moment a rule put on the alert. */
   meta?: string; actions?: ProposedAction[]; review?: ReviewContent
+  /** The day a weekly review was made for (its dedupe key), so a card can name the week it covers. */
+  reviewOn?: string
 }
 
 export type NeedsYouItem =

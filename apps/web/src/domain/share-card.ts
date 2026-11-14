@@ -194,3 +194,13 @@ export function spendDirection(thisWeek: number, priorFourWeeks: number): 'less'
   const r = thisWeek / usual
   return r < 0.9 ? 'less' : r > 1.1 ? 'more' : 'same'
 }
+
+/**
+ * The Monday of the week a review covered. A review of `reviewDate` looks at the period that ends the day before (see
+ * `reviewWindow`), so a Sunday review is of that week and one held on a Monday is of the week just gone.
+ */
+export const reviewedWeekStart = (reviewDate: string) => weekMonday(addDaysIso(reviewDate, -1))
+const weekMonday = (iso: string) => addDaysIso(iso, -((new Date(`${iso}T00:00:00Z`).getUTCDay() + 6) % 7))
+
+/** The day a weekly review was made for, from the insight's dedupe key (`review:<date>`); undefined for an older one. */
+export const reviewDateOf = (dedupeKey: string | undefined) => /^review:(\d{4}-\d{2}-\d{2})$/.exec(dedupeKey ?? '')?.[1]

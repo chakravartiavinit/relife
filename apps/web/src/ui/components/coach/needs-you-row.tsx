@@ -20,7 +20,7 @@ import { GoalFormButton, initialFromDraft, type GoalPickerData } from '../goals/
 import { InsightBody } from '../insight-body'
 import { PeekLink } from '../peek/peek-link'
 import { ShareButton } from '../share/share-button'
-import { weekStart } from '@/domain/quests'
+import { reviewedWeekStart } from '@/domain/share-card'
 import { Checkbox } from '@/ui/beui/motion/checkbox'
 import { Select } from '../select'
 import { useToast } from '../toast'
@@ -101,7 +101,7 @@ function InsightRow({ item, ctx }: { item: Extract<NeedsYouItem, { kind: 'alert'
             <Button size="sm" variant={hasActions ? 'primary' : 'secondary'} onClick={accept}><Check className="size-4" strokeWidth={2} aria-hidden />{hasActions ? 'Approve' : 'Got it'}</Button>
           )}
           <Button size="sm" variant="ghost" onClick={dismiss}>{item.kind === 'review' ? 'Later' : 'Dismiss'}</Button>
-          {item.kind === 'review' ? <ShareButton kind="weekly" refId={weekStart(localDate(new Date(i.at), ctx.timezone))} label="Share your week">Share your week</ShareButton> : <Why id={i.id} />}
+          {item.kind === 'review' ? <ShareButton kind="weekly" refId={reviewedWeekStart(i.reviewOn ?? localDate(new Date(i.at), ctx.timezone))} label="Share your week">Share your week</ShareButton> : <Why id={i.id} />}
         </>
       }
     >

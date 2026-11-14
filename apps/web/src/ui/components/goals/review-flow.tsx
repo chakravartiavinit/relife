@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { CalendarCheck, Check } from 'lucide-react'
 import { reviewGoalNowAction } from '@/app/actions'
-import { weekStart } from '@/domain/quests'
+import { reviewedWeekStart } from '@/domain/share-card'
 import { cn } from '@/ui/cn'
 import { buttonClass, Button } from '../button'
 import { Card } from '../card'
@@ -81,7 +81,7 @@ export function ReviewFlow({ items: fresh, picker, today }: { items: ReviewItem[
           <Card role="status" className="flex flex-wrap items-center justify-between gap-3">
             <p className="flex items-center gap-2 text-body font-medium text-ink"><Check className="size-4 text-good" strokeWidth={2} aria-hidden />Review finished. Next review {weekday(current.goal.nextReviewOn)}.</p>
             <div className="flex flex-wrap gap-2">
-              <ShareButton kind="weekly" refId={weekStart(today)} label="Share your week">Share your week</ShareButton>
+              <ShareButton kind="weekly" refId={reviewedWeekStart(current.review.reviewDate)} label="Share your week">Share your week</ShareButton>
               <Link href="/plan" className={buttonClass({ variant: 'secondary' })}>Back to goals</Link>
             </div>
           </Card>

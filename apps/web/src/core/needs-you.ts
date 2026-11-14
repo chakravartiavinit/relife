@@ -3,6 +3,7 @@ import { db, schema } from '@/db'
 import { SPEND_CATEGORIES } from './categorize'
 import { localDate, localDayRange } from './time'
 import type { User } from './user'
+import { reviewDateOf } from '@/domain/share-card'
 import { WAITING_ERRORS, summarize, reasonFor } from '@/domain/inbox'
 import {
   NUDGE_TTL_DAYS, RESTORE_MINUTES, clearedLine, groupUncategorised, rankNeedsYou,
@@ -33,7 +34,7 @@ export const UNREAD_FILTER = sql`(raw_events.error is null or raw_events.error n
 
 const lite = (i: typeof schema.insights.$inferSelect): InsightLite => ({
   id: i.id, kind: i.kind, title: i.title, body: i.body, at: i.createdAt.toISOString(),
-  meta: i.payload.meta, actions: i.payload.actions, review: i.payload.review,
+  meta: i.payload.meta, actions: i.payload.actions, review: i.payload.review, reviewOn: reviewDateOf(i.payload.dedupeKey),
 })
 
 /** Original message text for the "Original message" disclosure, capped so a huge body never ships to the client. */

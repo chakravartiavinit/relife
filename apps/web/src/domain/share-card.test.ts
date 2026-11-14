@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
-  SHARE_FIELDS, SHARE_KINDS, cardModel, defaultShow, isoWeek, parseShow, spendDirection, streakMilestone, cardText, weekRange, type ShareData,
+  SHARE_FIELDS, SHARE_KINDS, cardModel, defaultShow, isoWeek, parseShow, spendDirection, streakMilestone, cardText, reviewDateOf, reviewedWeekStart, weekRange, type ShareData,
 } from './share-card'
 
 const weekly: ShareData = {
@@ -115,4 +115,14 @@ test('spendDirection compares with the usual week and never returns an amount', 
   assert.equal(spendDirection(150, 400), 'more')
   assert.equal(spendDirection(105, 400), 'same')
   assert.equal(spendDirection(100, 0), null)
+})
+
+test('a review is of the week before its date: Sunday is that week, Monday is the one just gone', () => {
+  assert.equal(reviewedWeekStart('2026-11-15'), '2026-11-09') // Sunday
+  assert.equal(reviewedWeekStart('2026-11-16'), '2026-11-09') // Monday: covers the week that ended yesterday
+  assert.equal(reviewedWeekStart('2026-11-18'), '2026-11-16') // Wednesday: the week so far
+  assert.equal(reviewedWeekStart('2026-11-23'), '2026-11-16')
+  assert.equal(reviewDateOf('review:2026-11-15'), '2026-11-15')
+  assert.equal(reviewDateOf('review:abc'), undefined)
+  assert.equal(reviewDateOf(undefined), undefined)
 })
