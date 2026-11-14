@@ -100,6 +100,7 @@ export const STEPS: Step[] = [
   { id: 'telegram', title: 'Telegram reminders', body: 'Connected as @avinit', href: '/you/connections', cta: 'Connect Telegram', done: true },
   { id: 'iphone', title: 'Sleep and steps', body: 'Apple Health, Oura, WHOOP or Withings', href: '/you/connections', cta: 'Connect', done: false },
   { id: 'sources', title: 'Spending', body: 'Swiggy, Zomato, Blinkit and Zepto orders', href: '/you/connections', cta: 'Connect', done: false },
+  { id: 'import', title: 'Bring your history', body: 'A bank statement, a tracker CSV, an Apple Health or Google Takeout export.', href: '/you/connections?import=1', cta: 'Import a file', done: false },
   { id: 'goals', title: 'Say what levelling up means', body: 'Your coach reads this before every suggestion.', href: '/you/settings', cta: 'Set goals', done: false },
 ]
 
