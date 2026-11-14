@@ -85,17 +85,28 @@ export const jobUserId = (id: string) => (id.includes('@') ? id.slice(id.lastInd
  */
 export function expandJobs(jobs: Job[], users: User[]): Job[] {
   const live = users.filter((u) => !u.disabledAt)
+  // A person's keys are loaded before any of their jobs reads them, so `env()` never falls back to the server's .env for them.
+  const loaded = new Map<string, number>()
+  const withKeys = <T,>(user: User, fn: () => T | Promise<T>) => runAs(user, async () => {
+    if ((loaded.get(user.id) ?? 0) < Date.now() - KEYS_TTL_MS) {
+      await (await import('./secrets')).applySecrets(user.id)
+      loaded.set(user.id, Date.now())
+    }
+    return fn()
+  })
   return jobs.flatMap((job) => {
     if (job.scope === 'instance') return [job]
     return live.map((user): Job => ({
       ...job,
       id: jobIdFor(job, user.id),
       user,
-      run: () => runAs(user, job.run),
-      enabled: job.enabled && (() => runAs(user, job.enabled!)),
+      run: () => withKeys(user, job.run) as Promise<string | void>,
+      enabled: job.enabled && (() => withKeys(user, job.enabled!)),
     }))
   })
 }
+
+const KEYS_TTL_MS = 10_000
 
 /** Run a job now if nobody else is running it. Returns null when it was already running. */
 export async function runJob(job: Job, tz: string): Promise<{ ok: boolean; result: string } | null> {

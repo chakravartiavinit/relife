@@ -40,7 +40,7 @@ export function startBot(): Bot | null {
       return
     }
     const user = await userForChat(chat)
-    if (user) return runAs(user, () => next())
+    if (user) return runAs(user, async () => { await (await import('@/core/secrets')).applySecrets(user.id); return next() })
     if (text.startsWith('/start')) {
       await ctx.reply(
         (await anyoneLinked())
