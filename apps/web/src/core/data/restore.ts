@@ -35,7 +35,9 @@ const STOP_HINT = `Stop ${brand.name} first (\`npm run service -- stop\`, or \`d
 async function appRunning(): Promise<string | null> {
   try {
     const [hb] = await sql`select at from heartbeats where name = 'worker'`
-    if (hb && Date.now() - new Date(hb.at as string).getTime() < WORKER_FRESH_MS) return `The ${brand.name} worker is running.`
+    const age = hb ? Date.now() - new Date(hb.at as string).getTime() : Infinity
+    // A worker that was just stopped still looks alive until its last check-in is old enough: say so.
+    if (age < WORKER_FRESH_MS) return `The ${brand.name} worker checked in ${Math.round(age / 1000)} seconds ago, and counts as running for 3 minutes after its last check-in (${Math.ceil((WORKER_FRESH_MS - age) / 1000)} more seconds).`
   } catch { /* no table yet: an empty database */ }
   const [{ n }] = await sql`select count(*)::int as n from pg_stat_activity where datname = current_database() and pid <> pg_backend_pid() and backend_type = 'client backend'`
   return n > 0 ? `${n} other ${n === 1 ? 'connection is' : 'connections are'} open on this database.` : null

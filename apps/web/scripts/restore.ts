@@ -18,7 +18,7 @@ async function list() {
   if (!names.length) return console.log(`No backups in ${backupDir()}. Make one with: npm run backup`)
   console.log(`Backups in ${backupDir()}:`)
   for (const n of names) console.log(`  ${n}  ${((await stat(backupDir(n))).size / 1_048_576).toFixed(1)} MB`)
-  console.log('\nRestore one with: npm run restore -- <file>')
+  console.log(`\nRestore one with: ${process.env.RELIFE_CONTAINER ? 'relife restore' : 'npm run restore --'} <file>`)
 }
 
 async function main() {
@@ -38,7 +38,10 @@ async function main() {
   })
   console.log(`\nRestored. ${r.readable} of ${r.total} saved keys readable.`)
   if (r.readable < r.total) console.log('The rest read as not saved: reconnect those sources in You → Connections, or restore with the original key.')
-  console.log(`Next: \`npm run db:push\` (Docker does this on start), start ${brand.name}, and \`npm run signin\` on a new machine.`)
+  // A backup from an older version is brought up to date by the migrations, which Docker runs on every start.
+  console.log(process.env.RELIFE_CONTAINER
+    ? `Next: \`docker compose up -d\` (applies any newer migrations), then \`docker compose exec web relife signin\` on a new machine.`
+    : `Next: \`npm run db:migrate\`, start ${brand.name}, and \`npm run signin\` on a new machine.`)
   await sql.end({ timeout: 5 })
 }
 
