@@ -81,7 +81,9 @@ export type StatementPreview = PreviewBase & {
   /** More than one date format reads every date: the user chooses, with an example for each. */
   dateChoices: DateChoice[]
   /** `match`: the app order this row would be linked to (its platform), when it matches one. */
-  sample: { date: string; amount: number; merchant: string; category: string; match?: string }[]
+  sample: { date: string; amount: number; merchant: string; category: string; match?: string; already?: true }[]
+  /** Rows an earlier import already brought in: skipped, not added again. */
+  duplicates: number
   /** Rows that match an app order and will be linked, not counted twice. */
   linkable: number
   accounts: { key: string; name: string; kind: 'bank' | 'card' }[]

@@ -7,7 +7,7 @@ import { matchStatementRows, type LinkOrder, type LinkRow } from '@/domain/state
 import { detectDateFormat, findHeader, headerSignature, parseDate } from '@/domain/csv'
 import { isIsoCurrency } from '@/domain/money'
 import { slugify } from '@/domain/quicklog'
-import { cleanDescription, defaultInvert, guessMapping, readStatementRow, rowAmount, statementRowId, type StatementMapping } from '@/domain/statement'
+import { cleanDescription, defaultInvert, guessMapping, readStatementRow, rowAmount, rowCounter, statementRowId, type StatementMapping } from '@/domain/statement'
 import type { DateChoice, StatementPreview } from '@/domain/imports'
 import type { RawEvent } from '@/core/types'
 import type { User } from '@/core/user'
@@ -82,18 +82,37 @@ export async function previewStatement(file: string, user: User, fileName: strin
   }
   const out = scan(body, mapping, headerRow, ready)
   const matches = await previewMatches(user, out.good, mapping.currency)
+  const already = await alreadyImported(user, out.good, accountKey(mapping.account.name), out.from, out.to)
   const sample: StatementPreview['sample'] = []
   for (const [i, r] of out.good.slice(0, 5).entries()) {
     const c = await categorize(user.id, cleanDescription(r.description) || undefined)
-    sample.push({ date: r.date, amount: r.amount, merchant: c.merchant ?? r.description, category: r.amount > 0 && c.category === 'Uncategorized' ? 'Income' : c.category, ...(matches.get(i) ? { match: matches.get(i) } : {}) })
+    sample.push({ date: r.date, amount: r.amount, merchant: c.merchant ?? r.description, category: r.amount > 0 && c.category === 'Uncategorized' ? 'Income' : c.category, ...(matches.get(i) ? { match: matches.get(i) } : {}), ...(already.has(i) ? { already: true } : {}) })
   }
   return {
     ok: true, kind: 'statement', header, signature, mapping, ready: ready && out.good.length > 0 && !choose.length,
     ...(saved && !given ? { savedFrom: saved.fileName } : {}),
     dateChoices: choose,
     rows: out.good.length, from: out.from, to: out.to, invalid: out.invalid, invalidSamples: out.invalidSamples.slice(0, 5),
-    sample, accounts, linkable: matches.size,
+    sample, accounts, linkable: matches.size, duplicates: already.size,
   }
+}
+
+/**
+ * Which rows of this file an earlier import already brought in (the same account and the same row id, which is what the
+ * import itself skips on). Row index in `good`. Only that account's rows near the file's dates are read.
+ */
+async function alreadyImported(user: User, good: { date: string; amount: number; description: string; balance?: number; ref?: string }[], key: string, from?: string, to?: string): Promise<Set<number>> {
+  const out = new Set<number>()
+  if (!good.length || !from || !to) return out
+  const R = schema.rawEvents
+  const have = new Set((await db.select({ id: R.externalId }).from(R).where(and(
+    eq(R.userId, user.id), eq(R.source, 'statement'), like(R.externalId, `${key}:%`),
+    between(R.at, new Date(`${addDays(from, -2)}T00:00:00Z`), new Date(`${addDays(to, 2)}T00:00:00Z`)),
+  ))).map((r) => r.id))
+  if (!have.size) return out
+  const counter = rowCounter()
+  good.forEach((r, i) => { if (have.has(`${key}:${statementRowId(key, r, counter(r))}`)) out.add(i) })
+  return out
 }
 
 /** How an order is named next to a bank row: "Swiggy" for an app order, "Manual spend" for one typed in Capture. */
@@ -143,7 +162,7 @@ export async function emitStatement(file: string, ctx: EmitCtx): Promise<EmitRes
   const { rows } = await readCsvFile(file, m.delimiter)
   const body = rows.slice(m.headerRow + 1)
   const key = accountKey(m.account.name)
-  const seen = new Map<string, number>()
+  const counter = rowCounter()
   // Rows of one day share a time, and the account takes the balance of the latest one. A millisecond per row in time
   // order (newest-first files are read backwards) makes the closing balance the last row of the day, every time.
   const dates = body.map((r) => parseDate(r[m.columns.date] ?? '', m.dateFormat)).filter((d): d is string => !!d)
@@ -155,11 +174,8 @@ export async function emitStatement(file: string, ctx: EmitCtx): Promise<EmitRes
     const res = readStatementRow(body[i], m, m.headerRow + i + 2)
     if (!res.ok) { invalid++; if (invalidSamples.length < 5) invalidSamples.push(res.reason); continue }
     const r = res.row
-    const same = `${r.date}|${r.amount}|${r.description}|${r.balance ?? ''}|${r.ref ?? ''}`
-    const n = seen.get(same) ?? 0
-    seen.set(same, n + 1)
     batch.push({
-      source: 'statement', externalId: `${key}:${statementRowId(key, r, n)}`,
+      source: 'statement', externalId: `${key}:${statementRowId(key, r, counter(r))}`,
       at: new Date(wallToUtc(new Date(`${r.date}T12:00:00Z`), ctx.user.timezone).getTime() + (newestFirst ? body.length - 1 - i : i)),
       body: { importId: ctx.importId, account: { key, name: m.account.name, kind: m.account.kind }, ...r },
     })

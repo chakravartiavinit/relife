@@ -100,9 +100,9 @@ export function ImportGallery() {
       </Panel>
 
       <Panel title="2 · Check columns: Dr / Cr column, file imported before"
-        footer={<Foot note="120 to add · rows already there are skipped"><Button variant="secondary">Back</Button><Button variant="primary">Import 120 rows</Button></Foot>}>
+        footer={<Foot note="3 to add · 117 already imported"><Button variant="secondary">Back</Button><Button variant="primary">Import 3 new rows</Button></Foot>}>
         <ImportRail current={1} />
-        <FileRow name="statement-oct-copy.csv" size={30_720} detail="120 rows · 1 Oct 2026 to 31 Oct 2026" />
+        <FileRow name="statement-oct-copy.csv" size={30_720} detail="120 rows · 117 already imported · 1 Oct 2026 to 31 Oct 2026" />
         <RepeatWarning repeat={STATEMENT_DRCR.repeat!} />
         <section aria-label="Columns"><h3 className="mb-2 text-small font-semibold text-ink">Columns</h3><StatementColumns idBase="g4" preview={{ ...STATEMENT_DRCR, mapping: drcr }} onChange={setDrcr} /></section>
         <StatementTable preview={{ ...STATEMENT_DRCR, mapping: drcr }} />

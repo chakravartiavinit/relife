@@ -322,6 +322,17 @@ test('a Dr / Cr file imports with the right signs and the day\'s last balance, a
     const again = await upload(imports, user, 'statement', 'drcr-test-again.csv', drcr)
     ids.push(again.id)
     assert.equal(again.preview.ok && again.preview.repeat?.fileName, 'drcr-test.csv')
+    // ...and it says which rows are already in, so the dialog counts none as new.
+    assert.ok(again.preview.ok && again.preview.kind === 'statement')
+    assert.equal(again.preview.duplicates, 3)
+    assert.ok(again.preview.sample.length === 3 && again.preview.sample.every((r) => r.already))
+    // A file that is half old, half new: only the new row counts.
+    const more = Buffer.from(drcr.toString() + '2024-03-06,DRCR FAKE BOOKS,45.00,Dr,805.00\n')
+    const half = await upload(imports, user, 'statement', 'drcr-test-more.csv', more)
+    ids.push(half.id)
+    assert.ok(half.preview.ok && half.preview.kind === 'statement')
+    assert.deepEqual([half.preview.rows, half.preview.duplicates], [4, 3])
+    assert.deepEqual(half.preview.sample.map((r) => !!r.already), [true, true, true, false])
 
     // 01/02, 02/02, 03/02 reads in order both as DD/MM and as MM/DD: nothing is ready until the user picks.
     const amb = Buffer.from('Posting Date,Narration,Debit,Credit,Amb Test\n01/02/2024,AMB FAKE,5.00,,\n02/02/2024,AMB FAKE,6.00,,\n03/02/2024,AMB FAKE,7.00,,\n')
@@ -337,7 +348,7 @@ test('a Dr / Cr file imports with the right signs and the day\'s last balance, a
   } finally {
     for (const id of ids) await db.delete(T).where(sql`${T.meta}->>'importId' = ${id}`)
     await db.delete(schema.rawEvents).where(and(eq(schema.rawEvents.userId, user.id), sql`${schema.rawEvents.body}->>'importId' in (${inList(ids)})`))
-    await db.delete(schema.imports).where(and(eq(schema.imports.userId, user.id), sql`${schema.imports.fileName} in ('drcr-test.csv', 'drcr-test-again.csv', 'amb-test.csv')`))
+    await db.delete(schema.imports).where(and(eq(schema.imports.userId, user.id), sql`${schema.imports.fileName} in ('drcr-test.csv', 'drcr-test-again.csv', 'drcr-test-more.csv', 'amb-test.csv')`))
     await db.delete(schema.accounts).where(and(eq(schema.accounts.userId, user.id), sql`${schema.accounts.key} in ('statement:drcr-test', 'statement:drcr-test-again', 'statement:amb-test')`))
   }
 })
@@ -347,6 +358,7 @@ test('built-in rules: a card bill from the bank is a transfer, a shop that says 
   const id = '00000000-0000-4000-8000-000000000000'
   assert.equal((await categorize(id, 'CREDIT CARD PAYMENT BANK')).category, 'Transfers')
   assert.equal((await categorize(id, 'CREDIT CARD AUTOPAY HDFC')).category, 'Transfers')
+  assert.equal((await categorize(id, 'CC BILL PAYMENT HDFC')).category, 'Transfers')
   assert.equal((await categorize(id, 'CARD PAYMENT TO TESCO')).category, 'Uncategorized')
   assert.equal((await categorize(id, 'ACH/NACH AUTOPAY NETFLIX')).category, 'Subscriptions')
 })

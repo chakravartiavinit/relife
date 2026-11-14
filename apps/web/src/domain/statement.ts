@@ -131,6 +131,17 @@ export function statementRowId(accountKey: string, r: { date: string; amount: nu
     .digest('hex').slice(0, 32)
 }
 
+/** The `n` for `statementRowId`, row by row in file order: how many identical rows came before this one. */
+export function rowCounter() {
+  const seen = new Map<string, number>()
+  return (r: { date: string; amount: number; description: string; balance?: number | null; ref?: string }) => {
+    const same = `${r.date}|${r.amount}|${r.description}|${r.balance ?? ''}|${r.ref ?? ''}`
+    const n = seen.get(same) ?? 0
+    seen.set(same, n + 1)
+    return n
+  }
+}
+
 export type StatementRow = {
   date: string
   amount: number

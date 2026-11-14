@@ -13,7 +13,7 @@ export const STATEMENT_MAPPING: StatementMapping = {
 
 export const STATEMENT_PREVIEW: StatementPreview = {
   ok: true, kind: 'statement', header: HEADER, signature: '0123456789abcdef', mapping: STATEMENT_MAPPING, ready: true, savedFrom: 'last Sample Bank file',
-  dateChoices: [], rows: 412, invalid: 6, invalidSamples: ['line 1: opening balance', 'line 420: closing balance'], from: '2026-10-01', to: '2026-10-31', linkable: 37, accounts: [],
+  dateChoices: [], rows: 412, invalid: 6, invalidSamples: ['line 1: opening balance', 'line 420: closing balance'], from: '2026-10-01', to: '2026-10-31', linkable: 37, duplicates: 0, accounts: [],
   sample: [
     { date: '2026-10-03', amount: -412, merchant: 'Swiggy', category: 'Food', match: 'Swiggy' },
     { date: '2026-10-03', amount: 82000, merchant: 'NEFT CR-ACME TECH SALARY', category: 'Income' },
@@ -25,7 +25,7 @@ export const STATEMENT_PREVIEW: StatementPreview = {
 
 /** A file the app has not seen: two readings of the dates fit, and the amount is still to pick. */
 export const STATEMENT_NEW: StatementPreview = {
-  ...STATEMENT_PREVIEW, savedFrom: undefined, ready: false, linkable: 0, rows: 0, invalid: 0, invalidSamples: [], sample: [],
+  ...STATEMENT_PREVIEW, savedFrom: undefined, ready: false, linkable: 0, rows: 0, duplicates: 0, invalid: 0, invalidSamples: [], sample: [],
   header: ['Posting Date', 'Details', 'Amount (INR)', 'Type'],
   mapping: { ...STATEMENT_MAPPING, dateFormat: 'DD/MM/YYYY', columns: { date: 0, description: 1 } as StatementMapping['columns'], account: { name: 'Card', kind: 'card' } },
   dateChoices: [{ format: 'DD/MM/YYYY', example: '2026-03-04' }, { format: 'MM/DD/YYYY', example: '2026-04-03' }],
@@ -33,14 +33,14 @@ export const STATEMENT_NEW: StatementPreview = {
 
 /** An unsigned amount with a Dr / Cr column, for a file already imported once. */
 export const STATEMENT_DRCR: StatementPreview = {
-  ...STATEMENT_PREVIEW, savedFrom: undefined, rows: 120, invalid: 0, invalidSamples: [], linkable: 0,
+  ...STATEMENT_PREVIEW, savedFrom: undefined, rows: 120, duplicates: 117, invalid: 0, invalidSamples: [], linkable: 0,
   header: ['Tran Date', 'Particulars', 'Amount', 'Dr / Cr', 'Balance'],
   mapping: { ...STATEMENT_MAPPING, dateFormat: 'DD/MM/YYYY', columns: { date: 0, description: 1, amount: 2, sign: 3, balance: 4 }, account: { name: 'Sample Bank', kind: 'bank' } },
   repeat: { fileName: 'sample-statement-oct-2026.csv', at: '2026-11-10T09:30:00.000Z' },
   sample: [
-    { date: '2026-10-03', amount: -412, merchant: 'Swiggy', category: 'Food' },
-    { date: '2026-10-03', amount: 82000, merchant: 'NEFT CR-ACME TECH SALARY', category: 'Income' },
-    { date: '2026-10-05', amount: -236, merchant: 'Uber', category: 'Transport' },
+    { date: '2026-10-03', amount: -412, merchant: 'Swiggy', category: 'Food', already: true },
+    { date: '2026-10-03', amount: 82000, merchant: 'NEFT CR-ACME TECH SALARY', category: 'Income', already: true },
+    { date: '2026-10-05', amount: -236, merchant: 'Uber', category: 'Transport', already: true },
   ],
 }
 

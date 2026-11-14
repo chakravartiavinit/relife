@@ -288,6 +288,13 @@ export function TrackerColumns({ preview, onChange, idBase = 'imp' }: { preview:
 }
 
 /** Five rows as they will be read, with what each would do: new, or linked to an app order. */
+/** What the import will do with a previewed row: skip it (already in), link it to an order, or add it. */
+function RowState({ row }: { row: StatementPreview['sample'][number] }) {
+  if (row.already) return <span className="inline-flex h-6 items-center rounded-full bg-surface-2 px-2 text-caption font-medium whitespace-nowrap text-ink-3">Already imported</span>
+  if (row.match) return <span className="inline-flex h-6 items-center gap-1 rounded-full bg-pill-wash px-2 text-caption font-medium whitespace-nowrap text-pill-ink"><Link2 aria-hidden className="size-3" strokeWidth={2} />Linked · {row.match}</span>
+  return <span className="inline-flex h-6 items-center rounded-full bg-surface-2 px-2 text-caption font-medium text-ink-2">New</span>
+}
+
 export function StatementTable({ preview }: { preview: StatementPreview }) {
   return (
     <div>
@@ -316,9 +323,7 @@ export function StatementTable({ preview }: { preview: StatementPreview }) {
                   <td className={cn('px-3 text-end font-semibold whitespace-nowrap tabular-nums', r.amount > 0 ? 'text-good' : 'text-ink')}>{formatMoney(r.amount, preview.mapping.currency, { sign: true })}</td>
                   <td className="px-3 whitespace-nowrap"><span className="inline-flex h-6 items-center rounded-full bg-surface-2 px-2 text-caption text-ink-2">{r.category}</span></td>
                   <td className="px-3 whitespace-nowrap">
-                    {r.match
-                      ? <span className="inline-flex h-6 items-center gap-1 rounded-full bg-pill-wash px-2 text-caption font-medium text-pill-ink"><Link2 aria-hidden className="size-3" strokeWidth={2} />Linked · {r.match}</span>
-                      : <span className="inline-flex h-6 items-center rounded-full bg-surface-2 px-2 text-caption font-medium text-ink-2">New</span>}
+                    <RowState row={r} />
                   </td>
                 </tr>
               ))}
@@ -335,9 +340,7 @@ export function StatementTable({ preview }: { preview: StatementPreview }) {
               <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span className="text-caption text-ink-3">{fmtDay(r.date)}</span>
                 <span className="inline-flex h-6 items-center rounded-full bg-surface-2 px-2 text-caption text-ink-2">{r.category}</span>
-                {r.match
-                      ? <span className="inline-flex h-6 items-center gap-1 rounded-full bg-pill-wash px-2 text-caption font-medium text-pill-ink"><Link2 aria-hidden className="size-3" strokeWidth={2} />Linked · {r.match}</span>
-                      : <span className="inline-flex h-6 items-center rounded-full bg-surface-2 px-2 text-caption font-medium text-ink-2">New</span>}
+                <RowState row={r} />
               </div>
             </li>
           ))}

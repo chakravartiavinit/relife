@@ -145,8 +145,9 @@ export function ImportDialog({ open, onClose, zipMaxMb = 2048 }: { open: boolean
   const tracker = preview?.kind === 'tracker-csv' ? preview : null
   const zip = preview && (preview.kind === 'apple-health' || preview.kind === 'takeout') ? preview : null
   const step = stage === 'pick' || stage === 'sending' ? 0 : stage === 'done' ? 2 : 1
-  const ready = statement ? statement.ready : tracker ? tracker.ready : !!zip
-  const toAdd = statement ? statement.rows : tracker ? tracker.rows : 0
+  // A statement read again: the rows an earlier import already brought in are skipped, so only the others count.
+  const toAdd = statement ? statement.rows - statement.duplicates : tracker ? tracker.rows : 0
+  const ready = statement ? statement.ready && toAdd > 0 : tracker ? tracker.ready : !!zip
   const summary = status?.summary
   const currency = mapping?.kind === 'statement' ? mapping.currency : 'INR'
   const where = kind === 'statement' ? { href: '/wealth/spending', label: 'Open Spending' } : { href: kind === 'tracker-csv' ? '/' : '/health', label: kind === 'tracker-csv' ? 'Open Today' : 'Open Health' }
@@ -189,7 +190,7 @@ export function ImportDialog({ open, onClose, zipMaxMb = 2048 }: { open: boolean
         {(stage === 'columns' || stage === 'starting') && preview ? (
           <>
             <FileRow name={file?.name ?? ''} size={file?.size ?? 0}
-              detail={[statement || tracker ? `${toAdd.toLocaleString('en-US')} ${statement ? 'rows' : 'values'}` : '', statement?.from && statement.to ? `${fmtDay(statement.from)} to ${fmtDay(statement.to)}` : '',
+              detail={[statement || tracker ? `${(statement?.rows ?? toAdd).toLocaleString('en-US')} ${statement ? 'rows' : 'values'}` : '', statement?.duplicates ? `${statement.duplicates.toLocaleString('en-US')} already imported` : '', statement?.from && statement.to ? `${fmtDay(statement.from)} to ${fmtDay(statement.to)}` : '',
                 (statement ?? tracker)?.savedFrom ? `same columns as ${(statement ?? tracker)!.savedFrom}` : ''].filter(Boolean).join(' · ')}
               action={(statement ?? tracker)?.savedFrom ? <SavedChip /> : undefined} />
             {preview.repeat ? <RepeatWarning repeat={preview.repeat} /> : null}
@@ -228,7 +229,7 @@ export function ImportDialog({ open, onClose, zipMaxMb = 2048 }: { open: boolean
           <p className="min-w-0 flex-1 basis-48 text-caption text-pretty text-ink-3 tabular-nums">
             {stage === 'pick' ? limit
               : stage === 'sending' ? 'Sending. Closing this window cancels it.'
-              : stage === 'columns' || stage === 'starting' ? (statement ? `${statement.rows.toLocaleString('en-US')} to add${statement.linkable ? ` · ${statement.linkable} match app orders and will be linked` : ''}` : tracker ? `${tracker.rows.toLocaleString('en-US')} values to add` : 'Nothing is changed until you start')
+              : stage === 'columns' || stage === 'starting' ? (statement ? `${toAdd.toLocaleString('en-US')} to add${statement.duplicates ? ` · ${statement.duplicates.toLocaleString('en-US')} already imported` : ''}${statement.linkable ? ` · ${statement.linkable} match app orders and will be linked` : ''}` : tracker ? `${tracker.rows.toLocaleString('en-US')} values to add` : 'Nothing is changed until you start')
               : stage === 'running' ? 'You can close this window. It keeps running.'
               : undone ? 'Removed' : 'Undo removes every row from this import'}
           </p>
@@ -245,7 +246,7 @@ export function ImportDialog({ open, onClose, zipMaxMb = 2048 }: { open: boolean
                 <Button variant="secondary" disabled={stage === 'starting'} onClick={() => { dropUpload(importId); setImportId(null); setPreview(null); setMapping(null); setError(null); setStage('pick') }}>Back</Button>
                 <Button variant="primary" onClick={() => void start()} disabled={!ready || stage === 'starting'} aria-busy={stage === 'starting'}>
                   {stage === 'starting' ? <LoaderCircle aria-hidden className="size-4 animate-spin [animation-duration:0.7s]" /> : null}
-                  {statement ? `Import ${statement.rows.toLocaleString('en-US')} rows` : tracker ? `Import ${tracker.rows.toLocaleString('en-US')} values` : 'Start import'}
+                  {statement ? (toAdd > 0 ? `Import ${toAdd.toLocaleString('en-US')} ${statement.duplicates ? 'new ' : ''}rows` : 'Nothing new to import') : tracker ? `Import ${tracker.rows.toLocaleString('en-US')} values` : 'Start import'}
                 </Button>
               </>
             ) : stage === 'running' ? (
