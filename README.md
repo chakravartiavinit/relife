@@ -176,6 +176,7 @@ and stores them encrypted in your local database; values already in `.env` fill 
 | Codewars kata, Letterboxd films, Open Library books, Anki flashcards | Your public username, or the AnkiConnect add-on | [CONNECTORS.md](docs/CONNECTORS.md#personal-data-connectors) |
 | Laptop time per site and app, shows and courses you watch | The browser extension and a shared token | [apps/extension/README.md](apps/extension/README.md) |
 | Steps, sleep, Health data (iPhone) | iOS Shortcuts writing to an iCloud Drive file | [SHORTCUTS.md](docs/SHORTCUTS.md) |
+| Bank or card statements, a tracker CSV, an Apple Health or Google Takeout export | The file: You → Connections → Import a file | [IMPORTS.md](docs/IMPORTS.md) |
 | Exchange rates | Nothing: connect FX | You → Connections |
 | AI | A key for Anthropic, OpenAI, Google or OpenRouter, or a local model | You → Connections |
 
