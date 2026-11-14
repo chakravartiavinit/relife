@@ -13,6 +13,7 @@ import { integration } from '@/core/integrations'
 import type { SetupField } from '@/core/types'
 import { env } from '@/core/env'
 import { connectorUnavailable } from '@/core/platform'
+import { localAiDown, localAiStatus } from '@/core/local-ai'
 
 // Every connector as the Connections page and the connector Peek show it: status, last syncs, the fields the
 // connect form needs (secret values are never sent), and how the worker is doing.
@@ -99,16 +100,21 @@ export async function loadConnectorItems(user: User, origin: string) {
   })
 
   const tasks: Task[] = ['parse', 'plan', 'chat']
+  // The local server is probed only when it is connected and in use (cached 30 s; never throws).
+  const local = isConnected('local') ? await localAiStatus('chat') : null
   for (const p of AI) {
     const spec = integration(p.id)!
     const connected = isConnected(p.id)
     const usedBy = tasks.filter((t) => modelId(t)?.startsWith(`${p.id}:`))
     const miss = connected ? missing(spec.required) : []
+    // A local model that is not answering is an error to fix, with the fix as the detail.
+    const down = p.id === 'local' && local && localAiDown(local) ? local : null
     items.push({
       ...p, section: 'ai', connected, fields: view(p.id, spec.fields), missingEnv: miss,
       badge: KEY_ENV[p.id] ? undefined : 'Runs locally',
-      status: !connected ? 'off' : miss.length ? 'setup' : usedBy.length ? 'ok' : 'ready',
-      detail: usedBy.length ? `Used for ${usedBy.join(', ')}` : 'Set a default model to use it',
+      status: !connected ? 'off' : miss.length ? 'setup' : down ? 'error' : usedBy.length ? 'ok' : 'ready',
+      detail: down?.message ?? (usedBy.length ? `Used for ${usedBy.join(', ')}` : 'Set a default model to use it'),
+      ...(down ? { error: 'Local AI not running' } : {}),
     })
   }
 

@@ -7,6 +7,7 @@ import { generate } from './run'
 import { COACH_SYSTEM, digestText } from './context'
 import { dataTools } from './tools'
 import { mask, maskValue } from './mask'
+import { localErrorMessage } from '@/core/local-ai'
 
 export type AskResult = {
   answer: string; error?: string; sources?: CoachSource[]; insightIds?: string[]
@@ -53,11 +54,11 @@ export async function askData(question: string, { channel = 'app' }: { channel?:
       const replied = await saveCoachMessage(user, { role: 'assistant', text: answer, channel, payload: { ...(sources.length ? { sources } : {}), ...(insightIds.length ? { insightIds } : {}) } })
       return { answer, sources, insightIds, saved: !!asked && !!replied }
     } catch (err) {
-      const error = `LLM error: ${String(err instanceof Error ? err.message : err).slice(0, 300)}`
+      const error = localErrorMessage(err) ?? `LLM error: ${String(err instanceof Error ? err.message : err).slice(0, 300)}`
       const replied = await saveCoachMessage(user, { role: 'assistant', text: error, channel, payload: { error: true } })
       return { answer: '', error, saved: !!asked && !!replied }
     }
   } catch (err) {
-    return { answer: '', error: `LLM error: ${String(err instanceof Error ? err.message : err).slice(0, 300)}` }
+    return { answer: '', error: localErrorMessage(err) ?? `LLM error: ${String(err instanceof Error ? err.message : err).slice(0, 300)}` }
   }
 }

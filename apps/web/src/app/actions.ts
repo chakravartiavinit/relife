@@ -767,11 +767,53 @@ export async function suggestOnboardingRoutines(input: { prompt: string; areas: 
   }
 }
 
-/** Whether a model is connected, for the routines step (it can connect one inline). */
+/** Whether a model is connected, for the routines step (it can connect one inline). `local`: how the free local AI answers, when it is the chosen model. */
 export async function aiReady() {
   await getUser() // loads saved keys
   const { aiEnabled, modelId } = await import('@/ai')
-  return { ready: aiEnabled('plan'), model: modelId('plan') ?? null }
+  const { localAiStatus } = await import('@/core/local-ai')
+  const local = await localAiStatus('plan')
+  return { ready: aiEnabled('plan') && (local.state === 'not-local' || local.state === 'ok'), model: modelId('plan') ?? null, local }
+}
+
+/** What setup's AI step and Coach show about the free local AI. */
+export type LocalAiResult = { ok: true; state: 'ok' | 'down' | 'no-model'; model: string; url: string; ms: number; message?: string } | { ok: false; error: string }
+
+/**
+ * "Use free local AI": point the `local` provider at the server (the Compose `ollama` service or Ollama on this machine)
+ * with the model it has (RELIFE_LOCAL_AI_MODEL, else the first one listed). When nothing answers it still saves, so a model
+ * that is still downloading works as soon as it is there, and says how to start it.
+ */
+export async function chooseLocalAi(): Promise<LocalAiResult> {
+  const user = await getUser()
+  const { DEFAULT_LOCAL_URL, localAiStatus, planLocalAi } = await import('@/core/local-ai')
+  const plan = await planLocalAi()
+  const { connect } = await import('@/core/secrets')
+  const r = await connect(user.id, 'local', { LOCAL_LLM_URL: plan.url === DEFAULT_LOCAL_URL ? '' : plan.url, LLM_DEFAULT: `local:${plan.model}` })
+  if (!r.ok) return { ok: false, error: r.error }
+  const { clearUserCache } = await import('@/core/user')
+  clearUserCache()
+  await getUser() // loads the key just saved
+  const s = await localAiStatus('chat', { fresh: true })
+  refresh()
+  return s.state === 'not-local' ? { ok: false, error: 'Another model is set for chat in .env (LLM_CHAT).' } : { ok: true, state: s.state, model: s.model, url: s.url, ms: s.ms, message: s.message }
+}
+
+/** Setup's AI step: how the free local AI would answer, before anything is saved. */
+export async function checkLocalAi(): Promise<LocalAiResult> {
+  await getUser()
+  const { planLocalAi } = await import('@/core/local-ai')
+  const p = await planLocalAi()
+  return { ok: true, state: p.state, model: p.model, url: p.url, ms: p.ms, message: p.message }
+}
+
+/** "Check again": asks the local server now instead of using the last answer. */
+export async function recheckLocalAi(): Promise<LocalAiResult> {
+  await getUser()
+  const { localAiStatus } = await import('@/core/local-ai')
+  const s = await localAiStatus('chat', { fresh: true })
+  refresh()
+  return s.state === 'not-local' ? { ok: false, error: 'Local AI isn’t the chat model.' } : { ok: true, state: s.state, model: s.model, url: s.url, ms: s.ms, message: s.message }
 }
 
 /** Today → Finish setting up → Hide: the checklist stays away for good. */

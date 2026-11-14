@@ -11,8 +11,7 @@ import { startScheduler } from '@/core/jobs'
 import { JOBS } from '@/jobs'
 import { env } from '@/core/env'
 import { isDemo } from '@/core/demo'
-import { localAiStatus } from '@/ai/local'
-import { modelId } from '@/ai/models'
+import { localAiStatus } from '@/core/local-ai'
 
 // The worker runs the bot, laptop activity and the job scheduler (src/jobs): syncs, parsing, reminders, rules, AI.
 
@@ -35,7 +34,16 @@ async function main() {
     if (m.length) console.log(`[worker] ${c.id} not connected`)
   }
   if (!aiEnabled('plan')) console.log('[worker] AI jobs off: connect an AI provider with a default model')
-  else if (modelId('plan')?.startsWith('local:')) { const s = await localAiStatus(); if (!s.ok) console.log(`[worker] ${s.message}`) }
+  else {
+    const local = await localAiStatus('plan')
+    if (local.state === 'ok') console.log(`[worker] local AI ready (${local.model})`)
+    else if (local.state !== 'not-local') console.log(`[worker] local AI not running: ${local.message}`)
+  }
+  else {
+    const local = await localAiStatus('plan')
+    if (local.state === 'ok') console.log(`[worker] local AI ready (${local.model})`)
+    else if (local.state !== 'not-local') console.log(`[worker] local AI not running: ${local.message}`)
+  }
 
   // The bot starts once a token is connected and stops when it is removed; changing the token needs a worker restart.
   let bot = startBot()

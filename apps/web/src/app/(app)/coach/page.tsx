@@ -6,6 +6,7 @@ import { goalFormContext } from '@/core/goals'
 import { loadThread } from '@/core/coach-messages'
 import { loadClearedToday, loadNeedsYou } from '@/core/needs-you'
 import { loadPatterns } from '@/core/patterns'
+import { localAiDown, localAiStatus } from '@/core/local-ai'
 import { localDate } from '@/core/time'
 import { getUser } from '@/core/user'
 import { Card, Skeleton } from '@/ui/components/card'
@@ -14,6 +15,7 @@ import { CoachPanes } from '@/ui/components/coach/coach-panes'
 import { CoachTabs } from '@/ui/components/coach/coach-tabs'
 import { isDemo } from '@/core/demo'
 import { ConnectCoach } from '@/ui/components/coach/connect-coach'
+import { LocalAiDown } from '@/ui/components/coach/local-ai-down'
 import { NeedsYouPanel } from '@/ui/components/coach/needs-you-panel'
 import { PromptInput } from '@/ui/beui/agents/prompt-input'
 
@@ -38,7 +40,10 @@ async function Coach({ searchParams }: { searchParams: PageProps<'/coach'>['sear
     loadNeedsYou(user), loadClearedToday(user), loadThread(user), loadPatterns(user),
   ])
   const goal = items.some((i) => i.kind === 'goal-draft') ? await goalFormContext(user) : null
-  const aiOn = aiEnabled('chat')
+  const local = await localAiStatus('chat')
+  const down = localAiDown(local) ? local : null
+  // A local model whose server isn't answering counts as off: Ask stays closed and the card says how to start it.
+  const aiOn = aiEnabled('chat') && !down
   const model = modelId('chat')
 
   return (
@@ -59,19 +64,19 @@ async function Coach({ searchParams }: { searchParams: PageProps<'/coach'>['sear
           <div className="flex flex-wrap items-center justify-between gap-3">
             <CoachTabs className="max-lg:hidden" />
             <span className="inline-flex h-7 items-center gap-1.5 rounded-full bg-surface px-3 text-caption font-medium text-ink-2 shadow-1 max-lg:ml-auto">
-              <span aria-hidden className={aiOn ? 'size-1.5 rounded-full bg-good' : 'size-1.5 rounded-full bg-ink-3'} />
-              {aiOn ? 'Chat model ready' : 'No model connected'}
+              <span aria-hidden className={aiOn ? 'size-1.5 rounded-full bg-good' : down ? 'size-1.5 rounded-full bg-warn' : 'size-1.5 rounded-full bg-ink-3'} />
+              {aiOn ? 'Chat model ready' : down ? <span className="text-warn">Local AI not running</span> : 'No model connected'}
               {model ? <span className="sr-only"> ({model})</span> : null}
             </span>
           </div>
           {!aiOn && thread.length === 0 ? (
             <>
-              <ConnectCoach demo={isDemo()} />
-              <Card className="p-2"><PromptInput disabled minRows={1} placeholder="Connect an AI model to ask questions." aria-label="Ask about your data" /></Card>
+              {down ? <LocalAiDown message={down.message} /> : <ConnectCoach demo={isDemo()} />}
+              <Card className="p-2"><PromptInput disabled minRows={1} placeholder={down ? 'Local AI is not running.' : 'Connect an AI model to ask questions.'} aria-label="Ask about your data" /></Card>
             </>
           ) : (
             <>
-              {!aiOn ? <ConnectCoach compact demo={isDemo()} /> : null}
+              {!aiOn ? (down ? <LocalAiDown message={down.message} /> : <ConnectCoach compact demo={isDemo()} />) : null}
               <Card as="section" aria-label="Ask" className="flex h-[min(680px,max(460px,calc(100dvh-22rem)))] flex-col overflow-hidden p-0">
                 <AskThread thread={thread} enabled={aiOn} initial={initial} timezone={user.timezone} />
               </Card>
