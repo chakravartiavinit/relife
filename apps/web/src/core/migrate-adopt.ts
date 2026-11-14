@@ -1,6 +1,7 @@
 // A database made by `npm run db:push` has every table but no migration history. Before the migrator runs, its migrations
 // are marked as applied, so the baseline does not try to create tables that exist. That is only safe when the database
-// really is what the newest migration would leave: otherwise marking would hide a missing column from every later run.
+// really is what one of the migrations would leave, exactly: otherwise marking would hide a missing column from every
+// later run. A database that matches an older migration is marked up to that one, and the migrator applies the rest.
 // Pure: migrate-run.ts reads the columns and the snapshot and writes the rows.
 
 /** `table.column` -> `<type> [not null]`, e.g. `users.name` -> `text not null`. */
@@ -31,10 +32,13 @@ export function schemaDifferences(db: ColumnMap, snapshot: Snapshot): string[] {
   return out
 }
 
-/** How many migrations a pushed database already contains: all of them when it matches the newest snapshot, else zero. */
+/**
+ * How many migrations a pushed database already contains: the newest snapshot it matches exactly (tables, columns,
+ * types, nullability), counted from the first; zero when it matches none. The migrator then applies the later ones.
+ */
 export function adoptedMigrations(db: ColumnMap, snapshots: readonly Snapshot[]): number {
-  const newest = snapshots.at(-1)
-  return newest && schemaDifferences(db, newest).length === 0 ? snapshots.length : 0
+  for (let n = snapshots.length; n > 0; n--) if (schemaDifferences(db, snapshots[n - 1]).length === 0) return n
+  return 0
 }
 
 export const OLDER_THAN_BASELINE = 'This database does not match this version and has no migration history. Run `npm run db:push` on this version once, then start again.'
