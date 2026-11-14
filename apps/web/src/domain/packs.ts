@@ -91,6 +91,11 @@ export type PackState = {
   areas: Category[]
 }
 
+/** `PackState` as plain JSON (Sets and Maps do not cross the server action), and back: the browser re-plans when the areas switch changes. */
+export type PackStateJson = { routineNames: string[]; routineIds: [string, string][]; trackers: [string, PackState['trackers'] extends Map<string, infer V> ? V : never][]; goalTitles: string[]; activeGoals: number; areas: Category[] }
+export const stateToJson = (s: PackState): PackStateJson => ({ ...s, routineNames: [...s.routineNames], routineIds: [...s.routineIds], trackers: [...s.trackers], goalTitles: [...s.goalTitles] })
+export const stateFromJson = (j: PackStateJson): PackState => ({ ...j, routineNames: new Set(j.routineNames), routineIds: new Map(j.routineIds), trackers: new Map(j.trackers), goalTitles: new Set(j.goalTitles) })
+
 /** Why an item is left out. `exists`, `area_off`, `goal_slots` and `unknown_tracker` are the main four; the others keep a bad pack from making a bad goal. */
 export type SkipReason = 'exists' | 'area_off' | 'goal_slots' | 'unknown_tracker' | 'no_action' | 'not_allowed'
 export type SkipItem = { kind: 'routine' | 'tracker' | 'goal'; key: string; name: string; reason: SkipReason }

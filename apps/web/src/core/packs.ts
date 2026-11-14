@@ -4,7 +4,7 @@ import { and, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { CATEGORIES, type Category } from '@/db/schema'
 import { BASELINE_DAYS, MAX_ACTIVE, MAX_PENDING_DRAFTS, checkGoalDraft, trackerBaseline, type GoalInput } from '@/domain/goals'
-import { addedLine, goalReason, packGoalToRaw, planPack, type PackChoices, type PackPlan, type PackState, type SkipItem } from '@/domain/packs'
+import { addedLine, goalReason, packGoalToRaw, planPack, type PackChoices, type PackPlan, type PackState, type PackStateJson, type SkipItem, stateToJson } from '@/domain/packs'
 import { buildRRule, parseSimple } from '@/domain/recurrence'
 import { BUILT_IN_PACKS } from '@/packs'
 import { saveGoal } from './goals'
@@ -109,7 +109,9 @@ export type PackPreview = {
   /** Per goal key: the recorded 28-day value when there are enough days, else null (the goal then needs a baseline typed in). */
   baselines: Record<string, { value: number | null; observations: number }>
   /** The state the plan was made from, so the browser can re-plan when the areas switch changes. */
-  state: { routineNames: string[]; routineIds: [string, string][]; trackers: [string, { id: string; name: string; unit: string | null; category: Category; target: number | null }][]; goalTitles: string[]; activeGoals: number; areas: Category[] }
+  state: PackStateJson
+  /** The user's local date the plan was made for. */
+  today: string
 }
 
 /** What adding the pack would do. Writes nothing. */
@@ -129,7 +131,7 @@ export async function previewPack(user: User, pack: Pack, now = new Date()): Pro
   return {
     pack: { id: pack.id, name: pack.name, description: pack.description, author: pack.author, homepage: pack.homepage },
     plan, baselines,
-    state: { ...state, routineNames: [...state.routineNames], routineIds: [...state.routineIds], trackers: [...state.trackers], goalTitles: [...state.goalTitles] },
+    state: stateToJson(state), today,
   }
 }
 
