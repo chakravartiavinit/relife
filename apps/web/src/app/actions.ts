@@ -715,7 +715,7 @@ const onboardingInput = z.object({
   name: z.string().trim().min(1, 'Add your name').max(60),
   timezone: z.string().trim().refine((tz) => { try { new Intl.DateTimeFormat('en', { timeZone: tz }); return true } catch { return false } }, 'Pick a time zone from the list'),
   baseCurrency: z.string().trim().toUpperCase().refine((c) => Intl.supportedValuesOf('currency').includes(c), 'Use a currency code like INR or USD'),
-  areas: z.array(z.enum(CATEGORIES)).min(1, 'Pick at least one area'),
+  areas: z.array(z.enum(CATEGORIES)).min(1, 'Pick at least one area').optional(),
   focus: z.enum(CATEGORIES).optional(),
   // Setup asks for the fields above and `improve`. The rest is optional: left out, it keeps its saved value.
   templates: z.array(z.string().max(40)).max(40).optional(),

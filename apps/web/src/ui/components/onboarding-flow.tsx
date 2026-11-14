@@ -44,13 +44,16 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
   /** The AI providers (cloud keys and the local server), as Connections shows them. */
   providers: ConnectorItem[]
 }) {
+  // The areas the Areas step opens with. Saved ones; none saved means every area shows, which a rerun keeps rather than
+  // narrowing to a starting three. Only a first setup starts from the three.
+  const arrivalAreas = initial.areas.length ? initial.areas : fresh ? (['health', 'mind', 'skills'] as Category[]) : ALL_AREAS
   const [i, setI] = useState(0)
   // Past the Areas step at least once: only then does setup save the area picks (Skip before it keeps every area).
   const [pastAreas, setPastAreas] = useState(false)
   const [dir, setDir] = useState(1)
   const [v, setV] = useState<V>({
     ...initial,
-    areas: initial.areas.length ? initial.areas : (['health', 'mind', 'skills'] as Category[]),
+    areas: arrivalAreas,
     // The routine lists decide on arrival at the last step.
     templates: [], generated: [], routineMode: null, generatedFor: '', starterSeeded: false, sleepTouched: false, pack: null, aiChoice: null,
   })
@@ -146,7 +149,9 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
     const hours = full && (fresh || v.wake !== initial.wake || v.sleep !== initial.sleep)
     return {
       name: v.name, timezone: v.timezone, baseCurrency: v.baseCurrency.toUpperCase(),
-      areas: full || pastAreas ? v.areas : initial.areas.length ? initial.areas : ALL_AREAS,
+      // Run again, the saved areas are sent only when they were changed here (a pack adds to them; unchanged is not a write).
+      areas: fresh ? (full || pastAreas ? v.areas : initial.areas.length ? initial.areas : ALL_AREAS)
+        : (full || pastAreas) && (v.areas.length !== arrivalAreas.length || v.areas.some((a) => !arrivalAreas.includes(a))) ? v.areas : undefined,
       focus: v.focus && v.areas.includes(v.focus) ? v.focus : undefined, improve: picks,
       wake: hours ? v.wake : undefined, sleep: hours ? v.sleep : undefined,
       sleepHours: changed('sleepHours'), steps: changed('steps'), waterMl: full ? v.waterMl : undefined,
@@ -245,7 +250,7 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
               {ready ? (
                 <motion.section key={i} custom={dir} variants={stepMotion} initial="enter" animate="center" exit="exit" aria-live="polite">
                   {i === AT.you ? <StepYou v={v} set={set} suggested={device} timezones={timezones} currencies={currencies} nameError={!!error && !v.name.trim()} />
-                    : i === AT.pack ? <StepPack v={v} packs={packs} sourceName={(id) => sources.find((c) => c.id === id)?.name} onPick={(id) => { if (id === v.pack) return; setV((s) => applyPack(s, packs.find((p) => p.id === id) ?? null, fresh ? [] : initial.areas)); setError(null) }} />
+                    : i === AT.pack ? <StepPack v={v} packs={packs} sourceName={(id) => sources.find((c) => c.id === id)?.name} onPick={(id) => { if (id === v.pack) return; setV((s) => applyPack(s, packs.find((p) => p.id === id) ?? null, fresh ? [] : arrivalAreas)); setError(null) }} />
                     : i === AT.areas ? <StepAreas v={v} set={set} picks={picks} options={options} onRefuse={() => setNudge((n) => n + 1)} />
                     : i === AT.connect ? <StepConnect rows={rows} />
                     : i === AT.ai ? <StepAi v={v} set={set} ai={ai} providers={providers} local={local} checking={checking} onCheck={runCheck} onRecheck={() => void askAi()} />

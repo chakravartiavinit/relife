@@ -10,7 +10,7 @@ import { lockUser } from './recovery'
 import { mergeProfile, profileMerge, type User } from './user'
 
 // One-time setup (/welcome): profile, usual hours, areas, what The System trains first, daily targets,
-// tone, goals and starter routines, in one write. Only the name, region and areas are required: anything
+// tone, goals and starter routines, in one write. Only the name and region are required (a first setup also sends the areas): anything
 // left out keeps its saved value (or its usual default on first setup), so running setup again never
 // overwrites a setting the user didn't touch.
 // Templates are suggestions only; everything they create is an ordinary routine the user can edit.
@@ -22,7 +22,8 @@ export type OnboardingInput = {
   name: string
   timezone: string
   baseCurrency: string
-  areas: Category[]
+  /** Left out, the saved areas stay (setup run again sends them only when they were changed). */
+  areas?: Category[]
   focus?: Category
   templates?: string[]
   /** Routines an AI proposed (only the ticked ones are created). */
@@ -56,12 +57,14 @@ const TONE_NOTE: Record<NonNullable<OnboardingInput['tone']>, string> = {
  * key (payments seen, celebrated level) survives.
  */
 export async function completeOnboarding(user: User, input: OnboardingInput, now = new Date()) {
-  const areas = CATEGORIES.filter((c) => input.areas.includes(c))
+  const given = input.areas ? CATEGORIES.filter((c) => input.areas!.includes(c)) : undefined
   const today = localDate(now, input.timezone)
   const { added, fresh } = await db.transaction(async (tx) => {
     await lockUser(tx, user.id)
     const [saved] = await tx.select().from(schema.users).where(eq(schema.users.id, user.id))
     const cur = saved ?? user
+    // No areas sent: the saved ones stay (none saved means every area shows).
+    const areas = given ?? (cur.profile.areas?.length ? CATEGORIES.filter((c) => cur.profile.areas!.includes(c)) : [...CATEGORIES])
     const tone = input.tone ?? cur.profile.tone ?? 'balanced'
     // The coach's notes start as the tone's own line. A new tone replaces that line, never words the user wrote.
     const notes = cur.profile.notes?.trim()
@@ -74,8 +77,8 @@ export async function completeOnboarding(user: User, input: OnboardingInput, now
       constraints: input.constraints?.trim() || undefined,
       notes: !notes || Object.values(TONE_NOTE).includes(notes) ? TONE_NOTE[tone] : undefined,
       tone,
-      areas,
-      focus: input.focus && areas.includes(input.focus) ? input.focus : areas[0],
+      areas: given,
+      focus: input.focus && areas.includes(input.focus) ? input.focus : given?.[0],
       onboardedAt: now.toISOString(),
       improve: input.improve.length ? input.improve : undefined,
       // Usual hours, when given: Telegram stays quiet while they sleep; per-category settings are kept.
