@@ -15,7 +15,7 @@ import { achievementBoard, xpBreakdown, xpSummary } from './xp'
 
 // What a share card is made of. Every value is read here, from the signed-in user, and the query string only says
 // which card: a level, an achievement or a week the user has not earned or reached is refused, so a URL cannot make
-// ReLife draw a card for something that is not true. Money is read only to say "less / more than usual".
+// the app draw a card for something that is not true. Money is read only to say "less / more than usual".
 
 export type ShareLoad = { ok: true; data: ShareData } | { ok: false; status: 400 | 404; error: string }
 

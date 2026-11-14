@@ -4,7 +4,7 @@
   "id": "weekly-reset",
   "name": "Weekly reset",
   "description": "One calm hour on Sunday to look at the week behind and set up the week ahead, plus a short daily tidy.",
-  "author": "ReLife community",
+  "author": "Community",
   "areas": ["mind", "skills"],
   "routines": [
     { "key": "review-week", "name": "Review the week", "area": "mind", "kind": "routine", "rule": { "freq": "weekly", "times": ["17:00"], "byweekday": ["SU"] }, "note": "What went well, what to change" },

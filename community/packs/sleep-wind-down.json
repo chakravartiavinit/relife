@@ -4,7 +4,7 @@
   "id": "sleep-wind-down",
   "name": "Sleep wind-down",
   "description": "A calm last hour of the day: screens off, a short reading slot and a lights-out reminder, with a weekly count of nights you made it.",
-  "author": "ReLife community",
+  "author": "Community",
   "areas": ["health", "mind"],
   "routines": [
     { "key": "screens-off", "name": "Screens off", "area": "health", "kind": "routine", "rule": { "freq": "daily", "times": ["22:00"] }, "note": "Phone on the charger, across the room" },
