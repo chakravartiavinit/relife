@@ -11,6 +11,6 @@ export async function POST(req: Request) {
   const body = SubscriptionInput.safeParse(await req.json().catch(() => null))
   if (!body.success) return apiError(400, 'bad_request', 'Bad request.')
   const host = req.headers.get('host')
-  await saveSubscription({ userId: a.user.id, deviceId: a.device.id, sub: body.data, via: host ? hostName(host) : null, userAgent: req.headers.get('user-agent') })
-  return Response.json({ ok: true })
+  const saved = await saveSubscription({ userId: a.user.id, deviceId: a.device.id, sub: body.data, via: host ? hostName(host) : null, userAgent: req.headers.get('user-agent') })
+  return saved ? Response.json({ ok: true }) : apiError(403, 'forbidden', 'That subscription belongs to another account.')
 }

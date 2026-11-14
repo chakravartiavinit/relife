@@ -23,7 +23,8 @@ export async function savePushSubscription(sub: unknown) {
   if (!parsed.success) return { ok: false as const, error: 'The browser sent a subscription that could not be read.' }
   const h = await headers()
   const host = h.get('host')
-  await saveSubscription({ userId: device.userId, deviceId: device.id, sub: parsed.data, via: host ? hostName(host) : null, userAgent: h.get('user-agent') })
+  const saved = await saveSubscription({ userId: device.userId, deviceId: device.id, sub: parsed.data, via: host ? hostName(host) : null, userAgent: h.get('user-agent') })
+  if (!saved) return { ok: false as const, error: 'That subscription belongs to another account. Turn push off in the browser and on again.' }
   return { ok: true as const }
 }
 

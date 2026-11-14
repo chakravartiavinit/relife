@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { and, eq, isNull, sql } from 'drizzle-orm'
-import webpush from 'web-push'
+import { generateVAPIDKeys, sendNotification } from 'web-push'
 import { z } from 'zod'
 import { db, schema } from '@/db'
 import type { NotifyCategory } from '@/domain/notify'
@@ -34,7 +34,7 @@ export function vapidKeys(): VapidKeys {
   if (keys) return keys
   if (existsSync(vapidFile())) return (keys = readKeys())
   mkdirSync(dataDir(), { recursive: true })
-  const made = webpush.generateVAPIDKeys()
+  const made = generateVAPIDKeys()
   try {
     writeFileSync(vapidFile(), JSON.stringify(made), { flag: 'wx', mode: 0o600 })
     return (keys = made)
@@ -57,16 +57,21 @@ export const SubscriptionInput = z.object({
 })
 export type SubscriptionInput = z.infer<typeof SubscriptionInput>
 
-/** Remember a browser's subscription for this device. The endpoint is unique: a browser that subscribes again moves the row to its current device. */
-export async function saveSubscription(o: { userId: string; deviceId: string; sub: SubscriptionInput; via: string | null; userAgent: string | null }) {
+/**
+ * Remember a browser's subscription for this device. The endpoint is unique: a browser that subscribes again moves the row to
+ * its current device, but never from another account (`setWhere`). Returns false when the endpoint is another account's.
+ */
+export async function saveSubscription(o: { userId: string; deviceId: string; sub: SubscriptionInput; via: string | null; userAgent: string | null }): Promise<boolean> {
   const S = schema.pushSubscriptions
-  await db.insert(S).values({
+  const saved = await db.insert(S).values({
     userId: o.userId, deviceId: o.deviceId, endpoint: o.sub.endpoint, p256dh: o.sub.keys.p256dh, auth: o.sub.keys.auth,
     via: o.via, userAgent: o.userAgent?.slice(0, 300) ?? null,
   }).onConflictDoUpdate({
     target: S.endpoint,
+    setWhere: eq(S.userId, o.userId),
     set: { userId: o.userId, deviceId: o.deviceId, p256dh: o.sub.keys.p256dh, auth: o.sub.keys.auth, via: o.via, userAgent: o.userAgent?.slice(0, 300) ?? null, failures: 0, updatedAt: new Date() },
-  })
+  }).returning({ id: S.id })
+  return saved.length > 0
 }
 
 /** Subscriptions that can still receive: their device has not been signed out. */
@@ -92,12 +97,16 @@ export const optionsFor = (category: NotifyCategory): PushOptions =>
 
 const GONE = new Set([403, 404, 410])
 const MAX_FAILURES = 20
+/** A push service's own trouble: it answered 429 or 5xx. Only these count toward giving up on a subscription. */
+const isServiceTrouble = (status: number | undefined) => status === 429 || (status !== undefined && status >= 500 && status <= 599)
+/** How long to wait for a push service before the send counts as failed. */
+const SEND_TIMEOUT_MS = 10_000
 
 type Transport = (sub: Sub, body: string, o: PushOptions) => Promise<void>
-const webPushTransport: Transport = async (sub, body, o) => {
+export const webPushTransport: Transport = async (sub, body, o) => {
   const k = vapidKeys()
-  await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, body, {
-    TTL: o.ttl, urgency: o.urgency, vapidDetails: { subject: vapidSubject(), publicKey: k.publicKey, privateKey: k.privateKey },
+  await sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, body, {
+    TTL: o.ttl, urgency: o.urgency, timeout: SEND_TIMEOUT_MS, vapidDetails: { subject: vapidSubject(), publicKey: k.publicKey, privateKey: k.privateKey },
   })
 }
 /** Swapped in tests, so nothing reaches a real push service. */
@@ -108,7 +117,8 @@ export type PushPayload = PushMessage & { id: string; tag: string; renotify: boo
 
 /**
  * Send one message to every live subscription of the user. A 403, 404 or 410 removes the subscription (the browser forgot it,
- * or the keys changed); any other error counts a failure, and 20 in a row remove it. Returns whether at least one send worked.
+ * or the keys changed); a 429 or 5xx from the push service counts a failure, and 20 in a row remove it. Anything else (no network, DNS, a bug)
+ * is logged and counts for nothing, so being offline never costs a subscription. Returns whether at least one send worked.
  */
 export async function sendPush(userId: string, payload: PushPayload, o: PushOptions): Promise<boolean> {
   const S = schema.pushSubscriptions
@@ -121,9 +131,11 @@ export async function sendPush(userId: string, payload: PushPayload, o: PushOpti
     } catch (e) {
       const status = (e as { statusCode?: number }).statusCode
       if (status && GONE.has(status)) { await db.delete(S).where(eq(S.id, sub.id)); continue }
-      const failures = sub.failures + 1
-      if (failures >= MAX_FAILURES) await db.delete(S).where(eq(S.id, sub.id))
-      else await db.update(S).set({ failures }).where(eq(S.id, sub.id))
+      if (isServiceTrouble(status)) {
+        const failures = sub.failures + 1
+        if (failures >= MAX_FAILURES) await db.delete(S).where(eq(S.id, sub.id))
+        else await db.update(S).set({ failures }).where(eq(S.id, sub.id))
+      }
       console.error('[push] send failed:', status ?? (e instanceof Error ? e.message : e))
     }
   }
