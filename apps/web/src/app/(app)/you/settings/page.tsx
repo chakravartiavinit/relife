@@ -35,7 +35,9 @@ export default function SettingsPage() {
         <div className="flex items-center gap-2">
           {/* A full load: the tour opens from the address on arrival. */}
           <a href="/?tour" className={buttonClass({ variant: 'ghost', size: 'sm' })}>Take the tour</a>
-          <TemplatesButton size="sm" locked={isDemo() ? DEMO_MESSAGE : undefined} />
+          <Suspense fallback={<Skeleton className="h-8 w-36" />}>
+            <TemplatesAction />
+          </Suspense>
           <Link href="/welcome" className={buttonClass({ variant: 'secondary', size: 'sm' })}>Run setup again</Link>
         </div>
       </div>
@@ -49,6 +51,12 @@ export default function SettingsPage() {
       </div>
     </>
   )
+}
+
+/** The demo is a runtime setting, so the locked state is read per request, not baked into the prerendered page. */
+async function TemplatesAction() {
+  await connection()
+  return <TemplatesButton size="sm" locked={isDemo() ? DEMO_MESSAGE : undefined} />
 }
 
 async function Settings() {
