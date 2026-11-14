@@ -70,6 +70,31 @@ docker compose exec web relife signin
 In Docker ReLife never trusts "this computer" without a code: requests reach the container through Docker, so every
 browser pairs once.
 
+## Moving from a source checkout (or the Mac service) to Docker
+
+You can keep your data. Both setups use the same database format and the same key file.
+
+1. **Stop the old one first.** `npm run service -- stop` (macOS service) and stop `npm run dev`. Two copies of the
+   app on one database, or on port 3030, is a recipe for trouble.
+2. **The database.** The Postgres from the README's source setup (`docker compose up -d`, volume `relife-pg`) is the
+   same service the `app` profile uses, so from the same checkout folder there is nothing to move: `migrate` recognises
+   the tables `npm run db:push` made and carries on. Its password is `relife`, so leave `POSTGRES_PASSWORD` unset (or set
+   it to `relife`); a new random one would not match the existing volume. A database somewhere else: `pg_dump` it and
+   restore into the new one (`docker compose exec -T postgres psql -U relife relife < relife.sql`, before the `app`
+   profile starts).
+3. **The key.** Your saved connector keys are encrypted with `data/secret.key`. Without that file ReLife refuses to
+   make a new one and the saved keys read as missing. Copy it into the `relife-data` volume **before** the first start:
+
+   ```bash
+   docker compose --profile app create web            # creates the relife-data volume
+   docker compose cp data/secret.key web:/data/secret.key
+   ```
+
+   (If you used `RELIFE_SECRET_KEY` in `.env`, keep it there: it is passed to the containers.) The Chrome profiles for the
+   shopping apps in `data/browser/` do not move: those connectors don't run in Docker.
+4. `docker compose up -d --build`, then `docker compose exec web relife signin` for a first sign-in code. Devices
+   paired before are in the database and keep working if you carried it over, on the same address.
+
 ## Opening it from your phone or another computer
 
 ReLife listens on `127.0.0.1:3030` only, so nothing on your network can reach it until you decide. It also refuses
@@ -165,8 +190,9 @@ Old databases are safe: `migrate` applies only the migrations that are missing. 
 - **"ReLife refused this address" (421).** You opened it on a name or address that is not allowed. Add it to
   `RELIFE_ALLOWED_HOSTS` in `.env`, then `docker compose up -d`.
 - **The sign-in code expired.** `docker compose exec web relife signin`.
-- **`migrate` failed with "This database is older than the baseline".** The database comes from a version before
-  migrations. In a source checkout run `npm run db:push` once against it, then start again.
+- **`migrate` failed with "does not match this version ... no migration history".** The database was made by
+  `npm run db:push` of a different version, or edited by hand. In a source checkout run `npm run db:push` once against it
+  (answer the questions it asks), then start again.
 - **`migrate` or `web` says saved keys exist but `secret.key` is missing.** The `relife-data` volume was lost or
   replaced. Restore it from a backup; ReLife will not make a new key, which would make every saved key unreadable.
 - **The local AI is unreachable.** Check `docker compose --profile ai ps`; the first start downloads the model, which

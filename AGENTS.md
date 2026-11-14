@@ -327,7 +327,7 @@ All from the repo root (they delegate to `apps/web` with `-w apps/web`).
   the logo files; `npm run brand:check`; `npm run contract:check` runs the contract fixtures test.
 - `docker compose up -d` starts only Postgres on 5442 (development). `COMPOSE_PROFILES=app` runs the whole app from the
   image (docs/SELF_HOSTING.md), `--profile ai` adds Ollama, `--profile demo` the read-only demo on port 3001.
-- X. Stop it
+- `npm run service -- install|restart|stop|logs`: the production app as a LaunchAgent (macOS only; starts at login). Stop it
   before `npm run dev`; they share port 3030. After the move into `apps/web`, run `install` once more so the
   LaunchAgent's working directory is `apps/web`.
 - Scripts under `apps/web/scripts/` run from `apps/web`: `npx tsx --env-file=../../.env scripts/<file>.ts`.
