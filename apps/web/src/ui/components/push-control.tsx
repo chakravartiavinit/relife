@@ -43,8 +43,9 @@ export function PushControl({ locked, ...rest }: { devices: number; onCount?: (n
 
 function PushLive({ devices, onCount }: { devices: number; onCount?: (n: number) => void }) {
   const [seen, setSeen] = useState<Seen | null>(null)
-  const [count, setCountState] = useState(devices)
-  const setCount = (f: (n: number) => number) => setCountState((n) => { const next = f(n); onCount?.(next); return next })
+  const [count, setCount] = useState(devices)
+  // The parent's count follows from an effect: calling it inside the state updater updates another component while this one renders.
+  useEffect(() => { onCount?.(count) }, [count, onCount])
   const [pending, setPending] = useState<'on' | 'test' | 'off' | null>(null)
   const [result, setResult] = useState<PushResult | null>(null)
   const refresh = useCallback(() => { void look().then(setSeen).catch(() => setSeen({ state: 'unsupported', ios: false })) }, [])
