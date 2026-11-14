@@ -22,11 +22,12 @@ export type PackAnswers = {
 /**
  * The answers a pack fills in: areas, the "improve first" picks, the starter routines (the pack's routine keys are
  * routine template ids), the daily targets it sets. Switching packs applies the new one over the old; no pack (Custom)
- * keeps today's answers. Every later step stays editable.
+ * keeps today's answers. A rerun passes the saved areas, which the pack adds to. Every later step stays editable.
  */
-export function applyPack<V extends PackAnswers>(v: V, pack: Pack | null): V {
+export function applyPack<V extends PackAnswers>(v: V, pack: Pack | null, saved: string[] = []): V {
   if (!pack) return { ...v, pack: null }
-  const areas = pack.areas?.length ? [...pack.areas] : v.areas
+  // `saved`: the areas kept from an earlier setup. A pack adds its areas to them, so running setup again never drops one.
+  const areas = pack.areas?.length ? [...saved, ...pack.areas.filter((a) => !saved.includes(a))] : v.areas
   return {
     ...v,
     pack: pack.id,

@@ -88,6 +88,12 @@ test('switching packs applies the new one over the old; a pack without targets k
   assert.equal(custom.pack, null)
 })
 
+test('a rerun passes the saved areas and the pack adds to them', () => {
+  const v = applyPack({ ...base, areas: ['wealth'] }, pack('recovery'), ['wealth', 'hobbies'])
+  assert.deepEqual(v.areas, ['wealth', 'hobbies', 'health', 'mind', 'relationships'])
+  assert.deepEqual(applyPack(base, pack('recovery'), ['health']).areas, ['health', 'mind', 'relationships'])
+})
+
 test('pickSources puts a pack\'s sources first, keeps Telegram last and fills the rest as before', () => {
   const src = (id: string, category: string, extra: object = {}) => ({ id, name: id, section: category, category, connected: false, fields: [{ secret: true }], ...extra })
   const items = [src('strava', 'health'), src('hevy', 'health'), src('oura', 'health'), src('whoop', 'health'), src('github', 'skills'), src('lastfm', 'hobbies'), src('telegram', 'messaging', { category: undefined }), src('claude', 'ai')]

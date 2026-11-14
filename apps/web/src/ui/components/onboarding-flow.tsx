@@ -238,7 +238,7 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
               {ready ? (
                 <motion.section key={i} custom={dir} variants={stepMotion} initial="enter" animate="center" exit="exit" aria-live="polite">
                   {i === AT.you ? <StepYou v={v} set={set} suggested={device} timezones={timezones} currencies={currencies} nameError={!!error && !v.name.trim()} />
-                    : i === AT.pack ? <StepPack v={v} packs={packs} sourceName={(id) => sources.find((c) => c.id === id)?.name} onPick={(id) => { setV((s) => applyPack(s, packs.find((p) => p.id === id) ?? null)); setError(null) }} />
+                    : i === AT.pack ? <StepPack v={v} packs={packs} sourceName={(id) => sources.find((c) => c.id === id)?.name} onPick={(id) => { if (id === v.pack) return; setV((s) => applyPack(s, packs.find((p) => p.id === id) ?? null, fresh ? [] : initial.areas)); setError(null) }} />
                     : i === AT.areas ? <StepAreas v={v} set={set} picks={picks} options={options} onRefuse={() => setNudge((n) => n + 1)} />
                     : i === AT.connect ? <StepConnect rows={rows} />
                     : i === AT.ai ? <StepAi v={v} set={set} ai={ai} providers={providers} local={local} checking={checking} onCheck={runCheck} />

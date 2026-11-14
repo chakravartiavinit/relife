@@ -26,7 +26,7 @@ export const PACK_BLURB: Record<string, string> = {
   'student-dev': 'Study, ship and keep a streak',
   recovery: 'Rest, wind down, get back on track',
 }
-export const CUSTOM_BLURB = 'Start blank. Pick areas, routines and targets yourself.'
+export const CUSTOM_BLURB = 'Keep your own picks'
 
 /** One line per area on its tile. */
 export const AREA_BLURB: Record<Category, string> = {

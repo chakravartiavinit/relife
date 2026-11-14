@@ -247,7 +247,7 @@ export function SaveFile({ v, step, picks, routines, starters, sources, pack, ai
                 <Flag aria-hidden className="size-4 shrink-0 text-pill-ink" strokeWidth={1.5} />
                 <span className="min-w-0 flex-1 truncate font-medium text-ink">{pack.goals[0].title}</span>
               </p>
-              <p className="mt-1 ps-6 text-caption text-ink-3">A draft on Plan. Nothing starts until you approve it.</p>
+              <p className="mt-1 ps-6 text-caption text-ink-3">A draft on Plan, if you have room for one. Nothing starts until you approve it.</p>
             </Part>
           ) : null}
 
