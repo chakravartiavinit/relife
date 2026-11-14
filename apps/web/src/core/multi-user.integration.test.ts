@@ -137,7 +137,7 @@ RRULE:FREQ=DAILY') returning id`
     const count = async (q: string, id: string) => Number((await sql.unsafe(q, [id]))[0].n)
     const checksBefore = await count('select count(*)::int n from checks where schedule_id = $1', aSchedules[0])
     await assert.rejects(() => setCheck(bUser, aSchedules[0], new Date(), 'done'))
-    await assert.rejects(() => addGoalProgress(bUser, aSchedules[0], 5)).catch(() => {})
+    await assert.rejects(() => addGoalProgress(bUser, aSchedules[0], 5))
     assert.equal(await count('select count(*)::int n from checks where schedule_id = $1', aSchedules[0]), checksBefore)
 
     const [before] = await sql`select status from insights where id = ${aInsights[0]}`
@@ -197,6 +197,21 @@ RRULE:FREQ=DAILY') returning id`
     assert.deepEqual(await Promise.all(out.slice(0, 2).map((j) => j.run())), [A.id, B.id])
   })
 
+  await t.test('a job reads its person’s keys, never the server’s .env, even before anyone loaded them', async () => {
+    const { expandJobs } = await import('./jobs')
+    process.env.BINANCE_API_KEY = 'owner-env-secret'
+    try {
+      resetKeys()
+      const { setManagedNames } = await import('./env')
+      setManagedNames(['BINANCE_API_KEY'])
+      setMulti(true)
+      assert.equal(await runAs(bUser, async () => env('BINANCE_API_KEY')), undefined, 'a member with nothing loaded reads nothing')
+      const job = { id: 'sync:binance', schedule: { everyMinutes: 60 }, run: async () => String(env('BINANCE_API_KEY')) } as never as Parameters<typeof expandJobs>[0][number]
+      const [, forB] = expandJobs([job], [A, bUser])
+      assert.equal(await forB.run(), 'undefined', 'B’s job does not see the owner’s key')
+    } finally { delete process.env.BINANCE_API_KEY; resetKeys() }
+  })
+
   await t.test('a Telegram chat belongs to the one person who linked it', async () => {
     const { createLinkCode, redeemLinkCode, userForChat, unlinkTelegram } = await import('./telegram-link')
     assert.equal(await userForChat('777001'), null, 'an unlinked chat is no one’s')
@@ -221,6 +236,122 @@ RRULE:FREQ=DAILY') returning id`
     await assert.rejects(() => join('Dan'))
     await sql`delete from users where id = ${made.user.id}`
     clearUsersCache()
+  })
+
+  await t.test('an invite runs out, works once, and two people opening it together make one member', async () => {
+    const { createInvite, redeemInvite } = await import('./auth/pairing')
+    const open = (secret: string, name: string, now?: Date) => redeemInvite({ secret, name, ip: '203.0.113.20', userAgent: 'test', via: 'test', now })
+    // Expiry: a week and a bit later it is gone.
+    const old = await createInvite({ ownerId: A.id, deviceId: null, baseUrl: 'http://localhost:3030' })
+    await assert.rejects(() => open(old.secret, 'Late', new Date(Date.now() + 8 * 86_400_000)), /expired|already used/)
+    // Together: exactly one of two simultaneous opens wins.
+    const inv = await createInvite({ ownerId: A.id, deviceId: null, baseUrl: 'http://localhost:3030' })
+    const results = await Promise.allSettled([open(inv.secret, 'Fay'), open(inv.secret, 'Gus')])
+    const won = results.filter((r) => r.status === 'fulfilled')
+    assert.equal(won.length, 1, 'one winner')
+    assert.equal(results.filter((r) => r.status === 'rejected').length, 1)
+    for (const r of won) await sql`delete from users where id = ${r.value.user.id}`
+    clearUsersCache()
+  })
+
+  await t.test('the owner’s AI model: off refuses a member and never the owner', async () => {
+    const { aiAllowed } = await import('./multi-user')
+    const { aiEnabledFor } = await import('@/ai')
+    const { mergeProfile } = await import('./user')
+    assert.equal(await aiAllowed(bUser), true, 'on by default')
+    await mergeProfile(A.id, { instance: { ...A.profile.instance, shareAi: false } })
+    clearUserCache(); clearUsersCache()
+    try {
+      assert.equal(await aiAllowed(bUser), false)
+      assert.equal(await aiEnabledFor(bUser, 'chat'), false)
+      assert.equal(await aiAllowed(A), true)
+    } finally {
+      await mergeProfile(A.id, { instance: { ...A.profile.instance, shareAi: true } })
+      clearUserCache(); clearUsersCache()
+    }
+    assert.equal(await aiAllowed(bUser), true)
+  })
+
+  await t.test('owner-only actions refuse a member', async () => {
+    const { requireOwner, NotOwnerError } = await import('./people')
+    assert.throws(() => requireOwner(bUser), NotOwnerError)
+    assert.doesNotThrow(() => requireOwner(A))
+    asToken(b.token)
+    const { backupNowAction } = await import('@/app/actions')
+    await assert.rejects(() => backupNowAction(), NotOwnerError)
+    asToken(undefined)
+  })
+
+  await t.test('connectors that read the server’s own computer are closed to a member', async () => {
+    const { connect } = await import('./secrets')
+    const { HOST_LOCAL } = await import('./platform')
+    for (const id of ['anki', 'icloud-inbox']) {
+      const r = await connect(B.id, id, {})
+      assert.deepEqual(r, { ok: false, error: HOST_LOCAL }, `${id} refused for B`)
+    }
+    const { connectorStatus } = await import('@/worker/sync')
+    const status = await runAs(bUser, () => connectorStatus())
+    for (const id of ['anki', 'icloud-inbox', 'shop']) assert.equal(status.find((c) => c.id === id)?.unavailable ?? HOST_LOCAL, HOST_LOCAL, `${id} shows as unavailable to B`)
+    assert.equal(status.find((c) => c.id === 'anki')?.unavailable, HOST_LOCAL)
+  })
+
+  await t.test('a member sees device requests only by their own code, and the owner’s stream hears every request', async () => {
+    const { startRequest, requestById } = await import('./auth/pairing')
+    const { mayAnswerRequest, visibleRequests } = await import('./people')
+    const { subscribe, publish } = await import('./auth/events')
+    const req = await startRequest({ kind: 'mac', name: 'Cleo’s Mac', ip: '203.0.113.31', userAgent: 'MacApp/1', baseUrl: 'http://127.0.0.1:3030', via: 'test' })
+    try {
+      const pairing = (await requestById(req.id))!
+      assert.deepEqual(await visibleRequests(bUser), [], 'a member lists none')
+      assert.ok((await visibleRequests(A)).some((r) => r.id === req.id))
+      assert.equal(await mayAnswerRequest(bUser, pairing), false, 'no code, no answer')
+      assert.equal(await mayAnswerRequest(bUser, pairing, 'WRONG123'), false)
+      assert.equal(await mayAnswerRequest(bUser, pairing, req.userCode), true, 'their own device shows the code')
+      assert.equal(await mayAnswerRequest(A, pairing), true)
+      // Events: a request nobody has claimed reaches the owner’s streams only.
+      const heard: Record<string, string[]> = { a: [], b: [] }
+      const stops = await Promise.all([
+        subscribe({ userId: A.id, deviceId: a.device.id, send: (e) => heard.a.push(e.type) }),
+        subscribe({ userId: B.id, deviceId: b.device.id, send: (e) => heard.b.push(e.type) }),
+      ])
+      try {
+        await publish({ userId: null, event: { type: 'pairing', id: req.id, status: 'pending' } as never })
+        await new Promise((r) => setTimeout(r, 400))
+        assert.deepEqual(heard.a, ['pairing'])
+        assert.deepEqual(heard.b, [])
+      } finally { for (const stop of stops) stop() }
+    } finally { await sql`delete from pairings where id = ${req.id}` }
+  })
+
+  await t.test('Telegram: a typed chat id is the owner’s; unlinking does not hand the .env chat back; a member never inherits it', async () => {
+    const { chatIdOf } = await import('./notify')
+    const { redeemLinkCode, createLinkCode, unlinkTelegram, setTypedChat, userForChat } = await import('./telegram-link')
+    process.env.TELEGRAM_ALLOWED_CHAT_ID = '555000'
+    try {
+      clearUserCache(); clearUsersCache()
+      const owner = (await ownerUser())!
+      assert.equal(chatIdOf(bUser), undefined, 'a member without a link has no chat, whatever .env says')
+      // The owner typed one: it is theirs, and only theirs.
+      await setTypedChat(B.id, '555111')
+      clearUserCache(); clearUsersCache()
+      assert.equal(await userForChat('555111') !== null, true)
+      // A chat linked by one person is released from the other.
+      const { code } = await createLinkCode(owner)
+      const linked = await redeemLinkCode(code, '555111')
+      assert.ok(linked.ok && linked.user.id === A.id)
+      assert.equal((await userForChat('555111'))?.id, A.id, 'the chat moved to the person who proved they hold it')
+      const { user: stale } = { user: (await sql`select profile from users where id = ${B.id}`)[0] }
+      assert.equal(stale.profile.telegram?.chatId, undefined, 'B no longer holds it')
+      assert.ok(stale.profile.telegram?.unlinkedAt, 'and the release is recorded')
+      await unlinkTelegram(owner)
+      clearUserCache(); clearUsersCache()
+      const after = (await ownerUser())!
+      assert.equal(chatIdOf(after), undefined, 'unlinked on purpose: the .env chat does not come back')
+    } finally {
+      delete process.env.TELEGRAM_ALLOWED_CHAT_ID
+      await sql`update users set profile = profile - 'telegram' where id in (${A.id}, ${B.id})`
+      clearUserCache(); clearUsersCache()
+    }
   })
 
   await t.test('party: a non-member gets nothing, and members see only what was ticked', async () => {
@@ -267,5 +398,93 @@ RRULE:FREQ=DAILY') returning id`
     await leaveParty(bUser, id)
     assert.equal(await partyView(bUser, id), null)
     assert.ok(await partyView(A, id))
+  })
+  await t.test('party limits hold under racing writes, and the chest is one a week however many parties', async () => {
+    const { db, schema } = await import('@/db')
+    const { addDays, localDate } = await import('./time')
+    const { weekStart } = await import('@/domain/quests')
+    const { answerInvite, awardPartyChests, cheer, createParty, inviteToParty, leaveParty, partyView } = await import('./party')
+    const { PARTY_MAX_MEMBERS, PARTY_MAX_PER_PERSON } = await import('@relife/contract')
+    const made: string[] = []
+    const mk = async (name: string) => {
+      const [u] = await db.insert(schema.users).values({ name, role: 'member', timezone: A.timezone, baseCurrency: A.baseCurrency, profile: {} }).returning()
+      made.push(u.id)
+      return u
+    }
+    const shows = async (userId: string, days: string[]) => {
+      const [sch] = await db.insert(schema.schedules).values({ userId, name: 'Walk', kind: 'routine', category: 'health', rrule: 'DTSTART:20260101T000000Z\nRRULE:FREQ=DAILY' }).returning()
+      for (const d of days) await db.insert(schema.checks).values({ scheduleId: sch.id, occurrence: new Date(`${d}T03:30:00Z`), localDate: d, status: 'done' })
+    }
+    const backdate = (partyId: string) => sql`update party_members set joined_at = now() - interval '14 days' where party_id = ${partyId} and status = 'active'`
+    try {
+      clearUsersCache()
+      const [c, d, e] = [await mk('Cy'), await mk('Di'), await mk('Ed')]
+      const crowd = await Promise.all(Array.from({ length: PARTY_MAX_MEMBERS }, (_, i) => mk(`Crowd ${i}`)))
+      clearUsersCache()
+
+      // A party holds 8: with one place left, two asks at once fill it once.
+      const full = await createParty(c, { name: 'Full house', invite: crowd.slice(0, PARTY_MAX_MEMBERS - 2).map((u) => u.id) })
+      parties.push(full)
+      const asks = await Promise.allSettled([inviteToParty(c, full, crowd[PARTY_MAX_MEMBERS - 2].id), inviteToParty(c, full, crowd[PARTY_MAX_MEMBERS - 1].id)])
+      assert.equal(asks.filter((r) => r.status === 'fulfilled').length, 1, 'one place, one ask')
+      await assert.rejects(() => inviteToParty(c, full, d.id), /holds up to/)
+      await assert.rejects(() => createParty(c, { name: 'Too many', invite: crowd.map((u) => u.id) }), /holds up to/)
+
+      // Three parties each: with two taken, two starts at once make one.
+      const mine = [await createParty(d, { name: 'D1', invite: [] }), await createParty(d, { name: 'D2', invite: [] })]
+      parties.push(...mine)
+      const starts = await Promise.allSettled([createParty(d, { name: 'D3', invite: [] }), createParty(d, { name: 'D3 again', invite: [] })])
+      assert.equal(starts.filter((r) => r.status === 'fulfilled').length, PARTY_MAX_PER_PERSON - 2)
+      for (const r of starts) if (r.status === 'fulfilled') parties.push(r.value)
+      await assert.rejects(() => createParty(d, { name: 'D4', invite: [] }), /already/)
+
+      // An invitation to a party everyone has left is gone, not a way back in.
+      const brief = await createParty(e, { name: 'Brief', invite: [c.id] })
+      await leaveParty(e, brief)
+      await assert.rejects(() => answerInvite(c, brief, true), /gone|ended/)
+
+      // Cheers: once a day to the same person, and the card hears whether it can reach them.
+      const duo = await createParty(c, { name: 'Duo', invite: [e.id] })
+      parties.push(duo)
+      await answerInvite(e, duo, true)
+      const view = (await partyView(c, duo))!
+      const eMember = view.members.find((m) => !m.you)!
+      assert.deepEqual(await cheer(c, eMember.id), { queued: false }, 'no phone or Telegram: nothing was queued')
+      const phone = await createDevice({ userId: e.id, kind: 'browser', name: 'Ed phone', scopes: ['full'] })
+      await db.insert(schema.pushSubscriptions).values({ userId: e.id, deviceId: phone.device.id, endpoint: `https://push.example/${randomBytes(6).toString('hex')}`, p256dh: 'p'.repeat(20), auth: 'a'.repeat(12) })
+      assert.deepEqual(await cheer(c, eMember.id), { queued: true })
+      await assert.rejects(() => cheer(c, eMember.id), /already cheered/)
+
+      // The chest. Two people who both showed up 5 days last week, joined two weeks ago.
+      const monday = weekStart(localDate(new Date(), A.timezone))
+      const lastWeek = [0, 1, 2, 3, 4].map((i) => addDays(monday, -7 + i))
+      await shows(c.id, lastWeek)
+      await shows(e.id, lastWeek.slice(0, 4))
+      // A streak freeze on the fifth day is not showing up.
+      await db.insert(schema.streakFreezes).values({ userId: e.id, localDate: lastWeek[4] })
+      await sql`delete from parties where id = ${full}` // c is in 3 parties at most: keep the count low
+      await backdate(duo)
+      assert.equal(await awardPartyChests(c), 0, 'a day a freeze covered does not count')
+      await sql`delete from streak_freezes where user_id = ${e.id}`
+      await shows(e.id, [lastWeek[4]])
+      assert.equal(await awardPartyChests(c), 1, 'cleared: one chest')
+      assert.equal(await awardPartyChests(c), 0, 'and not again')
+      // A second party with the same two people pays nothing more for the same week.
+      const again = await createParty(c, { name: 'Duo 2', invite: [e.id] })
+      parties.push(again)
+      await answerInvite(e, again, true)
+      await backdate(again)
+      assert.equal(await awardPartyChests(c), 0, 'one chest a week, whatever the number of parties')
+      assert.equal(await awardPartyChests(e), 1, 'each person has their own')
+      const refs = (await sql`select ref from chests where user_id = ${c.id} and ref like 'party:%'`).map((r) => r.ref)
+      assert.deepEqual(refs, [`party:${(await import('@/domain/party')).isoWeek(addDays(monday, -7))}`])
+      // Together: the same chest cannot be paid twice by two runs at once.
+      await sql`delete from chests where user_id = ${e.id}`
+      const both = await Promise.all([awardPartyChests(e), awardPartyChests(e)])
+      assert.equal(both[0] + both[1], 1)
+    } finally {
+      for (const id of made) await sql`delete from users where id = ${id}`
+      clearUsersCache()
+    }
   })
 })
