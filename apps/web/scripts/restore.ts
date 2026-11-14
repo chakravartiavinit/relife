@@ -1,4 +1,4 @@
-// Restore a backup over this database. Stop ReLife first.
+// Restore a backup over this database. Stop the app first.
 //
 //   npm run restore                               list the backups
 //   npm run restore -- <file> [--yes] [--force] [--no-safety-backup]
@@ -11,6 +11,7 @@ import { restoreBackup } from '@/core/data/restore'
 import { backupDir } from '@/core/paths'
 import { parseBackupName } from '@/domain/backups'
 import { sql } from '@/db'
+import brand from '@relife/brand/brand.json'
 
 async function list() {
   const names = existsSync(backupDir()) ? (await readdir(backupDir())).filter((n) => parseBackupName(n)).sort().reverse() : []
@@ -37,7 +38,7 @@ async function main() {
   })
   console.log(`\nRestored. ${r.readable} of ${r.total} saved keys readable.`)
   if (r.readable < r.total) console.log('The rest read as not saved: reconnect those sources in You → Connections, or restore with the original key.')
-  console.log('Next: `npm run db:push` (Docker does this on start), start ReLife, and `npm run signin` on a new machine.')
+  console.log(`Next: \`npm run db:push\` (Docker does this on start), start ${brand.name}, and \`npm run signin\` on a new machine.`)
   await sql.end({ timeout: 5 })
 }
 

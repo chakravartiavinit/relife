@@ -8,6 +8,7 @@ import { assertKeyReady, encrypt } from '../secrets'
 import { clearUserCache } from '../user'
 import { EXPORT_FORMAT, EXPORT_VERSION, FORMAT_FILE, MANIFEST_FILE, tableFile, type ExportManifest } from './export'
 import { exportTables, schemaHash } from './tables'
+import brand from '@relife/brand/brand.json'
 
 // Restores an export (core/data/export.ts) into an empty install. CLI only: `npm run import -- <file.zip>`.
 // One transaction: if anything is wrong, nothing is written.
@@ -150,13 +151,13 @@ export async function importExport(path: string, o: { allowMock?: boolean; log?:
         name = ev.name
         kind = 'other'
         if (name === FORMAT_FILE) kind = 'format'
-        else if (!seenFormat) throw new Error(`${name} came before ${FORMAT_FILE}: this is not a ReLife export.`)
+        else if (!seenFormat) throw new Error(`${name} came before ${FORMAT_FILE}: this is not a ${brand.name} export.`)
         else if (name === MANIFEST_FILE) kind = 'manifest'
         else if (name.startsWith('tables/') && name.endsWith('.jsonl')) {
           const table = name.slice('tables/'.length, -'.jsonl'.length)
           const at = order.findIndex((t) => t.name === table)
           if (at < 0) result.warnings.push(`${table}: not a table of this version, skipped.`)
-          else if (at <= lastTable) throw new Error(`${name} is out of order: this is not a ReLife export.`)
+          else if (at <= lastTable) throw new Error(`${name} is out of order: this is not a ${brand.name} export.`)
           else { kind = 'table'; lastTable = at; name = table }
         }
       } else if (ev.kind === 'data') {
@@ -173,8 +174,8 @@ export async function importExport(path: string, o: { allowMock?: boolean; log?:
         }
       } else if (kind === 'format') {
         const f = JSON.parse(Buffer.concat(body).toString('utf8')) as { format?: string; version?: number; schemaHash?: string }
-        if (f.format !== EXPORT_FORMAT) throw new Error('This is not a ReLife export.')
-        if (typeof f.version !== 'number' || f.version > EXPORT_VERSION) throw new Error(`This export is version ${f.version}, newer than this ReLife understands (${EXPORT_VERSION}). Update ReLife first.`)
+        if (f.format !== EXPORT_FORMAT) throw new Error(`This is not a ${brand.name} export.`)
+        if (typeof f.version !== 'number' || f.version > EXPORT_VERSION) throw new Error(`This export is version ${f.version}, newer than this ${brand.name} understands (${EXPORT_VERSION}). Update ${brand.name} first.`)
         if (f.schemaHash !== schemaHash()) result.warnings.push('The export was made by a different version: columns that no longer exist are skipped, new ones get their defaults.')
         await assertEmpty()
         seenFormat = true

@@ -9,6 +9,7 @@ import { decryptFile, isEncrypted } from './crypto'
 import { DEMO_OFF, isDemo } from './demo'
 import { currentKey, fingerprint, keyFilePath } from './key'
 import { databaseName, requirePgTool, spawnTo, pgEnv } from './pg'
+import brand from '@relife/brand/brand.json'
 
 // Restore a backup (core/data/backup.ts) over this database. Every check that can fail runs before anything is changed:
 // the archive is decrypted and unpacked into a temp folder first, and the key it needs is compared with the key in effect.
@@ -28,13 +29,13 @@ export type RestoreOptions = {
 export type RestoreResult = { readable: number; total: number; safety?: string; replacedKey?: string; manifest: BackupManifest }
 
 const WORKER_FRESH_MS = 3 * 60_000
-const STOP_HINT = 'Stop ReLife first (`npm run service -- stop`, or `docker compose stop web worker`), then run this again.'
+const STOP_HINT = `Stop ${brand.name} first (\`npm run service -- stop\`, or \`docker compose stop web worker\`), then run this again.`
 
 /** True when the app is (probably) running: a recent worker heartbeat, or other sessions on this database. */
 async function appRunning(): Promise<string | null> {
   try {
     const [hb] = await sql`select at from heartbeats where name = 'worker'`
-    if (hb && Date.now() - new Date(hb.at as string).getTime() < WORKER_FRESH_MS) return 'The ReLife worker is running.'
+    if (hb && Date.now() - new Date(hb.at as string).getTime() < WORKER_FRESH_MS) return `The ${brand.name} worker is running.`
   } catch { /* no table yet: an empty database */ }
   const [{ n }] = await sql`select count(*)::int as n from pg_stat_activity where datname = current_database() and pid <> pg_backend_pid() and backend_type = 'client backend'`
   return n > 0 ? `${n} other ${n === 1 ? 'connection is' : 'connections are'} open on this database.` : null
@@ -71,10 +72,10 @@ export async function restoreBackup(file: string, o: RestoreOptions = {}): Promi
     const dir = join(work, 'x')
     await mkdir(dir)
     await spawnTo('tar', ['-xzf', archive, '-C', dir]).catch((e) => { throw new Error(`Cannot open ${file}: ${(e as Error).message}`) })
-    if (!existsSync(join(dir, 'manifest.json')) || !existsSync(join(dir, 'db.dump'))) throw new Error('This is not a ReLife backup (manifest.json or db.dump is missing).')
+    if (!existsSync(join(dir, 'manifest.json')) || !existsSync(join(dir, 'db.dump'))) throw new Error(`This is not a ${brand.name} backup (manifest.json or db.dump is missing).`)
     const manifest = JSON.parse(await readFile(join(dir, 'manifest.json'), 'utf8')) as BackupManifest
-    if (manifest.format !== BACKUP_FORMAT) throw new Error('This is not a ReLife backup.')
-    if (typeof manifest.version !== 'number' || manifest.version > BACKUP_VERSION) throw new Error(`This backup is version ${manifest.version}, newer than this ReLife understands (${BACKUP_VERSION}). Update ReLife first.`)
+    if (manifest.format !== BACKUP_FORMAT) throw new Error(`This is not a ${brand.name} backup.`)
+    if (typeof manifest.version !== 'number' || manifest.version > BACKUP_VERSION) throw new Error(`This backup is version ${manifest.version}, newer than this ${brand.name} understands (${BACKUP_VERSION}). Update ${brand.name} first.`)
 
     // 2. The key that will be in effect afterwards has to open the saved keys the backup holds.
     const backupKey = join(dir, 'data', 'secret.key')

@@ -3,6 +3,7 @@ import { createReadStream, createWriteStream } from 'node:fs'
 import { open, rm } from 'node:fs/promises'
 import { pipeline } from 'node:stream/promises'
 import { Readable, Transform } from 'node:stream'
+import brand from '@relife/brand/brand.json'
 
 // Encrypted backups: `RLBK1\n` + salt(16) + iv(12) + AES-256-GCM ciphertext + tag(16). The key is scrypt(passphrase, salt).
 // A lost passphrase is a lost backup: there is no way around it.
@@ -55,7 +56,7 @@ export async function decryptFile(from: string, to: string, pass: string): Promi
     tag = Buffer.alloc(TAG)
     await fh.read(tag, 0, TAG, size - TAG)
   } finally { await fh.close() }
-  if (!head.subarray(0, MAGIC.length).equals(MAGIC)) throw new Error('This is not an encrypted ReLife backup.')
+  if (!head.subarray(0, MAGIC.length).equals(MAGIC)) throw new Error(`This is not an encrypted ${brand.name} backup.`)
   const salt = head.subarray(MAGIC.length, MAGIC.length + 16)
   const iv = head.subarray(MAGIC.length + 16)
   const decipher = createDecipheriv('aes-256-gcm', await derive(pass, salt), iv)
