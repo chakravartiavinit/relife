@@ -2,10 +2,12 @@
 
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Trophy } from 'lucide-react'
+import { Share2, Trophy } from 'lucide-react'
 import type { Unlocked } from '@/core/xp'
 import { ACHIEVEMENT_ICON, TIER_COLOR } from '../achievement-icons'
 import { EASE_OUT_STRONG } from '@/ui/beui/lib/ease'
+import { Button } from './button'
+import { openShareCard } from './share/share-event'
 
 // Big moments get big animations, everyday ones stay small. Mounted once in the layout and driven by
 // window events, so anything that earns XP (a check, a log, a chest) can trigger them:
@@ -129,9 +131,13 @@ function LevelUpScreen({ d, onDone }: { d: LevelUp; onDone: () => void }) {
           <p className="mt-1 text-[13px] text-ink-3">An epic chest is waiting on Today.</p>
         </motion.div>
 
-        <button ref={close} type="button" onClick={onDone} className="mt-7 h-10 rounded-full px-5 text-[13px] font-medium text-ink-3 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">
-          Tap anywhere to continue
-        </button>
+        <div className="mt-7 flex items-center gap-2">
+          {/* Share opens the card dialog and closes this screen; a click here must not also count as "tap anywhere". */}
+          <Button size="md" onClick={(e) => { e.stopPropagation(); openShareCard('level', String(d.level)); onDone() }}><Share2 className="size-4" strokeWidth={1.5} aria-hidden />Share</Button>
+          <button ref={close} type="button" onClick={onDone} className="h-10 rounded-full px-5 text-[13px] font-medium text-ink-3 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">
+            Tap anywhere to continue
+          </button>
+        </div>
       </div>
     </motion.div>
   )
