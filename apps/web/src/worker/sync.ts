@@ -21,12 +21,12 @@ export async function runConnector(connectorId: string): Promise<{ ok: boolean; 
   const c = connectors.find((x) => x.id === connectorId)
   if (!c) return { ok: false, events: 0, error: `Unknown connector "${connectorId}"` }
   // Shopping apps can't run in Docker: say so, and leave the connection alone (not a failure to count).
-  const unavailable = connectorUnavailable(c)
+  const user = await getUser()
+  const unavailable = connectorUnavailable(c, process.env, user.role !== 'owner')
   if (unavailable) return { ok: false, events: 0, error: unavailable }
   const missing = missingEnv(c)
   if (missing.length) return { ok: false, events: 0, error: `Missing env: ${missing.join(', ')}` }
 
-  const user = await getUser()
   const [conn] = await db.select().from(schema.connections)
     .where(and(eq(schema.connections.userId, user.id), eq(schema.connections.connectorId, c.id)))
   if (!conn?.enabled) return { ok: false, events: 0, error: `${c.name} isn’t connected` }
@@ -91,7 +91,7 @@ export async function connectorStatus() {
     env: c.env,
     everyMinutes: c.everyMinutes,
     login: c.login,
-    unavailable: connectorUnavailable(c),
+    unavailable: connectorUnavailable(c, process.env, user.role !== 'owner'),
     oauth: c.oauth,
     // Mock mode shows seeded connection states (connected, failing) instead of "key missing".
     missingEnv: isMock ? [] : missingEnv(c),

@@ -155,6 +155,11 @@ export type Connector = {
    * `public` (an open service that is sent nothing about you). Missing means a third-party service, the cautious claim.
    */
   reach?: 'local' | 'lan' | 'public'
+  /**
+   * Reads the computer that runs the server (a file in the home folder, a program on its network, a Chrome window on its
+   * screen). On a server with other people only the owner may connect it: a member would read the owner's own data.
+   */
+  hostLocal?: boolean
   everyMinutes: number
   sync(ctx: ConnectorCtx): Promise<void>
   /**

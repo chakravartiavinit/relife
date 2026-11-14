@@ -687,9 +687,9 @@ export async function openAppLogin(id: string): Promise<{ ok: true } | { ok: fal
   const { PLATFORMS } = await import('@/connectors/shop')
   const p = PLATFORMS.find((x) => x.id === id)
   if (!p) return { ok: false, error: 'Unknown app' }
-  const unavailable = connectorUnavailable(p)
-  if (unavailable) return { ok: false, error: unavailable }
   const user = await getUser()
+  const unavailable = connectorUnavailable(p, process.env, user.role !== 'owner')
+  if (unavailable) return { ok: false, error: unavailable }
   try {
     const { openLoginWindow } = await import('@/connectors/shop/browser')
     await runAs(user, () => openLoginWindow(p.id, p.login)) // the login is kept in this person's own folder

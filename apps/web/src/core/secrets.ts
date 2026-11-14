@@ -5,6 +5,7 @@ import { db, schema } from '@/db'
 import { INSTANCE_ENV, MANAGED_ENV, integration, integrationScope, isInstanceKey, type Integration } from './integrations'
 import { envFor, setInstanceKeys, setUserKeys } from './env'
 import { ownerId } from './multi-user'
+import { HOST_LOCAL } from './platform'
 import { dataDir } from './paths'
 import type { SetupField } from './types'
 
@@ -225,6 +226,7 @@ export async function connect(userId: string, id: string, input: Record<string, 
   const owner = await ownerId()
   const isOwner = !owner || owner === userId
   if (!isOwner && integrationScope(id) === 'instance') return { ok: false, error: 'This is set up by the person who runs this server.' }
+  if (!isOwner && spec.hostLocal) return { ok: false, error: HOST_LOCAL }
   // Malformed input is refused before anything is sent to the service.
   const typed = new Map<string, string>()
   for (const f of spec.fields) {

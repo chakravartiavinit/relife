@@ -76,6 +76,7 @@ function shopConnector(p: Platform): Connector {
     description: p.description,
     provides: p.provides,
     login: { url: p.login },
+    hostLocal: true, // the login window opens on the computer that runs the server
     fields: [{ env: envKey(p.id), label: 'Order history page', optional: true, placeholder: p.orders, hint: 'Leave blank. Only if the app moves its orders page: open your orders in Chrome and paste the address bar (not an API link).' }],
     env: [],
     // Food and grocery orders matter the same day; big-store orders less often. A bank SMS paying one of these apps
