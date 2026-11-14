@@ -107,6 +107,10 @@ tailscale serve --bg 3030
 ```
 
 Open `https://<machine>.<tailnet>.ts.net`. `*.ts.net` names work with no settings. Only your own devices reach it.
+This is also what notifications and the Android app need: browser push only works on an HTTPS address, and
+You › Settings › Devices › Use on your phone shows the QR for it (see [PHONE.md](PHONE.md)). The plain `http://` LAN address
+opens the web app but cannot receive notifications. The Android app accepts `http://` only for a private address (LAN,
+Tailscale), asking first; any public name must be `https://`.
 
 **A domain behind a reverse proxy, with HTTPS.** Point the proxy at `127.0.0.1:3030` and tell ReLife the name:
 
@@ -141,6 +145,7 @@ Compose reads `.env` for itself, and passes it on to the containers, so connecto
 | `RELIFE_PORT` | `3030` | The port on the host. |
 | `RELIFE_ALLOWED_HOSTS` | empty | Names or addresses ReLife may be opened on, besides localhost and `*.ts.net`. `*.example.com` matches subdomains. |
 | `RELIFE_PUBLIC_URL` | empty | The address a phone should open (sign-in links, QR codes, Telegram buttons). |
+| `RELIFE_VAPID_PUBLIC_KEY`, `RELIFE_VAPID_PRIVATE_KEY` | empty | Keys for browser notifications. Empty: ReLife makes `/data/vapid.json` on first use. Set them to keep notifications working when you move to a new machine. |
 | `RELIFE_TIMEZONE`, `RELIFE_BASE_CURRENCY`, `RELIFE_USER_NAME` | `Asia/Kolkata`, `INR`, `Me` | Used once, when the first user is created. |
 | `RELIFE_LOCAL_AI_MODEL` | `qwen3:4b-instruct` | The model the `ai` profile downloads. |
 | `LLM_DEFAULT` | empty | The model ReLife uses, `provider:model` (`local:qwen3:4b-instruct`, `anthropic:...`). |
@@ -203,7 +208,7 @@ Old databases are safe: `migrate` applies only the migrations that are missing. 
 
 ReLife writes a backup every night at 03:30 (the worker does it) and keeps the last 7, plus the newest of each of the 4
 weeks before them. Each backup is one `.tar.gz` in the `relife-backups` volume (`/backups`, `RELIFE_BACKUP_DIR`): the
-database (`pg_dump`, PostgreSQL 16 client tools are in the image) plus `secret.key` and the library pictures. It is
+database (`pg_dump`, PostgreSQL 16 client tools are in the image) plus `secret.key`, `vapid.json` (the push keys) and the library pictures. It is
 exact, so it holds the key that opens your saved connector keys. Set `RELIFE_BACKUP_PASSPHRASE` in `.env` to encrypt
 every backup (AES-256-GCM; a lost passphrase is a lost backup). `RELIFE_BACKUP_KEEP` changes how many are kept (`0`
 turns backups off).
@@ -228,7 +233,7 @@ docker compose up -d
 ```
 
 It asks you to type `RESTORE relife`, takes a `pre-restore` safety backup of what is there first, restores in one
-transaction (a failure leaves the old data), and puts the backup's `secret.key` in `/data` (a different existing key is kept as
+transaction (a failure leaves the old data), and puts the backup's `secret.key` and `vapid.json` in `/data` (a different existing key is kept as
 `secret.key.replaced-<time>`). `--yes` skips the question; `--force` restores even though the saved keys in the backup
 would not open with the key in effect (they then read as not saved). To move to a new install, start it first
 (the migrations run by themselves), stop `web` and `worker`, then restore into it. `relife import <relife-export.zip>` loads an export (Settings → Data &

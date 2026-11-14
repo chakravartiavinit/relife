@@ -222,7 +222,7 @@ throwaway database and has no access to your keys. See [docs/SELF_HOSTING.md](do
 | `npm run db:generate` | Write the migration for a schema change (commit `apps/web/drizzle/`) |
 | `npm run db:migrate` | Apply the migrations to your database (Docker does this on start) |
 | `docker compose exec web relife signin` | A new sign-in code, in Docker |
-| `npm run backup` · `npm run restore -- <file>` | Back up the database, `secret.key` and library covers to `RELIFE_BACKUP_DIR` (a nightly job does it at 03:30); restore one with ReLife stopped |
+| `npm run backup` · `npm run restore -- <file>` | Back up the database, `secret.key`, `vapid.json` and library covers to `RELIFE_BACKUP_DIR` (a nightly job does it at 03:30); restore one with ReLife stopped |
 | `npm run import -- <relife-export.zip>` | Restore an export (Settings → Data & privacy → Export) into an empty install |
 | `cd apps/web && npx tsx --env-file=../../.env scripts/binance-import.ts <csv...>` | Import Binance trade exports or Transaction History statements |
 

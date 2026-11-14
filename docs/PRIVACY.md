@@ -56,6 +56,10 @@ your profile text: those still go to a cloud model. Use a local model if that ma
 
 Telegram, when you connect it: message text passes through Telegram's servers. The bot answers only your chat.
 
+Browser push, when you turn it on for a device: the notification (title and body, clipped) is encrypted for that browser and
+passes through its push service (Google, Mozilla or Apple). The service sees that a message was sent, not what it says.
+Subscriptions stay out of exports; a backup holds them (and `data/vapid.json`, the keys they belong to).
+
 ## Fetched without your data
 
 - Exchange rates from `open.er-api.com`.
@@ -74,13 +78,13 @@ Telegram, when you connect it: message text passes through Telegram's servers. T
 ## Your copy of the data
 
 - **Export** (`GET /api/export`, the Export button): a ZIP with one JSON Lines file per table, CSVs of entries, payments,
-  trades and routine checks, and a manifest. It never contains saved keys, OAuth tokens, sync progress or device token
-  hashes. Connections keep only their non-secret settings (a username, a URL). Import it into an empty install with
+  trades and routine checks, and a manifest. It never contains saved keys, OAuth tokens, sync progress, device token
+  hashes or push subscriptions (turn notifications on again on each browser). Connections keep only their non-secret settings (a username, a URL). Import it into an empty install with
   `npm run import -- <file>`. ZIP64 is not used: a single file or archive over 4 GB fails with a clear error.
-- **Backups** (`npm run backup`, nightly at 03:30): one `.tar.gz` of the database, `secret.key` and library covers in
+- **Backups** (`npm run backup`, nightly at 03:30): one `.tar.gz` of the database, `secret.key`, `vapid.json` (the push keys) and library covers in
   `RELIFE_BACKUP_DIR`. It is exact, so it **contains the key**: plain archives let anyone holding the file read your saved
   keys. Set `RELIFE_BACKUP_PASSPHRASE` to encrypt them (a lost passphrase is a lost backup), or keep the key in
   `RELIFE_SECRET_KEY`, which is then left out of the archive. A backup is never offered as a browser download.
 - **Delete everything** (Settings → Data & privacy): removes everything ReLife knows about you, browser sign-ins and
-  library pictures included. Signed-in devices, your region, the theme and `data/secret.key` stay. Backups and exports
+  library pictures and push subscriptions included. Signed-in devices, your region, the theme and `data/secret.key` stay. Backups and exports
   you already made are not touched: delete those yourself.

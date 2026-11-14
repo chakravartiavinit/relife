@@ -263,7 +263,7 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
   `RELIFE_CONTAINER=1` marks the Docker image (shopping connectors are skipped there, sign-in hints name
   `docker compose exec web relife signin`).
 - Exports never include secrets: no `secrets_encrypted`, cursors, token hashes or saved keys (`core/data/tables.ts` drops them).
-  A backup is exact and holds `data/secret.key`; it is encrypted when `RELIFE_BACKUP_PASSPHRASE` is set and is never offered as a download.
+  A backup is exact and holds `data/secret.key` (and `data/vapid.json`, the push keys); it is encrypted when `RELIFE_BACKUP_PASSPHRASE` is set and is never offered as a download.
 
 ## Gamification
 
@@ -346,7 +346,7 @@ All from the repo root (they delegate to `apps/web` with `-w apps/web`).
 - `npm run service -- install|restart|stop|logs`: the production app as a LaunchAgent (macOS only; starts at login). Stop it
   before `npm run dev`; they share port 3030. After the move into `apps/web`, run `install` once more so the
   LaunchAgent's working directory is `apps/web`.
-- `npm run backup` writes a backup now (`pg_dump` plus `secret.key` and library covers, in `RELIFE_BACKUP_DIR`; the nightly `backup`
+- `npm run backup` writes a backup now (`pg_dump` plus `secret.key`, `vapid.json` and library covers, in `RELIFE_BACKUP_DIR`; the nightly `backup`
   job does it at 03:30, needs the PostgreSQL 16 client tools, `RELIFE_PG_BIN` if they are not on PATH). `npm run restore` lists them,
   `npm run restore -- <file> [--yes] [--force] [--no-safety-backup]` restores one with ReLife stopped. `npm run import -- <export.zip>`
   restores an export into an empty install.

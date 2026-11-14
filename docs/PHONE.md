@@ -36,6 +36,9 @@ Settings › Devices). A phone paired this way gets the same access as a browser
 - VAPID keys identify your server to the browsers' push services. They are made on first use into `data/vapid.json`; set
   `RELIFE_VAPID_PUBLIC_KEY` and `RELIFE_VAPID_PRIVATE_KEY` to carry them to another machine. New keys make every browser
   show "Turn on again".
+  Backups hold `vapid.json` and the subscriptions together, so a restore keeps notifications working; an export leaves the
+  subscriptions out, and "Delete everything" removes them (the phone stays paired: turn notifications on again).
+  In Docker the file lives in the `/data` volume.
 
 ## 3. Android app (Health Connect)
 
