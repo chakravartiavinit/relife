@@ -41,7 +41,7 @@ test('templates gallery: apply is one locked step that a second run cannot repea
     assert.equal((await db.select().from(schema.schedules).where(eq(schema.schedules.userId, user.id))).length, 4)
 
     const [goal] = await db.select().from(schema.goals).where(eq(schema.goals.userId, user.id))
-    assert.equal(goal.meta.pack?.importId, first.importId)
+    assert.equal((goal.meta as { pack?: { importId: string } }).pack?.importId, first.importId)
     assert.equal(goal.baselineValue, 2)
     assert.equal(goal.actions.length, 2) // the user's Workout... linked: workout and evening walk
 
