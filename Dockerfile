@@ -50,6 +50,7 @@ COPY apps/web/src apps/web/src
 COPY apps/web/scripts apps/web/scripts
 COPY apps/web/public apps/web/public
 COPY apps/web/drizzle apps/web/drizzle
+COPY apps/web/assets apps/web/assets
 COPY docker/entrypoint.sh docker/entrypoint.sh
 
 # /data holds secret.key, vapid.json, library/ and coins/; /backups holds backups. Named volumes copy this ownership on first use.
