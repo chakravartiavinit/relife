@@ -31,3 +31,19 @@ test('the fix reads differently on this machine and in Compose', () => {
   assert.match(localAiMessage('down', 'http://ollama:11434/v1', 'qwen3:4b-instruct'), /docker compose --profile ai up -d/)
   assert.match(localAiMessage('no-model', url, 'qwen3:4b-instruct'), /ollama pull qwen3:4b-instruct/)
 })
+
+test('the probe refuses redirects, and two asks at once share one request', async () => {
+  let seen: RequestInit | undefined
+  await probeLocalAi(url, (async (_u, init) => { seen = init; return new Response('{"data":[]}') }) as typeof fetch)
+  assert.equal(seen?.redirect, 'error')
+
+  const real = globalThis.fetch
+  let calls = 0
+  globalThis.fetch = (async () => { calls++; await new Promise((r) => setTimeout(r, 20)); return new Response('{"data":[{"id":"m"}]}') }) as typeof fetch
+  try {
+    const [a, b] = await Promise.all([probeLocalAi(url), probeLocalAi(`${url}/`)])
+    assert.deepEqual([a.models, b.models, calls], [['m'], ['m'], 1])
+    await probeLocalAi(url)
+    assert.equal(calls, 2, 'a probe after the first has finished asks again')
+  } finally { globalThis.fetch = real }
+})

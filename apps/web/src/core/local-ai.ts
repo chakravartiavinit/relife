@@ -23,10 +23,11 @@ export type LocalAi = { state: 'not-local' } | (Answer & { state: 'ok'; message?
 export const hasModel = (models: string[], want: string) => models.some((m) => m === want || m === `${want}:latest` || `${m}:latest` === want)
 
 /** `GET {url}/models`, which Ollama and LM Studio both answer. Never throws. */
-export async function probeLocalAi(url: string, fetchImpl: typeof fetch = fetch): Promise<Probe> {
+async function probeOnce(url: string, fetchImpl: typeof fetch): Promise<Probe> {
   const t0 = Date.now()
   try {
-    const res = await fetchImpl(`${url.replace(/\/+$/, '')}/models`, { signal: AbortSignal.timeout(TIMEOUT_MS) })
+    // A redirect is never followed: a configured URL that answers with one is not the server we were told to ask.
+    const res = await fetchImpl(`${url.replace(/\/+$/, '')}/models`, { signal: AbortSignal.timeout(TIMEOUT_MS), redirect: 'error' })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const body = (await res.json()) as { data?: { id?: string }[]; models?: { name?: string }[] }
     const models = [...(body.data ?? []).map((m) => m.id), ...(body.models ?? []).map((m) => m.name)].filter((m): m is string => !!m)
@@ -34,6 +35,17 @@ export async function probeLocalAi(url: string, fetchImpl: typeof fetch = fetch)
   } catch {
     return { state: 'down', models: [], ms: Date.now() - t0 }
   }
+}
+
+const inflight = new Map<string, Promise<Probe>>()
+
+/** One probe at a time per URL: a page that asks twice (or two pages at once) shares the answer already on its way. */
+export function probeLocalAi(url: string, fetchImpl?: typeof fetch): Promise<Probe> {
+  if (fetchImpl) return probeOnce(url, fetchImpl)
+  const key = url.replace(/\/+$/, '')
+  let p = inflight.get(key)
+  if (!p) { p = probeOnce(key, fetch).finally(() => inflight.delete(key)); inflight.set(key, p) }
+  return p
 }
 
 /** The fix to show, in words. A server that is not on this machine is a Compose service; otherwise Ollama is installed by hand. */
