@@ -124,7 +124,7 @@ export function weekRange(start: string) {
 const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`
 const hm = (hours: number) => { const mins = Math.round(hours * 60); return `${Math.floor(mins / 60)}h ${String(mins % 60).padStart(2, '0')}m` }
 const TIER_LABEL: Record<TierName, string> = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold' }
-const SPEND_LABEL = { less: 'Less than usual', more: 'More than usual', same: 'About usual' } as const
+const SPEND_LABEL = { less: 'Less', more: 'More', same: 'Same' } as const
 
 /**
  * The lines of a card, from the data and the ticked field ids. Only ticked fields appear; text is emoji-free.
@@ -150,7 +150,7 @@ export function cardModel(data: ShareData, show: readonly string[]): CardModel {
       const stats: CardStat[] = []
       if (on('best')) stats.push({ id: 'best', label: 'Best streak', value: plural(data.best, 'day') })
       if (on('freezes')) stats.push({ id: 'freezes', label: 'Freezes used', value: String(data.freezesUsed) })
-      return clean({ ...base, kind: 'streak', label: 'Streak', hero: on('streak') ? { value: String(data.days), unit: data.days === 1 ? 'day' : 'days' } : null, caption: on('streak') ? 'in a row' : null, stats })
+      return clean({ ...base, kind: 'streak', label: 'Streak', hero: on('streak') ? { value: String(data.days) } : null, caption: on('streak') ? `${data.days === 1 ? 'day' : 'days'} in a row` : null, stats })
     }
     case 'achievement': {
       const date = on('date') && data.date ? `${day(data.date).d} ${day(data.date).m} ${data.date.slice(0, 4)}` : null
@@ -167,7 +167,7 @@ export function cardModel(data: ShareData, show: readonly string[]): CardModel {
       if (on('goals') && data.goals && data.goals.total > 0) stats.push({ id: 'goals', label: 'Goals on pace', value: `${data.goals.onPace} of ${data.goals.total}` })
       if (on('steps') && data.stepsAvg != null) stats.push({ id: 'steps', label: 'Steps a day', value: Math.round(data.stepsAvg).toLocaleString('en-US') })
       if (on('sleep') && data.sleepAvgHours != null) stats.push({ id: 'sleep', label: 'Sleep a night', value: hm(data.sleepAvgHours) })
-      if (on('spend') && data.spend) stats.push({ id: 'spend', label: 'Spending', value: SPEND_LABEL[data.spend] })
+      if (on('spend') && data.spend) stats.push({ id: 'spend', label: 'Spending vs usual', value: SPEND_LABEL[data.spend] })
       return clean({
         ...base, kind: 'weekly', label: 'Weekly recap', range: `Week ${isoWeek(data.weekStart)} · ${weekRange(data.weekStart)}`,
         hero: on('xp') ? { value: `+${data.xp.toLocaleString('en-US')}`, unit: 'XP' } : null, caption: null,
@@ -175,4 +175,15 @@ export function cardModel(data: ShareData, show: readonly string[]): CardModel {
       })
     }
   }
+}
+
+/**
+ * Spending this week against the average of the four weeks before it: a direction only, never an amount. Within 10%
+ * is "same"; with no earlier spending there is nothing to compare, so no line.
+ */
+export function spendDirection(thisWeek: number, priorFourWeeks: number): 'less' | 'more' | 'same' | null {
+  const usual = priorFourWeeks / 4
+  if (!(usual > 0)) return null
+  const r = thisWeek / usual
+  return r < 0.9 ? 'less' : r > 1.1 ? 'more' : 'same'
 }

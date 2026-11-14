@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
-  SHARE_FIELDS, SHARE_KINDS, cardModel, defaultShow, isoWeek, parseShow, streakMilestone, stripEmoji, weekRange, type ShareData,
+  SHARE_FIELDS, SHARE_KINDS, cardModel, defaultShow, isoWeek, parseShow, spendDirection, streakMilestone, stripEmoji, weekRange, type ShareData,
 } from './share-card'
 
 const weekly: ShareData = {
@@ -58,7 +58,7 @@ test('cardModel: weekly shows only ticked fields and skips unknown values', () =
   assert.deepEqual(m.hero, { value: '+1,284', unit: 'XP' })
   assert.deepEqual(m.days, { shown: 5, of: 7 })
   assert.deepEqual(m.stats.map((s) => [s.id, s.value]), [
-    ['area', 'Health'], ['routines', '41/49'], ['goals', '2 of 3'], ['steps', '9,772'], ['sleep', '7h 24m'], ['spend', 'Less than usual'],
+    ['area', 'Health'], ['routines', '41/49'], ['goals', '2 of 3'], ['steps', '9,772'], ['sleep', '7h 24m'], ['spend', 'Less'],
   ])
   assert.equal(m.name, 'Alex')
   assert.equal(m.range, 'Week 46 · 9–15 Nov')
@@ -76,9 +76,10 @@ test('cardModel: level, streak and achievement', () => {
   assert.deepEqual(bare.stats, [])
 
   const streak = cardModel({ kind: 'streak', name: 'Alex', days: 30, best: 41, freezesUsed: 1 }, ['streak', 'best', 'freezes'])
-  assert.deepEqual(streak.hero, { value: '30', unit: 'days' })
+  assert.deepEqual(streak.hero, { value: '30' })
+  assert.equal(streak.caption, 'days in a row')
   assert.deepEqual(streak.stats.map((s) => s.value), ['41 days', '1'])
-  assert.equal(cardModel({ kind: 'streak', name: 'A', days: 1, best: 1, freezesUsed: 0 }, ['streak']).hero?.unit, 'day')
+  assert.equal(cardModel({ kind: 'streak', name: 'A', days: 1, best: 1, freezesUsed: 0 }, ['streak']).caption, 'day in a row')
 
   const medal = cardModel({ kind: 'achievement', name: 'Alex', title: 'Early bird 🌅', tier: 'gold', date: '2026-11-02' }, ['title', 'tier', 'date'])
   assert.equal(medal.hero?.value, 'Early bird')
@@ -90,4 +91,11 @@ test('cardModel: level, streak and achievement', () => {
 test('cardModel never carries emoji, even from the name', () => {
   const m = cardModel({ kind: 'streak', name: 'Sam 🚀', days: 7, best: 7, freezesUsed: 0 }, ['streak', 'name'])
   assert.equal(m.name, 'Sam')
+})
+
+test('spendDirection compares with the usual week and never returns an amount', () => {
+  assert.equal(spendDirection(50, 400), 'less')
+  assert.equal(spendDirection(150, 400), 'more')
+  assert.equal(spendDirection(105, 400), 'same')
+  assert.equal(spendDirection(100, 0), null)
 })
