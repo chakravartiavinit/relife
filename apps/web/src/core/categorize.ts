@@ -4,10 +4,12 @@ import { ruleMatches } from '@/domain/merchant-rule'
 
 // Built-in merchant knowledge. User rules (merchant_rules table) win over these.
 // Pattern = lowercase substring of merchant name or UPI id.
-const BUILTIN: [pattern: string, merchant: string, category: string][] = [
+// A RegExp pattern is for words that must start a word ("cc bill" is not "ACC BILL").
+const BUILTIN: [pattern: string | RegExp, merchant: string, category: string][] = [
   // A card bill paid from a bank account must not count on top of the card's own rows (statement imports).
   ['credit card payment', 'Card payment', 'Transfers'],
   ['cc payment', 'Card payment', 'Transfers'],
+  [/(^|[^a-z])(cc|credit ?card) bill/, 'Card payment', 'Transfers'], // "CC BILL PAYMENT HDFC", "CREDIT CARD BILL"
   ['self transfer', 'Self transfer', 'Transfers'],
   ['instamart', 'Swiggy Instamart', 'Groceries'],
   ['swiggy', 'Swiggy', 'Food delivery'],
@@ -54,12 +56,16 @@ const BUILTIN: [pattern: string, merchant: string, category: string][] = [
 
 export type Categorized = { merchant?: string; category: string }
 
+/** The built-in rule a lowercase description or UPI id hits, if any. */
+export function builtinRule(hay: string): Categorized | undefined {
+  const hit = BUILTIN.find(([pattern]) => (typeof pattern === 'string' ? hay.includes(pattern) : pattern.test(hay)))
+  return hit && { merchant: hit[1], category: hit[2] }
+}
+
 export async function categorize(userId: string, merchant?: string, upiId?: string): Promise<Categorized> {
   const hay = `${merchant ?? ''} ${upiId ?? ''}`.toLowerCase()
   const rules = await db.select().from(schema.merchantRules).where(eq(schema.merchantRules.userId, userId))
-  const hit =
-    rules.find((r) => ruleMatches(hay, r.pattern)) ??
-    BUILTIN.map(([pattern, m, category]) => ({ pattern, merchant: m, category })).find((r) => hay.includes(r.pattern))
+  const hit = rules.find((r) => ruleMatches(hay, r.pattern)) ?? builtinRule(hay)
   if (hit) return { merchant: hit.merchant, category: hit.category }
   return { merchant: merchant ?? upiId, category: 'Uncategorized' }
 }
