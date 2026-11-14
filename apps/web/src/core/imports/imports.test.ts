@@ -7,6 +7,7 @@ import type { RawEvent } from '@/core/types'
 import type { User } from '@/core/user'
 import { emitAppleHealth, previewAppleHealth } from './apple-health'
 import { parseFitCsv, previewTakeout, emitTakeout, youtubeDays } from './takeout'
+import { listZip, readEntriesText } from './files'
 import { emitStatement } from './statement'
 import { emitTrackerCsv } from './tracker-csv'
 import type { EmitCtx } from './kinds'
@@ -149,4 +150,36 @@ test('tracker CSV emit: wide shape, yes/no values, one event per day and metric'
   assert.deepEqual(events.map((e) => e.externalId), ['day:2024-01-01:pages-read', 'day:2024-01-01:meditated', 'day:2024-01-02:pages-read', 'day:2024-01-02:meditated'])
   assert.equal((events[1].body as { value: number }).value, 1)
   assert.deepEqual({ rows: r.rows, invalid: r.invalid }, { rows: 4, invalid: 1 })
+})
+
+test('Takeout: only the summary file of Fit is read, never the per-day files; all wanted entries come in one pass', async () => {
+  const perDay = 'Start time,End time,Step count\n00:00,00:15,10\n' // what 2024-01-01.csv holds
+  const files: Record<string, string> = {
+    'Takeout/Fit/Daily activity metrics/Daily activity metrics.csv': FIT,
+    'Takeout/YouTube and YouTube Music/history/watch-history.json': JSON.stringify([{ header: 'YouTube', time: '2024-01-02T03:00:00.000Z', subtitles: [{ name: 'Fake Channel A' }] }]),
+  }
+  for (let d = 1; d <= 40; d++) files[`Takeout/Fit/Daily activity metrics/2024-01-${String(d).padStart(2, '0')}.csv`] = perDay
+  const file = write('takeout-days.zip', makeZip(files))
+  const found = (await listZip(file)).map((e) => e.fileName)
+  assert.equal(found.length, 42)
+  const texts = await readEntriesText(file, (await listZip(file)).filter((e) => /Daily activity metrics\.csv$|watch-history/.test(e.fileName)))
+  assert.deepEqual([...texts.keys()].sort(), ['Takeout/Fit/Daily activity metrics/Daily activity metrics.csv', 'Takeout/YouTube and YouTube Music/history/watch-history.json'])
+  const { c, events } = ctx()
+  const r = await emitTakeout(file, c)
+  assert.deepEqual(events.map((e) => e.externalId), ['day:2024-01-01', 'day:2024-01-03', 'day:2024-01-02'])
+  assert.equal(r.rows, 8)
+  // A zip with only per-day files has nothing to read.
+  const only = write('per-day.zip', makeZip({ 'Takeout/Fit/Daily activity metrics/2024-01-01.csv': perDay }))
+  assert.match((await previewTakeout(only) as { error: string }).error, /No Fit or YouTube files found/)
+})
+
+test('statement emit: the latest row of a day gets the latest time, whichever way the file is sorted', async () => {
+  const text = (rows: string[]) => `Date,Narration,Debit,Credit,Balance\n${rows.join('\n')}\n`
+  const first = '05/01/2024,FAKE A,120.00,,880.00', second = '05/01/2024,FAKE B,30.00,,850.00', third = '06/01/2024,FAKE C,10.00,,840.00'
+  const m = { ...stmt, headerRow: 0 }
+  const asc = ctx(m); await emitStatement(write('asc.csv', text([first, second, third])), asc.c)
+  const desc = ctx(m); await emitStatement(write('desc.csv', text([third, second, first])), desc.c)
+  const latest = (events: RawEvent[]) => events.filter((e) => (e.body as { date: string }).date === '2024-01-05').sort((a, b) => b.at.getTime() - a.at.getTime())[0].body as { balance: number }
+  assert.equal(latest(asc.events).balance, 850)
+  assert.equal(latest(desc.events).balance, 850)
 })

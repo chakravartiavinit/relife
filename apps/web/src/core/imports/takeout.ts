@@ -3,14 +3,15 @@ import type { RawEvent } from '@/core/types'
 import { parseCsv } from '@/domain/csv'
 import type { ZipPreview } from '@/domain/imports'
 import { dayEventId } from '@/parsers/util'
-import { listZip, readEntryText, type ZipEntry } from './files'
+import { listZip, readEntriesText, type ZipEntry } from './files'
 import type { EmitCtx, EmitResult } from './kinds'
 
 // Google Takeout, Fit and YouTube only. Fit's daily summary is one small CSV with years of steps; YouTube's watch
 // history is the best Mind signal in a Takeout. Everything else is skipped on purpose (Location is too big and too
 // private, Chrome overlaps the extension, Calendar has a connector). English headers only.
 
-const FIT = /(^|\/)Fit\/[^/]*(daily (activity metrics|aggregations)|daily metrics)[^/]*\/[^/]+\.csv$/i
+// Only the summary file of each Fit folder: the per-day files (2024-01-01.csv) are intraday segments, thousands of them.
+const FIT = /(^|\/)Fit\/[^/]*(daily (activity metrics|aggregations)|daily metrics)[^/]*\/daily (activity metrics|aggregations|metrics)\.csv$/i
 const YT_JSON = /(^|\/)YouTube( and YouTube Music)?\/history\/watch-history\.json$/i
 const YT_HTML = /(^|\/)YouTube( and YouTube Music)?\/history\/watch-history\.html$/i
 
@@ -78,7 +79,7 @@ export async function previewTakeout(file: string): Promise<ZipPreview | { ok: f
   let from: string | undefined, to: string | undefined
   if (f.fit.length) {
     const days: FitDay[] = []
-    for (const e of f.fit) days.push(...(parseFitCsv(await readEntryText(file, e)) ?? []))
+    for (const text of (await readEntriesText(file, f.fit)).values()) days.push(...(parseFitCsv(text) ?? []))
     if (days.length) {
       const dates = days.map((d) => d.date).sort()
       from = dates[0]; to = dates[dates.length - 1]
@@ -101,9 +102,10 @@ export async function emitTakeout(file: string, ctx: EmitCtx): Promise<EmitResul
   const span = (d: string) => { if (!from || d < from) from = d; if (!to || d > to) to = d }
 
   await ctx.progress({ phase: 'Reading', done: 0 })
+  const texts = await readEntriesText(file, [...f.fit, ...(f.youtube ? [f.youtube] : [])])
   let fitDays = 0
   for (const e of f.fit) {
-    for (const d of parseFitCsv(await readEntryText(file, e)) ?? []) {
+    for (const d of parseFitCsv(texts.get(e.fileName) ?? '') ?? []) {
       const n = [d.steps, d.distanceM, d.moveMinutes, d.heartPoints].filter((v) => v !== undefined && v > 0).length
       if (!n) continue
       rows += n; fitDays++; span(d.date)
@@ -112,7 +114,7 @@ export async function emitTakeout(file: string, ctx: EmitCtx): Promise<EmitResul
   }
   if (f.fit.length && !fitDays) notes.push('The Fit columns are not in English or hold no numbers, so Fit was skipped.')
   if (f.youtube) {
-    const items = JSON.parse(await readEntryText(file, f.youtube)) as WatchItem[]
+    const items = JSON.parse(texts.get(f.youtube.fileName) ?? '[]') as WatchItem[]
     for (const [date, d] of [...youtubeDays(Array.isArray(items) ? items : [], tz)]) {
       rows++; span(date)
       events.push({ source: 'youtube-history', externalId: dayEventId(date), at: at(date), body: { importId: ctx.importId, date, ...d } })

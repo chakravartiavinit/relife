@@ -67,3 +67,36 @@ export async function readEntryText(file: string, entry: ZipEntry, maxBytes = 30
     return stripBom(decodeText(Buffer.concat(chunks)))
   })
 }
+
+/** Several small entries read whole in ONE pass over the zip (opening it once per entry rescans the directory each time). */
+export async function readEntriesText(file: string, entries: ZipEntry[], maxBytes = 300 * 1024 * 1024): Promise<Map<string, string>> {
+  const big = entries.find((e) => e.uncompressedSize > maxBytes)
+  if (big) throw new Error(`${big.fileName} is too large to read (${Math.round(big.uncompressedSize / 1e6)} MB)`)
+  const want = new Set(entries.map((e) => e.fileName))
+  const out = new Map<string, string>()
+  if (!want.size) return out
+  const zip = await openZip(file)
+  try {
+    await new Promise<void>((resolve, reject) => {
+      zip.on('entry', (e: ZipEntry) => {
+        if (!want.has(e.fileName)) return zip.readEntry()
+        zip.openReadStream(e, async (err, stream) => {
+          if (err || !stream) return reject(err ?? new Error('Cannot read the zip entry'))
+          try {
+            const chunks: Buffer[] = []
+            for await (const c of stream) chunks.push(c as Buffer)
+            out.set(e.fileName, stripBom(decodeText(Buffer.concat(chunks))))
+            if (out.size === want.size) resolve()
+            else zip.readEntry()
+          } catch (x) { reject(x) }
+        })
+      })
+      zip.on('end', () => resolve())
+      zip.on('error', reject)
+      zip.readEntry()
+    })
+  } finally {
+    zip.close()
+  }
+  return out
+}
