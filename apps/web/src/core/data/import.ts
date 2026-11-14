@@ -2,7 +2,7 @@ import { createReadStream } from 'node:fs'
 import { Unzip, UnzipInflate, UnzipPassThrough } from 'fflate'
 import { connectors } from '@/connectors'
 import { isMock, sql } from '@/db'
-import { env } from '../env'
+import { isDemo } from '../demo'
 import { integration } from '../integrations'
 import { assertKeyReady, encrypt } from '../secrets'
 import { clearUserCache } from '../user'
@@ -56,7 +56,7 @@ const BATCH_BYTES = 8 * 1024 * 1024
 export const NOT_EMPTY = 'This install already has data. Delete it first (Settings → Data & privacy) or use an empty database.'
 
 export async function importExport(path: string, o: { allowMock?: boolean; log?: (line: string) => void } = {}): Promise<ImportResult> {
-  if (env('RELIFE_DEMO') === '1') throw new Error('Import is off in the demo.')
+  if (isDemo()) throw new Error('Import is off in the demo.')
   if (isMock && !o.allowMock) throw new Error('Import is off in mock mode: it would write into the mock database.')
   await assertKeyReady() // saved settings are encrypted again below; a lost key must stop us before anything is written
 

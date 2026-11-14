@@ -7,7 +7,7 @@ import { backupDir, dataDir } from '../paths'
 import { utcToWall } from '../time'
 import type { User } from '../user'
 import { keepDaily, keepWeekly } from './backup'
-import { isDemo } from './demo'
+import { isDemo } from '../demo'
 import { currentKey } from './key'
 import { pgDumpInstalled } from './pg'
 

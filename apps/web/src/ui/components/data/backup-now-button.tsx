@@ -37,7 +37,8 @@ export function BackupNowButton({ disabled, running, lastName, action = backupNo
     <Button
       variant="secondary" disabled={disabled || busy}
       onClick={async () => {
-        const r = await action()
+        // The demo gate refuses the action by rejecting it: toast.error() then shows the one demo message.
+        const r = await action().catch(() => ({ ok: false as const, error: undefined }))
         if (!r.ok) return toast.error(r.error ?? 'Could not start the backup.')
         startName.current = lastName
         since.current = Date.now()

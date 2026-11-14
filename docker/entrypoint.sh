@@ -1,5 +1,5 @@
 #!/bin/sh
-# The one command of the image: `relife <web|worker|migrate|signin|demo>`. Compose passes the environment
+# The one command of the image: `relife <web|worker|migrate|signin|backup|restore|import|demo>`. Compose passes the environment
 # (there is no .env file in the image), so none of these read one.
 set -e
 cd /app/apps/web
@@ -21,6 +21,10 @@ case "$cmd" in
     ;;
   signin)
     exec tsx scripts/signin.ts "$@"
+    ;;
+  backup|restore|import)
+    # Backups go to /backups (RELIFE_BACKUP_DIR). restore and import need the app stopped / an empty database: docs/SELF_HOSTING.md.
+    exec tsx "scripts/$cmd.ts" "$@"
     ;;
   demo)
     # The read-only demo: sample data in a throwaway database, refreshed every day so the dates stay current.

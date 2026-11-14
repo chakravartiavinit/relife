@@ -11,7 +11,7 @@ import { utcToWall } from '../time'
 import { getUser } from '../user'
 import { encryptStream } from './crypto'
 import { removeOldRestoreDirs, removeStale } from './backup-tmp'
-import { DEMO_OFF, isDemo } from './demo'
+import { DEMO_MESSAGE, isDemo } from '../demo'
 import { currentKey, keyFilePath } from './key'
 import { databaseName, pgEnv, requirePgTool, spawnTo } from './pg'
 import { schemaHash, TABLES } from './tables'
@@ -54,7 +54,7 @@ const mb = (n: number) => `${(n / 1_048_576).toFixed(1)} MB`
 
 /** Write a backup now. Throws when one is already running (here or in another process) or the tools are missing. */
 export async function backupNow(o: { reason: BackupReason; now?: Date } = { reason: 'manual' }): Promise<BackupResult> {
-  if (isDemo()) throw new Error(DEMO_OFF)
+  if (isDemo()) throw new Error(DEMO_MESSAGE)
   const lock = await sql.reserve() // a session lock lives on one connection
   try {
     const [{ got }] = await lock`select pg_try_advisory_lock(hashtext('relife:backup')) as got`

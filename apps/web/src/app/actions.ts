@@ -21,7 +21,7 @@ import type { AskResult } from '@/ai/ask'
 import { isWebUrl } from '@/domain/text'
 import { connectorUnavailable } from '@/core/platform'
 import { requestJob } from '@/core/jobs'
-import { DEMO_OFF, isDemo } from '@/core/data/demo'
+import { DEMO_MESSAGE, isDemo } from '@/core/demo'
 import { WIPE_CONFIRM } from '@/core/data/wipe-confirm'
 import { wipeUserData } from '@/core/data/wipe'
 
@@ -562,7 +562,7 @@ export async function saveAreas(ids: string[]) {
 
 /** Delete everything. The client must send the exact word, so a stray call cannot wipe a life's data. */
 export async function wipeAllData(confirm: string): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (isDemo()) return { ok: false, error: DEMO_OFF }
+  if (isDemo()) return { ok: false, error: DEMO_MESSAGE }
   if (confirm !== WIPE_CONFIRM) return { ok: false, error: 'Nothing was deleted: the confirmation did not match.' }
   try {
     await wipeUserData(await getUser())
@@ -575,7 +575,7 @@ export async function wipeAllData(confirm: string): Promise<{ ok: true } | { ok:
 
 /** "Back up now": the worker takes the `backup` job as soon as it can. */
 export async function backupNowAction(): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (isDemo()) return { ok: false, error: DEMO_OFF }
+  if (isDemo()) return { ok: false, error: DEMO_MESSAGE }
   await requestJob('backup')
   refresh()
   return { ok: true }

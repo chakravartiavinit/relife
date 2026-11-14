@@ -95,7 +95,7 @@ export const JOBS: Job[] = [
   // A backup every night, before the prune jobs: pg_dump plus secret.key and library covers (src/core/data/backup.ts). Off
   // when RELIFE_BACKUP_KEEP=0, in the demo, or when pg_dump is not installed (Settings → Data & privacy says so).
   { id: 'backup', schedule: { cron: '30 3 * * *' }, catchUpMinutes: 12 * 60, timeoutMinutes: 60, enabled: async () => {
-    const [{ keepDaily }, { pgDumpInstalled }, { isDemo }] = await Promise.all([import('@/core/data/backup'), import('@/core/data/pg'), import('@/core/data/demo')])
+    const [{ keepDaily }, { pgDumpInstalled }, { isDemo }] = await Promise.all([import('@/core/data/backup'), import('@/core/data/pg'), import('@/core/demo')])
     return keepDaily() !== 0 && pgDumpInstalled() && !isDemo()
   }, run: async () => {
     const { backupNow } = await import('@/core/data/backup')

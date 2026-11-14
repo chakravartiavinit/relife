@@ -6,7 +6,7 @@ import { backupDir, dataDir } from '../paths'
 import { decrypt } from '../secrets'
 import { BACKUP_FORMAT, BACKUP_VERSION, backupNow, type BackupManifest } from './backup'
 import { decryptFile, isEncrypted } from './crypto'
-import { DEMO_OFF, isDemo } from './demo'
+import { DEMO_MESSAGE, isDemo } from '../demo'
 import { currentKey, fingerprint, keyFilePath } from './key'
 import { databaseName, requirePgTool, spawnTo, pgEnv } from './pg'
 import brand from '@relife/brand/brand.json'
@@ -68,7 +68,7 @@ export async function checkUnpacked(dir: string): Promise<void> {
 
 export async function restoreBackup(file: string, o: RestoreOptions = {}): Promise<RestoreResult> {
   const log = o.log ?? (() => {})
-  if (isDemo()) throw new Error(DEMO_OFF)
+  if (isDemo()) throw new Error(DEMO_MESSAGE)
   if (isMock) throw new Error('Restore is off in mock mode: it would overwrite the mock database.')
   const pgRestore = await requirePgTool('pg_restore')
   const running = await appRunning()
