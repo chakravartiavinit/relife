@@ -20,11 +20,11 @@
     "@relife/tokens": "*",
     "@vercel/analytics": "^1.5.0",
     "drizzle-orm": "^0.45.4",
-    "lucide-react": "^1.69.0",
-    "next": "16.4.5",
+    "lucide-react": "^1.71.0",
+    "next": "16.4.6",
     "postgres": "^4.1.0",
-    "react": "19.3.0",
-    "react-dom": "19.3.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {
