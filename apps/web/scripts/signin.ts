@@ -6,7 +6,7 @@
 //   relife web                                  runs `signin --first-run` before the server starts: a code only while
 //                                               no device is signed in, so a restart doesn't print a new one every time
 import brand from '@relife/brand/brand.json'
-import { and, gt, isNull } from 'drizzle-orm'
+import { and, eq, gt, isNull } from 'drizzle-orm'
 import { renderANSI } from 'uqr'
 import { db, schema, sql } from '@/db'
 import { pairBase } from '@/core/auth/base-url'
@@ -19,7 +19,8 @@ async function main() {
   const firstRun = process.argv.includes('--first-run')
   const user = await getUser()
   if (firstRun) {
-    const [live] = await db.select({ id: schema.devices.id }).from(schema.devices).where(and(isNull(schema.devices.revokedAt), gt(schema.devices.expiresAt, new Date()))).limit(1)
+    const [live] = await db.select({ id: schema.devices.id }).from(schema.devices).where(and(eq(schema.devices.kind, 'browser'), isNull(schema.devices.revokedAt), gt(schema.devices.expiresAt, new Date()))).limit(1)
+    // Browsers only: the extension's legacy token is a device row too, and says nothing about anyone being signed in.
     if (live) { await sql.end(); return }
   }
   const container = inContainer()
