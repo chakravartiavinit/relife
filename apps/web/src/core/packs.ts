@@ -183,7 +183,7 @@ export async function applyPack(user: User, pack: Pack, choices: ApplyChoices, n
     }
     // A target on a tracker that has none (Undo clears it again, by `meta.packTarget`).
     for (const t of plan.targets) {
-      await tx.update(schema.trackers).set({ target: t.target, meta: sql`${schema.trackers.meta} || ${JSON.stringify({ packTarget: mark })}::jsonb` })
+      await tx.update(schema.trackers).set({ target: t.target, meta: sql`${schema.trackers.meta} || ${JSON.stringify({ packTarget: { ...mark, value: t.target } })}::jsonb` })
         .where(and(eq(schema.trackers.userId, user.id), eq(schema.trackers.slug, t.slug), isNull(schema.trackers.target)))
     }
 
@@ -245,28 +245,48 @@ function goalInput(pack: Pack, g: PackGoal, today: string, o: {
 }
 
 /**
- * Undo one import: the routines, trackers and goals with that `importId`, and nothing else. A tracker with entries, a
- * goal with check-ins or a decided review has been used, so it stays. Targets the pack set on existing trackers are cleared.
+ * Undo one import: the routines, trackers and goals with that `importId`, and nothing else. Anything the person has used
+ * since stays, and stops being marked as the pack's (it is an ordinary row now): a goal with check-ins or a decided
+ * review, a routine with check-offs or one a remaining goal links, a tracker with entries or one a goal measures.
+ * (Deleting a routine would cascade to its check-offs and reminders.) A target the pack set on an existing tracker is
+ * cleared only while it still has the value the pack gave it.
  */
 export async function undoPackImport(user: User, importId: string) {
   const mine = (col: typeof schema.goals.meta | typeof schema.schedules.meta | typeof schema.trackers.meta, key = 'pack') => sql`${col}->${key}->>'importId' = ${importId}`
+  const unmark = (col: typeof schema.goals.meta | typeof schema.schedules.meta | typeof schema.trackers.meta) => sql`${col} - 'pack'`
   return db.transaction(async (tx) => {
     await lockUser(tx, user.id)
-    const G = schema.goals
+    const G = schema.goals, S = schema.schedules, T = schema.trackers
     const goals = await tx.delete(G).where(and(
       eq(G.userId, user.id), mine(G.meta),
       sql`not exists (select 1 from ${schema.goalCheckIns} c where c.goal_id = ${G.id})`,
       sql`not exists (select 1 from ${schema.goalReviews} r where r.goal_id = ${G.id} and r.decision is not null)`,
     )).returning({ id: G.id })
-    const routines = await tx.delete(schema.schedules).where(and(eq(schema.schedules.userId, user.id), mine(schema.schedules.meta))).returning({ id: schema.schedules.id })
-    const T = schema.trackers
+    const keptGoals = await tx.update(G).set({ meta: unmark(G.meta) }).where(and(eq(G.userId, user.id), mine(G.meta))).returning({ id: G.id })
+
+    // Goals that are left (this pack's kept ones, or anyone's) may link a routine: those routines stay.
+    const routines = await tx.delete(S).where(and(
+      eq(S.userId, user.id), mine(S.meta),
+      sql`not exists (select 1 from ${schema.checks} c where c.schedule_id = ${S.id})`,
+      sql`not exists (select 1 from ${G} g where g.user_id = ${user.id} and g.actions @> jsonb_build_array(jsonb_build_object('kind', 'schedule', 'id', ${S.id}::text)))`,
+    )).returning({ id: S.id })
+    const keptRoutines = await tx.update(S).set({ meta: unmark(S.meta) }).where(and(eq(S.userId, user.id), mine(S.meta))).returning({ id: S.id })
+
     const trackers = await tx.delete(T).where(and(
       eq(T.userId, user.id), mine(T.meta),
       sql`not exists (select 1 from ${schema.entries} e where e.tracker_id = ${T.id})`,
       sql`not exists (select 1 from ${G} g where g.tracker_id = ${T.id})`,
     )).returning({ id: T.id })
-    await tx.update(T).set({ target: null, meta: sql`${T.meta} - 'packTarget'` }).where(and(eq(T.userId, user.id), mine(T.meta, 'packTarget')))
-    return { routines: routines.length, trackers: trackers.length, goals: goals.length }
+    const keptTrackers = await tx.update(T).set({ meta: unmark(T.meta) }).where(and(eq(T.userId, user.id), mine(T.meta))).returning({ id: T.id })
+    await tx.update(T).set({
+      target: sql`case when ${T.target} = (${T.meta}->'packTarget'->>'value')::numeric then null else ${T.target} end`,
+      meta: sql`${T.meta} - 'packTarget'`,
+    }).where(and(eq(T.userId, user.id), mine(T.meta, 'packTarget')))
+    return {
+      routines: routines.length, trackers: trackers.length, goals: goals.length,
+      /** Rows left in place because they have been used. */
+      kept: keptGoals.length + keptRoutines.length + keptTrackers.length,
+    }
   })
 }
 

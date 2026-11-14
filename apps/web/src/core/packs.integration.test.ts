@@ -47,17 +47,46 @@ test('templates gallery: apply is one locked step that a second run cannot repea
 
     // Undo takes back this import's rows only; the user's own Stretch stays.
     const undone = await undoPackImport(user, first.importId)
-    assert.deepEqual(undone, { routines: 3, trackers: 0, goals: 1 })
+    assert.deepEqual(undone, { routines: 3, trackers: 0, goals: 1, kept: 0 })
     const left = await db.select({ name: schema.schedules.name }).from(schema.schedules).where(eq(schema.schedules.userId, user.id))
     assert.deepEqual(left.map((r) => r.name), ['Stretch'])
-    assert.deepEqual(await undoPackImport(user, first.importId), { routines: 0, trackers: 0, goals: 0 })
+    assert.deepEqual(await undoPackImport(user, first.importId), { routines: 0, trackers: 0, goals: 0, kept: 0 })
 
     // A goal that has a check-in has been used: Undo keeps it.
     const again = await applyPack(user, fitness, all, now)
     assert.equal(again.created.goalIds.length, 1)
     await db.insert(schema.goalCheckIns).values({ userId: user.id, goalId: again.created.goalIds[0], localDate: '2026-11-11', value: 3 })
-    assert.equal((await undoPackImport(user, again.importId)).goals, 0)
+    // The kept goal still links Workout and Evening walk, so those stay too; Drink water (not linked, never checked) goes.
+    assert.deepEqual(await undoPackImport(user, again.importId), { routines: 1, trackers: 0, goals: 0, kept: 3 })
     assert.equal((await db.select().from(schema.goals).where(eq(schema.goals.userId, user.id))).length, 1)
+    const kept = await db.select({ name: schema.schedules.name, meta: schema.schedules.meta }).from(schema.schedules).where(eq(schema.schedules.userId, user.id))
+    assert.deepEqual(kept.map((r) => r.name).sort(), ['Evening walk', 'Stretch', 'Workout'])
+    assert.ok(kept.every((r) => !('pack' in (r.meta as object))), 'a kept row is no longer marked as the pack\'s')
+
+    // A routine that was checked off is used: Undo keeps it (deleting would take its check-offs and reminders along).
+    const recovery = BUILT_IN_PACKS.find((p) => p.id === 'recovery')!
+    const rec = await applyPack(user, recovery, { routineKeys: recovery.routines.map((r) => r.key), trackerSlugs: [], goals: [], addAreas: true }, now)
+    assert.equal(rec.created.scheduleIds.length, recovery.routines.length)
+    await db.insert(schema.checks).values({ scheduleId: rec.created.scheduleIds[0], occurrence: now, localDate: '2026-11-11', status: 'done' })
+    assert.deepEqual(await undoPackImport(user, rec.importId), { routines: recovery.routines.length - 1, trackers: 0, goals: 0, kept: 1 })
+    assert.equal((await db.select().from(schema.checks).where(eq(schema.checks.scheduleId, rec.created.scheduleIds[0]))).length, 1)
+
+    // A target the pack set is cleared on Undo only while it is still the pack's number; one the person changed stays.
+    const stepsPack = Pack.parse({
+      format: 'relife.pack', version: 1, id: 'steps-x', name: 'Steps X', description: 'x', areas: ['health'], routines: [], goals: [],
+      trackers: [{ slug: 'steps', name: 'Steps', area: 'health', kind: 'number', target: 9000, direction: 'up', aggregate: 'sum' }],
+    })
+    const [tr] = await db.insert(schema.trackers).values({ userId: user.id, slug: 'steps', name: 'Steps', category: 'health', kind: 'number', target: null }).returning()
+    const t1 = await applyPack(user, stepsPack, { routineKeys: [], trackerSlugs: ['steps'], goals: [], addAreas: true }, now)
+    const targetOf = async () => (await db.select({ target: schema.trackers.target }).from(schema.trackers).where(eq(schema.trackers.id, tr.id)))[0].target
+    assert.equal(await targetOf(), 9000)
+    await undoPackImport(user, t1.importId)
+    assert.equal(await targetOf(), null)
+    const t2 = await applyPack(user, stepsPack, { routineKeys: [], trackerSlugs: ['steps'], goals: [], addAreas: true }, now)
+    await db.update(schema.trackers).set({ target: 7000 }).where(eq(schema.trackers.id, tr.id))
+    await undoPackImport(user, t2.importId)
+    assert.equal(await targetOf(), 7000)
+    await db.delete(schema.trackers).where(eq(schema.trackers.id, tr.id))
 
     // Goal slots: with three active goals a fourth is skipped, not created.
     const slots = await db.insert(schema.goals).values([2, 3].map((n) => ({

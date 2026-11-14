@@ -308,7 +308,9 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
   The format is `relife.pack` v1 (`packages/contract/src/packs.ts`); `planPack` in `domain/packs.ts` is the one pure planner used by
   preview, apply and the areas switch, and `applyPack`/`undoPackImport`/`exportPack` in `core/packs.ts` write: one transaction under
   `lockUser`, every row stamped `meta.pack = { id, version, importId }` (trackers have a `meta` column since migration 0003), Undo
-  removes only that import and keeps anything with data. Setup shares the routine inserter (`insertRoutines`). Adding is a write,
+  removes only that import's rows that are still untouched: a goal with check-ins or a decided review, a routine with check-offs or
+  one a remaining goal links, and a tracker with entries or one a goal measures are kept (and unmarked); a target the pack set is
+  cleared only while it still has the pack's value. Setup shares the routine inserter (`insertRoutines`). Adding is a write,
   so the demo locks the button. Rules for community packs are in `docs/TEMPLATES.md` and enforced by `packages/contract/src/community.test.ts`.
 - Keep per-event `kind` and `verified`: a future ranked view will count only standard, verified XP.
   There are no leaderboards. The only sharing is the opt-in share card (below); nothing is posted anywhere by the app.

@@ -143,7 +143,7 @@ function PreviewScreen({ screen, onBack, onDone }: { screen: Extract<Screen, { n
       if (made) {
         toast(r.line, 'good', {
           description: pack.name, duration: 10_000,
-          action: { label: 'Undo', onClick: () => { void undoPackAction(r.importId).then((u) => (u.ok ? toast('Taken back', 'good') : toast.error(u.error))).catch(() => toast.error('Could not undo')) } },
+          action: { label: 'Undo', onClick: () => { void undoPackAction(r.importId).then((u) => (u.ok ? toast('Taken back', 'good', u.kept ? { description: `${u.kept} kept because you have used ${u.kept === 1 ? 'it' : 'them'}` } : undefined) : toast.error(u.error))).catch(() => toast.error('Could not undo')) } },
         })
       } else toast(r.line)
       if (r.failed.length) toast.error(`${r.failed.length === 1 ? 'A goal was' : `${r.failed.length} goals were`} not added`, r.failed.map((f) => `${f.name}: ${f.message}`).join(' '))
