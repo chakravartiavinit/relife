@@ -53,6 +53,24 @@ async function DemoMount() {
   return isDemo() ? <DemoGuard /> : null
 }
 
+/**
+ * What keeps open pages current: new-payment toasts, the refresh poll and the event stream, and the "device waiting" banner.
+ * Each asks the server through a server action, which the demo gate refuses. The demo's data never changes and has no
+ * devices, so it runs none of them (and holds no event stream: a browser allows six connections to one host).
+ */
+async function LiveParts() {
+  await connection()
+  if (isDemo()) return null
+  return (
+    <>
+      <PaymentToasts />
+      <LiveRefresh />
+      {/* usePathname() needs a Suspense boundary on dynamic routes under Cache Components. */}
+      <Suspense fallback={null}><WaitingBanner /></Suspense>
+    </>
+  )
+}
+
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <RootHtml head={<script dangerouslySetInnerHTML={{ __html: SIDEBAR_SCRIPT }} />}>
@@ -93,10 +111,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
           <Tour />
           <Celebration />
           <Celebrations />
-          <PaymentToasts />
-          <LiveRefresh />
-          {/* usePathname() needs a Suspense boundary on dynamic routes under Cache Components. */}
-          <Suspense fallback={null}><WaitingBanner /></Suspense>
+          <Suspense fallback={null}><LiveParts /></Suspense>
           <Suspense fallback={null}><ThemeFromServer /></Suspense>
         </ToastProvider>
         </AppMotion>
