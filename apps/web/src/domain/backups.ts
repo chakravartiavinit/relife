@@ -57,3 +57,15 @@ export function pickExpired(names: string[], o: { daily: number; weekly: number 
   }
   return expired
 }
+
+/** A file size people can read: `15 KB`, `4.2 MB`, `1.3 GB`. Under 1 KB it is in bytes; 10 and above have no decimals. */
+export function humanSize(bytes: number): string {
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  let n = Math.max(0, bytes)
+  let i = 0
+  while (n >= 1024 && i < units.length - 1) { n /= 1024; i++ }
+  if (i === 0) return `${Math.round(n)} B`
+  const text = n < 10 ? n.toFixed(1).replace(/\.0$/, '') : String(Math.round(n))
+  // 1023.6 KB rounds to 1024: that is 1 MB, not "1024 KB".
+  return text === '1024' && i < units.length - 1 ? `1 ${units[i + 1]}` : `${text} ${units[i]}`
+}

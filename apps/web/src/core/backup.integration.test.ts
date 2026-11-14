@@ -68,7 +68,7 @@ test('backup and restore round trip, key checks and safety backup', { skip: !ena
   const now = new Date()
   const plain = await backupNow({ reason: 'manual', now })
   assert.match(plain.file, /relife-backup-\d{4}-\d{2}-\d{2}T\d{6}\.tar\.gz$/)
-  assert.match(plain.message, /MB · 1 kept$/)
+  assert.match(plain.message, /(KB|MB) · 1 kept$/)
   assert.deepEqual(readdirSync(process.env.RELIFE_BACKUP_DIR!).filter((n) => n.startsWith('.')), [], 'no temp folders are left')
 
   // A second backup in the same second is a second file, not an overwrite.

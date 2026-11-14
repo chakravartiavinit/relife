@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { backupName, isoWeek, parseBackupName, pickExpired } from './backups'
+import { backupName, humanSize, isoWeek, parseBackupName, pickExpired } from './backups'
 
 const day = (iso: string, o: { pre?: boolean; enc?: boolean } = {}) =>
   backupName(`${iso}T0330`, { reason: o.pre ? 'pre-restore' : 'daily', encrypted: !!o.enc })
@@ -64,4 +64,19 @@ test('encrypted and plain backups of one day count separately, newest first', ()
 
 test('daily 0 means backups are off: nothing is deleted', () => {
   assert.deepEqual(pickExpired(run(30), { daily: 0, weekly: 4 }), [])
+})
+
+test('humanSize: bytes, KB under 1 MB, MB and GB, no "0.0 MB" for a small file', () => {
+  assert.equal(humanSize(0), '0 B')
+  assert.equal(humanSize(900), '900 B')
+  assert.equal(humanSize(15_300), '15 KB')
+  assert.equal(humanSize(2_200), '2.1 KB')
+  assert.equal(humanSize(1024), '1 KB')
+  assert.equal(humanSize(1_048_000), '1023 KB')
+  assert.equal(humanSize(1_048_570), '1 MB') // 1023.99 KB rounds up to the next unit
+  assert.equal(humanSize(1_048_576), '1 MB')
+  assert.equal(humanSize(4_400_000), '4.2 MB')
+  assert.equal(humanSize(21_400_000), '20 MB')
+  assert.equal(humanSize(1_395_864_371), '1.3 GB')
+  assert.equal(humanSize(-5), '0 B')
 })

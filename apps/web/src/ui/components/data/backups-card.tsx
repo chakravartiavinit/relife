@@ -1,5 +1,6 @@
 import { AlertTriangle, Lock, LockOpen } from 'lucide-react'
 import type { BackupStatus } from '@/core/data/backup-status'
+import { humanSize } from '@/domain/backups'
 import { cn } from '@/ui/cn'
 import { Badge } from '../card'
 import { SettingsRow, SettingsSection } from '../settings-layout'
@@ -7,8 +8,6 @@ import { BackupNowButton } from './backup-now-button'
 
 // Settings → Data & privacy → Backups: when the last one ran, where they go, the schedule, whether they are encrypted.
 // Presentational: the page loads `status` (core/data/backup-status.ts) and /dev/ui draws every state from fixtures.
-
-export const mb = (bytes: number) => `${(bytes / 1_048_576).toFixed(bytes < 10_485_760 ? 1 : 0)} MB`
 
 const INSTALL = 'Install the PostgreSQL 16 client tools: brew install libpq on a Mac. The Docker image already has them.'
 
@@ -41,7 +40,7 @@ function LastBackup({ s }: { s: BackupStatus }) {
   return (
     <p className="flex flex-wrap items-center gap-x-2 text-body text-ink-2">
       <Dot color="var(--good)" />
-      <span className="tabular-nums">{s.latest.label} · {mb(s.latest.bytes)}</span>
+      <span className="tabular-nums">{s.latest.label} · {humanSize(s.latest.bytes)}</span>
       <span className="text-ink-3">{s.count} kept</span>
     </p>
   )

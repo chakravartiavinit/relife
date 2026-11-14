@@ -5,7 +5,7 @@ import { pipeline } from 'node:stream/promises'
 import type { Transform } from 'node:stream'
 import pkg from '../../../package.json'
 import { sql } from '@/db'
-import { backupName, pickExpired, type BackupReason } from '@/domain/backups'
+import { backupName, humanSize, pickExpired, type BackupReason } from '@/domain/backups'
 import { backupDir, dataDir } from '../paths'
 import { utcToWall } from '../time'
 import { getUser } from '../user'
@@ -49,8 +49,6 @@ export const keepWeekly = () => 4
 export const stamp = (now: Date, tz: string) => utcToWall(now, tz).toISOString().slice(0, 19).replaceAll(':', '')
 
 export type BackupResult = { file: string; bytes: number; kept: number; message: string }
-
-const mb = (n: number) => `${(n / 1_048_576).toFixed(1)} MB`
 
 /** Write a backup now. Throws when one is already running (here or in another process) or the tools are missing. */
 export async function backupNow(o: { reason: BackupReason; now?: Date } = { reason: 'manual' }): Promise<BackupResult> {
@@ -111,7 +109,7 @@ async function write(reason: BackupReason, now: Date): Promise<BackupResult> {
   }
   const bytes = (await stat(final)).size
   const kept = await prune()
-  return { file: final, bytes, kept, message: `${mb(bytes)} · ${kept} kept` }
+  return { file: final, bytes, kept, message: `${humanSize(bytes)} · ${kept} kept` }
 }
 
 /** Delete expired backups. Returns how many backup files are left. */
