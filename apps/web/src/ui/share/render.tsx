@@ -27,6 +27,8 @@ export type CardRequest = { data: ShareData; show: string[]; theme: CardTheme; s
  * `ImageResponse` is not used: for a glyph the fonts lack it fetches a Google font (with the text in the address) or a
  * twemoji image from a CDN. Here `loadAdditionalAsset` answers with nothing, and every string is first cut down to the
  * characters the vendored fonts have (`cardText`), so a missing glyph never arises and nothing leaves the machine.
+ * `satori` is pinned to 0.29.0, the version Next bundles for `next/og`, which the card layout was drawn against: 0.63 measures
+ * an auto-width flex row too narrow (the header's week range lost its last word and the footer went missing).
  */
 export async function renderShareCard({ data, show, theme, size }: CardRequest, headers: Record<string, string> = {}) {
   const [fonts, b] = await Promise.all([cardFonts(), cardBrand(theme)])
