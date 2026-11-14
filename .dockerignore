@@ -2,10 +2,11 @@
 **/node_modules
 **/.next
 .git
-.env*
+**/.env*
 !.env.example
-data/
-**/data/
+# Runtime state at the repo root and in apps/*; a source folder that happens to be called data (src/core/data) stays in.
+/data/
+apps/*/data/
 apps/mac
 docs
 plans

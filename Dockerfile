@@ -39,7 +39,7 @@ RUN apt-get update \
  && apt-get purge -y --auto-remove curl gnupg \
  && rm -rf /var/lib/apt/lists/*
 
-ENV NODE_ENV=production RELIFE_CONTAINER=1 RELIFE_DATA_DIR=/data RELIFE_BACKUP_DIR=/backups RELIFE_BIND=0.0.0.0 PORT=3030 PATH=/app/node_modules/.bin:$PATH
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 RELIFE_CONTAINER=1 RELIFE_DATA_DIR=/data RELIFE_BACKUP_DIR=/backups RELIFE_BIND=0.0.0.0 PORT=3030 PATH=/app/node_modules/.bin:$PATH
 
 COPY --from=prod-deps /app/node_modules node_modules
 COPY package.json package-lock.json ./

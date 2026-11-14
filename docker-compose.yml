@@ -14,6 +14,9 @@ x-app: &app
   # These win over .env, so a development .env (localhost database, NODE_ENV) can't break the containers.
   environment: &app-env
     NODE_ENV: production
+    # A development .env must never turn the real app into the mock or the read-only demo.
+    RELIFE_DEMO: ""
+    RELIFE_MOCK: ""
     DATABASE_URL: postgres://relife:${POSTGRES_PASSWORD:-relife}@postgres:5432/relife
     RELIFE_DATA_DIR: /data
     RELIFE_BACKUP_DIR: /backups
