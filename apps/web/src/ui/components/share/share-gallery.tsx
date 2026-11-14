@@ -18,7 +18,7 @@ const base = (kind: ShareKind, over: Partial<ShareCardViewProps>): ShareCardView
 })
 
 const Panel = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div className="min-w-0">
+  <div data-panel={`share-${title.split(/[ (:,]/)[0].toLowerCase()}-${title.length}`} className="min-w-0">
     <p className="mb-2 font-mono text-label text-ink-3 uppercase">{title}</p>
     <div className="w-[440px] max-w-full rounded-xl bg-surface p-5 shadow-3">
       <header className="mb-4 flex items-start gap-3">
@@ -54,7 +54,7 @@ export function ShareGallery() {
       </div>
 
       {SHARE_KINDS.map((kind) => (
-        <div key={kind}>
+        <div key={kind} data-panel={`share-cards-${kind}`}>
           <p className="mb-2 font-mono text-label text-ink-3 uppercase">{kind} card · defaults, then every field on</p>
           <div className="flex flex-wrap items-start gap-4">
             {(['light', 'dark'] as const).flatMap((t) => (['square', 'story'] as const).flatMap((s) => [defaultShow(kind), SHARE_FIELDS[kind].map((f) => f.id)].map((fields, i) => (

@@ -291,8 +291,27 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
 - Weekly quests, chests and streak freezes: rules in `apps/web/src/domain/quests.ts` (tested), wiring in `apps/web/src/core/quests.ts`.
   Quests aren't stored: picks are seeded by date and progress is read from `xp_events`. Chests are earned once
   per `ref` and pay XP when opened; freezes cap at 2 and are spent automatically to save a streak.
+- Share cards (`apps/web/src/domain/share-card.ts`, tested: kinds, sizes, `SHARE_FIELDS` and their defaults, `cardModel`, the streak
+  milestones). `GET /api/share/card?kind=level|streak|achievement|weekly&ref=&show=&theme=&size=square|story` (`app/api/share/card/route.ts`,
+  signed in, `Cache-Control: no-store`) draws a PNG with `next/og` (Satori, `ui/share/`): the numbers are loaded on the server
+  (`core/share-card.ts`, `loadShareData`: a level, achievement or week not reached is a 404), never from the query. A card shows
+  only the fields the person switched on and never money, notes, goal reasons, merchants or people; the logo only once
+  `brand.publicReady`. Colours come from `packages/tokens/og.json` (generated, covered by `tokens --check`: Satori cannot read oklch)
+  and the fonts are the static subsets in `apps/web/assets/og/fonts` (Satori cannot read variable fonts). `ShareCardDialog` is
+  mounted once in the app layout and opened with `openShareCard({ kind, ref })` from the level-up screen, the streak-day
+  celebration, the HUD, an unlocked achievement, a finished review and a review row in Needs you; it fetches the PNG as a Blob so
+  Share, Download and Copy all use the picture on screen. `/dev/ui` draws every state and card from `?fixture=1` data
+  (allowed only in mock mode or outside production).
+- Templates (`apps/web/src/ui/components/templates/`, "Browse templates" on Plan › Routines and You › Settings, `?templates=1[&pack=<https>]`):
+  one window for built-in starter packs, a file, a link (fetched by the browser only, https only, 64 KB), the community list
+  (`community/packs/`, fetched from GitHub only after a tap) and "Share my setup". Every route ends in the same preview.
+  The format is `relife.pack` v1 (`packages/contract/src/packs.ts`); `planPack` in `domain/packs.ts` is the one pure planner used by
+  preview, apply and the areas switch, and `applyPack`/`undoPackImport`/`exportPack` in `core/packs.ts` write: one transaction under
+  `lockUser`, every row stamped `meta.pack = { id, version, importId }` (trackers have a `meta` column since migration 0003), Undo
+  removes only that import and keeps anything with data. Setup shares the routine inserter (`insertRoutines`). Adding is a write,
+  so the demo locks the button. Rules for community packs are in `docs/TEMPLATES.md` and enforced by `packages/contract/src/community.test.ts`.
 - Keep per-event `kind` and `verified`: a future ranked view will count only standard, verified XP.
-  There are no leaderboards or sharing yet.
+  There are no leaderboards. The only sharing is the opt-in share card (below); nothing is posted anywhere by the app.
 
 ## UI bar (non-negotiable)
 
