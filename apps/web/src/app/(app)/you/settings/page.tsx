@@ -32,7 +32,7 @@ export default function SettingsPage() {
     <>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <p className="max-w-[60ch] text-body text-ink-2">Your profile, how {brand.name} looks and which AI it uses. Export, backups, privacy and deleting your data are under Data & privacy; data sources and API keys are in Connections; Telegram messages are in Notifications.</p>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* A full load: the tour opens from the address on arrival. */}
           <a href="/?tour" className={buttonClass({ variant: 'ghost', size: 'sm' })}>Take the tour</a>
           <Suspense fallback={<Skeleton className="h-8 w-36" />}>
