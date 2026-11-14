@@ -144,7 +144,7 @@ function GoalDraftRow({ item, ctx }: { item: Extract<NeedsYouItem, { kind: 'goal
       actions={
         <>
           {g ? (
-            <GoalFormButton variant="primary" size="sm" mode={{ kind: 'draft', activeCount: g.activeCount, insightId: item.id }} initial={initialFromDraft(d, g.picker, g.today)} picker={g.picker} today={g.today} disabled={atCap}>Review draft</GoalFormButton>
+            <GoalFormButton variant="primary" size="sm" mode={{ kind: 'draft', activeCount: g.activeCount, insightId: item.id, packName: d.origin ? d.origin.name ?? 'starter' : undefined }} initial={initialFromDraft(d, g.picker, g.today)} picker={g.picker} today={g.today} disabled={atCap}>Review draft</GoalFormButton>
           ) : <Link href="/plan" className={buttonClass({ variant: 'primary', size: 'sm' })}>Review draft</Link>}
           <Button size="sm" variant="ghost" onClick={() => ctx.act(item.id, `Dismissed: ${sentenceCase(d.title)}`, () => dismissGoalDraftAction(item.id), () => restoreInsight(item.id))}>Dismiss</Button>
         </>

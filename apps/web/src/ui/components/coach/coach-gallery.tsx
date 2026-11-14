@@ -6,6 +6,7 @@ import type { NeedsYouItem } from '@/domain/needs-you'
 import { Card } from '../card'
 import { AnswerCard, QuestionBubble } from './answer-card'
 import { ConnectCoach } from './connect-coach'
+import { LocalAiDown } from './local-ai-down'
 import { NeedsYouList } from './needs-you-list'
 import { QueueItem, ResolvedItem } from './queue-item'
 
@@ -62,6 +63,12 @@ export function CoachGallery() {
       <div className="max-w-[420px] lg:col-span-2">
         <p className="mb-3 text-small text-ink-3">No model: the Connect card with what still works</p>
         <ConnectCoach />
+      </div>
+      <div className="max-w-[420px] lg:col-span-2">
+        <p className="mb-3 text-small text-ink-3">Free local AI chosen, server not answering (the pill reads “Local AI not running”)</p>
+        <span className="mb-3 inline-flex h-7 items-center gap-1.5 rounded-full bg-surface px-3 text-caption font-medium text-ink-2 shadow-1"><span aria-hidden className="size-1.5 rounded-full bg-warn" /><span className="text-warn">Local AI not running</span></span>
+        <LocalAiDown message="Nothing answered at localhost:11434. Install Ollama from ollama.com, then run `ollama pull qwen3:4b-instruct`." />
+        <div className="mt-3"><LocalAiDown message="Nothing answered at ollama:11434. Start it with `docker compose --profile ai up -d`, or pick another provider in You › Connections." /></div>
       </div>
     </div>
   )

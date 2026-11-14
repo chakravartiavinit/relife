@@ -69,12 +69,16 @@ export async function trackerFacts(user: User, from: string, to: string, tracker
 
 export type Txn = typeof schema.transactions.$inferSelect & { base: number }
 
-/** Transactions in [from, to] with amounts converted to the user's base currency. */
-export async function transactionsBetween(user: User, from: string, to: string) {
+/**
+ * Transactions in [from, to] with amounts converted to the user's base currency. A bank row linked to an app order
+ * (`linked_to`) is the same payment seen twice and is left out; `includeLinked` keeps it (the row's own peek).
+ */
+export async function transactionsBetween(user: User, from: string, to: string, opts: { includeLinked?: boolean } = {}) {
   const rows = await db.select().from(schema.transactions).where(and(
     eq(schema.transactions.userId, user.id),
     gte(schema.transactions.localDate, from),
     lte(schema.transactions.localDate, to),
+    opts.includeLinked ? undefined : isNull(schema.transactions.linkedTo),
   )).orderBy(sql`${schema.transactions.at} desc`)
   const out: Txn[] = []
   for (const r of rows) {
@@ -82,6 +86,20 @@ export async function transactionsBetween(user: User, from: string, to: string) 
     out.push({ ...r, base: base ?? 0 })
   }
   return out
+}
+
+/** How many bank rows in [from, to] are the same payment as an app order and so are left out of every total. */
+export async function linkedRowCount(user: User, from: string, to: string) {
+  const T = schema.transactions
+  const [r] = await db.select({ n: sql<number>`count(*)::int` }).from(T).where(and(eq(T.userId, user.id), gte(T.localDate, from), lte(T.localDate, to), sql`${T.linkedTo} is not null`))
+  return r?.n ?? 0
+}
+
+/** The bank rows counted as `linkedRowCount`, newest first (at most 100), so each can be opened and unlinked. */
+export async function linkedRows(user: User, from: string, to: string) {
+  const T = schema.transactions
+  return db.select({ id: T.id, localDate: T.localDate, amount: T.amount, currency: T.currency, merchant: T.merchant, description: sql<string | null>`${T.meta}->>'description'` })
+    .from(T).where(and(eq(T.userId, user.id), gte(T.localDate, from), lte(T.localDate, to), sql`${T.linkedTo} is not null`)).orderBy(sql`${T.at} desc`).limit(100)
 }
 
 const NOT_SPEND = new Set(['Transfers', 'Investments', 'Income'])

@@ -12,7 +12,7 @@ const schemas: Record<string, ZodType> = {
   TodayView: contract.TodayView, TodayAction: contract.TodayAction, TodayActionResult: contract.TodayActionResult,
   ActivityBatch: contract.ActivityBatch, Hello: contract.Hello, Me: contract.Me, DeviceInfo: contract.DeviceInfo,
   PairRequestStart: contract.PairRequestStart, PairRequestStarted: contract.PairRequestStarted, PairPoll: contract.PairPoll,
-  PairRedeem: contract.PairRedeem, DeviceList: contract.DeviceList, DeviceRename: contract.DeviceRename, PairRedeemResult: contract.PairRedeemResult, Event: contract.Event, ApiError: contract.ApiError,
+  PairRedeem: contract.PairRedeem, DeviceList: contract.DeviceList, DeviceRename: contract.DeviceRename, PairRedeemResult: contract.PairRedeemResult, Event: contract.Event, ApiError: contract.ApiError, Pack: contract.Pack,
   HealthBatch: contract.HealthBatch, HealthIngestResult: contract.HealthIngestResult, PushAction: contract.PushAction, PushActionResult: contract.PushActionResult,
 }
 const files = readdirSync(dir).filter((f) => f.endsWith('.json'))
@@ -54,4 +54,19 @@ test('a health day fills in an empty exercise list', () => {
 
 test('an empty activity batch fills in empty lists', () => {
   assert.deepEqual(contract.ActivityBatch.parse({}), { segments: [], courses: [], rules: [] })
+})
+
+test('a pack refuses a newer version, a money tracker, an http link and too many goals', () => {
+  const base = JSON.parse(readFileSync(new URL('Pack.minimal.json', dir), 'utf8'))
+  assert.equal(contract.Pack.safeParse(base).success, true)
+  const newer = contract.parsePack(JSON.stringify({ ...base, version: 2 }))
+  assert.deepEqual(newer, { ok: false, error: 'Made by a newer version' })
+  assert.equal(contract.Pack.safeParse({ ...base, trackers: [{ slug: 'spend', name: 'Spend', area: 'wealth', kind: 'money' }] }).success, false)
+  assert.equal(contract.Pack.safeParse({ ...base, homepage: 'http://example.com' }).success, false)
+  assert.equal(contract.Pack.safeParse({ ...base, homepage: 'https://example.com/pack' }).success, true)
+  const goal = { key: 'g', title: 'G', area: 'skills', measure: { checkIn: 'Hours' }, direction: 'up', target: 5, weeks: 6, cadence: 'weekly' }
+  assert.equal(contract.Pack.safeParse({ ...base, goals: [goal, goal, goal, goal] }).success, false)
+  assert.equal(contract.Pack.safeParse({ ...base, goals: [{ ...goal, weeks: 2 }] }).success, false)
+  assert.equal(contract.parsePack('nope').ok, false)
+  assert.equal(contract.parsePack(' '.repeat(70_000)).ok, false)
 })

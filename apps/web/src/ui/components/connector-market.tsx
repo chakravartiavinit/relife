@@ -16,6 +16,8 @@ import { useToast } from './toast'
 import { usePeekChanged } from './peek/peek-context'
 import { AppLogo as Logo } from './app-logo'
 import { ConnectSuccess, YourSources, SuggestedForYou, needsFix } from './connections-status'
+import { ImportButton } from './imports/import-button'
+import { PastImports, type PastImport } from './imports/import-history'
 import { cn } from '../cn'
 
 export type { ConnectorStatus }
@@ -96,7 +98,12 @@ type Show = 'all' | 'on' | 'off'
  * Every service as a card in a catalog, grouped by what it tracks, with a category rail (a chip row on phones),
  * search and a connected filter. Cards open one dialog for connecting and managing.
  */
-export function ConnectorMarket({ items, worker, areas }: { items: ConnectorItem[]; worker: { alive: boolean; ago: string; demo?: boolean }; /** The areas the user picked, for the suggestions. */ areas?: string[] }) {
+export function ConnectorMarket({ items, worker, areas, imports = [], zipMaxMb, locked }: {
+  items: ConnectorItem[]; worker: { alive: boolean; ago: string; demo?: boolean }; /** The areas the user picked, for the suggestions. */ areas?: string[]
+  /** The newest file imports, for Past imports. */ imports?: PastImport[]
+  /** The size limit of a zip import, for the dialog's footer. */ zipMaxMb?: number
+  /** Why imports are off here (the read-only demo). */ locked?: string
+}) {
   useSignInResult(items)
   const [query, setQuery] = useState('')
   const [show, setShow] = useState<Show>('all')
@@ -131,10 +138,12 @@ export function ConnectorMarket({ items, worker, areas }: { items: ConnectorItem
           </Pill>
         )}
         {attention.length ? <Pill color="var(--bad)">{attention.length} need{attention.length === 1 ? 's' : ''} a fix</Pill> : null}
+        <span className="ms-auto"><ImportButton zipMaxMb={zipMaxMb} locked={locked} /></span>
       </div>
 
       <div className="rise flex flex-col gap-8" style={{ '--i': 1 } as React.CSSProperties}>
         <YourSources items={items} manage={manage} />
+        <PastImports imports={imports} />
         <SuggestedForYou items={items} areas={areas} manage={manage} />
         <h2 className="-mb-4 px-1 text-heading text-ink">All apps</h2>
       </div>

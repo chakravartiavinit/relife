@@ -6,7 +6,7 @@ import { CATEGORIES } from '@/db/schema'
 import { lockUser } from '@/core/recovery'
 import { localDate } from '@/core/time'
 import type { User } from '@/core/user'
-import { CADENCES, DIRECTIONS, checkGoalDraft, goalIsSensitive, type GoalDraft } from '@/domain/goals'
+import { CADENCES, DIRECTIONS, MAX_PENDING_DRAFTS, checkGoalDraft, goalIsSensitive, type GoalDraft } from '@/domain/goals'
 import { aiEnabled, model } from '../models'
 import { generate } from '../run'
 import { COACH_SYSTEM } from '../context'
@@ -15,7 +15,7 @@ import { mask } from '../mask'
 // One outcome goal draft from the user's own goals text. It is a pending insight; only the Goals form can turn it
 // into a goal (core/goals.ts saveGoal). The model never supplies a baseline.
 
-const MAX_PENDING = 3
+export const MAX_PENDING = MAX_PENDING_DRAFTS
 
 const draftSchema = z.object({
   title: z.string().max(120),

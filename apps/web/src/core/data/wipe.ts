@@ -28,8 +28,8 @@ export async function wipeUserData(user: User): Promise<void> {
     await tx.delete(schema.users).where(eq(schema.users.id, old.id))
     for (const name of wipeGlobalTables()) await tx.execute(dsql`delete from ${dsql.identifier(name)}`)
   })
-  // Shop logins and cookies, and library covers. Public coin logos stay.
-  await Promise.all(['browser', 'library'].map((d) => rm(dataDir(d), { recursive: true, force: true })))
+  // Shop logins and cookies, library covers, and any uploaded import files still on disk. Public coin logos stay.
+  await Promise.all(['browser', 'library', 'imports'].map((d) => rm(dataDir(d), { recursive: true, force: true })))
   clearUserCache()
   await getUser() // creates nothing new: reads the fresh row and reloads the (now empty) key map
 }

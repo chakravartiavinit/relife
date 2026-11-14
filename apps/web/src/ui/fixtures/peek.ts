@@ -15,7 +15,7 @@ const SNAPSHOT: GoalSnapshot = {
   actions: [], adherence: 0.71, met: false, sensitive: false, computedAt: '2026-11-12T08:00:00.000Z',
 }
 
-export const PEEK_FIXTURES: Record<PeekData['type'], PeekData> = {
+export const PEEK_FIXTURES: Record<PeekData['type'] | 'txnLinked', PeekData> = {
   metric: {
     type: 'metric', id: 'sleep.hours', slug: 'sleep.hours', name: 'Sleep', category: 'health', kind: 'duration', unit: 'h', target: 7.5, direction: 'up',
     aggregate: 'last', today: TODAY, todayValue: 6.8,
@@ -43,6 +43,12 @@ export const PEEK_FIXTURES: Record<PeekData['type'], PeekData> = {
     type: 'txn', id: 't1', merchant: 'Big Basket', upiId: 'bigbasket@icici', amount: 1840, currency: 'INR', base: 1840, baseCurrency: 'INR', when: 'Today, 11:20', category: 'Groceries',
     categories: ['Groceries', 'Food', 'Transport', 'Other'], source: 'sms', account: 'HDFC ··4321', rule: { pattern: 'big basket', category: 'Groceries' }, platform: 'Big Basket',
     items: [{ name: 'Tomatoes 1 kg', qty: 1, price: 64 }, { name: 'Basmati rice 5 kg', qty: 1, price: 720 }, { name: 'Curd', qty: 4, price: null }],
+    paidFrom: { id: 'bank-row-1', account: 'HDFC ··4321', when: 'Fri, 13 Nov' },
+  },
+  txnLinked: {
+    type: 'txn', id: 't2', merchant: 'UPI-BIGBASKET GROCERY', upiId: null, amount: -1840, currency: 'INR', base: -1840, baseCurrency: 'INR', when: 'Fri, 13 Nov', category: 'Groceries',
+    categories: ['Groceries', 'Food', 'Transport', 'Other'], source: 'statement', account: 'HDFC ··4321', rule: null, platform: null, items: [],
+    sameAs: { id: 't1', label: 'Big Basket' },
   },
   merchant: {
     type: 'merchant', name: 'Big Basket', baseCurrency: 'INR', month: '2026-11', thisMonth: { total: 5600, count: 4 }, last30: { total: 6200, count: 5 }, last12: { total: 41200, count: 38 },

@@ -15,6 +15,13 @@
       "when": 1794619704535,
       "tag": "0001_phone_push",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794620837240,
+      "tag": "0002_imports",
+      "breakpoints": true
     }
   ]
 }

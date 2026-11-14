@@ -4,17 +4,29 @@ import type { SuggestedRoutine } from '@/ai/routines'
 // Shared by setup (/welcome): the questions (onboarding-flow.tsx, onboarding-steps.tsx) and the live save-file
 // preview (onboarding-preview.tsx) read the same answers, options and time helpers.
 
-/** Four steps, each a short group of related questions. Goals and tone are not asked here: the Coach drafts a goal
- * from the picks later, and tone starts at Balanced (the coach notes in Settings carry the voice). */
+/** Six steps, each a short group of related questions. Goals and tone are not asked here: the Coach drafts a goal
+ * from the picks later (a starter pack brings its own draft), and tone starts at Balanced (the coach notes in
+ * Settings carry the voice). */
 export const STEPS = [
   { key: 'you', label: 'You' },
+  { key: 'pack', label: 'Pack' },
   { key: 'areas', label: 'Areas' },
   { key: 'connect', label: 'Connect' },
+  { key: 'ai', label: 'AI' },
   { key: 'routines', label: 'Routines' },
 ] as const
 export const LAST = STEPS.length - 1
 /** Step positions by name. */
-export const AT = { you: 0, areas: 1, connect: 2, routines: 3 } as const
+export const AT = { you: 0, pack: 1, areas: 2, connect: 3, ai: 4, routines: 5 } as const
+
+/** One line per starter pack on its card. The pack file's own description is longer. */
+export const PACK_BLURB: Record<string, string> = {
+  fitness: 'Train, sleep and move more',
+  money: 'See where it goes, save on purpose',
+  'student-dev': 'Study, ship and keep a streak',
+  recovery: 'Rest, wind down, get back on track',
+}
+export const CUSTOM_BLURB = 'Keep your own picks'
 
 /** One line per area on its tile. */
 export const AREA_BLURB: Record<Category, string> = {
@@ -65,6 +77,10 @@ export type V = Initial & {
   starterSeeded: boolean
   /** The sleep target follows the night they describe until they pick one themselves. */
   sleepTouched: boolean
+  /** The starter pack picked on the Pack step (its id), or null for Custom. */
+  pack: string | null
+  /** The AI choice on the AI step. Not chosen yet: free local AI is recommended. */
+  aiChoice: 'local' | 'cloud' | 'skip' | null
 }
 
 // Browsers list some zones under old names (Asia/Calcutta), so compare and accept by what Intl resolves.

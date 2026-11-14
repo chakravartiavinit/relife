@@ -30,7 +30,7 @@ function Frame({ title, children, heading }: { title: string; heading?: { title:
 }
 
 const LABEL: Record<string, string> = {
-  metric: 'Metric (Sleep)', routine: 'Routine (Water)', goal: 'Goal', txn: 'Payment', merchant: 'Merchant (3× the usual)', insight: 'Coach note',
+  metric: 'Metric (Sleep)', routine: 'Routine (Water)', goal: 'Goal', txn: 'Payment (paid an app order)', txnLinked: 'Payment (same as an app order)', merchant: 'Merchant (3× the usual)', insight: 'Coach note',
   connector: 'Connection', person: 'Person (overdue)', quest: 'Quest', sync: 'Sync status (one failing)', brief: 'Summary',
 }
 
@@ -39,8 +39,8 @@ const NO_BRIEF: PeekData = { type: 'brief', scope: 'wealth', line: null, facts: 
 export function PeekGallery() {
   return (
     <div className="grid items-start gap-8 xl:grid-cols-2 2xl:grid-cols-3">
-      {Object.values(PEEK_FIXTURES).map((d) => (
-        <Frame key={d.type} title={LABEL[d.type]} heading={peekHeading(d)}><PeekView data={d} /></Frame>
+      {Object.entries(PEEK_FIXTURES).map(([key, d]) => (
+        <Frame key={key} title={LABEL[key]} heading={peekHeading(d)}><PeekView data={d} /></Frame>
       ))}
       <Frame title="Summary (none written yet)" heading={peekHeading(NO_BRIEF)}><PeekView data={NO_BRIEF} /></Frame>
       <Frame title="Loading"><PeekSkeleton /></Frame>

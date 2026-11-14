@@ -83,6 +83,13 @@ function Panel({ onOpenChange, title, description, icon, modal, className, child
     }
   }, [modal])
 
+  // The page learns a side panel is open (a non-modal one leaves the page usable), so a toast can sit beside it instead of over it.
+  useEffect(() => {
+    if (modal) return
+    document.documentElement.setAttribute('data-sheet-open', '')
+    return () => document.documentElement.removeAttribute('data-sheet-open')
+  }, [modal])
+
   // A non-modal dialog gets no native Esc, so listen for it. Something inside that already handled Esc keeps it.
   useEffect(() => {
     if (modal) return

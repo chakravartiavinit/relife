@@ -92,6 +92,10 @@ export type TxnPeek = {
   rule: { pattern: string; category: string } | null
   platform: string | null
   items: { name: string; qty: number; price: number | null }[]
+  /** A bank row that is the same payment as an app order: counted once, as the order. */
+  sameAs?: { id: string; label: string } | null
+  /** An app order that a bank row paid: where from and when. */
+  paidFrom?: { id: string; account: string | null; when: string } | null
 }
 
 export type MerchantPeek = {

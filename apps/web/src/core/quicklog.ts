@@ -4,6 +4,7 @@ import { formatMoney, formatNumber } from '@/domain/money'
 import { LAST_VALUE, quickLogUndo, type QuickLog, type QuickLogUndo } from '@/domain/quicklog'
 import { persist } from './ingest'
 import { trackerDays } from './metrics'
+import { linkStatements } from './statement-link'
 import { localDate } from './time'
 import type { User } from './user'
 
@@ -54,6 +55,8 @@ async function writeQuickLog(user: User, q: QuickLog, now: Date, date: string, e
     at: now, amount: -Math.abs(q.amount), currency: q.currency, merchant: q.note,
     source: 'manual', externalRef,
   })
+  // A bank statement imported earlier may already hold this payment: link it so it is counted once.
+  await linkStatements(user, { from: localDate(now, user.timezone), to: localDate(now, user.timezone) }).catch((e) => console.error('[link]', e instanceof Error ? e.message : e))
   return `Spent ${formatMoney(q.amount, q.currency)} · ${q.note}`
 }
 

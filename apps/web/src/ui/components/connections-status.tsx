@@ -13,6 +13,7 @@ import { PeekLink } from './peek/peek-link'
 import { isInline, needsFix } from '@/domain/connections'
 import { STATUS } from './connector-status'
 import { SyncButton, type ConnectorItem } from './connector-market'
+import { Cmd, LOCAL_AI_DOWN, RecheckLocalAi } from './local-ai-check'
 import { cn } from '../cn'
 
 // The top of Connections, status first: what needs a fix (with the fix as the button), then every connected source
@@ -31,7 +32,8 @@ const fmt = (n: number) => new Intl.NumberFormat('en-IN').format(n)
 export type Manage = (c: ConnectorItem, trigger: React.ReactElement) => React.ReactNode
 
 export function YourSources({ items, manage }: { items: ConnectorItem[]; manage: Manage }) {
-  const sources = items.filter((c) => c.connected && isData(c))
+  // The free local AI is listed only while it is not answering: then it is a source that needs a fix.
+  const sources = items.filter((c) => c.connected && (isData(c) || (c.id === 'local' && needsFix(c))))
   const broken = sources.filter(needsFix)
   const healthy = sources.filter((c) => !needsFix(c))
   if (!sources.length) {
@@ -73,16 +75,17 @@ export function YourSources({ items, manage }: { items: ConnectorItem[]; manage:
 
 /** A source that needs the user, pinned on top: the problem in one sentence and the fix as the primary button. */
 function FixRow({ c, manage }: { c: ConnectorItem; manage: Manage }) {
-  const problem = c.error || (c.missingEnv.length ? `Add ${c.missingEnv.join(', ')} to start syncing.` : c.statusLabel ?? STATUS[c.status].label)
+  const local = c.id === 'local' && c.section === 'ai'
+  const problem = local ? c.detail : c.error || (c.missingEnv.length ? `Add ${c.missingEnv.join(', ')} to start syncing.` : c.statusLabel ?? STATUS[c.status].label)
   const last = c.lastSync ? ` Last good sync ${c.lastSync}.` : ''
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-lg p-3 shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--bad)_35%,transparent)]" style={{ background: 'color-mix(in oklab, var(--bad) 7%, var(--surface))' }}>
       <Logo id={c.id} category={c.category} size="sm" />
       <div className="min-w-0 flex-1 basis-56">
         <PeekLink to={{ type: 'connector', id: c.id }} className="rounded-xs text-body font-semibold text-ink hover:underline focus-visible:outline-2 focus-visible:outline-pill">{c.name}</PeekLink>
-        <p className="text-small text-ink-2"><span className="font-medium text-bad">{STATUS[c.status].label}.</span> {problem}{last}</p>
+        <p className="text-small text-ink-2"><span className={cn('font-medium', local ? 'text-warn' : 'text-bad')}>{local ? `${LOCAL_AI_DOWN}.` : `${STATUS[c.status].label}.`}</span> {local ? <Cmd text={problem ?? ''} /> : problem}{last}</p>
       </div>
-      {c.oauth && c.status !== 'setup' ? (
+      {local ? <RecheckLocalAi variant="primary" /> : c.oauth && c.status !== 'setup' ? (
         <a href={`/api/oauth/${c.id}/start`} className={buttonClass({ variant: 'primary', size: 'md' })}><LogIn className="size-4" strokeWidth={2} aria-hidden />{fixLabel(c)}</a>
       ) : manage(c, <Button variant="primary">{fixLabel(c)}</Button>)}
     </div>

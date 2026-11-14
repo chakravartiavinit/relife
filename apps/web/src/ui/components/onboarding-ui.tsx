@@ -38,6 +38,22 @@ export const PICKER = 'h-10 rounded-md bg-surface px-3 text-base shadow-1 focus-
 export const PILL_HIT = "relative after:absolute after:-inset-y-1 after:inset-x-0 after:content-['']"
 export const LINK = cn('relative rounded-sm text-small font-medium text-ink underline decoration-ink/25 underline-offset-[3px] transition-[text-decoration-color] duration-150 ease-out-quint after:absolute after:-inset-x-2 after:-inset-y-3 hover:decoration-ink', FOCUS)
 
+/**
+ * Arrow keys for a radio group, as the platform does them: one tab stop (the picked radio), arrows move and pick.
+ * Put it on the group's `onKeyDown`; each radio is `role="radio"` with `tabIndex={on ? 0 : -1}`.
+ */
+export function radioKeys(e: React.KeyboardEvent<HTMLElement>) {
+  const d = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0
+  if (!d) return
+  const radios = [...e.currentTarget.querySelectorAll<HTMLElement>('[role="radio"]')]
+  const at = radios.indexOf(document.activeElement as HTMLElement)
+  if (at < 0) return
+  e.preventDefault()
+  const next = radios[(at + d + radios.length) % radios.length]
+  next.focus()
+  next.click()
+}
+
 /** The question: a small step label, a title and one line of help, each on its own beat. */
 export function Title({ step, title, body }: { step: number; title: string; body?: string }) {
   return (

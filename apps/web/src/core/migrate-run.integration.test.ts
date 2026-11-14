@@ -10,14 +10,16 @@ import postgres from 'postgres'
  */
 const enabled = process.env.RELIFE_MIGRATE_INTEGRATION === '1'
 
-/** Takes a migrated database back to the 0000 shape, history and all, so the caller can drop the history or keep it. */
-async function atBaselineKeep(open: () => postgres.Sql) {
-  const sql = open()
-  try {
+/** Undoes what the migrations after number `n` added (1 = the baseline, 2 = + phone push), keeping the history rows. */
+async function shapeOf(sql: postgres.Sql, n: number) {
+  if (n < 3) {
+    await sql`drop table if exists imports`
+    await sql`alter table transactions drop column if exists linked_to`
+  }
+  if (n < 2) {
     await sql`drop table if exists push_subscriptions`
     await sql`alter table notifications drop column if exists channels`
-    await sql`drop schema if exists drizzle cascade`
-  } finally { await sql.end() }
+  }
 }
 
 test('migrations apply, and a database made by push is adopted', { skip: !enabled }, async () => {
@@ -27,9 +29,9 @@ test('migrations apply, and a database made by push is adopted', { skip: !enable
   const name = `relife_migrate_it_${process.pid}_${Date.now()}`
   const url = Object.assign(new URL(admin), { pathname: `/${name}` }).toString()
   const open = () => postgres(url, { max: 1, onnotice: () => {} })
-  // How many migrations the folder holds: 0000 the baseline, 0001 push subscriptions, and so on.
+  // How many migrations the folder holds: 0000 the baseline, 0001 push subscriptions, 0002 imports, and so on.
   const total = (JSON.parse(readFileSync('drizzle/meta/_journal.json', 'utf8')) as { entries: unknown[] }).entries.length
-  assert.ok(total >= 2)
+  assert.ok(total >= 3)
   const history = async (sql: postgres.Sql) => (await sql`select count(*)::int as n from drizzle.__drizzle_migrations`)[0].n as number
   // What `db:push` leaves: every table, no history.
   const pushed = async () => { const sql = open(); try { await sql`drop schema if exists drizzle cascade` } finally { await sql.end() } }
@@ -64,36 +66,45 @@ test('migrations apply, and a database made by push is adopted', { skip: !enable
     await Promise.all([runMigrations(url), runMigrations(url)])
     sql = open(); try { assert.equal(await history(sql), total) } finally { await sql.end() }
 
-    // A database as 0000 left it: 0001's table and column and its history row removed, which is what an install made before the phone phase has.
-    const atBaseline = async () => {
+    // A migrated database taken back to what migration `n` left, its history trimmed to match: an install made before the later phases.
+    const atVersion = async (n: number) => {
       const sql = open()
       try {
-        await sql`drop table push_subscriptions`
-        await sql`alter table notifications drop column channels`
-        await sql`delete from drizzle.__drizzle_migrations where id = (select max(id) from drizzle.__drizzle_migrations)`
+        await shapeOf(sql, n)
+        await sql`delete from drizzle.__drizzle_migrations where id not in (select id from drizzle.__drizzle_migrations order by id limit ${n})`
+      } finally { await sql.end() }
+    }
+    const everythingIsThere = async () => {
+      const sql = open()
+      try {
+        for (const t of ['push_subscriptions', 'imports']) assert.ok((await sql`select to_regclass(${'public.' + t}) as t`)[0].t, `${t} is there`)
+        assert.ok((await sql`select 1 from information_schema.columns where table_name = 'notifications' and column_name = 'channels'`).length, 'the channels column is there')
+        assert.ok((await sql`select 1 from information_schema.columns where table_name = 'transactions' and column_name = 'linked_to'`).length, 'the linked_to column is there')
+        assert.ok((await sql`select 1 from pg_indexes where indexname = 'transactions_linked_to'`).length, 'the unique link index is there')
       } finally { await sql.end() }
     }
 
-    // 5. A database that has only the baseline gets the later migrations.
-    await pushed()
-    await runMigrations(url)
-    await atBaseline()
-    sql = open(); try { assert.equal(await history(sql), total - 1) } finally { await sql.end() }
-    await runMigrations(url)
-    sql = open()
-    try {
-      assert.equal(await history(sql), total)
-      assert.ok((await sql`select to_regclass('public.push_subscriptions') as t`)[0].t, 'the push table is there')
-      assert.ok((await sql`select 1 from information_schema.columns where table_name = 'notifications' and column_name = 'channels'`).length, 'the channels column is there')
-    } finally { await sql.end() }
+    // 5. A database at an older migration gets the later ones.
+    for (const n of [1, 2]) {
+      await pushed()
+      await runMigrations(url)
+      await atVersion(n)
+      sql = open(); try { assert.equal(await history(sql), n) } finally { await sql.end() }
+      await runMigrations(url)
+      sql = open(); try { assert.equal(await history(sql), total) } finally { await sql.end() }
+      await everythingIsThere()
+    }
 
-    // 6. A database pushed when only the baseline existed (the shape of 0000, no history) is adopted as the baseline, then migrated up.
-    await pushed()
-    await atBaselineKeep(open)
-    const log6: string[] = []
-    await runMigrations(url, { log: (m) => log6.push(m) })
-    assert.ok(log6.some((m) => /first 1 migration /.test(m)), `adopted the baseline only: ${log6.join(' | ')}`)
-    sql = open(); try { assert.equal(await history(sql), total); assert.ok((await sql`select to_regclass('public.push_subscriptions') as t`)[0].t) } finally { await sql.end() }
+    // 6. A database pushed when only the first n migrations existed (their shape, no history) is adopted as those, then migrated up.
+    for (const n of [1, 2]) {
+      await pushed()
+      sql = open(); try { await shapeOf(sql, n) } finally { await sql.end() }
+      const log6: string[] = []
+      await runMigrations(url, { log: (m) => log6.push(m) })
+      assert.ok(log6.some((m) => new RegExp(`first ${n} migrations? `).test(m)), `adopted the first ${n}: ${log6.join(' | ')}`)
+      sql = open(); try { assert.equal(await history(sql), total) } finally { await sql.end() }
+      await everythingIsThere()
+    }
 
     // 7. A pushed database that differs that differs (a column missing, a stray one) is refused and left alone.
     for (const change of ['alter table users drop column name', 'alter table users add column stray text']) {

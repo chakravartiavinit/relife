@@ -5,59 +5,25 @@ import { buildRRule, type SimpleRule } from '@/domain/recurrence'
 import { slugify } from './quicklog'
 import { ensureTracker } from './ingest'
 import { localDate } from './time'
+import { insertPackGoalDraft } from './packs'
 import { lockUser } from './recovery'
 import { mergeProfile, profileMerge, type User } from './user'
 
 // One-time setup (/welcome): profile, usual hours, areas, what The System trains first, daily targets,
-// tone, goals and starter routines, in one write. Only the name, region and areas are required: anything
+// tone, goals and starter routines, in one write. Only the name and region are required (a first setup also sends the areas): anything
 // left out keeps its saved value (or its usual default on first setup), so running setup again never
 // overwrites a setting the user didn't touch.
 // Templates are suggestions only; everything they create is an ordinary routine the user can edit.
 
-export type Template = {
-  id: string
-  area: Category
-  name: string
-  kind: 'routine' | 'medicine'
-  rule: Omit<SimpleRule, 'start'>
-  note?: string
-  /** Quantity routine (water): the target comes from the goals step. */
-  quantity?: { unit: string; step: number }
-  dose?: string
-  suggested?: boolean
-}
-
-const daily = (...times: string[]): Omit<SimpleRule, 'start'> => ({ freq: 'daily', times })
-const weekly = (byweekday: SimpleRule['byweekday'], time: string): Omit<SimpleRule, 'start'> => ({ freq: 'weekly', times: [time], byweekday })
-
-export const TEMPLATES: Template[] = [
-  { id: 'water', area: 'health', name: 'Drink water', kind: 'routine', rule: daily('10:00', '13:00', '16:00', '19:00'), quantity: { unit: 'ml', step: 250 }, suggested: true },
-  { id: 'morning-skincare', area: 'health', name: 'Morning skincare', kind: 'routine', rule: daily('08:00'), note: 'Cleanser · serum · sunscreen' },
-  { id: 'night-skincare', area: 'health', name: 'Night skincare', kind: 'routine', rule: daily('22:30') },
-  { id: 'workout', area: 'health', name: 'Workout', kind: 'routine', rule: weekly(['MO', 'WE', 'FR'], '07:00'), suggested: true },
-  { id: 'vitamin', area: 'health', name: 'Vitamin D3', kind: 'medicine', rule: daily('09:00'), dose: '1 capsule' },
-  { id: 'lights-out', area: 'health', name: 'Lights out', kind: 'routine', rule: daily('23:00') },
-  { id: 'journal', area: 'mind', name: 'Journal', kind: 'routine', rule: daily('22:00'), note: 'Three lines', suggested: true },
-  { id: 'meditate', area: 'mind', name: 'Meditate', kind: 'routine', rule: daily('07:30'), note: '10 minutes' },
-  { id: 'no-phone', area: 'mind', name: 'No phone after 11', kind: 'routine', rule: daily('23:00') },
-  { id: 'practice', area: 'skills', name: 'Practice coding', kind: 'routine', rule: daily('19:00'), note: 'One problem', suggested: true },
-  { id: 'read', area: 'skills', name: 'Read 20 pages', kind: 'routine', rule: daily('21:30') },
-  { id: 'course', area: 'skills', name: 'Course session', kind: 'routine', rule: weekly(['TU', 'TH', 'SA'], '20:00'), note: '30 minutes' },
-  { id: 'budget', area: 'wealth', name: 'Review budget', kind: 'routine', rule: weekly(['SU'], '10:00'), suggested: true },
-  { id: 'log-spends', area: 'wealth', name: 'Log today’s spends', kind: 'routine', rule: daily('21:00') },
-  { id: 'save', area: 'wealth', name: 'Move money to savings', kind: 'routine', rule: { freq: 'monthly', times: ['10:00'], bymonthday: 1 } },
-  { id: 'hobby-practice', area: 'hobbies', name: 'Practise your hobby', kind: 'routine', rule: daily('20:00'), note: '20 minutes', suggested: true },
-  { id: 'hobby-weekend', area: 'hobbies', name: 'Weekend project', kind: 'routine', rule: weekly(['SA', 'SU'], '11:00'), note: 'An hour on something you make' },
-  { id: 'call-parents', area: 'relationships', name: 'Call parents', kind: 'routine', rule: weekly(['WE', 'SU'], '18:00'), suggested: true },
-  { id: 'friend', area: 'relationships', name: 'Catch up with a friend', kind: 'routine', rule: weekly(['SA'], '17:00') },
-  { id: 'reach-out', area: 'relationships', name: 'Message someone you miss', kind: 'routine', rule: weekly(['TH'], '20:00') },
-]
+import { TEMPLATES, type Template } from '@/domain/templates'
+export { TEMPLATES, type Template }
 
 export type OnboardingInput = {
   name: string
   timezone: string
   baseCurrency: string
-  areas: Category[]
+  /** Left out, the saved areas stay (setup run again sends them only when they were changed). */
+  areas?: Category[]
   focus?: Category
   templates?: string[]
   /** Routines an AI proposed (only the ticked ones are created). */
@@ -73,6 +39,8 @@ export type OnboardingInput = {
   sleep?: string
   /** Stats The System should train first, in priority order (signal ids from core/patterns). */
   improve: string[]
+  /** The starter pack picked on the Start step: it adds one pending goal draft with a check-in measure. */
+  pack?: string
 }
 
 const TONE_NOTE: Record<NonNullable<OnboardingInput['tone']>, string> = {
@@ -89,12 +57,14 @@ const TONE_NOTE: Record<NonNullable<OnboardingInput['tone']>, string> = {
  * key (payments seen, celebrated level) survives.
  */
 export async function completeOnboarding(user: User, input: OnboardingInput, now = new Date()) {
-  const areas = CATEGORIES.filter((c) => input.areas.includes(c))
+  const given = input.areas ? CATEGORIES.filter((c) => input.areas!.includes(c)) : undefined
   const today = localDate(now, input.timezone)
   const { added, fresh } = await db.transaction(async (tx) => {
     await lockUser(tx, user.id)
     const [saved] = await tx.select().from(schema.users).where(eq(schema.users.id, user.id))
     const cur = saved ?? user
+    // No areas sent: the saved ones stay (none saved means every area shows).
+    const areas = given ?? (cur.profile.areas?.length ? CATEGORIES.filter((c) => cur.profile.areas!.includes(c)) : [...CATEGORIES])
     const tone = input.tone ?? cur.profile.tone ?? 'balanced'
     // The coach's notes start as the tone's own line. A new tone replaces that line, never words the user wrote.
     const notes = cur.profile.notes?.trim()
@@ -107,8 +77,8 @@ export async function completeOnboarding(user: User, input: OnboardingInput, now
       constraints: input.constraints?.trim() || undefined,
       notes: !notes || Object.values(TONE_NOTE).includes(notes) ? TONE_NOTE[tone] : undefined,
       tone,
-      areas,
-      focus: input.focus && areas.includes(input.focus) ? input.focus : areas[0],
+      areas: given,
+      focus: input.focus && areas.includes(input.focus) ? input.focus : given?.[0],
       onboardedAt: now.toISOString(),
       improve: input.improve.length ? input.improve : undefined,
       // Usual hours, when given: Telegram stays quiet while they sleep; per-category settings are kept.
@@ -132,20 +102,26 @@ export async function completeOnboarding(user: User, input: OnboardingInput, now
 
     const existing = new Set((await tx.select({ name: schema.schedules.name }).from(schema.schedules)
       .where(eq(schema.schedules.userId, user.id))).map((r) => r.name.toLowerCase()))
+    // Routine id by template id, for the pack's goal draft: a routine kept because the name already existed is found by name.
+    const byName = new Map((await tx.select({ id: schema.schedules.id, name: schema.schedules.name }).from(schema.schedules)
+      .where(and(eq(schema.schedules.userId, user.id), eq(schema.schedules.active, true), eq(schema.schedules.kind, 'routine')))).map((r) => [r.name.toLowerCase(), r.id]))
+    const routineIds = new Map<string, string>()
     let added = 0
     for (const t of [...TEMPLATES, ...(input.generated ?? [])]) {
       if (!input.templates?.includes(t.id) || !areas.includes(t.area) || existing.has(t.name.toLowerCase())) continue
       existing.add(t.name.toLowerCase())
       const trackerSlug = t.quantity ? slugify(t.name) : undefined
-      await tx.insert(schema.schedules).values({
+      const [row] = await tx.insert(schema.schedules).values({
         userId: user.id, name: t.name, kind: t.kind, category: t.area,
         rrule: buildRRule({ ...t.rule, start: today }),
         target: t.quantity ? input.waterMl ?? null : null, unit: t.quantity?.unit ?? null,
         meta: Object.fromEntries(Object.entries({ notes: t.note, dose: t.dose, doseCount: t.dose ? 1 : undefined, trackerSlug, step: t.quantity?.step })
           .filter(([, v]) => v !== undefined)),
-      })
+      }).returning({ id: schema.schedules.id })
+      routineIds.set(t.id, row.id)
       added++
     }
+    if (input.pack) await insertPackGoalDraft(tx, user, input.pack, routineIds, byName, today)
     return { added, fresh }
   })
 

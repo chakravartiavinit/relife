@@ -47,7 +47,17 @@ test('export, wipe and import round trip on the mock database', { skip: !enabled
   const originalSignIn = user.profile.requireSignIn
   await sql`update connections set secrets_encrypted = ${encrypt({ GITHUB_TOKEN: 'tok-secret-1', GITHUB_USER: 'octo-test' })} where user_id = ${user.id} and connector_id = 'github'`
   await sql`update users set profile = profile || '{"requireSignIn": true}'::jsonb where id = ${user.id}`
-  for (const d of ['browser/shop', 'library', 'coins']) { mkdirSync(join(dataDir, d), { recursive: true }); writeFileSync(join(dataDir, d, 'x'), 'x') }
+  // A bank row linked to the order it paid for, the id that sorts first pointing at the one that sorts last: an import that inserted rows
+  // in id order, in one pass, would hit the self-reference before the order exists. Plus one finished import and its upload on disk.
+  await sql`delete from transactions where id in ('00000000-0000-4000-8000-0000000000b1', 'ffffffff-0000-4000-8000-0000000000f1')` // left by a run that stopped early
+  const orderId = 'ffffffff-0000-4000-8000-0000000000f1'
+  const bankId = '00000000-0000-4000-8000-0000000000b1'
+  await sql`insert into transactions (id, user_id, at, local_date, amount, currency, merchant, category, source, external_ref)
+    values (${orderId}, ${user.id}, now(), current_date, -250, 'INR', 'Link test shop', 'Food', 'swiggy', 'link-test-order')`
+  await sql`insert into transactions (id, user_id, at, local_date, amount, currency, merchant, category, source, external_ref, linked_to)
+    values (${bankId}, ${user.id}, now(), current_date, -250, 'INR', 'LINK TEST SHOP UPI', 'Food', 'statement', 'link-test-bank', ${orderId})`
+  await sql`insert into imports (user_id, kind, file_name, size_bytes, received_bytes, status) values (${user.id}, 'statement', 'link-test.csv', 10, 10, 'done')`
+  for (const d of ['browser/shop', 'library', 'coins', 'imports/some-id']) { mkdirSync(join(dataDir, d), { recursive: true }); writeFileSync(join(dataDir, d, 'x'), 'x') }
 
   const manifestOf = async () => {
     const parts: Uint8Array[] = []
@@ -55,6 +65,8 @@ test('export, wipe and import round trip on the mock database', { skip: !enabled
     return Buffer.concat(parts)
   }
   t.after(async () => {
+    await sql`delete from transactions where id in (${bankId}, ${orderId})`
+    await sql`delete from imports where file_name = 'link-test.csv'`
     await sql`delete from devices where id = ${deviceId}`
     if (before) await sql`update connections set secrets_encrypted = ${before.secrets_encrypted} where connector_id = 'github'`
     await sql`update users set profile = case when ${originalSignIn === undefined} then profile - 'requireSignIn' else profile || ${JSON.stringify({ requireSignIn: originalSignIn })}::jsonb end`
@@ -62,7 +74,7 @@ test('export, wipe and import round trip on the mock database', { skip: !enabled
     await sql.end()
   })
 
-  const digest = async (uid: string) => Object.fromEntries(await Promise.all(['entries', 'transactions', 'trades', 'raw_events', 'goals', 'xp_events', 'schedules', 'checks'].map(async (n) => [n,
+  const digest = async (uid: string) => Object.fromEntries(await Promise.all(['entries', 'transactions', 'trades', 'raw_events', 'goals', 'xp_events', 'schedules', 'checks', 'imports'].map(async (n) => [n,
     (await sql.unsafe(`select md5(coalesce(string_agg(to_jsonb(t)::text, '' order by id), '')) as h from "${n}" t ${n === 'checks' ? whereOf['via-schedule'] : whereOf.user}`, [uid]))[0].h])))
   const hashes = await digest(user.id)
 
@@ -115,6 +127,7 @@ test('export, wipe and import round trip on the mock database', { skip: !enabled
   assert.equal(fresh.profile.onboardedAt, undefined)
   assert.equal(existsSync(join(dataDir, 'browser')), false)
   assert.equal(existsSync(join(dataDir, 'library')), false)
+  assert.equal(existsSync(join(dataDir, 'imports')), false, 'uploaded import files go too')
   assert.equal(existsSync(join(dataDir, 'coins', 'x')), true, 'public coin logos stay')
 
   // 3. Import into the now empty install.
@@ -128,6 +141,9 @@ test('export, wipe and import round trip on the mock database', { skip: !enabled
   assert.equal(back.id, user.id, 'the exported user id is back')
   assert.deepEqual(await counts(back.id), live)
   assert.deepEqual(await digest(back.id), hashes, 'every row comes back exactly')
+  const [link] = await sql`select linked_to from transactions where id = ${bankId}`
+  assert.equal(link.linked_to, orderId, 'the bank row is linked to its order again')
+  assert.ok(live.imports >= 1 && (await sql`select 1 from imports where user_id = ${user.id} and file_name = 'link-test.csv'`).length === 1, 'the import history is back')
   const [moved] = await sql`select user_id from devices where id = ${deviceId}`
   assert.equal(moved.user_id, user.id, 'the paired device follows the imported user')
   assert.equal(await pushRows(), 0, 'an import brings no push subscriptions back')

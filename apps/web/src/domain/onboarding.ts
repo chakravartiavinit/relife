@@ -28,19 +28,21 @@ const rank = (c: Source) => EFFORT[connectHow(c)] + (c.connected ? 10 : 0)
  * The sources Connect offers for the picked areas: the cheapest first (a username, then a key, then the ones that
  * need a sign-in), spread across the areas so one area does not take every row, then Telegram last for reminders.
  * Already connected ones sink, so a row is never spent on what is done, and the rows read easiest to hardest.
+ * `prefer` (a starter pack's sources) goes first, in its own order, for the ids that exist; the rest fill in as above.
  */
-export function pickSources<T extends Source>(items: T[], areas: string[], max = MAX_SOURCES): T[] {
+export function pickSources<T extends Source>(items: T[], areas: string[], max = MAX_SOURCES, prefer: string[] = []): T[] {
   const telegram = items.find((c) => c.id === 'telegram')
   const room = telegram ? max - 1 : max
-  const lanes = areas.map((a) => items.filter((c) => c.section !== 'ai' && c.section !== 'messaging' && c.category === a)
+  const first = prefer.flatMap((id) => items.filter((c) => c.id === id && c.id !== 'telegram' && c.section !== 'ai' && c.section !== 'messaging')).slice(0, room)
+  const lanes = areas.map((a) => items.filter((c) => c.section !== 'ai' && c.section !== 'messaging' && c.category === a && !first.includes(c))
     .sort((x, y) => rank(x) - rank(y) || x.name.localeCompare(y.name)))
   const out: T[] = []
-  for (let k = 0; out.length < room && lanes.some((l) => k < l.length); k++) {
-    for (const l of lanes) if (k < l.length && out.length < room) out.push(l[k])
+  for (let k = 0; first.length + out.length < room && lanes.some((l) => k < l.length); k++) {
+    for (const l of lanes) if (k < l.length && first.length + out.length < room) out.push(l[k])
   }
   // Easiest on top, like the draw: a username box, then a key, then what waits for later.
   out.sort((x, y) => rank(x) - rank(y))
-  return telegram ? [...out, telegram] : out
+  return telegram ? [...first, ...out, telegram] : [...first, ...out]
 }
 
 /** The suggested routines that start ticked: the first few, for the picked areas, that the user does not have yet. */

@@ -8,6 +8,9 @@ import { Skeleton } from '@/ui/components/card'
 import { ConnectorMarket } from '@/ui/components/connector-market'
 import { loadConnectorItems } from '@/core/connector-items'
 import { requestOrigin } from '@/core/auth/trust'
+import { env } from '@/core/env'
+import { listImports } from '@/core/imports'
+import { DEMO_MESSAGE, isDemo } from '@/core/demo'
 
 export const metadata: Metadata = { title: 'Connections' }
 
@@ -40,5 +43,8 @@ async function Connections() {
   const user = await getUser() // also applies connected keys to process.env
   // The address the service sends you back to: the one this page was opened on (127.0.0.1:3030 by default).
   const { items, worker } = await loadConnectorItems(user, requestOrigin(await headers()))
-  return <ConnectorMarket items={items} worker={worker} areas={user.profile.areas} />
+  const imports = (await listImports(user)).map((i) => ({
+    id: i.id, kind: i.kind, fileName: i.fileName, status: i.status as 'queued' | 'running' | 'done' | 'failed' | 'undone', summary: i.summary, error: i.error, at: (i.finishedAt ?? i.createdAt).toISOString(),
+  }))
+  return <ConnectorMarket items={items} worker={worker} areas={user.profile.areas} imports={imports} zipMaxMb={Math.max(1, Number(env('RELIFE_IMPORT_MAX_MB')) || 2048)} locked={isDemo() ? DEMO_MESSAGE : undefined} />
 }

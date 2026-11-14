@@ -149,6 +149,7 @@ Compose reads `.env` for itself, and passes it on to the containers, so connecto
 | `RELIFE_TIMEZONE`, `RELIFE_BASE_CURRENCY`, `RELIFE_USER_NAME` | `Asia/Kolkata`, `INR`, `Me` | Used once, when the first user is created. |
 | `RELIFE_LOCAL_AI_MODEL` | `qwen3:4b-instruct` | The model the `ai` profile downloads. |
 | `LLM_DEFAULT` | empty | The model ReLife uses, `provider:model` (`local:qwen3:4b-instruct`, `anthropic:...`). |
+| `RELIFE_IMPORT_MAX_MB` | `2048` | The biggest ZIP (Apple Health, Google Takeout) You › Connections › Import a file accepts. It reaches `web` and `worker` through `.env`; restart them after changing it. |
 | `RELIFE_IMAGE` | `relife:local` | The name given to the image you build. |
 | `RELIFE_PG_PORT` | `5442` | The host port of Postgres (`127.0.0.1` only). |
 
@@ -169,6 +170,17 @@ LLM_DEFAULT=local:qwen3:4b-instruct
 `docker compose exec web node -e "fetch('http://127.0.0.1:3030/api/health').then(r=>r.json()).then(console.log)"`)
 shows `localAi`, and when the server is down it says so. To use another model, set `RELIFE_LOCAL_AI_MODEL` and
 `LLM_DEFAULT=local:<that model>`.
+
+## Importing files
+
+Import a file (You › Connections) works in the container as it does on a Mac. The upload is written to
+`/data/imports/<id>/` in the `relife-data` volume, read by the `web` and `worker` containers, and deleted when the
+import finishes, fails or is cancelled (**Delete everything** removes any that are left). ReLife needs about 10% more
+free space than the file while it works, so a 2 GB Health export wants about 2.3 GB free on the volume's disk.
+`RELIFE_IMPORT_MAX_MB` in `.env` sets the size limit. The file goes up in 8 MB pieces: a reverse proxy in front of
+ReLife must allow request bodies of at least 9 MB (nginx: `client_max_body_size 16m;`; Caddy needs nothing). Backups
+and exports do not include uploaded files (they are temporary), but they do include the history of what each import
+added, so **Undo** keeps working after a restore. The read-only demo has no import: the button says "Demo: changes are off".
 
 ## What does not work in Docker
 
@@ -208,7 +220,7 @@ Old databases are safe: `migrate` applies only the migrations that are missing. 
 
 ReLife writes a backup every night at 03:30 (the worker does it) and keeps the last 7, plus the newest of each of the 4
 weeks before them. Each backup is one `.tar.gz` in the `relife-backups` volume (`/backups`, `RELIFE_BACKUP_DIR`): the
-database (`pg_dump`, PostgreSQL 16 client tools are in the image) plus `secret.key`, `vapid.json` (the push keys) and the library pictures. It is
+database (`pg_dump`, PostgreSQL 16 client tools are in the image) plus `secret.key`, `vapid.json` (the push keys) and the library pictures (not files still being imported: `/data/imports` is temporary). It is
 exact, so it holds the key that opens your saved connector keys. Set `RELIFE_BACKUP_PASSPHRASE` in `.env` to encrypt
 every backup (AES-256-GCM; a lost passphrase is a lost backup). `RELIFE_BACKUP_KEEP` changes how many are kept (`0`
 turns backups off).

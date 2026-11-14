@@ -1,0 +1,25 @@
+{
+  "format": "relife.pack",
+  "version": 1,
+  "id": "fitness-example",
+  "name": "Fitness example",
+  "description": "A weekly workout, a daily walk and a goal draft with a check-in measure.",
+  "author": "Example Author",
+  "homepage": "https://example.com/packs/fitness",
+  "areas": ["health", "mind"],
+  "improve": ["tracker:steps"],
+  "routines": [
+    { "key": "workout", "name": "Workout", "area": "health", "kind": "routine", "rule": { "freq": "weekly", "times": ["07:00"], "byweekday": ["MO", "WE", "FR"] }, "note": "Anything that raises your heart rate" },
+    { "key": "water", "name": "Drink water", "area": "health", "kind": "routine", "rule": { "freq": "daily", "times": ["10:00", "13:00", "16:00", "19:00"] }, "quantity": { "unit": "ml", "step": 250, "target": 2500 } },
+    { "key": "vitamin", "name": "Vitamin D3", "area": "health", "kind": "medicine", "rule": { "freq": "monthly", "times": ["09:00"], "bymonthday": 1, "interval": 1 }, "dose": "as prescribed" }
+  ],
+  "trackers": [
+    { "slug": "pushups", "name": "Push-ups", "area": "health", "kind": "number", "unit": "reps", "target": 30, "direction": "up", "aggregate": "sum" },
+    { "slug": "stretched", "name": "Stretched", "area": "health", "kind": "bool" }
+  ],
+  "goals": [
+    { "key": "workouts", "title": "Work out three times a week", "reason": "A steady habit first, then more.", "area": "health", "measure": { "checkIn": "Steps taken on workout days", "unit": "steps" }, "direction": "up", "target": 8000, "weeks": 8, "cadence": "weekly", "actions": ["workout", "pushups"] }
+  ],
+  "targets": { "sleepHours": 7.5, "steps": 10000 },
+  "sources": ["strava", "hevy"]
+}

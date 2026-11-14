@@ -60,9 +60,9 @@ const STATUS: Record<Kind, ToastStatus> = { good: 'success', bad: 'error', neutr
 
 /**
  * Bottom right on a laptop, in line with the page's right edge and clear of the content and the Settings save
- * bar; on a phone, centred above the tab bar.
+ * bar, or left of the side panel while one is open (`data-sheet-open` on <html>, set by sheet.tsx: 440px + its 12px margin + 16px); on a phone, centred above the tab bar.
  */
-const STACK_CLASS = 'bottom-[calc(var(--tabbar-h)+16px)] w-[min(380px,calc(100vw-24px))] max-w-none lg:right-[calc(max(0px,(100vw_-_1480px)/2)_+_2.5rem)] lg:bottom-8 lg:left-auto lg:translate-x-0'
+const STACK_CLASS = 'bottom-[calc(var(--tabbar-h)+16px)] w-[min(380px,calc(100vw-24px))] max-w-none lg:right-[calc(max(0px,(100vw_-_1480px)/2)_+_2.5rem)] lg:bottom-8 lg:left-auto lg:translate-x-0 lg:[html[data-sheet-open]_&]:right-[29.25rem]'
 
 /**
  * `demo` (the read-only demo, RELIFE_DEMO=1) turns every "bad" toast into one wording, "Demo: changes are off", and

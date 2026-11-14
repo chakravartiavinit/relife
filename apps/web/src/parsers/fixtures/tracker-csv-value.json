@@ -1,0 +1,34 @@
+{
+  "note": "Fixture: one value from a tracker CSV import.",
+  "event": {
+    "source": "tracker-csv",
+    "externalId": "day:2024-01-01:pages-read",
+    "at": "2024-01-01T06:30:00.000Z",
+    "body": {
+      "importId": "imp-1",
+      "date": "2024-01-01",
+      "slug": "pages-read",
+      "value": 12,
+      "unit": "pages",
+      "note": "chapter 3"
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "tracker": "pages-read",
+      "date": "2024-01-01",
+      "value": 12,
+      "source": "csv",
+      "mode": "fill",
+      "verified": false,
+      "note": "chapter 3",
+      "meta": {
+        "importId": "imp-1"
+      },
+      "defaults": {
+        "unit": "pages"
+      }
+    }
+  ]
+}

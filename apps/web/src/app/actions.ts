@@ -1,12 +1,15 @@
 'use server'
 
+import type { ImportMapping } from '@/domain/imports'
 import brand from '@relife/brand/brand.json'
 import { and, eq, inArray, sql } from 'drizzle-orm'
 import { refresh } from 'next/cache'
+import { after } from 'next/server'
 import { z } from 'zod'
 import { db, schema } from '@/db'
 import { CATEGORIES } from '@/db/schema'
 import { getUser, mergeProfile, profileMerge } from '@/core/user'
+import { setTransactionLink as setLink } from '@/core/statement-link'
 import { recategorizeTxns, undoRecategorizeTxns, type RecategorizeUndo } from '@/core/recategorize'
 import { addGoalProgress, setCheck, undoLastGoalStep } from '@/core/schedules'
 import { applyQuickLogWithUndo, parseQuickLog, slugify, undoQuickLogWrite } from '@/core/quicklog'
@@ -331,6 +334,18 @@ const recategorizeUndo = z.object({
 export async function undoRecategorize(undo: RecategorizeUndo) {
   await undoRecategorizeTxns(await getUser(), recategorizeUndo.parse(undo))
   refresh()
+}
+
+/**
+ * Links a bank row to an app order by hand, or with `null` unlinks it for good ("Not the same payment").
+ * Returns the order it was linked to, so the caller can offer Undo with it.
+ */
+export async function setTransactionLink(id: string, orderId: string | null): Promise<{ before: string | null }> {
+  idArg.parse(id)
+  idArg.nullable().parse(orderId)
+  const out = await setLink(await getUser(), id, orderId)
+  refresh()
+  return out
 }
 
 /** Re-read raw messages. Returns how they came out, so the Inbox can say "Saved" or "Still waiting". */
@@ -700,7 +715,7 @@ const onboardingInput = z.object({
   name: z.string().trim().min(1, 'Add your name').max(60),
   timezone: z.string().trim().refine((tz) => { try { new Intl.DateTimeFormat('en', { timeZone: tz }); return true } catch { return false } }, 'Pick a time zone from the list'),
   baseCurrency: z.string().trim().toUpperCase().refine((c) => Intl.supportedValuesOf('currency').includes(c), 'Use a currency code like INR or USD'),
-  areas: z.array(z.enum(CATEGORIES)).min(1, 'Pick at least one area'),
+  areas: z.array(z.enum(CATEGORIES)).min(1, 'Pick at least one area').optional(),
   focus: z.enum(CATEGORIES).optional(),
   // Setup asks for the fields above and `improve`. The rest is optional: left out, it keeps its saved value.
   templates: z.array(z.string().max(40)).max(40).optional(),
@@ -721,6 +736,7 @@ const onboardingInput = z.object({
   wake: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Pick a wake-up time').optional(),
   sleep: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Pick a bedtime').optional(),
   improve: z.array(z.string().max(80)).max(3).default([]),
+  pack: z.string().max(40).optional(),
   tone: z.enum(['gentle', 'balanced', 'blunt']).optional(),
 })
 
@@ -765,11 +781,58 @@ export async function suggestOnboardingRoutines(input: { prompt: string; areas: 
   }
 }
 
-/** Whether a model is connected, for the routines step (it can connect one inline). */
+/** Whether a model is connected, for the routines step (it can connect one inline). `local`: how the free local AI answers, when it is the chosen model. */
 export async function aiReady() {
   await getUser() // loads saved keys
   const { aiEnabled, modelId } = await import('@/ai')
-  return { ready: aiEnabled('plan'), model: modelId('plan') ?? null }
+  const { localAiStatus } = await import('@/ai/local')
+  const local = await localAiStatus('plan')
+  // Only the state and the fix: not the server's URL or its model list.
+  return { ready: aiEnabled('plan') && (local.state === 'not-local' || local.state === 'ok'), model: modelId('plan') ?? null, local: { state: local.state, message: local.state === 'down' || local.state === 'no-model' ? local.message : undefined } }
+}
+
+/** What setup's AI step and Coach show about the free local AI. */
+export type LocalAiResult = { ok: true; state: 'ok' | 'down' | 'no-model'; model: string; url: string; ms: number; message?: string } | { ok: false; error: string }
+
+/**
+ * "Use free local AI": point the `local` provider at the server (the Compose `ollama` service or Ollama on this machine)
+ * with the model it has (RELIFE_LOCAL_AI_MODEL, else the first one listed). When nothing answers it still saves, so a model
+ * that is still downloading works as soon as it is there, and says how to start it.
+ */
+export async function chooseLocalAi(): Promise<LocalAiResult> {
+  const user = await getUser()
+  const { DEFAULT_LOCAL_URL, localAiStatus, planLocalAi } = await import('@/ai/local')
+  const plan = await planLocalAi()
+  // A local model that is already chosen stays: this only runs again to point at the server, never to swap the model.
+  const { modelId } = await import('@/ai')
+  const current = modelId('chat')
+  const model = current?.startsWith('local:') ? current.slice('local:'.length) : plan.model
+  const { connect } = await import('@/core/secrets')
+  const r = await connect(user.id, 'local', { LOCAL_LLM_URL: plan.url === DEFAULT_LOCAL_URL ? '' : plan.url, LLM_DEFAULT: `local:${model}` })
+  if (!r.ok) return { ok: false, error: r.error }
+  const { clearUserCache } = await import('@/core/user')
+  clearUserCache()
+  await getUser() // loads the key just saved
+  const s = await localAiStatus('chat', { fresh: true })
+  refresh()
+  return s.state === 'not-local' ? { ok: false, error: 'Another model is set for chat in .env (LLM_CHAT).' } : { ok: true, state: s.state, model: s.model, url: s.url, ms: s.ms, message: s.message }
+}
+
+/** Setup's AI step: how the free local AI would answer, before anything is saved. */
+export async function checkLocalAi(): Promise<LocalAiResult> {
+  await getUser()
+  const { planLocalAi } = await import('@/ai/local')
+  const p = await planLocalAi()
+  return { ok: true, state: p.state, model: p.model, url: p.url, ms: p.ms, message: p.message }
+}
+
+/** "Check again": asks the local server now instead of using the last answer. */
+export async function recheckLocalAi(): Promise<LocalAiResult> {
+  await getUser()
+  const { localAiStatus } = await import('@/ai/local')
+  const s = await localAiStatus('chat', { fresh: true })
+  refresh()
+  return s.state === 'not-local' ? { ok: false, error: 'Local AI isn’t the chat model.' } : { ok: true, state: s.state, model: s.model, url: s.url, ms: s.ms, message: s.message }
 }
 
 /** Today → Finish setting up → Hide: the checklist stays away for good. */
@@ -948,4 +1011,81 @@ export async function dismissGoalDraftAction(insightId: string) {
     .where(and(eq(schema.insights.id, insightId), eq(schema.insights.userId, user.id), eq(schema.insights.status, 'pending'), sql`${schema.insights.payload} ? 'goalDraft'`))
   refresh()
   return { ok: true as const }
+}
+
+// ---- File imports (You → Connections → Import a file). Thin wrappers over src/core/imports. Errors the user can act
+// on (a file over the limit, a bad mapping) come back as `{ ok: false, error }`: a thrown error is hidden in production.
+
+const importKind = z.enum(['statement', 'apple-health', 'takeout', 'tracker-csv'])
+
+export async function createImportAction(input: { kind: string; fileName: string; size: number }) {
+  const v = z.object({ kind: importKind, fileName: z.string().trim().min(1).max(200), size: z.number().int().positive() }).safeParse(input)
+  if (!v.success) return { ok: false as const, error: 'That file could not be added.' }
+  try {
+    const { createImport } = await import('@/core/imports')
+    return { ok: true as const, ...(await createImport(await getUser(), v.data)) }
+  } catch (e) {
+    return { ok: false as const, error: e instanceof Error ? e.message : 'That file could not be added.' }
+  }
+}
+
+/** All bytes arrived: mark the upload done and read it (CSV columns, or what the zip holds). */
+export async function finishUploadAction(id: string) {
+  idArg.parse(id)
+  const { finishUpload } = await import('@/core/imports')
+  return finishUpload(await getUser(), id)
+}
+
+/** The preview again with the user's own column choice (CSV kinds). */
+export async function previewImportAction(id: string, mapping: unknown) {
+  idArg.parse(id)
+  const { previewImport } = await import('@/core/imports')
+  // The mapping comes from the browser: it is checked here. A half-typed one (a two-letter currency) keeps the last preview.
+  let m: ImportMapping | null = null
+  if (mapping != null) {
+    const kind = (mapping as { kind?: unknown }).kind
+    const { statementMapping } = await import('@/core/imports/statement')
+    const { trackerCsvMapping } = await import('@/core/imports/tracker-csv')
+    const parsed = kind === 'statement' ? statementMapping.safeParse(mapping) : kind === 'tracker-csv' ? trackerCsvMapping.safeParse(mapping) : null
+    if (!parsed?.success) return { ok: false as const, error: 'Check the column choices.' }
+    m = parsed.data as ImportMapping
+  }
+  return previewImport(await getUser(), id, m)
+}
+
+export async function startImportAction(id: string, mapping?: unknown) {
+  idArg.parse(id)
+  try {
+    const { startImport } = await import('@/core/imports')
+    await startImport(await getUser(), id, mapping)
+  } catch (e) {
+    return { ok: false as const, error: e instanceof z.ZodError ? (e.issues[0]?.message ?? 'Check the column choices.') : e instanceof Error ? e.message : 'The import could not start.' }
+  }
+  // Runs here too, so an import works without a worker (dev:mock). The job lease stops a second run.
+  after(async () => { try { await (await import('@/jobs')).runNow('import') } catch (e) { console.error('[import]', e instanceof Error ? e.message : e) } })
+  return { ok: true as const }
+}
+
+export async function importStatusAction(id: string) {
+  idArg.parse(id)
+  const { importStatus } = await import('@/core/imports')
+  return importStatus(await getUser(), id)
+}
+
+export async function cancelImportAction(id: string) {
+  idArg.parse(id)
+  const { cancelImport } = await import('@/core/imports')
+  await cancelImport(await getUser(), id)
+}
+
+export async function undoImportAction(id: string) {
+  idArg.parse(id)
+  try {
+    const { undoImport } = await import('@/core/imports')
+    const r = await undoImport(await getUser(), id)
+    refresh()
+    return { ok: true as const, ...r }
+  } catch (e) {
+    return { ok: false as const, error: e instanceof Error ? e.message : 'Could not remove this import.' }
+  }
 }

@@ -1,0 +1,102 @@
+{
+  "format": "relife.pack",
+  "version": 1,
+  "id": "recovery",
+  "name": "Recovery",
+  "description": "Rest and reset: calmer evenings, a fixed lights-out, daylight and a call home. A gentle week to build from.",
+  "areas": [
+    "health",
+    "mind",
+    "relationships"
+  ],
+  "improve": [
+    "tracker:sleep.hours",
+    "tracker:screen.social",
+    "routines"
+  ],
+  "routines": [
+    {
+      "key": "wind-down",
+      "name": "Wind down",
+      "area": "mind",
+      "kind": "routine",
+      "rule": {
+        "freq": "daily",
+        "times": [
+          "21:45"
+        ]
+      },
+      "note": "Screens off, lights low"
+    },
+    {
+      "key": "lights-out",
+      "name": "Lights out",
+      "area": "health",
+      "kind": "routine",
+      "rule": {
+        "freq": "daily",
+        "times": [
+          "23:00"
+        ]
+      }
+    },
+    {
+      "key": "daylight-walk",
+      "name": "Daylight walk",
+      "area": "health",
+      "kind": "routine",
+      "rule": {
+        "freq": "daily",
+        "times": [
+          "08:30"
+        ]
+      },
+      "note": "Ten minutes outside"
+    },
+    {
+      "key": "call-parents",
+      "name": "Call parents",
+      "area": "relationships",
+      "kind": "routine",
+      "rule": {
+        "freq": "weekly",
+        "times": [
+          "18:00"
+        ],
+        "byweekday": [
+          "WE",
+          "SU"
+        ]
+      }
+    }
+  ],
+  "trackers": [],
+  "goals": [
+    {
+      "key": "screens-off",
+      "title": "Screens off by 22:00, five evenings a week",
+      "reason": "A calmer evening makes the next day easier.",
+      "area": "mind",
+      "measure": {
+        "checkIn": "Evenings with screens off by 22:00",
+        "unit": "evenings"
+      },
+      "direction": "up",
+      "target": 5,
+      "weeks": 6,
+      "cadence": "weekly",
+      "actions": [
+        "wind-down"
+      ]
+    }
+  ],
+  "targets": {
+    "sleepHours": 8,
+    "steps": 6000
+  },
+  "sources": [
+    "oura",
+    "whoop",
+    "lastfm"
+  ]
+}

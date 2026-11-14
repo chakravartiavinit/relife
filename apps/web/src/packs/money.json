@@ -1,0 +1,99 @@
+{
+  "format": "relife.pack",
+  "version": 1,
+  "id": "money",
+  "name": "Money",
+  "description": "See where your money goes: a weekly budget review, daily spend logging, a monthly saving move and a no-spend day.",
+  "areas": [
+    "wealth"
+  ],
+  "improve": [
+    "spend",
+    "spend:apps",
+    "orders:late"
+  ],
+  "routines": [
+    {
+      "key": "budget",
+      "name": "Review budget",
+      "area": "wealth",
+      "kind": "routine",
+      "rule": {
+        "freq": "weekly",
+        "times": [
+          "10:00"
+        ],
+        "byweekday": [
+          "SU"
+        ]
+      }
+    },
+    {
+      "key": "log-spends",
+      "name": "Log today’s spends",
+      "area": "wealth",
+      "kind": "routine",
+      "rule": {
+        "freq": "daily",
+        "times": [
+          "21:00"
+        ]
+      }
+    },
+    {
+      "key": "save",
+      "name": "Move money to savings",
+      "area": "wealth",
+      "kind": "routine",
+      "rule": {
+        "freq": "monthly",
+        "times": [
+          "10:00"
+        ],
+        "bymonthday": 1
+      }
+    },
+    {
+      "key": "no-spend-day",
+      "name": "No-spend day",
+      "area": "wealth",
+      "kind": "routine",
+      "rule": {
+        "freq": "weekly",
+        "times": [
+          "21:00"
+        ],
+        "byweekday": [
+          "WE"
+        ]
+      },
+      "note": "Nothing bought today"
+    }
+  ],
+  "trackers": [],
+  "goals": [
+    {
+      "key": "fewer-orders",
+      "title": "Two delivery orders a week or fewer",
+      "reason": "Fewer orders, a lighter month. Count them once a week.",
+      "area": "wealth",
+      "measure": {
+        "checkIn": "Delivery orders per week",
+        "unit": "orders"
+      },
+      "direction": "down",
+      "target": 2,
+      "weeks": 8,
+      "cadence": "weekly",
+      "actions": [
+        "log-spends"
+      ]
+    }
+  ],
+  "sources": [
+    "swiggy",
+    "zomato",
+    "amazon",
+    "binance"
+  ]
+}

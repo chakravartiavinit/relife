@@ -7,7 +7,7 @@ import { Suspense } from 'react'
 import { ChartColumn, ChartPie, ChevronLeft, ChevronRight, HandCoins, ReceiptText } from 'lucide-react'
 import { getUser } from '@/core/user'
 import { SPEND_CATEGORIES } from '@/core/categorize'
-import { transactionsBetween, isSpend } from '@/core/metrics'
+import { transactionsBetween, isSpend, linkedRowCount, linkedRows } from '@/core/metrics'
 import { formatDay, formatTime, localDate, localHour } from '@/core/time'
 import { formatMoney } from '@/domain/money'
 import { fillDays } from '@/domain/series'
@@ -16,6 +16,7 @@ import { Badge, Card, CardHeader, Skeleton, Stat } from '@/ui/components/card'
 import { DailyBars, RankedBars } from '@/ui/components/charts'
 import { EmptyState } from '@/ui/components/empty'
 import { buttonClass } from '@/ui/components/button'
+import { PeekLink } from '@/ui/components/peek/peek-link'
 import { CategorySelect } from '@/ui/components/wealth/category-select'
 import { cn } from '@/ui/cn'
 import { Ticker } from '@/ui/components/ticker'
@@ -42,7 +43,8 @@ async function Spending({ searchParams }: { searchParams: PageProps<'/wealth/spe
   const [from, monthEnd] = monthRange(m)
   const to = m === current ? today : monthEnd
 
-  const [txns, basket] = await Promise.all([transactionsBetween(user, from, to), loadBasket(user, m)])
+  const [txns, basket, linked] = await Promise.all([transactionsBetween(user, from, to), loadBasket(user, m), linkedRowCount(user, from, to)])
+  const linkedList = linked ? await linkedRows(user, from, to) : []
   const spend = txns.filter(isSpend)
   const spent = spend.reduce((s, t) => s - t.base, 0)
   const income = txns.filter((t) => t.base > 0 && t.category !== 'Transfers').reduce((s, t) => s + t.base, 0)
@@ -109,6 +111,26 @@ async function Spending({ searchParams }: { searchParams: PageProps<'/wealth/spe
               <Stat label="Daily average" value={<Ticker value={days ? spent / days : 0} currency={base} />} sub={`over ${days} days`} />
               <Stat label="Quick commerce" value={`${spent ? Math.round((quickTotal / spent) * 100) : 0}%`} sub={formatMoney(quickTotal, base)} />
             </div>
+            {linked ? (
+              <details className="group mt-4 text-caption text-ink-3">
+                <summary className="inline-flex min-h-10 cursor-pointer list-none items-center gap-1 rounded-xs text-ink-3 hover:text-ink focus-visible:outline-2 focus-visible:outline-pill [&::-webkit-details-marker]:hidden">
+                  {linked} bank row{linked === 1 ? '' : 's'} matched app orders and {linked === 1 ? 'is' : 'are'} counted once.
+                  <span className="font-medium text-pill-ink group-open:hidden">Show</span>
+                  <span className="hidden font-medium text-pill-ink group-open:inline">Hide</span>
+                </summary>
+                <ul className="mt-2 divide-y divide-divider rounded-md bg-surface-2/50">
+                  {linkedList.map((r) => (
+                    <li key={r.id}>
+                      <PeekLink to={{ type: 'txn', id: r.id }} className="flex min-h-11 items-center justify-between gap-3 px-3 text-small text-ink hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-pill">
+                        <span className="min-w-0 truncate"><span className="text-ink-3 tabular-nums">{formatDay(r.localDate, { day: 'numeric', month: 'short' })}</span> · {r.description ?? r.merchant ?? 'Bank row'}</span>
+                        <span className="shrink-0 tabular-nums">{formatMoney(r.amount, r.currency, { decimals: 0 })}</span>
+                      </PeekLink>
+                    </li>
+                  ))}
+                </ul>
+                {linked > linkedList.length ? <p className="mt-1">Showing the newest {linkedList.length}.</p> : null}
+              </details>
+            ) : null}
             {lateNight.length || small.length ? (
               <div className="mt-5 flex flex-wrap gap-2 border-t border-divider pt-4">
                 {lateNight.length ? (

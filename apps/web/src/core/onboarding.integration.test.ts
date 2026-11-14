@@ -55,6 +55,16 @@ test('profile writes merge keys, and setup is one locked step that a double subm
     assert.equal(await count(schema.xpEvents), 1)
     assert.equal(await count(schema.schedules), 2)
 
+    // Setup run again without areas (the picks were not changed): the saved areas and focus stay, and routines still follow them.
+    const { areas: _areas, ...noAreas } = input
+    await mergeProfile(user.id, { areas: ['health', 'mind', 'skills'], focus: 'skills' })
+    await completeOnboarding(stale, { ...noAreas, templates: ['water'] }, now)
+    p = (await saved()).profile as Record<string, unknown>
+    assert.deepEqual([p.areas, p.focus], [['health', 'mind', 'skills'], 'skills'])
+    // Areas sent, they replace the saved ones.
+    await completeOnboarding(stale, { ...input, areas: ['health'] }, now)
+    assert.deepEqual(((await saved()).profile as Record<string, unknown>).areas, ['health'])
+
     // Skipping touches only onboardedAt.
     const later = new Date('2026-11-14T06:00:00.000Z')
     await skipOnboarding(stale, later)

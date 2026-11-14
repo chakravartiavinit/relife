@@ -35,7 +35,10 @@ export const TABLES: Rule[] = [
   user('insights'),
   user('accounts'),
   user('entries', 'entries'),
-  user('transactions', 'transactions'),
+  // linked_to pairs a bank row with the order it paid for: inserted as null first, then filled in (selfRef).
+  { name: 'transactions', export: { where: 'user', csv: 'transactions' }, wipe: 'cascade', selfRef: ['linked_to'] },
+  // The history of imports (what each file added), so Undo still finds its rows after a restore. The uploaded files are never kept.
+  user('imports'),
   user('merchant_rules'),
   user('trades', 'trades'),
   user('crypto_flows'),

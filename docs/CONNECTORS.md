@@ -10,6 +10,9 @@ leave blank. Before saving, most connectors make one quick request to test the k
 typo shows in the dialog instead of as a failing sync later (network trouble doesn't block saving).
 Disconnect forgets the keys but keeps sync progress. Every sync is safe to repeat: events carry stable ids.
 
+History that no connector can fetch (a bank statement CSV, an Apple Health export, a Google Takeout) comes in through
+**Import a file** on the same page: see [IMPORTS.md](IMPORTS.md).
+
 | Connector | Keys (dialog fields or `.env`) | Runs every | What it records |
 |---|---|---|---|
 | iPhone inbox | `ICLOUD_INBOX_PATH` (optional) | 1 min | Steps, health metrics, sleep |

@@ -1,4 +1,5 @@
 import { and, eq } from 'drizzle-orm'
+import { orderLabel } from '../imports/statement'
 import { db, schema } from '@/db'
 import { ruleMatches } from '@/domain/merchant-rule'
 import { SPEND_CATEGORIES } from '../categorize'
@@ -31,6 +32,11 @@ export async function loadTxnPeek(user: User, id: string): Promise<TxnPeek | nul
     convert(t.amount, t.currency, user.baseCurrency, t.localDate),
   ])
   const meta = (t.meta ?? {}) as { platform?: string; items?: { name?: string; qty?: number; price?: number }[] }
+  const [order, bank] = await Promise.all([
+    t.linkedTo ? db.select().from(T).where(and(eq(T.id, t.linkedTo), eq(T.userId, user.id))).then((r) => r[0] ?? null) : null,
+    db.select().from(T).where(and(eq(T.linkedTo, t.id), eq(T.userId, user.id))).limit(1).then((r) => r[0] ?? null),
+  ])
+  const bankAccount = bank?.accountId ? await db.select({ name: schema.accounts.name }).from(schema.accounts).where(eq(schema.accounts.id, bank.accountId)).then((r) => r[0]?.name ?? null) : null
   return {
     type: 'txn',
     id: t.id,
@@ -47,6 +53,8 @@ export async function loadTxnPeek(user: User, id: string): Promise<TxnPeek | nul
     account,
     rule,
     platform: meta.platform ?? null,
+    sameAs: order ? { id: order.id, label: orderLabel(order.source, (order.meta as { platform?: string }).platform) } : null,
+    paidFrom: bank ? { id: bank.id, account: bankAccount, when: formatDay(bank.localDate) } : null,
     items: (Array.isArray(meta.items) ? meta.items : []).filter((i) => i?.name).map((i) => ({ name: i.name!, qty: i.qty || 1, price: i.price ?? null })),
   }
 }
