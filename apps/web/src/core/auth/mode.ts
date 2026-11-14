@@ -14,6 +14,11 @@ export const TOUCH_EVERY_MS = 5 * 60_000
 export const CACHE_MS = 30_000
 export const OFFER_TTL_MS = 2 * 60_000
 export const REQUEST_TTL_MS = 10 * 60_000
+/** An invite to this server lives a week and works once. */
+export const INVITE_TTL_MS = 7 * 86_400_000
+/** Built for a household, not a hosted service: the most people on one server, and invites waiting at one time. */
+export const MAX_PEOPLE = 10
+export const MAX_LIVE_INVITES = 5
 /** Seconds between polls of a device request. */
 export const POLL_INTERVAL_S = 2
 export const MAX_LIVE_OFFERS = 3

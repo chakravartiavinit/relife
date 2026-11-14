@@ -1,12 +1,12 @@
 import brand from '@relife/brand/brand.json'
-import { and, asc, eq, gt, inArray, isNull, lt, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gt, inArray, isNull, lt, sql } from 'drizzle-orm'
 import type { DeviceKind, Scope } from '@relife/contract'
 import { db, schema } from '@/db'
 import { createDevice, type DeviceMeta } from './devices'
 import { publish } from './events'
 import {
-  FAILED_REDEEMS_PER_IP, FAILED_REDEEM_WINDOW_MS, MAX_LIVE_OFFERS, MAX_PENDING_PER_BUCKET, MAX_PENDING_REQUESTS, OFFER_TTL_MS,
-  POLL_INTERVAL_S, REQUEST_TTL_MS, mode,
+  FAILED_REDEEMS_PER_IP, FAILED_REDEEM_WINDOW_MS, INVITE_TTL_MS, MAX_LIVE_INVITES, MAX_LIVE_OFFERS, MAX_PENDING_PER_BUCKET, MAX_PENDING_REQUESTS,
+  MAX_PEOPLE, OFFER_TTL_MS, POLL_INTERVAL_S, REQUEST_TTL_MS, mode,
 } from './mode'
 import { clearFailures, hit } from './ratelimit'
 import { hashToken, isCode, newCode, newSecret, normalizeCode } from './tokens'
@@ -18,7 +18,7 @@ import { narrowScopes } from './trust'
 // polls and gets its token exactly once. Both end in one new `devices` row.
 
 export type Pairing = typeof schema.pairings.$inferSelect
-export type PairingMeta = { baseUrl?: string; requesterIp?: string; requesterBucket?: string; userAgent?: string; platform?: string; via?: string; lastPollAt?: number }
+export type PairingMeta = { invitedBy?: string; baseUrl?: string; requesterIp?: string; requesterBucket?: string; userAgent?: string; platform?: string; via?: string; lastPollAt?: number }
 
 /** A refusal with the HTTP status and ApiError code the route will send. */
 export class PairError extends Error {
@@ -237,6 +237,90 @@ export async function offerStatus(userId: string, id: string) {
   if (!p) return null
   const status = p.status === 'pending' && p.expiresAt <= new Date() ? 'expired' : p.status
   return { status, deviceId: p.deviceId, deviceName: p.deviceName, kind: p.kind }
+}
+
+// ── C. Invite someone to this server ─────────────────────────────────────────────────────────────
+
+/**
+ * The owner makes a link for a new person: `/join#s=<secret>`. No person yet (`user_id` is null); it lives 7 days and works
+ * once. The person who opens it picks a name, and only then do they exist (redeemInvite). At most MAX_LIVE_INVITES wait at
+ * a time (older ones expire when a new one is made).
+ */
+export async function createInvite(o: { ownerId: string; deviceId: string | null; baseUrl: string | null; now?: Date }) {
+  const now = o.now ?? new Date()
+  if ((await db.select({ n: sql<number>`count(*)::int` }).from(schema.users))[0].n >= MAX_PEOPLE) throw new PairError('forbidden', `This server is built for up to ${MAX_PEOPLE} people.`)
+  const secret = newSecret()
+  const keep = await db.select({ id: schema.pairings.id }).from(schema.pairings)
+    .where(and(eq(schema.pairings.method, 'invite'), sql`${schema.pairings.meta}->>'invitedBy' = ${o.ownerId}`, live(now))).orderBy(asc(schema.pairings.createdAt))
+  const drop = keep.slice(0, Math.max(0, keep.length - (MAX_LIVE_INVITES - 1))).map((r) => r.id)
+  if (drop.length) await db.update(schema.pairings).set({ status: 'expired' }).where(inArray(schema.pairings.id, drop))
+  const [row] = await db.insert(schema.pairings).values({
+    userId: null, method: 'invite', secretHash: hashToken(secret), scopes: ['full'], createdByDeviceId: o.deviceId,
+    meta: { baseUrl: o.baseUrl ?? undefined, invitedBy: o.ownerId } satisfies PairingMeta, expiresAt: new Date(now.getTime() + INVITE_TTL_MS),
+  }).returning()
+  return { id: row.id, secret, expiresAt: row.expiresAt, link: o.baseUrl ? `${o.baseUrl}/join#s=${secret}` : null }
+}
+
+/** The owner's invites: the ones still waiting, and the ones that ran out in the last week (to say so). */
+export async function listInvites(ownerId: string, now = new Date()) {
+  const rows = await db.select().from(schema.pairings)
+    .where(and(eq(schema.pairings.method, 'invite'), sql`${schema.pairings.meta}->>'invitedBy' = ${ownerId}`, eq(schema.pairings.status, 'pending'), gt(schema.pairings.expiresAt, new Date(now.getTime() - 7 * 86_400_000))))
+    .orderBy(desc(schema.pairings.createdAt))
+  return rows.map((r) => ({ id: r.id, expiresAt: r.expiresAt, expired: r.expiresAt <= now }))
+}
+
+export async function revokeInvite(ownerId: string, id: string) {
+  const rows = await db.update(schema.pairings).set({ status: 'expired' })
+    .where(and(eq(schema.pairings.id, id), eq(schema.pairings.method, 'invite'), sql`${schema.pairings.meta}->>'invitedBy' = ${ownerId}`, eq(schema.pairings.status, 'pending'))).returning({ id: schema.pairings.id })
+  return rows.length > 0
+}
+
+const validZone = (tz: string | undefined): tz is string => {
+  if (!tz) return false
+  try { new Intl.DateTimeFormat('en', { timeZone: tz }); return true } catch { return false }
+}
+
+/**
+ * Someone opened an invite link and chose a name. One use (the status flips under `where status = 'pending'`, so two
+ * racing opens cannot both win), counted against the caller's bucket like every redeem. In one transaction it makes the
+ * person (a member, in the browser's time zone and the owner's currency) and their first device (a browser, scope `full`).
+ */
+export async function redeemInvite(o: {
+  secret: string; name: string; timezone?: string; ip: string; bucket?: string; userAgent: string; via: string; now?: Date
+}) {
+  const now = o.now ?? new Date()
+  const ipKey = `redeem:${o.bucket ?? o.ip}`
+  const { wait } = await hit(ipKey, FAILED_REDEEMS_PER_IP, FAILED_REDEEM_WINDOW_MS)
+  if (wait) throw new PairError('rate_limited', 'Too many tries. Wait a few minutes.', wait)
+  const expired = () => new PairError('not_found', `This invite has expired or was already used. Ask for a new one.`)
+  const [pairing] = await db.select().from(schema.pairings).where(and(eq(schema.pairings.secretHash, hashToken(o.secret)), eq(schema.pairings.method, 'invite'))).limit(1)
+  if (!pairing || pairing.status !== 'pending' || pairing.expiresAt <= now) throw expired()
+  const ownerId = metaOf(pairing).invitedBy
+  const [owner] = ownerId ? await db.select().from(schema.users).where(eq(schema.users.id, ownerId)) : []
+  if (!owner || owner.role !== 'owner') throw expired()
+  const name = o.name.trim().slice(0, 60)
+  if (!name) throw new PairError('bad_request', 'Enter a name.')
+
+  const made = await db.transaction(async (tx) => {
+    const claimed = await tx.update(schema.pairings).set({ status: 'redeemed' }).where(and(eq(schema.pairings.id, pairing.id), live(now))).returning()
+    if (!claimed.length) throw expired()
+    // The count is taken after the claim so two invites opened together cannot both take the last place.
+    if ((await tx.select({ n: sql<number>`count(*)::int` }).from(schema.users))[0].n >= MAX_PEOPLE) throw new PairError('forbidden', `This server is full (${MAX_PEOPLE} people).`)
+    const [user] = await tx.insert(schema.users).values({
+      name, role: 'member', timezone: validZone(o.timezone) ? o.timezone : owner.timezone, baseCurrency: owner.baseCurrency,
+    }).returning()
+    const kind: DeviceKind = 'browser'
+    const deviceName = browserDeviceName(o.userAgent)
+    const { device, token } = await createDevice({
+      userId: user.id, kind, name: deviceName, scopes: ['full'], via: o.via, now,
+      meta: { userAgent: o.userAgent.slice(0, 200) } satisfies DeviceMeta,
+    }, tx)
+    await tx.update(schema.pairings).set({ userId: user.id, deviceId: device.id, kind, deviceName }).where(eq(schema.pairings.id, pairing.id))
+    return { user, device, token }
+  })
+  await clearFailures(ipKey)
+  await publish({ userId: owner.id, event: { type: 'pairing', id: pairing.id, status: 'redeemed' } })
+  return made
 }
 
 /** Housekeeping job: pairings a day after they ended, idempotency rows after 7 days, devices revoked over 30 days ago (not the legacy token rows). */
