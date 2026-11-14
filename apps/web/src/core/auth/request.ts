@@ -17,10 +17,12 @@ export type Denied = { ok: false; reason: AuthFail }
 
 /** `Authorization: Bearer` first, then the cookie. Writes last_seen at most every 5 minutes. */
 export async function authenticate(req: Request, scope: Scope): Promise<Authed | Denied> {
+  // Read the request before any database call: that makes `next build` treat the route as dynamic instead of
+  // prerendering it (a prerender would query the database, which the Docker build doesn't have).
+  const t = tokenOf(req.headers)
   const me = await getUser() // loads saved keys; with them the legacy ACTIVITY_TOKEN and INGEST_TOKEN rows exist before the lookup
   // The read-only demo: everyone is one synthetic browser, for reads only (the gate has already refused the rest).
   if (isDemo()) return demoMethodAllowed(req.method) && req.method !== 'OPTIONS' ? { ok: true, device: demoDevice(me.id), user: me, via: 'cookie' } : { ok: false, reason: 'demo' }
-  const t = tokenOf(req.headers)
   if (!t) return { ok: false, reason: 'missing' }
   const found = await findByToken(t.token)
   if (!found.ok) return { ok: false, reason: found.reason }
