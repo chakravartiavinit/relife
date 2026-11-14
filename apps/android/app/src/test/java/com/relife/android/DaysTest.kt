@@ -27,12 +27,28 @@ class DaysTest {
 
     @Test fun windowEndsTodayInTheServersZone() {
         // 20:00 UTC on the 12th is already the 13th in Kolkata.
-        val days = syncWindow(at("2026-11-12T20:00:00Z"), kolkata, first = false)
-        assertEquals(listOf("2026-11-11", "2026-11-12", "2026-11-13").map(LocalDate::parse), days)
+        val days = syncWindow(at("2026-11-12T20:00:00Z"), kolkata, lastSync = at("2026-11-12T19:00:00Z"))
+        // The last sync was already on the 13th in Kolkata, so the window is the 12th and the 13th.
+        assertEquals(listOf("2026-11-12", "2026-11-13").map(LocalDate::parse), days)
+    }
+
+    @Test fun laterSyncsStartTheDayBeforeTheLastOne() {
+        val days = syncWindow(at("2026-11-13T05:00:00Z"), kolkata, lastSync = at("2026-11-06T05:00:00Z"))
+        assertEquals(LocalDate.parse("2026-11-05"), days.first())
+        assertEquals(LocalDate.parse("2026-11-13"), days.last())
+        assertEquals(9, days.size)
+    }
+
+    @Test fun aLastSyncFromTheFutureStillReadsToday() {
+        assertEquals(listOf(LocalDate.parse("2026-11-13")), syncWindow(at("2026-11-13T05:00:00Z"), kolkata, lastSync = at("2026-12-01T00:00:00Z")))
+    }
+
+    @Test fun neverReachesBackMoreThanThirtyDays() {
+        assertEquals(30, syncWindow(at("2026-11-13T05:00:00Z"), kolkata, lastSync = at("2026-01-01T00:00:00Z")).size)
     }
 
     @Test fun firstSyncReadsThirtyDays() {
-        val days = syncWindow(at("2026-11-13T05:00:00Z"), kolkata, first = true)
+        val days = syncWindow(at("2026-11-13T05:00:00Z"), kolkata, lastSync = null)
         assertEquals(30, days.size)
         assertEquals(LocalDate.parse("2026-10-15"), days.first())
         assertEquals(LocalDate.parse("2026-11-13"), days.last())

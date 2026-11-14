@@ -10,15 +10,22 @@ import kotlin.math.roundToLong
 
 /** Pure day maths for the sync, kept free of Android types so plain JVM tests cover it. */
 
-/** The first sync reaches back as far as Health Connect's default history allows; later ones only re-read recent days. */
+/** The first sync reaches back as far as Health Connect's default history allows (30 days, today included). */
 const val FIRST_SYNC_DAYS = 30
-const val LATER_SYNC_DAYS = 3
 
-/** Dates to read, oldest first, ending today in the server's time zone. */
-fun syncWindow(now: Instant, zone: ZoneId, first: Boolean): List<LocalDate> {
+/**
+ * Dates to read, oldest first, ending today in the server's time zone.
+ *
+ * With no earlier sync that is the last 30 days. After one, it starts the day before the last sync (late-arriving
+ * records from the watch land on that day) and never goes back further than 30 days, so a phone that was off for a
+ * week catches up on the whole week rather than only the last three days.
+ */
+fun syncWindow(now: Instant, zone: ZoneId, lastSync: Instant?): List<LocalDate> {
     val today = now.atZone(zone).toLocalDate()
-    val count = if (first) FIRST_SYNC_DAYS else LATER_SYNC_DAYS
-    return (count - 1 downTo 0).map { today.minusDays(it.toLong()) }
+    val earliest = today.minusDays(FIRST_SYNC_DAYS - 1L)
+    val start = if (lastSync == null) earliest
+    else maxOf(earliest, minOf(lastSync.atZone(zone).toLocalDate().minusDays(1), today))
+    return generateSequence(start) { it.plusDays(1) }.takeWhile { !it.isAfter(today) }.toList()
 }
 
 /** A local day as a half-open instant range. DST days come out 23 or 25 hours long, which is what we want. */
