@@ -4,7 +4,7 @@ import { drizzle } from 'drizzle-orm/postgres-js'
 import { migrate } from 'drizzle-orm/postgres-js/migrator'
 import { readMigrationFiles } from 'drizzle-orm/migrator'
 import postgres from 'postgres'
-import { adoptedMigrations, columnKey, OLDER_THAN_BASELINE, type Snapshot } from './migrate-adopt'
+import { adoptedMigrations, columnKey, columnShape, OLDER_THAN_BASELINE, type Snapshot } from './migrate-adopt'
 
 // Applies apps/web/drizzle/ to a database. `npm run db:migrate` and the Docker `migrate` service run it; so does the mock
 // seeder inside the image, which has no drizzle-kit. `db:push` stays for local development.
@@ -24,27 +24,39 @@ export async function ensureDatabase(url: string, via = process.env.DATABASE_URL
 
 /**
  * A database made by `db:push` has the tables but no history: the migrator would run the baseline and fail on "already
- * exists". Mark the migrations it already contains as applied (the same rows the migrator writes), comparing its
- * columns with each snapshot, newest first. Returns how many were marked (0 when it had a history, or was empty).
+ * exists". When its tables and columns (names, types, nullability) are exactly what the newest snapshot describes, mark
+ * every migration as applied (the same rows the migrator writes). Otherwise stop: marking a database that differs would
+ * hide the difference from every later run. One transaction under an advisory lock, so two starts can't both adopt.
+ * Returns how many were marked (0 when it had a history, was empty, or was already adopted).
  */
 export async function adoptPushedDatabase(sql: postgres.Sql, folder = migrationsFolder()): Promise<number> {
-  const [hasHistory] = await sql`select to_regclass('drizzle.__drizzle_migrations') as t`
-  if (hasHistory.t) return 0
-  const [hasTables] = await sql`select to_regclass('public.users') as t`
-  if (!hasTables.t) return 0
+  return sql.begin(async (tx) => {
+    await tx`select pg_advisory_xact_lock(hashtext('relife:migrate'))`
+    const [hasHistory] = await tx`select to_regclass('drizzle.__drizzle_migrations') as t`
+    // An empty history table (a migrator that stopped before its first row) is no history.
+    if (hasHistory.t) {
+      const [{ n }] = await tx`select count(*)::int as n from drizzle.__drizzle_migrations`
+      if (n > 0) return 0
+    }
+    const tables = await tx`select table_name from information_schema.tables where table_schema = 'public' and table_type = 'BASE TABLE'`
+    if (tables.length === 0) return 0
 
-  const rows = await sql`select table_name, column_name from information_schema.columns where table_schema = 'public'`
-  const have = new Set(rows.map((r) => columnKey(r.table_name, r.column_name)))
-  const journal = JSON.parse(readFileSync(join(folder, 'meta', '_journal.json'), 'utf8')) as { entries: { idx: number }[] }
-  const snapshots = journal.entries.map((e) => JSON.parse(readFileSync(join(folder, 'meta', `${String(e.idx).padStart(4, '0')}_snapshot.json`), 'utf8')) as Snapshot)
-  const n = adoptedMigrations(have, snapshots)
-  if (n === 0) throw new Error(OLDER_THAN_BASELINE)
+    const rows = await tx`
+      select c.relname as t, a.attname as c, format_type(a.atttypid, a.atttypmod) as type, a.attnotnull as nn
+      from pg_attribute a join pg_class c on c.oid = a.attrelid join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public' and c.relkind = 'r' and a.attnum > 0 and not a.attisdropped`
+    const have = new Map(rows.map((r) => [columnKey(r.t, r.c), columnShape(r.type, r.nn)]))
+    const journal = JSON.parse(readFileSync(join(folder, 'meta', '_journal.json'), 'utf8')) as { entries: { idx: number }[] }
+    const snapshots = journal.entries.map((e) => JSON.parse(readFileSync(join(folder, 'meta', `${String(e.idx).padStart(4, '0')}_snapshot.json`), 'utf8')) as Snapshot)
+    const n = adoptedMigrations(have, snapshots)
+    if (n === 0) throw new Error(OLDER_THAN_BASELINE)
 
-  const files = readMigrationFiles({ migrationsFolder: folder }).slice(0, n)
-  await sql`create schema if not exists drizzle`
-  await sql`create table if not exists drizzle.__drizzle_migrations (id serial primary key, hash text not null, created_at bigint)`
-  for (const f of files) await sql`insert into drizzle.__drizzle_migrations (hash, created_at) values (${f.hash}, ${f.folderMillis})`
-  return n
+    const files = readMigrationFiles({ migrationsFolder: folder }).slice(0, n)
+    await tx`create schema if not exists drizzle`
+    await tx`create table if not exists drizzle.__drizzle_migrations (id serial primary key, hash text not null, created_at bigint)`
+    for (const f of files) await tx`insert into drizzle.__drizzle_migrations (hash, created_at) values (${f.hash}, ${f.folderMillis})`
+    return n
+  })
 }
 
 /** Adopt a pushed database if needed, then apply what is missing. */
