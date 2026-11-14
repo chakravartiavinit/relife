@@ -249,6 +249,19 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
 - Read connector keys with `env()` from `core/env.ts`, never `process.env`. Never change `process.env` at
   runtime: inside `next dev` it makes Turbopack rebuild and reload the page in a loop.
 - Server actions scope every write to `getUser()`.
+- `getUser()` is the signed-in person (the request's device token, memoised 5 s). Outside a request (the worker, the Telegram
+  bot, a script, a test) it only answers when exactly one person is on the server; with several it throws, so wrap the work in
+  `runAs(user, fn)` (`core/context.ts`) or use `ensureOwner()` in a script. Never read `getUser()` inside a `'use cache'`
+  function: pass `userId` in. Only `core/party.ts` reads another person's data, and only through the allow-listed
+  `memberView`; every other query filters by the caller's `userId`. A new table that holds a person's rows needs a `userId`
+  column and a `TABLES` line in `core/data/tables.ts`.
+- Several people can share one server (`users.role` is `owner` or `member`, at most 10). Provider keys, `LLM_*`, the Telegram
+  bot token and OAuth client ids are the owner's (instance keys, `core/integrations.ts` `isInstanceKey`); connector keys are
+  per person and a member never inherits the owner's `.env`. Per-person jobs run once per person under `runAs`, with ids
+  `<job>@<userId>`; jobs marked `scope: 'instance'` (heartbeat, backup, prune) run once. Members use the owner's AI model
+  unless the owner turns it off (`users.profile.instance.shareAi`). Whole-server backup and restore are the owner's;
+  export, wipe and the data folders are per person. `npm run invite` (or Settings → People on this server) makes a join
+  link. Migration `0004_multi_user_party` adds roles, parties and per-person run logs.
 - Every write is a POST, PUT, PATCH, DELETE or server action. Never write in a GET route or during a render (the demo
   gate and the demo's read-only database connection rely on it). A page that must save something on open (Wealth's
   net-worth snapshot) skips it with `isDemo()`.
@@ -313,7 +326,9 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
   cleared only while it still has the pack's value. Setup shares the routine inserter (`insertRoutines`). Adding is a write,
   so the demo locks the button. Rules for community packs are in `docs/TEMPLATES.md` and enforced by `packages/contract/src/community.test.ts`.
 - Keep per-event `kind` and `verified`: a future ranked view will count only standard, verified XP.
-  There are no leaderboards. The only sharing is the opt-in share card (below); nothing is posted anywhere by the app.
+  Sharing is opt-in. The share card (above) is made on this server and never uploaded; nothing is posted anywhere by the app.
+  Party mode shows people on the same server only what each of them ticked (level, streak, quest progress), never values or
+  money. There are no leaderboards or ranked views. The party quest pays a `rare` chest (`ref party:<partyId>:<isoWeek>`) of kind `bonus`.
 
 ## UI bar (non-negotiable)
 

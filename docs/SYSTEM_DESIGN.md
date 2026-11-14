@@ -414,8 +414,15 @@ The project was briefly called Savepoint, with its own crystal logo, in November
   - Cookies are not port-isolated: another web app on `127.0.0.1` or `localhost` (any port) is sent the same session cookie when the browser visits it, and cookies from a sibling port can be overwritten. Run ReLife on a host name no other local app uses (`localhost` versus `127.0.0.1` are separate cookie jars) if that matters.
   - A revoke takes effect at once on the instance that handled it and within 30 seconds on any other (the lookup cache); the revoked browser's stream is closed by the `device.revoked` event.
   - The first hop of `X-Forwarded-For` is never trusted, but with a chain of several proxies the rightmost hop is the nearest proxy, not the visitor; rate limits then count the proxy. Set up one proxy (`tailscale serve`) or none.
+- More than one person on a server: `getUser()` resolves the request's device token to its person (`core/user.ts`) and fails closed when
+  a context names no one; background work wraps `runAs(user)` (`core/context.ts`, an `AsyncLocalStorage`). Keys have two scopes
+  (`core/env.ts`): instance keys come from the owner's connections, per-person keys from each person's own, and with several
+  people an unscoped `env()` returns nothing rather than guess. Loopback trust stops once a second person exists. Invites are
+  `pairings` rows (method `invite`, 7 days, single use) redeemed at `/join`; a Telegram link is a `pairings` row (method
+  `telegram`, 10 minutes). The people on a server can read none of each other's rows except through `core/party.ts`, the one
+  allow-listed reader behind Party mode. Removing a person deletes their `users` row and the database cascades.
 - The key that encrypts saved connector keys lives in `data/secret.key` at the repo root (or `RELIFE_SECRET_KEY`). If it is missing while saved keys exist, ReLife refuses to start with a clear error instead of creating a new key.
-- Telegram bot ignores every chat except `TELEGRAM_ALLOWED_CHAT_ID`.
+- Telegram bot answers only chats a person linked (or the owner's legacy `TELEGRAM_ALLOWED_CHAT_ID`); an unlinked chat is told it is not linked to anyone.
 - LLM: account numbers and UPI handles masked in digests by default; parsing can run on a local model (`LLM_PARSE=local:...`). Read tools enforce user scope in code; no model-written SQL runs. New AI logs store operational metadata, not prompt or response excerpts. Providers still receive selected context.
 - Disk: FileVault on. Daily `pg_dump` to an encrypted folder.
 
@@ -445,6 +452,9 @@ Every scheduled or event-driven task is one entry in `apps/web/src/jobs/index.ts
 - **Requests and events**: `requestJob(id)` / `emit(event)` mark jobs to run now and wake the worker through
   Postgres `NOTIFY` (about half a second); a 15-second tick is the fallback. Events: `connector.connected:<id>`,
   `raw.added`, `data.changed`.
+- **People**: every job except the instance ones (`scope: 'instance'`: heartbeat, FX, backup and the prunes) is expanded
+  into one copy per person (`expandJobs`, ids `<job>@<userId>`) and runs under `runAs`, in that person's time zone. The
+  worker adopts the old rows for the owner on first start.
 - **Backoff**: connector jobs wait failures × interval (at most 6 hours) after errors.
 - **Concurrency**: up to 4 jobs at once, each in the background, so a long first sync never blocks the rest.
 - **Ingest path**: a sync writes raw events in batches of 250 (`insert … on conflict do nothing`), then emits

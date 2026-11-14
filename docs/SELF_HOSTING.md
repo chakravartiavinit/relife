@@ -67,6 +67,20 @@ signed out everywhere:
 docker compose exec web relife signin
 ```
 
+## Sharing the server with other people
+
+One server can hold a household or a few friends (up to ten). Each person has their own data, keys and devices; the person
+who runs the server is the owner and can read everything on it. Invite someone from Settings → People on this server, or in a
+terminal:
+
+```bash
+docker compose exec web relife invite
+```
+
+It prints a single-use link (valid 7 days) and a QR. Set `RELIFE_PUBLIC_URL` (or use Tailscale) first so the link opens for
+them. With a second person, "this computer" is no longer trusted without a code. Members use the owner's AI model unless the
+owner turns that off. Backups cover the whole server. See [Privacy](PRIVACY.md#sharing-a-server).
+
 In Docker ReLife never trusts "this computer" without a code: requests reach the container through Docker, so every
 browser pairs once.
 

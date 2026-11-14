@@ -7,6 +7,7 @@ here.
 | Feature | Status | Effort | Scoped |
 |---|---|---|---|
 | [Voice for the assistant](#voice-for-the-assistant) | PARKED | 3–5 days in 4 phases | 2026-11-13 |
+| [Party between servers](#party-between-servers) | PARKED | about 1 week | 2026-11-14 |
 
 Statuses: `PARKED` (scoped, waiting), `PLANNED` (plan written in `plans/`), `BUILDING`, `DONE`, `DROPPED` (with a reason).
 
@@ -118,3 +119,29 @@ about $0.001 to transcribe. At 30 exchanges a day: about $10 a month, or almost 
 - With no `FISH_AUDIO_API_KEY`, voice notes get a text reply that says how to turn voice on, and nothing is
   sent to Fish Audio.
 - Unit tests cover the provider interface with a fake provider; no test calls Fish Audio.
+
+
+## Party between servers
+
+Party mode today works between people on **one** server (`core/party.ts`). Friends who each run their own copy cannot join the
+same party yet. That is parked: it needs a public HTTPS `RELIFE_PUBLIC_URL` on both servers, a new endpoint per server to
+protect, and handshake, polling, key rotation and revocation work.
+
+### What is ready
+
+- `PartyMemberView` and `PartyView` in `packages/contract/src/party.ts` already say exactly what may cross between people, with
+  fixtures. A later transport only moves these shapes.
+- Party quest and chest rules are pure (`domain/party.ts`), so a remote member is one more `PartyMemberView`.
+
+### Sketch
+
+- An Ed25519 server key in `data/party.key`, created on first use.
+- The invite link carries the server URL and a one-time token.
+- `POST /api/v1/party/handshake` swaps bearer tokens with a new scope `party`, which reads nothing but the feed.
+- The peer polls `GET /api/v1/party/feed` (ETag, every 15 minutes) and gets `PartyMemberView[]`, built by the same allow-list.
+- A member can leave or be removed on either side; a revoked token stops the feed at once.
+
+### Decisions before building
+
+- Whether a remote member can cheer (it would mean a push the other way) or only appear in the list.
+- How the party quest counts a remote week when the two servers are in different time zones.
