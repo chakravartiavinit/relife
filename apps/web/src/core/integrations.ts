@@ -1,5 +1,4 @@
 import { connectors } from '@/connectors'
-import { setManagedNames } from './env'
 import type { Connector, OAuthSpec, SetupField } from './types'
 
 // Everything the Connections page can connect: data sources (src/connectors), Telegram and AI providers.
@@ -53,9 +52,6 @@ export const isInstanceKey = (key: string) => key.startsWith('LLM_') || AI_KEYS.
 
 /** Every managed key that belongs to the whole server. */
 export const INSTANCE_ENV = MANAGED_ENV.filter(isInstanceKey)
-
-// env() reads these as nothing for a member until their own keys are loaded (core/env.ts).
-setManagedNames(MANAGED_ENV.filter((k) => !isInstanceKey(k)))
 
 /**
  * `instance` when the owner sets all of an integration up for everyone (an AI provider, the Telegram bot), else `user`: each

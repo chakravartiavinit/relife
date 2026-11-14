@@ -202,8 +202,6 @@ RRULE:FREQ=DAILY') returning id`
     process.env.BINANCE_API_KEY = 'owner-env-secret'
     try {
       resetKeys()
-      const { setManagedNames } = await import('./env')
-      setManagedNames(['BINANCE_API_KEY'])
       setMulti(true)
       assert.equal(await runAs(bUser, async () => env('BINANCE_API_KEY')), undefined, 'a member with nothing loaded reads nothing')
       const job = { id: 'sync:binance', schedule: { everyMinutes: 60 }, run: async () => String(env('BINANCE_API_KEY')) } as never as Parameters<typeof expandJobs>[0][number]

@@ -17,9 +17,16 @@ const g = globalThis as unknown as {
   __relifeKeyScope?: Set<string>
   __relifeMulti?: boolean
   __relifeScope?: { getStore(): { user: { id: string; role?: string } } | undefined }
-  __relifeManaged?: Set<string>
   __relifeWarned?: Set<string>
 }
+
+// What anyone may read from the server's own environment, whoever they are: how the server runs (RELIFE_*, NODE_ENV,
+// PORT, TZ, HOSTNAME, DATABASE_URL, CHROME_PATH) and its shared keys (the AI providers and LLM_* — the AI layer decides
+// who may use them — the Telegram bot token, OAuth app credentials; the same set as core/integrations.ts `isInstanceKey`,
+// a test keeps them in step). Every other name is a person's own, so a member whose keys are not loaded reads nothing:
+// that holds even if no other module has loaded, because the allow-list is here, not registered from elsewhere.
+const SERVER_NAMES = /^(RELIFE_|LLM_|NODE_ENV$|PORT$|TZ$|HOSTNAME$|DATABASE_URL$|CHROME_PATH$|LOCAL_LLM_URL$|TELEGRAM_BOT_TOKEN$|ANTHROPIC_API_KEY$|OPENAI_API_KEY$|GOOGLE_GENERATIVE_AI_API_KEY$|OPENROUTER_API_KEY$)|_CLIENT_(ID|SECRET)$/
+export const isServerName = (name: string) => SERVER_NAMES.test(name)
 
 const warn = (name: string) => {
   const seen = (g.__relifeWarned ??= new Set())
@@ -36,8 +43,8 @@ export function env(name: string): string | undefined {
   }
   const users = g.__relifeUserKeys
   const who = g.__relifeScope?.getStore()?.user
-  // A member whose keys are not loaded yet reads nothing: the process env is the owner's, never theirs.
-  if (who && who.role !== 'owner' && !users?.has(who.id) && g.__relifeManaged?.has(name)) return undefined
+  // A member whose keys are not loaded yet reads only the server's own settings: the rest of the process env is the owner's.
+  if (who && who.role !== 'owner' && !users?.has(who.id) && !isServerName(name)) return undefined
   if (!users?.size) return process.env[name] || undefined
   const me = who?.id
   let m = me ? users.get(me) : undefined
@@ -56,14 +63,9 @@ export function env(name: string): string | undefined {
 export function envFor(userId: string, name: string): string | undefined {
   if (g.__relifeKeyScope?.has(name)) return env(name)
   const m = g.__relifeUserKeys?.get(userId)
-  // Several people and this one's keys are not loaded: nothing, rather than the owner's .env value.
-  if (!m && g.__relifeMulti && g.__relifeManaged?.has(name)) return undefined
+  // Several people and this one's keys are not loaded: only the server's own settings, never the owner's .env value.
+  if (!m && g.__relifeMulti && !isServerName(name)) return undefined
   return m?.has(name) ? m.get(name) : process.env[name] || undefined
-}
-
-/** Names of the keys a person connects (connector keys and tokens, not server keys): all read as nothing until a person's keys are loaded. */
-export function setManagedNames(names: Iterable<string>) {
-  g.__relifeManaged = new Set(names)
 }
 
 /** Fill one person's keys. The first call with nothing else loaded is also the single-user fallback. */
@@ -91,7 +93,6 @@ export function resetKeys() {
   g.__relifeInstanceKeys = undefined
   g.__relifeUserKeys = undefined
   g.__relifeKeyScope = undefined
-  g.__relifeManaged = undefined
   g.__relifeMulti = false
   g.__relifeWarned = undefined
 }
