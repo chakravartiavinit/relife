@@ -139,7 +139,7 @@ test('one message fans out to Telegram and push, with the rules applied once', {
     await reset(); setTelegram(true); await setPush(true)
     await outbox.notify(user, 'reminders', { text: '⏰ <b>Stretch</b>', buttons, ref: 'other:2' })
     const [row] = await rows()
-    await outbox.markAnswered(row.messageId!)
+    await outbox.markAnswered(user.id, row.messageId!)
     await outbox.flushOutbox(user, new Date(Date.now() + 31 * 60_000))
     assert.equal(push.sent.length, 1)
     assert.equal(telegram.sent.length, 1)
