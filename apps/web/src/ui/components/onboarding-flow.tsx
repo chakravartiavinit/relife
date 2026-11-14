@@ -55,7 +55,7 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
   const [leaving, setLeaving] = useState(false)
   const pane = useRef<HTMLDivElement>(null)
   const [ai, setAi] = useState<Ai | null>(null)
-  useEffect(() => { aiReady().then(setAi) }, [])
+  useEffect(() => { aiReady().then(setAi).catch(() => setAi({ ready: false, model: null })) }, [])
 
   // After mount: pick up a draft from this tab (a reload keeps every answer), else start from this device's
   // time zone. (Its currency would only be a guess from the browser's language, so that is just suggested
@@ -101,7 +101,7 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
 
   // The rows on Connect are chosen from how things stood on arrival and stay put while a source connects (its row
   // flips to a check in place); each row then reads the live state.
-  const [first] = useState(sources)
+  const [first] = useState(() => sources.filter((c) => !c.unavailable))
   const order = useMemo(() => pickSources(first, v.areas).map((c) => c.id), [first, v.areas])
   const rows = order.flatMap((id) => sources.find((c) => c.id === id) ?? [])
   const connected = rows.filter((c) => c.connected).length

@@ -17,7 +17,7 @@ export function ConnectorPeekView({ data: d }: { data: ConnectorPeek }) {
   return (
     <div className="flex flex-col gap-5">
       <ConnectorBody c={d.item} onDone={changed} />
-      {!d.worker.alive && d.item.connected ? <p className="text-caption text-warn">The worker is stopped, so nothing syncs. Start it with npm run dev.</p> : null}
+      {!d.worker.alive && !d.worker.demo && d.item.connected ? <p className="text-caption text-warn">The worker is stopped, so nothing syncs. Start it with npm run dev.</p> : null}
       <PeekFooter><PeekOpen href={`/you/connections#${d.item.id}`}>Open Connections</PeekOpen></PeekFooter>
     </div>
   )

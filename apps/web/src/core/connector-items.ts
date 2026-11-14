@@ -1,4 +1,5 @@
 import { eq } from 'drizzle-orm'
+import { isDemo } from '@/core/demo'
 import { db, isMock, schema } from '@/db'
 import type { User } from '@/core/user'
 import { formatDay, formatTime, localDate } from '@/core/time'
@@ -11,6 +12,7 @@ import { callbackPath } from '@/core/oauth'
 import { integration } from '@/core/integrations'
 import type { SetupField } from '@/core/types'
 import { env } from '@/core/env'
+import { connectorUnavailable } from '@/core/platform'
 
 // Every connector as the Connections page and the connector Peek show it: status, last syncs, the fields the
 // connect form needs (secret values are never sent), and how the worker is doing.
@@ -72,7 +74,7 @@ export async function loadConnectorItems(user: User, origin: string) {
     const signIn = connected && !c.missingEnv.length && !authed
     return {
       id: c.id, name: c.name, category: c.category, description: c.description, provides: c.provides,
-      section: c.login ? 'shopping' : c.env.length ? 'keys' : 'built-in', login: !!c.login, connected, sync: true, fields: view(c.id, c.fields),
+      section: c.login ? 'shopping' : c.env.length ? 'keys' : 'built-in', login: !!c.login, unavailable: c.unavailable ?? undefined, connected, sync: true, fields: view(c.id, c.fields),
       missingEnv: connected ? c.missingEnv : [],
       oauth: c.oauth ? { signedIn: authed, redirectUri: `${origin}${callbackPath(c.id)}`, setupUrl: c.oauth.setupUrl, httpsOnly: c.oauth.httpsOnly } : undefined,
       status: !connected ? 'off' : c.missingEnv.length ? 'setup' : signIn ? 'waiting' : conn?.status === 'error' ? 'error' : conn?.lastSyncAt ? 'ok' : 'waiting',
@@ -116,6 +118,6 @@ export async function loadConnectorItems(user: User, origin: string) {
       at: `${formatDay(localDate(r.startedAt, user.timezone))}, ${formatTime(r.startedAt, user.timezone)}`, ok: r.ok, events: r.eventsCount,
     }))
   }
-  return { items, worker: { alive: !!workerAlive, ago: ago(heartbeat?.at) } }
+  return { items, worker: { alive: !!workerAlive, ago: ago(heartbeat?.at), demo: isDemo() } }
 }
 

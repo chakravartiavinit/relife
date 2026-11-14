@@ -12,6 +12,7 @@ import { Card, Skeleton } from '@/ui/components/card'
 import { AskThread } from '@/ui/components/coach/ask-thread'
 import { CoachPanes } from '@/ui/components/coach/coach-panes'
 import { CoachTabs } from '@/ui/components/coach/coach-tabs'
+import { isDemo } from '@/core/demo'
 import { ConnectCoach } from '@/ui/components/coach/connect-coach'
 import { NeedsYouPanel } from '@/ui/components/coach/needs-you-panel'
 import { PromptInput } from '@/ui/beui/agents/prompt-input'
@@ -65,12 +66,12 @@ async function Coach({ searchParams }: { searchParams: PageProps<'/coach'>['sear
           </div>
           {!aiOn && thread.length === 0 ? (
             <>
-              <ConnectCoach />
+              <ConnectCoach demo={isDemo()} />
               <Card className="p-2"><PromptInput disabled minRows={1} placeholder="Connect an AI model to ask questions." aria-label="Ask about your data" /></Card>
             </>
           ) : (
             <>
-              {!aiOn ? <ConnectCoach compact /> : null}
+              {!aiOn ? <ConnectCoach compact demo={isDemo()} /> : null}
               <Card as="section" aria-label="Ask" className="flex h-[min(680px,max(460px,calc(100dvh-22rem)))] flex-col overflow-hidden p-0">
                 <AskThread thread={thread} enabled={aiOn} initial={initial} timezone={user.timezone} />
               </Card>

@@ -1,17 +1,153 @@
+# ReLife with Docker Compose (docs/SELF_HOSTING.md).
+#
+#   docker compose up -d                       Postgres only, on 127.0.0.1:5442: the database for `npm run dev`.
+#   COMPOSE_PROFILES=app docker compose up -d  the whole app: migrate, web, worker (put COMPOSE_PROFILES=app in .env).
+#   ... --profile ai                           adds a local AI model (Ollama).
+#   ... --profile demo                         a read-only demo with sample data, on port 3001.
+
+# One image runs migrate, web and worker. Only `migrate` has a `build:`; with three, Compose builds the same tag three
+# times in parallel and the exports collide ("image already exists"). The others wait for migrate, so the image exists.
+x-app: &app
+  image: ${RELIFE_IMAGE:-relife:local}
+  init: true
+  # Your connector keys and settings from .env. The image has no .env of its own.
+  env_file: [{ path: .env, required: false }]
+  # These win over .env, so a development .env (localhost database, NODE_ENV) can't break the containers.
+  environment: &app-env
+    NODE_ENV: production
+    # A development .env must never turn the real app into the mock or the read-only demo.
+    RELIFE_DEMO: ""
+    RELIFE_MOCK: ""
+    DATABASE_URL: postgres://relife:${POSTGRES_PASSWORD:-relife}@postgres:5432/relife
+    RELIFE_DATA_DIR: /data
+    RELIFE_BACKUP_DIR: /backups
+    RELIFE_BIND: 0.0.0.0
+    # The port published on the host, so `relife signin` can print the address you type.
+    RELIFE_HOST_PORT: ${RELIFE_PORT:-3030}
+    RELIFE_ALLOWED_HOSTS: ${RELIFE_ALLOWED_HOSTS:-}
+    RELIFE_PUBLIC_URL: ${RELIFE_PUBLIC_URL:-}
+    LOCAL_LLM_URL: ${LOCAL_LLM_URL:-http://ollama:11434/v1}
+    RELIFE_LOCAL_AI_MODEL: ${RELIFE_LOCAL_AI_MODEL:-qwen3:4b-instruct}
+  volumes: [relife-data:/data, relife-backups:/backups]
+
 services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: relife
-      POSTGRES_PASSWORD: relife
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-relife}
       POSTGRES_DB: relife
     # Bound to localhost only. Port 5442 avoids clashing with other local Postgres instances.
-    ports: ["127.0.0.1:5442:5432"]
+    ports: ["127.0.0.1:${RELIFE_PG_PORT:-5442}:5432"]
     volumes: [relife-pg:/var/lib/postgresql/data]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U relife"]
       interval: 5s
       retries: 10
+
+  # Runs once at every start: applies the migrations and creates the key file.
+  migrate:
+    <<: *app
+    build: .
+    profiles: [app]
+    command: migrate
+    restart: "no"
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  web:
+    <<: *app
+    pull_policy: never
+    profiles: [app]
+    command: web
+    # Localhost only by default (safe on a server). Set RELIFE_LISTEN=0.0.0.0 to reach it from your network.
+    ports: ["${RELIFE_LISTEN:-127.0.0.1}:${RELIFE_PORT:-3030}:3030"]
+    restart: unless-stopped
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3030/api/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+
+  worker:
+    <<: *app
+    pull_policy: never
+    profiles: [app]
+    command: worker
+    restart: unless-stopped
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  # Free local AI. Set LLM_DEFAULT=local:<model> (or use Setup) to make ReLife use it.
+  ollama:
+    image: ollama/ollama:0.13.5
+    profiles: [ai]
+    restart: unless-stopped
+    volumes: [relife-ollama:/root/.ollama]
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      retries: 10
+
+  ollama-pull:
+    image: ollama/ollama:0.13.5
+    profiles: [ai]
+    restart: "no"
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["ollama", "pull", "${RELIFE_LOCAL_AI_MODEL:-qwen3:4b-instruct}"]
+    depends_on:
+      ollama: { condition: service_healthy }
+
+  # The demo: a throwaway database with sample data and a read-only server. No keys reach it (no env_file).
+  demo-db:
+    image: postgres:16-alpine
+    profiles: [demo]
+    environment:
+      POSTGRES_USER: demo
+      POSTGRES_PASSWORD: demo
+      POSTGRES_DB: relife
+    tmpfs: [/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U demo"]
+      interval: 5s
+      retries: 10
+
+  # The demo has its own `build:` because `--profile demo up --build demo` starts neither migrate nor web. Do not combine
+  # it with the app profile on a cold build (two builds of one tag); build once with `docker compose --profile app build`.
+  demo:
+    build: .
+    image: ${RELIFE_IMAGE:-relife:local}
+    init: true
+    profiles: [demo]
+    command: demo
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://demo:demo@demo-db:5432/relife
+      RELIFE_MOCK: "1"
+      RELIFE_DEMO: "1"
+      RELIFE_DATA_DIR: /data
+      RELIFE_BIND: 0.0.0.0
+      RELIFE_ALLOWED_HOSTS: ${RELIFE_DEMO_HOSTS:-}
+      RELIFE_TIMEZONE: ${RELIFE_DEMO_TIMEZONE:-Asia/Kolkata}
+    tmpfs: [/data]
+    ports: ["${RELIFE_DEMO_LISTEN:-127.0.0.1}:${RELIFE_DEMO_PORT:-3001}:3030"]
+    depends_on:
+      demo-db: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3030/api/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      start_period: 90s
+      retries: 5
+
 volumes:
   relife-pg:
+  relife-data:
+  relife-backups:
+  relife-ollama:

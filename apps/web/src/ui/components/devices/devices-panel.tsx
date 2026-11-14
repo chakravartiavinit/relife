@@ -27,13 +27,15 @@ import { ago } from './use-countdown'
 const DETAIL: Record<string, string> = { browser: 'Dashboard', phone: `${brand.name} web app`, mac: 'Mac app', extension: 'Chrome extension', cli: 'Command line' }
 
 /** Settings → Devices (plan Part 2, Dashboard §1): who is waiting, everything signed in, and "Connect a device". */
-export function DevicesPanel({ initial, waiting: initialWaiting, requireSignIn, loopbackTrust, approveCode, openConnect }: {
+export function DevicesPanel({ initial, waiting: initialWaiting, requireSignIn, loopbackTrust, approveCode, openConnect, container }: {
   initial: DeviceListItem[]; waiting: WaitingDevice[]; requireSignIn: boolean
   /** Self-host: a browser on this Mac is signed in without asking (until "Require sign-in on this Mac" is on). */
   loopbackTrust: boolean
   /** From `?approve=CODE`: open the dialog on that code. */
   approveCode?: string
   openConnect?: boolean
+  /** Running in Docker: the lock-out hint names the Compose command. */
+  container?: boolean
 }) {
   const router = useRouter()
   const toast = useToast()
@@ -110,7 +112,7 @@ export function DevicesPanel({ initial, waiting: initialWaiting, requireSignIn, 
 
       {loopbackTrust ? (
         <SettingsSection id="this-mac" title="This Mac" description="A browser on this Mac is signed in without asking. Turn this on to make it connect like any other device.">
-          <SettingsRow label="Require sign-in on this Mac" hint={`Then ${current?.name ?? 'this browser'} and any new browser here connect with a code. Run npm run signin in a terminal if you ever lock yourself out.`}>
+          <SettingsRow label="Require sign-in on this Mac" hint={`Then ${current?.name ?? 'this browser'} and any new browser here connect with a code. Run ${container ? 'docker compose exec web relife signin' : 'npm run signin'} in a terminal if you ever lock yourself out.`}>
             <Switch
               checked={require} ariaLabel="Require sign-in on this Mac"
               onCheckedChange={async (on) => { setRequire(on); await setRequireSignIn(on).catch(() => setRequire(!on)) }}

@@ -21,7 +21,7 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
   key that encrypts saved connector keys; `RELIFE_DATA_DIR` moves it. `.env` is read by `next.config.ts` and
   `drizzle.config.ts` through `@next/env` and by the worker and test scripts through `tsx --env-file=../../.env`;
   restart after editing it.
-- `.githooks/`, `docs/`, `plans/`, `.claude/skills/`, `docker-compose.yml` stay at the root.
+- `.githooks/`, `docs/`, `plans/`, `.claude/skills/`, `docker-compose.yml`, `Dockerfile`, `docker/` (the image's entrypoint) and `install.sh` stay at the root.
 
 ## Layout
 
@@ -234,6 +234,20 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
 - Read connector keys with `env()` from `core/env.ts`, never `process.env`. Never change `process.env` at
   runtime: inside `next dev` it makes Turbopack rebuild and reload the page in a loop.
 - Server actions scope every write to `getUser()`.
+- Every write is a POST, PUT, PATCH, DELETE or server action. Never write in a GET route or during a render (the demo
+  gate and the demo's read-only database connection rely on it). A page that must save something on open (Wealth's
+  net-worth snapshot) skips it with `isDemo()`.
+- Schema change: edit `apps/web/src/db/schema.ts`, `npm run db:push` while iterating, then `npm run db:generate` and
+  commit the new files in `apps/web/drizzle/` (pre-push fails when they are missing). Never edit a migration that has
+  shipped. `apps/web/scripts/migrate.ts` (`npm run db:migrate`, the Docker `migrate` service) applies them and adopts a
+  database made by `db:push`. The image has no drizzle-kit.
+- `RELIFE_DEMO=1` is the strict read-only public demo (`apps/web/src/core/demo.ts`): it needs `RELIFE_MOCK=1`
+  (`src/db/index.ts` refuses to start otherwise); the edge gate refuses every non-GET request and every server action
+  with 403 "Demo: changes are off"; the database session is read-only; the worker, AI and connectors are off; visitors
+  are one synthetic device, so there is no sign-in. New client code that calls a server action must handle the rejection
+  (try/catch or `.catch` reaching `toast.error()`): in the demo `ToastProvider` turns that into the one demo toast.
+  `RELIFE_CONTAINER=1` marks the Docker image (shopping connectors are skipped there, sign-in hints name
+  `docker compose exec web relife signin`).
 
 ## Gamification
 
@@ -286,14 +300,13 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
   - **pre-commit:** blocks secret-looking strings (including device tokens, `rlf_<kind>_…`), `.env`, `data/`, keys and dumps, iCloud
     duplicates, and files over 2 MB.
   - **pre-push:** runs `npm run typecheck` and `npm test` (every workspace), `npm run tokens -- --check`,
-    `npm run brand:check`, and on a Mac with `swift` installed, `swift test` when `apps/mac` or
+    `npm run brand:check`, a migration check (`drizzle-kit generate` must produce nothing new), and on a Mac with `swift` installed, `swift test` when `apps/mac` or
     `packages/contract/fixtures` changed.
   - Don't bypass them with `--no-verify`; fix the cause.
-- CI (`.github/workflows/ci.yml`) runs on every PR and on main: the pre-commit rules over the whole PR diff, tokens,
-  brand, typecheck, `npm test`, the PostgreSQL integration tests (`npm run test:integration -w apps/web` after
-  `npm run mock:seed`), `next build` for web and site, the extension pack, and `swift test` plus grid lint for
-  `apps/mac` on Linux. `ci-ok` is the one required check. `pr-title.yml` checks the Conventional Commits title,
-  `codeql.yml` scans the code, Dependabot sends weekly grouped updates.
+- CI is meant to run the pre-commit rules over the whole PR diff, tokens, brand, typecheck, `npm test`, the PostgreSQL
+  integration tests (`npm run test:integration -w apps/web` after `npm run mock:seed`), `next build` for web and site and
+  the extension pack. Workflow files are added in their own commit (the Git token may lack the `workflow` scope);
+  Dependabot (`.github/dependabot.yml`) sends weekly grouped updates.
 - Commit only files related to the change. Review `git status` and `git diff --cached` before
   committing; never use `git add -A` blindly.
 - Commit messages: Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `chore:`, `test:`),
@@ -309,10 +322,12 @@ All from the repo root (they delegate to `apps/web` with `-w apps/web`).
   and two dev servers on one port make pages reload endlessly.
 - `npm run dev:mock`: random data in `relife_mock`, on port 3001. Stop `npm run dev` first; they
   share the build folder.
-- `npm test` · `npm run typecheck`: run in every workspace that has them. `npm run build` · `npm run db:push`
+- `npm test` · `npm run typecheck`: run in every workspace that has them. `npm run build` · `npm run db:push` · `npm run db:generate` · `npm run db:migrate`
 - `npm run tokens` regenerates the token outputs (`-- --check` fails if they are stale); `npm run brand` rebuilds
   the logo files; `npm run brand:check`; `npm run contract:check` runs the contract fixtures test.
-- `npm run service -- install|restart|stop|logs`: the production app as a LaunchAgent (starts at login). Stop it
+- `docker compose up -d` starts only Postgres on 5442 (development). `COMPOSE_PROFILES=app` runs the whole app from the
+  image (docs/SELF_HOSTING.md), `--profile ai` adds Ollama, `--profile demo` the read-only demo on port 3001.
+- `npm run service -- install|restart|stop|logs`: the production app as a LaunchAgent (macOS only; starts at login). Stop it
   before `npm run dev`; they share port 3030. After the move into `apps/web`, run `install` once more so the
   LaunchAgent's working directory is `apps/web`.
 - Scripts under `apps/web/scripts/` run from `apps/web`: `npx tsx --env-file=../../.env scripts/<file>.ts`.

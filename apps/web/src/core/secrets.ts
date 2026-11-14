@@ -47,6 +47,15 @@ export async function assertKeyReady(hasSaved = hasSavedKeys, file = keyFile()) 
   const problem = await keyProblem(hasSaved, file)
   if (problem) throw new Error(problem)
 }
+/**
+ * Creates `secret.key` now, from the one-shot `migrate` container, so the web app and the worker never race to make it.
+ * Keeps the guard: with saved keys and no key file it throws instead of making a new key.
+ */
+export async function ensureKeyFile() {
+  await assertKeyReady()
+  key()
+}
+
 function key() {
   if (cachedKey) return cachedKey
   const fromEnv = process.env.RELIFE_SECRET_KEY

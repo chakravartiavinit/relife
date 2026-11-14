@@ -1,4 +1,4 @@
-import { resolve } from 'node:path'
+import { relative, resolve } from 'node:path'
 import { loadEnvConfig } from '@next/env'
 import { defineConfig } from 'drizzle-kit'
 
@@ -7,7 +7,8 @@ loadEnvConfig(resolve(__dirname, '..', '..'))
 
 export default defineConfig({
   schema: resolve(__dirname, 'src/db/schema.ts'),
-  out: resolve(__dirname, 'drizzle'),
+  // Relative to the working directory: with an absolute `out`, `generate` reads the existing snapshots from ".//abs/path" and fails.
+  out: relative(process.cwd(), resolve(__dirname, 'drizzle')),
   dialect: 'postgresql',
   dbCredentials: { url: process.env.DATABASE_URL! },
 })

@@ -4,6 +4,7 @@ import { connectors } from '@/connectors'
 import { rules } from '@/rules'
 import { emitEvent, requestJob, runJob, type Job } from '@/core/jobs'
 import { getUser } from '@/core/user'
+import { connectorUnavailable } from '@/core/platform'
 
 // Every scheduled or event-driven job, in one list. To add one, append an entry: an id, a schedule
 // ({ cron } in the user's time zone, or { everyMinutes }), and run(). Add `on: ['some.event']` to also
@@ -40,7 +41,7 @@ const connectorJobs: Job[] = connectors.map((c) => ({
   backoff: true,
   timeoutMinutes: 60, // a first sync can be long (Binance checks every spot pair once)
   // OAuth connectors also wait until you've signed in.
-  enabled: async () => (await connected(c.id, c.env)) && (!c.oauth || (await import('@/core/oauth')).canAuthorize(await getUser(), c)),
+  enabled: async () => !connectorUnavailable(c) && (await connected(c.id, c.env)) && (!c.oauth || (await import('@/core/oauth')).canAuthorize(await getUser(), c)),
   on: [`connector.connected:${c.id}`],
   run: async () => {
     const { runConnector } = await import('@/worker/sync')

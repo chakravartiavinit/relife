@@ -5,6 +5,7 @@ import { emitRawMany } from '@/core/ingest'
 import { getUser } from '@/core/user'
 import type { Connector, RawEvent } from '@/core/types'
 import { env } from '@/core/env'
+import { connectorUnavailable } from '@/core/platform'
 
 // Safe to import from the web app: no timers start here.
 
@@ -19,6 +20,9 @@ export function missingEnv(c: Connector) {
 export async function runConnector(connectorId: string): Promise<{ ok: boolean; events: number; error?: string }> {
   const c = connectors.find((x) => x.id === connectorId)
   if (!c) return { ok: false, events: 0, error: `Unknown connector "${connectorId}"` }
+  // Shopping apps can't run in Docker: say so, and leave the connection alone (not a failure to count).
+  const unavailable = connectorUnavailable(c)
+  if (unavailable) return { ok: false, events: 0, error: unavailable }
   const missing = missingEnv(c)
   if (missing.length) return { ok: false, events: 0, error: `Missing env: ${missing.join(', ')}` }
 
@@ -87,6 +91,7 @@ export async function connectorStatus() {
     env: c.env,
     everyMinutes: c.everyMinutes,
     login: c.login,
+    unavailable: connectorUnavailable(c),
     oauth: c.oauth,
     // Mock mode shows seeded connection states (connected, failing) instead of "key missing".
     missingEnv: isMock ? [] : missingEnv(c),

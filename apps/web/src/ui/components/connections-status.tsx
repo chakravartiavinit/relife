@@ -121,7 +121,7 @@ export function SuggestedForYou({ items, areas, manage }: { items: ConnectorItem
   // Picked once when the page opens: a source connected here stays in place to show its "Connected" line,
   // instead of the refresh removing it before the success state can draw.
   const [ids] = useState(() => items
-    .filter((c) => !c.connected && isData(c) && c.category && (!areas?.length || areas.includes(c.category)))
+    .filter((c) => !c.connected && !c.unavailable && isData(c) && c.category && (!areas?.length || areas.includes(c.category)))
     .sort((a, b) => Number(isInline(b)) - Number(isInline(a)) || a.name.localeCompare(b.name))
     .slice(0, 4).map((c) => c.id))
   const picks = ids.flatMap((id) => items.filter((c) => c.id === id))

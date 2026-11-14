@@ -1,5 +1,6 @@
 import { and, asc, eq, gte } from 'drizzle-orm'
 import { db, schema } from '@/db'
+import { isDemo } from './demo'
 import { signedBalance } from '@/domain/wealth'
 import { convert } from './fx'
 import { addDays, localDate } from './time'
@@ -40,7 +41,8 @@ export async function netWorthNow(user: User, now = new Date()) {
 /** Save today's net worth. Called by the worker hourly and whenever Wealth is opened. */
 export async function snapshotNetWorth(user: User, now = new Date()) {
   const n = await netWorthNow(user, now)
-  if (!n.accounts) return n
+  // Opening Wealth saves a snapshot; the read-only demo only reads (its sample data already has history).
+  if (!n.accounts || isDemo()) return n
   await db.insert(schema.netWorthSnapshots)
     .values({ userId: user.id, localDate: n.today, currency: user.baseCurrency, total: n.total, cash: n.cash, crypto: n.crypto })
     .onConflictDoUpdate({ target: [schema.netWorthSnapshots.userId, schema.netWorthSnapshots.localDate], set: { currency: user.baseCurrency, total: n.total, cash: n.cash, crypto: n.crypto } })

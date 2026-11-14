@@ -9,6 +9,7 @@ import { AnimatedToastStack, type AnimatedToast, type ToastStatus } from '@/ui/b
 import { cn } from '../cn'
 import { AppLogo } from './app-logo'
 import { Button, buttonClass } from './button'
+import { DEMO_MESSAGE } from '@/core/demo'
 
 type Tone = 'good' | 'bad' | 'neutral'
 type Kind = Tone | 'loading'
@@ -41,6 +42,11 @@ type Item = Extra & { id: string; title: string; kind: Kind; duration: number; v
 const noop = Object.assign(() => {}, { loading: () => '', update: () => {}, error: () => {} }) as Notify
 const Ctx = createContext<Notify>(noop)
 export const useToast = () => useContext(Ctx)
+/** Turns on the read-only demo wording (see ToastProvider). The demo guard calls it once the page knows it is the demo. */
+const DemoCtx = createContext<() => void>(() => {})
+export const useEnterDemo = () => useContext(DemoCtx)
+const DEMO_DESCRIPTION = 'This is a read-only demo with sample data.'
+const DEMO_COLLAPSE_MS = 2000
 /** Whether timers are paused (a toast is hovered or focused, or the tab is hidden). */
 const PauseCtx = createContext<{ paused: boolean; hover: (on: boolean) => void; dismiss: (id: string) => void }>({ paused: false, hover: () => {}, dismiss: () => {} })
 
@@ -58,8 +64,17 @@ const STATUS: Record<Kind, ToastStatus> = { good: 'success', bad: 'error', neutr
  */
 const STACK_CLASS = 'bottom-[calc(var(--tabbar-h)+16px)] w-[min(380px,calc(100vw-24px))] max-w-none lg:right-[calc(max(0px,(100vw_-_1480px)/2)_+_2.5rem)] lg:bottom-8 lg:left-auto lg:translate-x-0'
 
-export function ToastProvider({ children }: { children: React.ReactNode }) {
+/**
+ * `demo` (the read-only demo, RELIFE_DEMO=1) turns every "bad" toast into one wording, "Demo: changes are off", and
+ * collapses identical ones that land within 2 s. The layout can't know it at build time, so the demo guard sets it on mount.
+ */
+export function ToastProvider({ children, demo = false }: { children: React.ReactNode; demo?: boolean }) {
   const [items, setItems] = useState<Item[]>([])
+  const [demoOn, setDemoOn] = useState(demo)
+  const demoRef = useRef(demoOn)
+  demoRef.current = demoOn
+  const lastDemo = useRef(0)
+  const enterDemo = useCallback(() => setDemoOn(true), [])
   const [hovered, setHovered] = useState(false)
   const [hidden, setHidden] = useState(false)
   const itemsRef = useRef(items)
@@ -72,12 +87,23 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       setItems((xs) => [...xs, { ...t, id, version: 0 }].slice(-KEEP))
       return id
     }
-    const say = (title: string, tone: Tone = 'neutral', extra?: Extra) => { push({ ...extra, title, kind: tone, duration: lasts(extra) }) }
+    const say = (title: string, tone: Tone = 'neutral', extra?: Extra) => {
+      if (tone === 'bad' && demoRef.current) {
+        const now = Date.now()
+        if (now - lastDemo.current < DEMO_COLLAPSE_MS) return
+        lastDemo.current = now
+        push({ title: DEMO_MESSAGE, kind: 'bad', description: DEMO_DESCRIPTION, duration: lasts({ description: DEMO_DESCRIPTION }) })
+        return
+      }
+      push({ ...extra, title, kind: tone, duration: lasts(extra) })
+    }
     return Object.assign(say, {
       loading: (title: string, extra?: Extra) => push({ ...extra, title, kind: 'loading', duration: 0 }),
       // Keeps the tile it had (an app's logo) unless told otherwise; the old second line goes.
-      update: (id: string, title: string, tone: Tone = 'good', extra?: Extra) =>
-        setItems((xs) => xs.map((x) => x.id === id ? { ...x, description: undefined, ...extra, title, kind: tone, duration: lasts(extra), version: x.version + 1 } : x)),
+      update: (id: string, title: string, tone: Tone = 'good', extra?: Extra) => {
+        if (tone === 'bad' && demoRef.current) { title = DEMO_MESSAGE; extra = { description: DEMO_DESCRIPTION } }
+        setItems((xs) => xs.map((x) => x.id === id ? { ...x, description: undefined, ...extra, title, kind: tone, duration: lasts(extra), version: x.version + 1 } : x))
+      },
       error: (title = 'Couldn’t save', description = 'Try again in a moment') => say(title, 'bad', { description }),
     }) as Notify
   }, [])
@@ -94,7 +120,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <Ctx.Provider value={notify}>
-      {children}
+      <DemoCtx.Provider value={enterDemo}>{children}</DemoCtx.Provider>
       <PauseCtx.Provider value={pause}>
         <AnimatedToastStack
           fixed position="bottom-center" maxVisible={4} toasts={toasts} onDismiss={dismiss}

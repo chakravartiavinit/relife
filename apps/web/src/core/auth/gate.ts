@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { allowedHost } from '../hosts'
 import { safeNext } from './next'
 import { getUser } from '../user'
+import { DEMO_HEADER, DEMO_MESSAGE, demoMethodAllowed, isDemo } from '../demo'
 import { findByToken, touchIfDue } from './devices'
 import { mintLoopbackDevice, requireSignIn } from './loopback'
 import { apiError, cookieWriteAllowed, denied, sessionCookie } from './request'
@@ -33,9 +34,28 @@ export const realDeps: GateDeps = { warm: getUser, findByToken, touchIfDue, requ
 /** These routes answered `{ error: string }` before device tokens; extensions before 0.7 still read that. */
 const LEGACY_BODY = new Set(['/api/companion', '/api/activity', '/api/ingest'])
 
+/**
+ * The read-only demo (RELIFE_DEMO=1, src/core/demo.ts): no sign-in, no cookie, no pairing, and nothing that writes. A write
+ * is any method but GET, HEAD or OPTIONS, or a server action (`Next-Action`), so there is no list to keep up to date.
+ * Reads go on to the page or route, where authenticate() and viewerDevice() answer with the synthetic demo device.
+ */
+function demoGate(req: NextRequest, host: string | null): NextResponse | Response {
+  const { pathname } = req.nextUrl
+  if (pathname === '/api/health') return isLoopbackHost(host) && !hasProxyHeaders(req.headers) ? NextResponse.next() : new NextResponse('Not found', { status: 404 })
+  if (pathname === '/signin' || pathname === '/pair') return NextResponse.redirect(new URL('/', req.url))
+  if (pathname.startsWith('/api/oauth/') || pathname.startsWith('/api/v1/pair/') || !demoMethodAllowed(req.method) || req.headers.has('next-action')) {
+    const res = apiError(403, 'forbidden', DEMO_MESSAGE, { legacy: LEGACY_BODY.has(pathname) })
+    res.headers.set(DEMO_HEADER, 'read-only')
+    return res
+  }
+  return NextResponse.next()
+}
+
 export async function gate(req: NextRequest, deps: GateDeps = realDeps): Promise<NextResponse | Response> {
   const host = req.headers.get('host')
-  if (!allowedHost(host)) return new NextResponse(`${brand.name} refused this address. Add it to RELIFE_ALLOWED_HOSTS in .env to allow it.`, { status: 421 })
+  if (!allowedHost(host)) return new NextResponse(`${brand.name} refused this address. Add it to RELIFE_ALLOWED_HOSTS in .env to allow it, then restart ${brand.name}.`, { status: 421 })
+
+  if (isDemo()) return demoGate(req, host)
 
   const { pathname, search } = req.nextUrl
   // The health probe is for this Mac only.

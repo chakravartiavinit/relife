@@ -42,6 +42,8 @@ export type ConnectorItem = {
   connected: boolean
   /** Connects by logging in to the app in a Chrome window (shopping apps). */
   login?: boolean
+  /** Why it can't run here (shopping apps in Docker). The row is drawn disabled with this as its hint. */
+  unavailable?: string
   /** Connects by signing in with the service (OAuth): you register an app once, then sign in. */
   oauth?: { signedIn: boolean; redirectUri: string; setupUrl: string; httpsOnly?: boolean }
   /** Data sources get a Sync now button once connected. */
@@ -94,7 +96,7 @@ type Show = 'all' | 'on' | 'off'
  * Every service as a card in a catalog, grouped by what it tracks, with a category rail (a chip row on phones),
  * search and a connected filter. Cards open one dialog for connecting and managing.
  */
-export function ConnectorMarket({ items, worker, areas }: { items: ConnectorItem[]; worker: { alive: boolean; ago: string }; /** The areas the user picked, for the suggestions. */ areas?: string[] }) {
+export function ConnectorMarket({ items, worker, areas }: { items: ConnectorItem[]; worker: { alive: boolean; ago: string; demo?: boolean }; /** The areas the user picked, for the suggestions. */ areas?: string[] }) {
   useSignInResult(items)
   const [query, setQuery] = useState('')
   const [show, setShow] = useState<Show>('all')
@@ -121,9 +123,13 @@ export function ConnectorMarket({ items, worker, areas }: { items: ConnectorItem
       <ConnectExtension />
       <div className="rise flex flex-wrap items-center gap-2" style={{ '--i': 0 } as React.CSSProperties}>
         <Pill>{connected.length} of {items.length} connected</Pill>
-        <Pill color={worker.alive ? 'var(--good)' : 'var(--warn)'} title={worker.alive ? `Heartbeat ${worker.ago}` : 'Start it with npm run dev'}>
-          {worker.alive ? 'Syncing in the background' : 'Worker stopped · run npm run dev'}
-        </Pill>
+        {worker.demo ? (
+          <Pill title="The demo has no worker: its data is sample data.">Demo data · nothing syncs</Pill>
+        ) : (
+          <Pill color={worker.alive ? 'var(--good)' : 'var(--warn)'} title={worker.alive ? `Heartbeat ${worker.ago}` : 'Start it with npm run dev'}>
+            {worker.alive ? 'Syncing in the background' : 'Worker stopped · run npm run dev'}
+          </Pill>
+        )}
         {attention.length ? <Pill color="var(--bad)">{attention.length} need{attention.length === 1 ? 's' : ''} a fix</Pill> : null}
       </div>
 
@@ -170,7 +176,7 @@ export function ConnectorMarket({ items, worker, areas }: { items: ConnectorItem
                 <ul className="grid grid-cols-1 gap-3 @xl:grid-cols-2 @3xl:grid-cols-3">
                   {g.list.map((c) => (
                     <li key={c.id} className="rise flex min-w-0" style={{ '--i': 3.25 + gi * 0.5 } as React.CSSProperties}>
-                      <ConnectorDialog c={c} trigger={<Tile c={c} />} />
+                      {c.unavailable ? <Tile c={c} disabled /> : <ConnectorDialog c={c} trigger={<Tile c={c} />} />}
                     </li>
                   ))}
                 </ul>
@@ -335,7 +341,7 @@ function Tile({ c, ...props }: { c: ConnectorItem } & React.ButtonHTMLAttributes
     <button
       type="button"
       {...props}
-      className="group flex w-full flex-col gap-3 rounded-[18px] bg-surface p-4 text-start shadow-1 transition-[box-shadow,scale] duration-150 ease-out-quint hover:shadow-2 active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill"
+      className={cn('group flex w-full flex-col gap-3 rounded-[18px] bg-surface p-4 text-start shadow-1 transition-[box-shadow,scale] duration-150 ease-out-quint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill', c.unavailable ? 'cursor-not-allowed opacity-60' : 'hover:shadow-2 active:scale-[0.96]')}
     >
       <span className="flex items-center gap-3">
         <span className="transition-[scale] duration-150 ease-out-quint group-hover:scale-[1.04]"><Logo id={c.id} category={c.category} size="sm" /></span>
@@ -359,6 +365,8 @@ function Tile({ c, ...props }: { c: ConnectorItem } & React.ButtonHTMLAttributes
               Manage<ChevronRight className="size-4 transition-[translate] duration-150 ease-out-quint group-hover:translate-x-0.5 rtl:-scale-x-100" strokeWidth={1.5} aria-hidden />
             </span>
           </>
+        ) : c.unavailable ? (
+          <span className="text-[12.5px] leading-snug text-ink-3">{c.unavailable}</span>
         ) : (
           <>
             <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink-3">{c.provides.slice(0, 3).join(' · ')}</span>

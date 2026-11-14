@@ -15,6 +15,7 @@ import { BeuiGallery } from '@/ui/components/gallery-beui'
 import { PositionCard } from '@/ui/components/wealth/position-card'
 import { IlloGallery } from '@/ui/components/tour/illos'
 import { ToastGallery } from '@/ui/components/toast'
+import { DemoGallery } from '@/ui/components/demo-gallery'
 import { CaptureGallery } from '@/ui/components/capture/capture-gallery'
 import { PeekGallery } from '@/ui/components/peek/peek-gallery'
 import { CoachGallery } from '@/ui/components/coach/coach-gallery'
@@ -200,6 +201,10 @@ export default function UiGallery() {
 
       <Section title="Toasts (with Undo)">
         <ToastGallery />
+      </Section>
+
+      <Section title="Demo mode (read-only)">
+        <DemoGallery />
       </Section>
 
       <Section title="System recovery">

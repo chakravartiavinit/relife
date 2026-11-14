@@ -205,3 +205,55 @@ test('a Next-Action request is never public: /signin does not run server actions
   const ok = await gate(req('/signin', { method: 'POST', headers: { 'next-action': 'abc', cookie: `relife=${GOOD}` } }), deps())
   assert.equal(kind(ok), 'next', 'with a session an action works')
 })
+
+// ── The read-only demo (RELIFE_DEMO=1, src/core/demo.ts) ──────────────────────────────────────────
+
+async function inDemo<T>(f: () => Promise<T>) {
+  process.env.RELIFE_DEMO = '1'
+  try { return await f() } finally { delete process.env.RELIFE_DEMO }
+}
+
+test('demo: an anonymous page passes and nobody is minted a device or a cookie', async () => {
+  await inDemo(async () => {
+    const minted: string[] = []
+    const r = await gate(req('/wealth/spending', { host: 'demo.example.com', headers: NAV }), deps({ minted, requireSignIn: true }))
+    // The host check still comes first, so the demo needs its host named.
+    assert.equal(r.status, 421)
+    process.env.RELIFE_ALLOWED_HOSTS = 'demo.example.com'
+    try {
+      const ok = await gate(req('/wealth/spending', { host: 'demo.example.com', headers: NAV }), deps({ minted, requireSignIn: true }))
+      assert.equal(kind(ok), 'next'); assert.ok(!setsCookie(ok)); assert.equal(minted.length, 0)
+      assert.equal(kind(await gate(req('/api/capture', { host: 'demo.example.com' }), deps())), 'next', 'reads of the API pass')
+    } finally { delete process.env.RELIFE_ALLOWED_HOSTS }
+  })
+})
+
+test('demo: every write is refused with "Demo: changes are off", whatever its path', async () => {
+  await inDemo(async () => {
+    for (const [path, o] of [
+      ['/', { method: 'POST' }], ['/api/ingest', { method: 'POST' }], ['/api/v1/today/actions', { method: 'POST' }],
+      ['/api/v1/me', { method: 'DELETE' }], ['/coach', { method: 'PUT' }], ['/', { method: 'PATCH' }],
+      ['/', { method: 'GET', headers: { 'next-action': 'abc' } }], ['/you/settings', { method: 'POST', headers: { 'next-action': 'abc' } }],
+      ['/api/oauth/strava/start', { method: 'GET' }], ['/api/oauth/strava/callback', { method: 'GET' }], ['/api/v1/pair/redeem', { method: 'GET' }],
+    ] as [string, { method?: string; headers?: Record<string, string> }][]) {
+      const r = await gate(req(path, o), deps())
+      assert.equal(r.status, 403, `${o.method} ${path}`)
+      assert.equal(r.headers.get('x-relife-demo'), 'read-only', path)
+      const body = await r.json()
+      assert.equal(typeof body.error === 'string' ? body.error : body.error.message, 'Demo: changes are off', path)
+    }
+  })
+})
+
+test('demo: sign-in pages go home, health keeps its loopback rule, a bad host is 421', async () => {
+  await inDemo(async () => {
+    for (const p of ['/signin', '/pair']) {
+      const r = await gate(req(p), deps())
+      assert.equal(kind(r), 'redirect /', p)
+    }
+    assert.equal(kind(await gate(req('/api/health'), deps())), 'next')
+    process.env.RELIFE_ALLOWED_HOSTS = 'demo.example.com'
+    try { assert.equal((await gate(req('/api/health', { host: 'demo.example.com' }), deps())).status, 404) } finally { delete process.env.RELIFE_ALLOWED_HOSTS }
+    assert.equal((await gate(req('/', { host: 'evil.example' }), deps())).status, 421)
+  })
+})

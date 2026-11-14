@@ -21,13 +21,17 @@ import { Celebration } from '@/ui/components/petals'
 import { Celebrations } from '@/ui/components/celebrate'
 import { PaymentToasts } from '@/ui/components/payment-toasts'
 import { LiveRefresh } from '@/ui/components/live-refresh'
+import { DemoBanner, DemoSidebarBadge } from '@/ui/components/demo-banner'
+import { DemoGuard } from '@/ui/components/demo-guard'
+import { connection } from 'next/server'
+import { isDemo } from '@/core/demo'
 
 export const metadata = rootMetadata
 export const viewport = rootViewport
 
-/** Always visible in mock mode so random data is never mistaken for yours. */
+/** Always visible in mock mode so random data is never mistaken for yours. The demo has its own (DemoBanner). */
 function MockBadge({ wide = false }: { wide?: boolean }) {
-  if (process.env.RELIFE_MOCK !== '1') return null
+  if (process.env.RELIFE_MOCK !== '1' || isDemo()) return null
   return (
     <span
       title="Random data from the relife_mock database. Your real data is untouched."
@@ -43,6 +47,30 @@ function MockBadge({ wide = false }: { wide?: boolean }) {
   )
 }
 
+/** The guard that turns blocked writes into the demo toast. The flag is read per request: the layout is built ahead of time. */
+async function DemoMount() {
+  await connection()
+  return isDemo() ? <DemoGuard /> : null
+}
+
+/**
+ * What keeps open pages current: new-payment toasts, the refresh poll and the event stream, and the "device waiting" banner.
+ * Each asks the server through a server action, which the demo gate refuses. The demo's data never changes and has no
+ * devices, so it runs none of them (and holds no event stream: a browser allows six connections to one host).
+ */
+async function LiveParts() {
+  await connection()
+  if (isDemo()) return null
+  return (
+    <>
+      <PaymentToasts />
+      <LiveRefresh />
+      {/* usePathname() needs a Suspense boundary on dynamic routes under Cache Components. */}
+      <Suspense fallback={null}><WaitingBanner /></Suspense>
+    </>
+  )
+}
+
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <RootHtml head={<script dangerouslySetInnerHTML={{ __html: SIDEBAR_SCRIPT }} />}>
@@ -54,9 +82,10 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
               coachBadge={<Suspense fallback={null}><CoachCount /></Suspense>}
               coachDot={<Suspense fallback={null}><CoachCount variant="dot" /></Suspense>}
               areas={<Suspense fallback={<AreaLinksPlaceholder />}><SidebarAreas /></Suspense>}
-              mock={<MockBadge wide />}
+              mock={<><MockBadge wide /><Suspense fallback={null}><DemoSidebarBadge /></Suspense></>}
             />
             <main className="min-w-0 flex-1">
+              <Suspense fallback={null}><DemoBanner className="max-lg:hidden" /></Suspense>
               <TopBar
                 date={<Suspense fallback={null}><TodayDate /></Suspense>}
                 sync={<Suspense fallback={<SyncDot tone="loading" />}><SyncStatus /></Suspense>}
@@ -69,21 +98,20 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
                   sync={<Suspense fallback={<SyncDot tone="loading" />}><SyncStatus /></Suspense>}
                   avatar={<Suspense fallback={<AvatarRing initial="R" />}><Avatar /></Suspense>}
                 />
+                <Suspense fallback={null}><DemoBanner className="-mx-5 sm:-mx-8 lg:hidden" /></Suspense>
                 {children}
               </div>
             </main>
           </SidebarProvider>
           <TabBar coachBadge={<Suspense fallback={null}><CoachCount className="h-[18px] min-w-[18px] px-1 text-label shadow-[0_0_0_2px_var(--surface)]" /></Suspense>} />
+          <Suspense fallback={null}><DemoMount /></Suspense>
           <Capture />
           {/* useSearchParams needs a Suspense boundary under Cache Components; nothing to show while it resolves. */}
           <Suspense fallback={null}><PeekHost /></Suspense>
           <Tour />
           <Celebration />
           <Celebrations />
-          <PaymentToasts />
-          <LiveRefresh />
-          {/* usePathname() needs a Suspense boundary on dynamic routes under Cache Components. */}
-          <Suspense fallback={null}><WaitingBanner /></Suspense>
+          <Suspense fallback={null}><LiveParts /></Suspense>
           <Suspense fallback={null}><ThemeFromServer /></Suspense>
         </ToastProvider>
         </AppMotion>
