@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { guessTrackerMapping, parseTrackerValue, readTrackerRow, type TrackerCsvMapping } from './tracker-csv'
+import { guessTrackerMapping, matchTracker, parseTrackerValue, readTrackerRow, splitUnit, type TrackerCsvMapping } from './tracker-csv'
 
 test('parseTrackerValue: numbers, decimal commas and yes/no', () => {
   assert.equal(parseTrackerValue('12', '.'), 12)
@@ -37,4 +37,36 @@ test('readTrackerRow reads long and wide rows and says why a row is skipped', ()
   assert.deepEqual(readTrackerRow(['05/01/2024', 'Pages', '7'], long, 2), { ok: true, rows: [{ date: '2024-01-05', slug: 'pages', value: 7 }] })
   assert.deepEqual(readTrackerRow(['05/01/2024', 'Steps', '7'], long, 5), { ok: false, reason: 'row 5: "Steps" is not mapped' })
   assert.deepEqual(readTrackerRow(['05/01/2024', 'Pages', 'lots'], long, 6), { ok: false, reason: 'row 6: no value' })
+})
+
+const MINE = [{ slug: 'weight', name: 'Weight', unit: 'kg' }, { slug: 'pages-read', name: 'Pages read', unit: null }, { slug: 'water', name: 'Water', unit: 'ml' }]
+
+test('splitUnit takes a unit suffix off a name', () => {
+  assert.deepEqual(splitUnit('weight_kg'), { base: 'weight', unit: 'kg' })
+  assert.deepEqual(splitUnit('Weight (kg)'), { base: 'weight', unit: 'kg' })
+  assert.deepEqual(splitUnit('Weight [lbs]'), { base: 'weight', unit: 'lb' })
+  assert.deepEqual(splitUnit('Body Weight, KG'), { base: 'body-weight', unit: 'kg' })
+  assert.deepEqual(splitUnit('water-ml'), { base: 'water', unit: 'ml' })
+  assert.deepEqual(splitUnit('Pages read'), { base: 'pages-read' })
+  assert.deepEqual(splitUnit('Mood'), { base: 'mood' })
+})
+
+test('matchTracker finds the tracker a name already is, and not one with another unit', () => {
+  assert.equal(matchTracker('weight_kg', MINE)?.tracker.slug, 'weight')
+  assert.equal(matchTracker('Weight (kg)', MINE)?.unit, 'kg')
+  assert.equal(matchTracker('WEIGHT', MINE)?.tracker.slug, 'weight')
+  assert.equal(matchTracker('Pages Read', MINE)?.tracker.slug, 'pages-read')
+  assert.equal(matchTracker('water_ml', MINE)?.tracker.slug, 'water')
+  assert.equal(matchTracker('weight_lbs', MINE), undefined, 'pounds are not the kg tracker')
+  assert.equal(matchTracker('water_l', MINE), undefined)
+  assert.equal(matchTracker('Mood', MINE), undefined)
+})
+
+test('guessTrackerMapping feeds an existing tracker for weight_kg, long and wide, and makes a new one otherwise', () => {
+  const wide = guessTrackerMapping(['date', 'weight_kg', 'mood'], [['2026-10-01', '71.4', '4'], ['2026-10-02', '71.2', '5']], MINE)!
+  assert.deepEqual(wide.metrics, { weight_kg: { slug: 'weight', unit: 'kg' }, mood: { slug: 'mood' } })
+  const long = guessTrackerMapping(['date', 'metric', 'value'], [['2026-10-01', 'Weight (kg)', '71.4'], ['2026-10-01', 'Pages Read', '12']], MINE)!
+  assert.deepEqual(long.metrics, { 'Weight (kg)': { slug: 'weight', unit: 'kg' }, 'Pages Read': { slug: 'pages-read' } })
+  const none = guessTrackerMapping(['date', 'weight_kg'], [['2026-10-01', '71.4']], [])!
+  assert.deepEqual(none.metrics, { weight_kg: { slug: 'weight-kg' } })
 })

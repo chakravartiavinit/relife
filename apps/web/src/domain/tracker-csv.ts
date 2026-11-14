@@ -31,6 +31,27 @@ export function parseTrackerValue(s: string, decimal: Decimal): number | null {
   return n === null ? null : Math.round(n * 1e6) / 1e6
 }
 
+const UNITS: Record<string, string> = { kg: 'kg', kgs: 'kg', lb: 'lb', lbs: 'lb', km: 'km', mi: 'mi', cm: 'cm', min: 'min', mins: 'min', hr: 'hr', hrs: 'hr', ml: 'ml', l: 'l', kcal: 'kcal', bpm: 'bpm', pct: '%', '%': '%' }
+
+/** A column or metric name without its unit: "weight_kg", "Weight (kg)" and "Weight, kg" are "weight" with unit "kg". */
+export function splitUnit(name: string): { base: string; unit?: string } {
+  const t = name.trim()
+  const m = /^(.*?)\s*[(\[]\s*([a-z%]+)\s*[)\]]$/i.exec(t) ?? /^(.*?)(?:[\s_.-]+|\s*,\s*)([a-z%]+)$/i.exec(t)
+  const unit = m ? UNITS[m[2].toLowerCase()] : undefined
+  return m && unit ? { base: slugify(m[1]), unit } : { base: slugify(t) }
+}
+
+/** The tracker a CSV metric already is: the same name or slug, once a unit suffix is taken off. A different unit is a different tracker. */
+export function matchTracker<T extends { slug: string; name: string; unit?: string | null }>(name: string, trackers: T[]): { tracker: T; unit?: string } | undefined {
+  const { base, unit } = splitUnit(name)
+  if (!base) return undefined
+  const tracker = trackers.find((t) => t.slug === slugify(name) || t.slug === base || slugify(t.name) === base)
+  if (!tracker) return undefined
+  const have = tracker.unit ? (UNITS[tracker.unit.trim().toLowerCase()] ?? tracker.unit.trim().toLowerCase()) : undefined
+  if (unit && have && unit !== have) return undefined // weight_lbs is not the kg Weight tracker
+  return { tracker, ...(unit ? { unit } : {}) }
+}
+
 export type TrackerGuess = {
   shape: 'long' | 'wide'
   columns: TrackerCsvMapping['columns']
@@ -41,7 +62,7 @@ export type TrackerGuess = {
 }
 
 /** Long when the header has metric and value columns; else wide, with every column that holds numbers a metric. */
-export function guessTrackerMapping(header: string[], sample: string[][]): TrackerGuess | null {
+export function guessTrackerMapping(header: string[], sample: string[][], trackers: { slug: string; name: string; unit?: string | null }[] = []): TrackerGuess | null {
   const h = header.map((x) => x.trim())
   const date = h.findIndex((x) => DATE.test(x))
   if (date < 0) return null
@@ -51,8 +72,13 @@ export function guessTrackerMapping(header: string[], sample: string[][]): Track
   const col = (i: number) => sample.map((r) => r[i] ?? '').filter((x) => x.trim())
   const dates = detectDateFormat(col(date))
   const metrics: TrackerCsvMapping['metrics'] = {}
+  // An existing tracker when the name says so (weight_kg → Weight), else a new one named as the file names it.
+  const feeds = (name: string): TrackerCsvMapping['metrics'][string] => {
+    const hit = matchTracker(name, trackers)
+    return hit ? { slug: hit.tracker.slug, ...(hit.unit ? { unit: hit.unit } : {}) } : { slug: slugify(name) }
+  }
   if (metric >= 0 && value >= 0) {
-    for (const name of new Set(col(metric).map((x) => x.trim()))) metrics[name] = { slug: slugify(name) }
+    for (const name of new Set(col(metric).map((x) => x.trim()))) metrics[name] = feeds(name)
     return { shape: 'long', columns: { date, metric, value, ...(note >= 0 ? { note } : {}) }, decimal: guessDecimal(col(value)), dates, metrics }
   }
   const numeric: number[] = []
@@ -61,7 +87,7 @@ export function guessTrackerMapping(header: string[], sample: string[][]): Track
     const vals = col(i)
     if (vals.length && vals.some((v) => parseTrackerValue(v, '.') !== null || parseTrackerValue(v, ',') !== null)) {
       numeric.push(i)
-      metrics[name] = { slug: slugify(name) }
+      metrics[name] = feeds(name)
     }
   })
   if (!numeric.length) return null

@@ -40,7 +40,9 @@ export async function previewTrackerCsv(file: string, user: User, given?: Tracke
   const signature = headerSignature(header)
   const saved = given ? null : await savedMapping(user, signature)
   const savedMap = saved?.mapping?.kind === 'tracker-csv' ? saved.mapping : null
-  const guess = guessTrackerMapping(header, body.slice(0, 300))
+  const trackers = await db.select({ slug: schema.trackers.slug, name: schema.trackers.name, unit: schema.trackers.unit }).from(schema.trackers)
+    .where(and(eq(schema.trackers.userId, user.id)))
+  const guess = guessTrackerMapping(header, body.slice(0, 300), trackers)
   if (!guess && !given && !savedMap) return { ok: false, error: 'No date column or no numbers were found. A tracker CSV needs a date column and one column per metric, or metric and value columns.' }
   const use = given ?? savedMap
   const dateSamples = body.slice(0, 300).map((r) => r[use?.columns.date ?? guess?.columns.date ?? -1] ?? '')
@@ -68,13 +70,11 @@ export async function previewTrackerCsv(file: string, user: User, given?: Tracke
   // More than one date order fits and nothing says which: the user picks before anything is read.
   const dateChoices = !given && !savedMap && dates.candidates.length > 1
     ? dates.candidates.map((format) => ({ format, example: parseDate(dateSamples.find((s) => s.trim()) ?? '', format) ?? '' })) : []
-  const trackers = await db.select({ slug: schema.trackers.slug, name: schema.trackers.name }).from(schema.trackers)
-    .where(and(eq(schema.trackers.userId, user.id)))
   return {
     ok: true, kind: 'tracker-csv', header, signature, mapping, ready: ok && count > 0 && !dateChoices.length,
     ...(saved && !given ? { savedFrom: saved.fileName } : {}),
     dateChoices,
-    rows: count, from, to, invalid, invalidSamples, sample, trackers,
+    rows: count, from, to, invalid, invalidSamples, sample, trackers: trackers.map((t) => ({ slug: t.slug, name: t.name })),
   }
 }
 
