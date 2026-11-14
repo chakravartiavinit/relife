@@ -1,7 +1,7 @@
 'use client'
 
 import { PARTY_ACTIVE, PARTY_ALONE, PARTY_CLEARED, PARTY_FULL, PARTY_INVITED, PARTY_NEW, PARTY_NONE } from '@/ui/fixtures/party'
-import { PeopleOnServer } from '../people-on-server'
+import { InviteBody, PeopleOnServer } from '../people-on-server'
 import { PartyCard } from './party-card'
 
 // /dev/ui "Party and People": every state of the Party card and of Settings → People on this server, from fixtures.
@@ -40,6 +40,14 @@ export function PartyGallery() {
             ]}
             invites={[{ id: 'i1', expiresAt: soon(6 * DAY), expired: false }, { id: 'i2', expiresAt: ago(DAY), expired: true }]}
           />
+        </Sub>
+      </div>
+      <div className="grid gap-8 xl:grid-cols-2">
+        <Sub title="Invite dialog: a link and its code (the real one opens from Invite someone)">
+          <div className="rounded-lg bg-surface p-6 shadow-1"><InviteBody invite={{ id: 'i', expiresAt: soon(7 * DAY), link: 'http://192.168.1.20:3030/join#s=mockmockmockmock', host: '192.168.1.20:3030', loopback: false }} left={7 * DAY} /></div>
+        </Sub>
+        <Sub title="Invite dialog: no address other people can reach">
+          <div className="rounded-lg bg-surface p-6 shadow-1"><InviteBody invite={{ id: null, expiresAt: null, link: null, host: '127.0.0.1:3030', loopback: true }} left={null} /></div>
         </Sub>
       </div>
     </div>

@@ -124,28 +124,35 @@ function InviteDialog({ open, onClose }: { open: boolean; onClose: () => void })
           <div className="h-12 rounded-md bg-surface-2" />
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
-          {invite.link ? (
-            <>
-              <QrCode value={invite.link} label="Invite link as a QR code" className="mx-auto w-full max-w-[240px]" dim={left === 0} />
-              <CopyLine lines={[invite.link]} label="invite link" />
-              <p className="text-caption text-ink-3 tabular-nums">{left === null ? 'Works once, for 7 days.' : left === 0 ? 'Expired. Make a new one.' : `Works once. Runs out in ${until(invite.expiresAt)}.`}</p>
-            </>
-          ) : (
-            <div className="flex flex-col items-center gap-2 rounded-[20px] bg-surface-2 p-5 text-center">
-              <ServerOff className="size-6 text-ink-3" strokeWidth={1.5} aria-hidden />
-              <p className="text-body font-semibold text-ink">No address other people can reach</p>
-              <p className="text-caption leading-relaxed text-ink-3">You are on {invite.host}, which only opens on this computer. Open {brand.name} on your Tailscale or network address, or set RELIFE_PUBLIC_URL, then invite again.</p>
-            </div>
-          )}
-          <ul className="flex list-disc flex-col gap-1.5 pl-5 text-caption leading-relaxed text-ink-3">
-            <li>They choose a name and get their own space. They never see yours.</li>
-            <li>With a second person here, a browser on this computer no longer signs in without asking: you connect it like any device.</li>
-            <li>You can read everything on your own server, including theirs. Tell them.</li>
-          </ul>
-        </div>
+        <InviteBody invite={invite} left={left} />
       )}
     </Dialog>
+  )
+}
+
+/** What the invite dialog shows once the link is made (or known to be impossible): the QR and link, or why there is none. */
+export function InviteBody({ invite, left }: { invite: Invite; left: number | null }) {
+  return (
+    <div className="flex flex-col gap-4">
+      {invite.link ? (
+        <>
+          <QrCode value={invite.link} label="Invite link as a QR code" className="mx-auto w-full max-w-[240px]" dim={left === 0} />
+          <CopyLine lines={[invite.link]} label="invite link" />
+          <p className="text-caption text-ink-3 tabular-nums">{left === null ? 'Works once, for 7 days.' : left === 0 ? 'Expired. Make a new one.' : `Works once. Runs out in ${until(invite.expiresAt ?? '')}.`}</p>
+        </>
+      ) : (
+        <div className="flex flex-col items-center gap-2 rounded-[20px] bg-surface-2 p-5 text-center">
+          <ServerOff className="size-6 text-ink-3" strokeWidth={1.5} aria-hidden />
+          <p className="text-body font-semibold text-ink">No address other people can reach</p>
+          <p className="text-caption leading-relaxed text-ink-3">You are on {invite.host}, which only opens on this computer. Open {brand.name} on your Tailscale or network address, or set RELIFE_PUBLIC_URL, then invite again.</p>
+        </div>
+      )}
+      <ul className="flex list-disc flex-col gap-1.5 pl-5 text-caption leading-relaxed text-ink-3">
+        <li>They choose a name and get their own space. They never see yours.</li>
+        <li>With a second person here, a browser on this computer no longer signs in without asking: you connect it like any device.</li>
+        <li>You can read everything on your own server, including theirs. Tell them.</li>
+      </ul>
+    </div>
   )
 }
 

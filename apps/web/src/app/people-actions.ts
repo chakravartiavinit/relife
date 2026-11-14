@@ -17,8 +17,8 @@ import { getUser, mergeProfile } from '@/core/user'
 // with requireOwner; a member calling one gets an error, not someone else's data.
 
 export type Invite = {
-  id: string; expiresAt: string
-  /** The link to share, or null when no address a phone could reach is known (the dialog says what to do). */
+  /** Null together with `link`: nothing is made while no address another device could reach is known (the dialog says what to do). */
+  id: string | null; expiresAt: string | null
   link: string | null
   host: string
   /** The dashboard is open on 127.0.0.1 or localhost, so the link would not open for anyone else. */
@@ -36,13 +36,13 @@ export async function createInviteAction(): Promise<{ ok: true; invite: Invite }
     requireOwner(owner)
     const h = await headers()
     const base = await pairBase(h)
-    const made = await createInvite({ ownerId: owner.id, deviceId: device.id, baseUrl: base.url })
     const origin = new URL(requestOrigin(h))
+    const where = { host: origin.host, loopback: /^(127\.0\.0\.1|localhost|\[::1\])$/.test(origin.hostname) }
+    // No address another device could open: make nothing (a link nobody can open would only use up one of the live invites).
+    if (!base.url) return { ok: true, invite: { id: null, expiresAt: null, link: null, ...where } }
+    const made = await createInvite({ ownerId: owner.id, deviceId: device.id, baseUrl: base.url })
     revalidatePath('/you/settings')
-    return {
-      ok: true,
-      invite: { id: made.id, expiresAt: made.expiresAt.toISOString(), link: made.link, host: origin.host, loopback: /^(127\.0\.0\.1|localhost|\[::1\])$/.test(origin.hostname) },
-    }
+    return { ok: true, invite: { id: made.id, expiresAt: made.expiresAt.toISOString(), link: made.link, ...where } }
   } catch (e) { return fail(e) }
 }
 
