@@ -5,6 +5,7 @@ import { Trash2 } from 'lucide-react'
 import { wipeAllData } from '@/app/actions'
 import { WIPE_CONFIRM } from '@/core/data/wipe-confirm'
 import { cn } from '@/ui/cn'
+import { LIFE_KEY, SIDEBAR_KEY } from '../shell/sidebar-script'
 import { Button, buttonClass } from '../button'
 import { Dialog } from '../forms/dialog'
 import { useToast } from '../toast'
@@ -17,9 +18,9 @@ const ARM_MS = 4000
 const GOES = ['Routines, entries, payments, trades and goals', 'XP, quests and achievements', 'Connections and every saved key', 'Browser sign-ins for shopping apps', 'Library pictures, the Coach conversation and notes']
 const STAYS = ['Devices that are already signed in', 'Your region and the theme', 'The key file (data/secret.key), which protects nothing once the keys are gone', 'Backups and exports you already made']
 
-/** After a wipe the page does a full load: drop what the browser kept for the old data (the sidebar choice stays). */
+/** After a wipe the page does a full load: drop what the browser kept for the old data (the sidebar choices stay). */
 function clearBrowserState() {
-  for (const k of Object.keys(localStorage)) if (k.startsWith('relife:') && k !== 'relife:sidebar') localStorage.removeItem(k)
+  for (const k of Object.keys(localStorage)) if (k.startsWith('relife:') && k !== SIDEBAR_KEY && k !== LIFE_KEY) localStorage.removeItem(k)
   sessionStorage.clear()
 }
 
@@ -86,7 +87,7 @@ function List({ title, items }: { title: string; items: string[] }) {
     <div className="min-w-0">
       <p className="mb-2 font-mono text-label text-ink-3 uppercase">{title}</p>
       <ul className="flex flex-col gap-1.5 text-small text-ink-2">
-        {items.map((i) => <li key={i} className="flex gap-2"><span aria-hidden className="mt-[7px] size-1 shrink-0 rounded-full bg-ink-3" />{i}</li>)}
+        {items.map((i) => <li key={i} className="flex gap-2"><span aria-hidden className="flex h-lh shrink-0 items-center"><span className="size-1 rounded-full bg-ink-3" /></span>{i}</li>)}
       </ul>
     </div>
   )
