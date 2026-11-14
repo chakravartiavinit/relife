@@ -14,6 +14,7 @@ Undo** removes exactly that import and nothing else. Running the same file twice
   restart.
 - The file is sent in 8 MB pieces and the upload resumes if the connection drops. ReLife needs about 10% more free disk
   space than the file size while it works.
+- In Docker the upload is kept in `/data/imports` (the `relife-data` volume); see [SELF_HOSTING.md](SELF_HOSTING.md#importing-files).
 - Behind a reverse proxy, allow request bodies of at least 9 MB. For nginx that is `client_max_body_size 16m;`.
 
 ## Bank or card statement (CSV)
@@ -76,3 +77,10 @@ Uploads that were never started are cleaned up after a day.
 
 Matched bank rows are listed on Spending ("N bank rows matched app orders"); open one to see it and choose "Not the same
 payment". A spend typed in Capture only matches a bank row whose description holds its name.
+
+## Backups, export and Delete everything
+
+The uploaded file is temporary: it is deleted when the import finishes, fails or is cancelled, so backups don't hold it.
+The history under Past imports is kept in a backup and in an export (the `imports` table), and the link between a bank row
+and its app order is restored with it (`transactions.linked_to`), so Undo still works afterwards. **Delete everything**
+also removes any upload still on disk.
