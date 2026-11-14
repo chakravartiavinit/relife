@@ -24,11 +24,16 @@ export const communityPackUrl = (id: string) => `${COMMUNITY_BASE}/${id}.json`
 
 const HOSTED = /^\/([^/]+)\/([^/]+)\/blob\/(.+)$/
 
+/** Where a link may point: these two serve files with `Access-Control-Allow-Origin: *`, and this app's own address. */
+export const PACK_LINK_HOSTS = ['raw.githubusercontent.com', 'gist.githubusercontent.com'] as const
+
 /**
- * A link a person pastes, as the address to fetch. https only. A github.com page ("…/blob/main/x.json") is rewritten to
- * its raw file, since the page itself is HTML. No credentials in the address.
+ * A link a person pastes, as the address to fetch. https only, and only from `PACK_LINK_HOSTS` or `origin` (this app's
+ * own address): the browser asks that host directly, so the list keeps a pasted link from reaching anywhere else
+ * (an address on the home network, a tracking host). A github.com page ("…/blob/main/x.json") is rewritten to its raw
+ * file, since the page itself is HTML. No credentials in the address. Anything else says to download the file instead.
  */
-export function normalizePackUrl(input: string): { ok: true; url: string } | { ok: false; error: string } {
+export function normalizePackUrl(input: string, origin?: string): { ok: true; url: string; host: string } | { ok: false; error: string } {
   const text = input.trim()
   if (!text) return { ok: false, error: 'Paste a link to a pack file.' }
   let u: URL
@@ -38,10 +43,14 @@ export function normalizePackUrl(input: string): { ok: true; url: string } | { o
   if (u.hostname === 'github.com') {
     const m = HOSTED.exec(u.pathname)
     if (!m) return { ok: false, error: 'Open the file on GitHub and paste the link to the file itself.' }
-    return { ok: true, url: `https://raw.githubusercontent.com/${m[1]}/${m[2]}/${m[3]}` }
+    return { ok: true, url: `https://raw.githubusercontent.com/${m[1]}/${m[2]}/${m[3]}`, host: 'raw.githubusercontent.com' }
+  }
+  const sameOrigin = !!origin && u.origin === origin
+  if (!sameOrigin && !(PACK_LINK_HOSTS as readonly string[]).includes(u.hostname)) {
+    return { ok: false, error: `Links can only be opened from ${PACK_LINK_HOSTS.join(' or ')}. Download the file and choose it instead.` }
   }
   u.hash = ''
-  return { ok: true, url: u.toString() }
+  return { ok: true, url: u.toString(), host: u.host }
 }
 
 export const PACK_FETCH_LIMIT = PACK_MAX_BYTES

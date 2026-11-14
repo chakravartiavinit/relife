@@ -52,7 +52,7 @@ export function TemplatesHome(p: TemplatesHomeProps) {
         </Section>
       ) : null}
 
-      <Section title="From a file or a link" hint="A pack is a small JSON file (up to 64 KB). Links are opened from this browser, not from the server.">
+      <Section title="From a file or a link" hint="A pack is a small JSON file (up to 64 KB). Links from GitHub (raw files, gists and file pages) are opened from this browser, not from the server.">
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <input ref={fileInput} type="file" accept=".json,application/json" className="sr-only" tabIndex={-1} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) p.onFile(f) }} />
@@ -63,7 +63,7 @@ export function TemplatesHome(p: TemplatesHomeProps) {
           <FormError message={err('file')} />
           <form className="flex flex-col gap-2 sm:flex-row sm:items-end" onSubmit={(e) => { e.preventDefault(); p.onOpenLink() }}>
             <Field label="Or open a link" htmlFor="pack-link" className="min-w-0 flex-1">
-              <Input id="pack-link" type="url" inputMode="url" autoComplete="off" spellCheck={false} placeholder="https://…/my-pack.relife-pack.json" value={p.link} onChange={(e) => p.onLink(e.target.value)} />
+              <Input id="pack-link" type="url" inputMode="url" autoComplete="off" spellCheck={false} placeholder="https://raw.githubusercontent.com/…/my-pack.json" value={p.link} onChange={(e) => p.onLink(e.target.value)} />
             </Field>
             <Button type="submit" variant="secondary" disabled={!!p.busy || !p.link.trim()}>
               {p.busy === 'link' ? <LoaderCircle className="size-4 animate-spin" strokeWidth={1.5} aria-hidden /> : <Link2 className="size-4" strokeWidth={1.5} aria-hidden />}Open link
@@ -142,6 +142,8 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
 
 export type PreviewViewProps = {
   pack: Pick<Pack, 'name' | 'description' | 'author' | 'homepage' | 'routines' | 'trackers' | 'goals'>
+  /** Where the pack came from: "Built in", "File: x.json", "Link: raw.githubusercontent.com". */
+  source?: string
   /** Everything that would be added with the current areas choice (before untick). */
   plan: PackPlan
   /** Keys the person has ticked, among the plan's items. */
@@ -174,7 +176,7 @@ export function PackPreviewView(p: PreviewViewProps) {
         <h3 className="font-display text-heading text-ink">{p.pack.name}</h3>
         <p className="mt-1 text-small text-ink-2 text-pretty">{p.pack.description}</p>
         <p className="mt-1 text-caption text-ink-3">
-          {[p.pack.author ? `By ${p.pack.author}` : null, countsLine(p.pack)].filter(Boolean).join(' · ')}
+          {[p.source, p.pack.author ? `By ${p.pack.author}` : null, countsLine(p.pack)].filter(Boolean).join(' · ')}
           {p.pack.homepage ? <span className="block break-all">{p.pack.homepage}</span> : null}
         </p>
       </div>

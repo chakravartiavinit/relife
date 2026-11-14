@@ -17,7 +17,7 @@ import { TOO_BIG, fetchText } from './pack-fetch'
 // preview, which shows what would be added and what would be left out; nothing is saved before "Add". The pack's text
 // goes to the server as it is and is parsed again there.
 
-type Screen = { name: 'home' } | { name: 'preview'; text: string; pack: Pack; preview: PackPreview } | { name: 'export' }
+type Screen = { name: 'home' } | { name: 'preview'; text: string; pack: Pack; preview: PackPreview; /** Where it came from, shown on the preview. */ source: string } | { name: 'export' }
 
 const CARDS: PackCardInfo[] = BUILT_IN_PACKS.map((p) => ({ id: p.id, name: p.name, description: p.description, areas: p.areas as PackCardInfo['areas'], counts: countsLine(p) }))
 
@@ -43,14 +43,14 @@ function Body({ onClose, initialLink }: { onClose: () => void; initialLink: stri
   const [error, setError] = useState<TemplatesHomeProps['error']>()
   const [community, setCommunity] = useState<CommunityState>({ state: 'idle', items: [] })
 
-  const openText = useCallback(async (text: string, id: string, where: NonNullable<TemplatesHomeProps['error']>['where']) => {
+  const openText = useCallback(async (text: string, id: string, where: NonNullable<TemplatesHomeProps['error']>['where'], source: string) => {
     setBusy(id); setError(undefined)
     try {
       const parsed = parsePack(text) // the quick answer; the server checks again
       if (!parsed.ok) { setError({ where, message: packErrorText(parsed.error) }); return }
       const r = await previewPackAction(text)
       if (!r.ok) setError({ where, message: packErrorText(r.error) })
-      else setScreen({ name: 'preview', text, pack: r.pack, preview: r.preview })
+      else setScreen({ name: 'preview', text, pack: r.pack, preview: r.preview, source })
     } catch {
       setError({ where, message: 'Something went wrong opening this pack. Try again.' })
     } finally { setBusy(null) }
@@ -58,14 +58,14 @@ function Body({ onClose, initialLink }: { onClose: () => void; initialLink: stri
 
   const home: TemplatesHomeProps = {
     builtIn: CARDS, community, link, busy, error,
-    onOpenBuiltIn: (id) => { const p = BUILT_IN_PACKS.find((x) => x.id === id); if (p) void openText(JSON.stringify(p), id, 'builtin') },
+    onOpenBuiltIn: (id) => { const p = BUILT_IN_PACKS.find((x) => x.id === id); if (p) void openText(JSON.stringify(p), id, 'builtin', 'Built in') },
     onFile: async (f) => {
       if (f.size > PACK_MAX_BYTES) { setError({ where: 'file', message: TOO_BIG }); return }
       setBusy('file'); setError(undefined)
       let text = ''
       try { text = await f.text() } catch { setBusy(null); setError({ where: 'file', message: 'That file could not be read.' }); return }
       setBusy(null)
-      await openText(text, 'file', 'file')
+      await openText(text, 'file', 'file', `File: ${f.name.slice(0, 60)}`)
     },
     onLink: setLink,
     onOpenLink: async () => {
@@ -73,7 +73,7 @@ function Body({ onClose, initialLink }: { onClose: () => void; initialLink: stri
       const r = await fetchText(link)
       setBusy(null)
       if (!r.ok) { setError({ where: 'link', message: r.error }); return }
-      await openText(r.text, 'link', 'link')
+      await openText(r.text, 'link', 'link', `Link: ${r.host}`)
     },
     onLoadCommunity: async () => {
       setCommunity({ state: 'loading', items: [] })
@@ -89,7 +89,7 @@ function Body({ onClose, initialLink }: { onClose: () => void; initialLink: stri
       const r = await fetchText(communityPackUrl(id))
       setBusy(null)
       if (!r.ok) { setError({ where: 'community', message: r.error }); return }
-      await openText(r.text, id, 'community')
+      await openText(r.text, id, 'community', `Community: ${r.host}`)
     },
     onShare: () => setScreen({ name: 'export' }),
   }
@@ -103,7 +103,7 @@ function Body({ onClose, initialLink }: { onClose: () => void; initialLink: stri
 
 function PreviewScreen({ screen, onBack, onDone }: { screen: Extract<Screen, { name: 'preview' }>; onBack: () => void; onDone: () => void }) {
   const toast = useToast()
-  const { pack, preview, text } = screen
+  const { pack, preview, text, source } = screen
   const state = useMemo(() => stateFromJson(preview.state), [preview.state])
   const [addAreas, setAddAreas] = useState(true)
   const [off, setOff] = useState<Set<string>>(() => new Set())
@@ -155,7 +155,7 @@ function PreviewScreen({ screen, onBack, onDone }: { screen: Extract<Screen, { n
 
   return (
     <PackPreviewView
-      pack={pack} plan={{ ...plan, skip: [...plan.skip, ...chosen.skip.filter((s) => !plan.skip.some((o) => o.kind === s.kind && o.key === s.key))] }}
+      pack={pack} source={source} plan={{ ...plan, skip: [...plan.skip, ...chosen.skip.filter((s) => !plan.skip.some((o) => o.kind === s.kind && o.key === s.key))] }}
       selected={{ routines: picked.routines, trackers: picked.trackers, goals: picked.goals.filter((k) => !chosen.skip.some((s) => s.kind === 'goal' && s.key === k)) }}
       recorded={recorded} typed={typed} addAreas={addAreas} offAreas={offAreas} count={count} busy={busy} error={error} waiting={waiting}
       onToggle={(kind, key, v) => setOff((s) => { const n = new Set(s); if (v) n.delete(`${kind}:${key}`); else n.add(`${kind}:${key}`); return n })}

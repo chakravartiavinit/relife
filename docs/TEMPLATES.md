@@ -13,7 +13,7 @@ The format is `relife.pack` version 1, defined and validated in `packages/contra
 | --- | --- |
 | Starter packs | Built in. |
 | A file | Chosen on your machine and read in the browser. |
-| A link | An `https` address, fetched **by your browser** (never by the server), only after you press Open link. A GitHub page link (`github.com/…/blob/…`) is turned into its raw file. Up to 64 KB. |
+| A link | An `https` address on `raw.githubusercontent.com` or `gist.githubusercontent.com` (or this app's own address), fetched **by your browser** (never by the server), only after you press Open link. A GitHub page link (`github.com/…/blob/…`) is turned into its raw file. Any other host is refused with a hint to download the file and choose it. Up to 64 KB. The preview shows where the pack came from. |
 | Community packs | The list in `community/packs/` of this repository, fetched from GitHub only after you press Show community packs. |
 
 `/plan/routines?templates=1&pack=<https link>` opens the window with the link filled in. It does not fetch it.

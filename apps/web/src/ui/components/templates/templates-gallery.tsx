@@ -26,7 +26,7 @@ const home = (over: Partial<TemplatesHomeProps> = {}): TemplatesHomeProps => ({
 const preview = (over: Partial<PreviewViewProps> = {}): PreviewViewProps => {
   const plan = planPack(fitness, empty, TODAY)
   return {
-    pack: fitness, plan, selected: { routines: plan.routines.map((r) => r.key), trackers: [], goals: plan.goals.map((g) => g.key) },
+    pack: fitness, source: 'Link: raw.githubusercontent.com', plan, selected: { routines: plan.routines.map((r) => r.key), trackers: [], goals: plan.goals.map((g) => g.key) },
     recorded: { 'active-days': null }, typed: {}, addAreas: true, offAreas: [], count: 4, waiting: ['Walk 8,000 steps on five days a week'],
     onToggle: noop, onTyped: noop, onAddAreas: noop, onBack: noop, onApply: noop, ...over,
   }
