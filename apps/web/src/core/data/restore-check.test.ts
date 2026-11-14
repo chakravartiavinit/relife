@@ -29,6 +29,11 @@ test('a symlinked secret.key is refused', async () => {
   try { await assert.rejects(checkUnpacked(dir), /secret\.key/) } finally { rmSync(dir, { recursive: true, force: true }) }
 })
 
+test('a symlinked vapid.json is refused', async () => {
+  const dir = unpacked((d) => symlinkSync('/etc/passwd', join(d, 'data', 'vapid.json')))
+  try { await assert.rejects(checkUnpacked(dir), /vapid\.json/) } finally { rmSync(dir, { recursive: true, force: true }) }
+})
+
 test('a symlink anywhere in library is refused', async () => {
   const dir = unpacked((d) => symlinkSync('/etc', join(d, 'data', 'library', 'covers', 'evil')))
   try { await assert.rejects(checkUnpacked(dir), /covers\/evil/) } finally { rmSync(dir, { recursive: true, force: true }) }

@@ -31,6 +31,8 @@ import { GOAL_FOOTNOTE, goalSnapshot } from '@/domain/goals'
 import { OutcomeGoalCard, PausedFinishedList } from '@/ui/components/goals/goal-card'
 import { DevicesGallery } from '@/ui/components/devices/gallery'
 import { DataGallery } from '@/ui/components/data/data-gallery'
+import { PhoneGallery } from '@/ui/components/devices/phone-gallery'
+import { REACH_DOCKER, REACH_LONG, REACH_NOTHING, REACH_TAILSCALE } from '@/ui/fixtures/phone'
 import { GoalReviewCard } from '@/ui/components/goals/goal-review'
 import type { GoalViewData } from '@/ui/components/goals/format'
 
@@ -247,6 +249,10 @@ export default function UiGallery() {
 
       <Section title="Connecting devices">
         <Suspense fallback={<Skeleton className="h-[420px]" />}><DeviceSamples /></Suspense>
+      </Section>
+
+      <Section title="Phone setup and Push channel">
+        <PhoneGallery nothing={REACH_NOTHING} tailscale={REACH_TAILSCALE} long={REACH_LONG} docker={REACH_DOCKER} />
       </Section>
 
       <Section title="Tour illustrations">

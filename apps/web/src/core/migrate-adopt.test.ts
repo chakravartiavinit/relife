@@ -25,8 +25,13 @@ test('a database that is exactly the newest snapshot adopts every migration', ()
   assert.equal(adoptedMigrations(db({ ...base, users: { ...base.users, locale: 'text' } }), [s0, s1]), 2)
 })
 
-test('a database that is behind the newest snapshot adopts nothing (it must be pushed first)', () => {
-  assert.equal(adoptedMigrations(db(base), [s0, s1]), 0)
+test('a database that matches an older snapshot adopts up to it, and the migrator applies the rest', () => {
+  assert.equal(adoptedMigrations(db(base), [s0, s1]), 1)
+})
+
+test('a database that matches no snapshot adopts nothing (it must be pushed first)', () => {
+  assert.equal(adoptedMigrations(db({ ...base, users: { ...base.users, stray: 'text' } }), [s0, s1]), 0)
+  assert.equal(adoptedMigrations(db({ users: { id: ['uuid', true] } }), [s0, s1]), 0)
 })
 
 test('differences in a type, nullability, a missing column or an extra one are all refused', () => {

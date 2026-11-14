@@ -13,9 +13,10 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
 
 - `apps/web/`: the Next.js dashboard and the worker (one package). Everything under "Layout" below lives here.
   It always runs with `apps/web` as its working directory.
-- `apps/extension/`, `apps/mac/`, `apps/site/`: the Chrome extension, the native Mac app and the landing page, as
+- `apps/extension/`, `apps/mac/`, `apps/android/`, `apps/site/`: the Chrome extension, the native Mac app, the Android
+  Health Connect app (Kotlin, Gradle, no package.json; see `apps/android/AGENTS.md`) and the landing page, as
   they arrive (see `docs/SYSTEM_DESIGN.md` §14 for what exists today).
-- `packages/tokens/` (design tokens, one source for CSS and Swift), `packages/contract/` (zod schemas and JSON
+- `packages/tokens/` (design tokens, one source for CSS, Swift and Kotlin), `packages/contract/` (zod schemas and JSON
   fixtures for the device API), `packages/brand/` (name, tagline, logo and icon build).
 - `.env` and `data/` stay at the repo root: they are the runtime state of the self-hosted server. `data/` holds the
   key that encrypts saved connector keys; `RELIFE_DATA_DIR` moves it. `.env` is read by `next.config.ts` and
@@ -30,7 +31,8 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
   Goals (up to 3 outcome goals with a baseline, linked actions and weekly review decisions), `/plan/routines`,
   `/plan/trackers`, `/plan/review`; details at `/plan/goals/[id]` and `/plan/trackers/[slug]`), Coach (`/coach`: Needs you and
   Ask side by side, `/coach/patterns`, `/coach/history`; `?filter=decisions|data`, `?ask=`, `?view=ask`) and You (`/you`, tabs: Progress (the character
-  sheet: level, streak, week, consistency, achievements, XP), `/you/connections`, `/you/notifications`, `/you/settings`, and `/you/settings/data`, Data & privacy: export, backups, what each source and AI call sends, delete everything; `apps/web/src/core/data/`).
+  sheet: level, streak, week, consistency, achievements, XP), `/you/connections`, `/you/notifications`, `/you/settings`, `/you/settings/data` (Data & privacy: export, backups, what each source and AI call sends, delete everything; `apps/web/src/core/data/`), and `/you/settings/devices/phone` ("Use on your phone": which address a
+  phone can reach, one pairing QR, install and notification steps).
   Old URLs (`/goals`, `/habits`, `/insights`, `/inbox`, `/profile`, `/connectors`, `/settings`, `/activity`,
   `/relationships`, ...) redirect (307) through `LEGACY_REDIRECTS` in `apps/web/src/domain/routes.ts`; never link to them.
   Navigation data (`NAV`, `isActive`) lives in `apps/web/src/ui/components/nav.tsx`; the shell is in `apps/web/src/ui/components/shell/`: a
@@ -144,7 +146,7 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
   (`peek/peek-link.tsx`: open `?peek=type:id` without a server trip; `apps/web/src/domain/peek.ts` parses it). Route map and
   old-URL redirects: `apps/web/src/domain/routes.ts`. Each has a section in `/dev/ui`.
 - Tokens: colors, shadows, radii and easing live in `packages/tokens/tokens.json`; `npm run tokens` regenerates
-  `packages/tokens/tokens.css`/`theme.css`, `apps/extension/tokens.css` and the Mac app's `Tokens.swift` (pre-push runs
+  `packages/tokens/tokens.css`/`theme.css`, `apps/extension/tokens.css`, the Mac app's `Tokens.swift` and the Android app's `Tokens.kt` (pre-push runs
   `npm run tokens -- --check`). Derived values and the Tailwind color mapping stay in `apps/web/src/app/globals.css`.
 - Motion: CSS easing tokens (`--ease-out-quint`, `--ease-out-strong`, `--ease-in-out-strong`, from `tokens.json`);
   JS twins in `apps/web/src/ui/beui/lib/ease.ts` (`EASE_OUT`, `EASE_OUT_STRONG`, read from the package). Never retype the curves. Audits and
@@ -206,6 +208,14 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
   `analysis`, `coach`, `events`; rules in `apps/web/src/domain/notify.ts`) decides quiet hours, daily caps and repeats until a
   button is tapped, as chosen in Settings → Notifications. Give messages with buttons a `ref` (`reminder:<id>`,
   `insight:<id>`) so repeats stop once it's handled in the app. Build text with the helpers in `apps/web/src/bot/ui.ts`.
+  The same row is also sent as web push to every subscribed browser (`apps/web/src/core/push.ts`, `domain/push.ts` for the
+  text, buttons and states; `public/sw.js` shows it and runs a button through `/api/v1/push/action`), as each category's
+  "Send to" chips allow. A new button needs an entry in `parseAction` and `actionAllowed` (`domain/push.ts`), or it will
+  not appear on push.
+- **New device kind or scope:** `core/auth/trust.ts` (`scopesFor`, `narrowScopes`) and `core/auth/pairing.ts`. A route that
+  must accept a narrow device (the Android app's `ingest`) uses `authenticate(req, scope)` with its own scope;
+  `authenticateAny` is only for sign-out (`devices/me/revoke`); `me` stays at `companion`. `POST /api/v1/health` (`core/v1/health.ts`) turns Health Connect days
+  into raw events `day:<date>` and then entries through `parsers/daily.ts` (source `health-connect`).
 - **New achievement:** append to `apps/web/src/achievements/index.ts`. `check` reads the shared stats and returns
   progress, so locked ones show how close you are.
 - **New scheduled or event-driven job:** one entry in `JOBS` in `apps/web/src/jobs/index.ts`: an `id`, a `schedule`
@@ -253,7 +263,7 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
   `RELIFE_CONTAINER=1` marks the Docker image (shopping connectors are skipped there, sign-in hints name
   `docker compose exec web relife signin`).
 - Exports never include secrets: no `secrets_encrypted`, cursors, token hashes or saved keys (`core/data/tables.ts` drops them).
-  A backup is exact and holds `data/secret.key`; it is encrypted when `RELIFE_BACKUP_PASSPHRASE` is set and is never offered as a download.
+  A backup is exact and holds `data/secret.key` (and `data/vapid.json`, the push keys); it is encrypted when `RELIFE_BACKUP_PASSPHRASE` is set and is never offered as a download.
 
 ## Gamification
 
@@ -336,7 +346,7 @@ All from the repo root (they delegate to `apps/web` with `-w apps/web`).
 - `npm run service -- install|restart|stop|logs`: the production app as a LaunchAgent (macOS only; starts at login). Stop it
   before `npm run dev`; they share port 3030. After the move into `apps/web`, run `install` once more so the
   LaunchAgent's working directory is `apps/web`.
-- `npm run backup` writes a backup now (`pg_dump` plus `secret.key` and library covers, in `RELIFE_BACKUP_DIR`; the nightly `backup`
+- `npm run backup` writes a backup now (`pg_dump` plus `secret.key`, `vapid.json` and library covers, in `RELIFE_BACKUP_DIR`; the nightly `backup`
   job does it at 03:30, needs the PostgreSQL 16 client tools, `RELIFE_PG_BIN` if they are not on PATH). `npm run restore` lists them,
   `npm run restore -- <file> [--yes] [--force] [--no-safety-backup]` restores one with ReLife stopped. `npm run import -- <export.zip>`
   restores an export into an empty install.

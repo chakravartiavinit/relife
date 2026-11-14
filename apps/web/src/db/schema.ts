@@ -4,7 +4,7 @@ import {
 import { sql } from 'drizzle-orm'
 import { DEVICE_KINDS, SCOPES, type DeviceKind, type Scope } from '@relife/contract'
 import { CATEGORIES, type Category } from '@/domain/categories'
-import type { NotifyCategory, NotifyPrefs } from '@/domain/notify'
+import type { Channel, NotifyCategory, NotifyPrefs } from '@/domain/notify'
 import type { Agg, Op, QuestStatus, Rank, SystemKind } from '@/domain/system'
 import type { RecoveryPayload } from '@/domain/recovery'
 import type { CoachMessagePayload } from '@/domain/coach-thread'
@@ -99,6 +99,23 @@ export const devices = pgTable('devices', {
   revokedAt: timestamp('revoked_at', { withTimezone: true }),
   ...stamps(),
 }, (t) => [uniqueIndex('devices_token_hash').on(t.tokenHash), index('devices_user').on(t.userId)])
+
+/** One row per browser (a phone's Home Screen app, a desktop Chrome) that turned on web push. Gone with its device. */
+export const pushSubscriptions = pgTable('push_subscriptions', {
+  id: id(),
+  userId: userId(),
+  deviceId: uuid('device_id').notNull().references(() => devices.id, { onDelete: 'cascade' }),
+  endpoint: text('endpoint').notNull(),
+  p256dh: text('p256dh').notNull(),
+  auth: text('auth').notNull(),
+  /** Host the subscription was made on: push needs https, so a ts.net or public name. */
+  via: text('via'),
+  userAgent: text('user_agent'),
+  /** Sends that failed in a row; at 20 the subscription is dropped. */
+  failures: integer('failures').notNull().default(0),
+  lastOkAt: timestamp('last_ok_at', { withTimezone: true }),
+  ...stamps(),
+}, (t) => [uniqueIndex('push_endpoint').on(t.endpoint), index('push_user').on(t.userId)])
 
 export type PairingMethod = 'offer' | 'request' | 'email' | 'cli'
 export type PairingStatus = 'pending' | 'approved' | 'redeemed' | 'denied' | 'expired'
@@ -615,6 +632,8 @@ export const notifications = pgTable('notifications', {
   sends: integer('sends').notNull().default(0),
   lastSentAt: timestamp('last_sent_at', { withTimezone: true }),
   messageId: integer('message_id'),
+  /** The channels that took the message at least once (`messageId` is the Telegram copy). */
+  channels: text('channels').array().$type<Channel[]>().notNull().default(sql`'{}'`),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index('notifications_user_status').on(t.userId, t.status, t.sendAfter),

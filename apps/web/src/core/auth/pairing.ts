@@ -1,6 +1,6 @@
 import brand from '@relife/brand/brand.json'
 import { and, asc, eq, gt, inArray, isNull, lt, sql } from 'drizzle-orm'
-import type { DeviceKind } from '@relife/contract'
+import type { DeviceKind, Scope } from '@relife/contract'
 import { db, schema } from '@/db'
 import { createDevice, type DeviceMeta } from './devices'
 import { publish } from './events'
@@ -11,7 +11,7 @@ import {
 import { clearFailures, hit } from './ratelimit'
 import { hashToken, isCode, newCode, newSecret, normalizeCode } from './tokens'
 import { browserDeviceName, kindFromUa } from './names'
-import { scopesFor } from './trust'
+import { narrowScopes } from './trust'
 
 // The two pairing directions on one table (plan §3). A: a signed-in screen makes an offer (QR secret + typed code) and the
 // new device redeems it. B: the new device makes a request, shows a code, and a signed-in screen approves it; the device
@@ -72,7 +72,7 @@ export type Redeemed = { device: typeof schema.devices.$inferSelect; token: stri
  * in 10 minutes against 30^8 codes that live 2 minutes is no way in.
  */
 export async function redeem(o: {
-  secret?: string; code?: string; kind?: DeviceKind; name?: string; platform?: string; ip: string; bucket?: string; userAgent: string; via: string; now?: Date
+  secret?: string; code?: string; kind?: DeviceKind; name?: string; platform?: string; scopes?: Scope[]; ip: string; bucket?: string; userAgent: string; via: string; now?: Date
 }): Promise<Redeemed> {
   const now = o.now ?? new Date()
   const ipKey = `redeem:${o.bucket ?? o.ip}`
@@ -104,7 +104,7 @@ export async function redeem(o: {
   const kind = o.kind ?? kindFromUa(o.userAgent)
   const name = o.name?.trim() || defaultName(kind, o.userAgent)
   const { device, token } = await createDevice({
-    userId: pairing.userId, kind, name, scopes: scopesFor(kind), via: o.via, now,
+    userId: pairing.userId, kind, name, scopes: narrowScopes(o.scopes, kind), via: o.via, now,
     meta: { platform: o.platform, userAgent: o.userAgent.slice(0, 200) } satisfies DeviceMeta,
   })
   const [done] = await db.update(schema.pairings).set({ deviceId: device.id, kind, deviceName: name, meta: { ...metaOf(pairing), requesterIp: o.ip, userAgent: o.userAgent.slice(0, 200) } })
@@ -123,7 +123,7 @@ const REQUEST_START_LIMIT = 20
  * IP replaces the old one.
  */
 export async function startRequest(o: {
-  kind: DeviceKind; name: string; platform?: string; ip: string; bucket?: string; userAgent: string; baseUrl: string; via: string; now?: Date
+  kind: DeviceKind; name: string; platform?: string; scopes?: Scope[]; ip: string; bucket?: string; userAgent: string; baseUrl: string; via: string; now?: Date
 }) {
   const now = o.now ?? new Date()
   const bucket = o.bucket ?? o.ip
@@ -145,7 +145,7 @@ export async function startRequest(o: {
   const pollSecret = newSecret()
   const userCode = await freshCode(now)
   const [row] = await db.insert(schema.pairings).values({
-    method: 'request', secretHash: hashToken(pollSecret), userCode, kind: o.kind, deviceName: o.name, scopes: scopesFor(o.kind),
+    method: 'request', secretHash: hashToken(pollSecret), userCode, kind: o.kind, deviceName: o.name, scopes: narrowScopes(o.scopes, o.kind),
     meta: { baseUrl: o.baseUrl, requesterIp: o.ip, requesterBucket: bucket, userAgent: o.userAgent.slice(0, 200), platform: o.platform, via: o.via } satisfies PairingMeta,
     expiresAt: new Date(now.getTime() + REQUEST_TTL_MS),
   }).returning()

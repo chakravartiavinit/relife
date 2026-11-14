@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { bindIsLoopback, clientIp, cookieName, limitKey, isPublicPath, loopbackTrusted, trustPossible, scopeAllows, tokenOf } from './trust'
+import { bindIsLoopback, clientIp, cookieName, limitKey, isPublicPath, loopbackTrusted, trustPossible, scopeAllows, scopesFor, narrowScopes, tokenOf } from './trust'
 
 process.env.RELIFE_BIND = '127.0.0.1' // what `npm run web` sets; without it nothing is trusted (see the bind test)
 
@@ -83,4 +83,14 @@ test('rate limits are kept per address, per Mac, or per tunnel name: never one s
   assert.equal(limitKey(h({ host: 'relife.example.com', 'x-forwarded-for': '9.9.9.9' }), { mode: 'self-host' }), 'host:relife.example.com', 'an untrusted tunnel is its own bucket, whatever it claims')
   assert.notEqual(limitKey(h({ host: 'a.example.com' }), { mode: 'self-host' }), limitKey(h({ host: 'b.example.com' }), { mode: 'self-host' }))
   assert.equal(limitKey(h({ host: 'relife.example.com', 'x-forwarded-for': '9.9.9.9' }), { mode: 'cloud' }), '9.9.9.9')
+})
+
+test('narrowScopes: a request can ask for less than the kind gets, never more', () => {
+  assert.deepEqual(narrowScopes(undefined, 'phone'), scopesFor('phone'), 'no request means the default')
+  assert.deepEqual(narrowScopes([], 'phone'), ['full'])
+  assert.deepEqual(narrowScopes(['ingest'], 'phone'), ['ingest'], 'the Android app: health data only')
+  assert.deepEqual(narrowScopes(['ingest', 'ingest'], 'phone'), ['ingest'])
+  assert.deepEqual(narrowScopes(['companion'], 'extension'), ['companion'])
+  assert.deepEqual(narrowScopes(['full'], 'extension'), ['companion'], 'an extension cannot widen itself')
+  assert.deepEqual(narrowScopes(['ingest'], 'extension'), ['companion'], 'nor swap to a scope its kind never had')
 })

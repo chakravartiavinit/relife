@@ -5,7 +5,8 @@ import { cookies, headers } from 'next/headers'
 import { z } from 'zod'
 import type { DeviceKind } from '@relife/contract'
 import { getUser, mergeProfile } from '@/core/user'
-import { pairBase } from '@/core/auth/base-url'
+import { pairBase, type PairBase } from '@/core/auth/base-url'
+import { loadReach, type ReachId } from '@/core/auth/reach'
 import { listDevices, renameDevice, revokeDevice } from '@/core/auth/devices'
 import { toListItem, toWaiting, type WaitingDevice } from '@/core/auth/device-view'
 import { approveRequest, createOffer, denyRequest, offerStatus, PairError, pendingRequests, requestById, requestByCode } from '@/core/auth/pairing'
@@ -25,7 +26,7 @@ export type Offer = {
   /** The link in the QR, when a phone can reach this server. */
   qrUrl: string | null
   /** Why there is none, or where the address came from. */
-  source: 'origin' | 'env' | 'tailscale' | 'none'
+  source: PairBase['source']
   /** For the Mac app: this dashboard's own address and the secret. */
   macLink: string
   /** The address the dialog says it pairs with. */
@@ -34,11 +35,22 @@ export type Offer = {
   loopback: boolean
 }
 
-/** "Connect a device": a 2-minute single-use offer (flow A). */
-export async function createPairingOffer(): Promise<Offer> {
+const SOURCE: Record<ReachId, PairBase['source']> = { origin: 'origin', tailscale: 'tailscale', lan: 'lan', public: 'env' }
+
+/**
+ * "Connect a device": a 2-minute single-use offer (flow A). With `choice` (the "Use on your phone" page), the address is that
+ * way of reaching the server, taken from the server's own check and only when it is ready: the client never sends a URL.
+ * Without it, the address is the best guess (`pairBase`), as in the dialog.
+ */
+export async function createPairingOffer(choice?: ReachId): Promise<Offer> {
   const device = await requireDevice()
   const h = await headers()
-  const base = await pairBase(h)
+  let base: PairBase
+  if (choice) {
+    const option = (await loadReach(h)).options.find((o) => o.id === choice)
+    if (!option || option.state !== 'ready' || !option.url) throw new Error('That way of reaching this server is not ready yet.')
+    base = { url: option.url, source: SOURCE[choice] }
+  } else base = await pairBase(h)
   const offer = await createOffer({ userId: device.userId, deviceId: device.id, baseUrl: base.url })
   const origin = requestOrigin(h)
   return {
@@ -47,6 +59,12 @@ export async function createPairingOffer(): Promise<Offer> {
     macLink: `relife://pair?server=${encodeURIComponent(origin)}&s=${offer.secret}`, host: new URL(origin).host,
     loopback: /^(127\.0\.0\.1|localhost|\[::1\])$/.test(new URL(origin).hostname),
   }
+}
+
+/** "Check again" on the phone page: the ways a phone can reach this server, with Tailscale asked afresh. */
+export async function reachStatus() {
+  await requireDevice()
+  return loadReach(await headers(), { fresh: true })
 }
 
 /** What happened to an offer: waiting, or who joined (the sheet shows "Connected: Safari on iPhone · Remove"). */

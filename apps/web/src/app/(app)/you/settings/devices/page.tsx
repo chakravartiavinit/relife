@@ -1,7 +1,10 @@
 import brand from '@relife/brand/brand.json'
 import type { Metadata } from 'next'
 import { connection } from 'next/server'
+import Link from 'next/link'
 import { Suspense } from 'react'
+import { Smartphone } from 'lucide-react'
+import { buttonClass } from '@/ui/components/button'
 import { headers } from 'next/headers'
 import { PageHeader, Skeleton } from '@/ui/components/card'
 import { SettingsRail } from '@/ui/components/settings-rail'
@@ -24,7 +27,7 @@ export const metadata: Metadata = { title: 'Devices' }
 export default function DevicesPage({ searchParams }: PageProps<'/you/settings/devices'>) {
   return (
     <>
-      <PageHeader eyebrow="Settings" title="Devices" description={`Everything signed in to your ${brand.name}. Disconnect anything you don’t recognise.`} actions={<ConnectButton />} />
+      <PageHeader eyebrow="Settings" title="Devices" description={`Everything signed in to your ${brand.name}. Disconnect anything you don’t recognise.`} actions={<><Link href="/you/settings/devices/phone" className={buttonClass({ variant: 'secondary' })}><Smartphone className="size-4" strokeWidth={1.5} aria-hidden />Use on your phone</Link><ConnectButton /></>} />
       <div className="grid gap-8 lg:grid-cols-[200px_minmax(0,1fr)] xl:gap-12">
         <SettingsRail current="devices" />
         <div className="flex max-w-3xl min-w-0 flex-col gap-10">

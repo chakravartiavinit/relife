@@ -34,6 +34,12 @@ export async function authenticate(req: Request, scope: Scope): Promise<Authed |
   return { ok: true, device: found.device, user, via: t.via }
 }
 
+/** For routes any signed-in device may call (signing itself out): a `companion` check, else `ingest`. `full` passes the first. */
+export async function authenticateAny(req: Request): Promise<Authed | Denied> {
+  const a = await authenticate(req, 'companion')
+  return !a.ok && a.reason === 'scope' ? authenticate(req, 'ingest') : a
+}
+
 const MESSAGES: Record<AuthFail, [ApiError['error']['code'], number, string]> = {
   missing: ['unauthorized', 401, `Connect this device to your ${brand.name} first.`],
   invalid: ['unauthorized', 401, `This device isn’t connected to your ${brand.name}. Connect it again.`],

@@ -167,6 +167,18 @@ export const scopeAllows = (have: readonly Scope[], need: Scope) => have.include
 /** The default scopes of a kind: the extension is `companion`; everything else is `full`. */
 export const scopesFor = (kind: string): Scope[] => (kind === 'extension' ? ['companion'] : ['full'])
 
+/**
+ * The scopes a new device gets: what it asked for, kept only where the kind's default allows it, so a request can narrow
+ * (the Android app asks for `ingest` only) but never widen (an extension asking for `full` stays `companion`).
+ * `full` allows every scope, so a kind that defaults to `full` may ask for any narrower one.
+ */
+export function narrowScopes(requested: readonly Scope[] | undefined, kind: string): Scope[] {
+  const base = scopesFor(kind)
+  if (!requested?.length) return base
+  const kept = [...new Set(requested)].filter((s) => scopeAllows(base, s))
+  return kept.length ? kept : base
+}
+
 /** Paths that need no sign-in. `/api/health` stays loopback-only (checked by the gate). */
 export function isPublicPath(pathname: string) {
   return pathname === '/signin' || pathname === '/pair' || pathname === '/api/v1/hello' || pathname.startsWith('/api/v1/pair/')

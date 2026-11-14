@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { DEFAULT_QUIET, delivery, minutesLeftInQuiet, quietHours, repeatStep } from './notify'
+import { DEFAULT_QUIET, delivery, minutesLeftInQuiet, quietHours, repeatStep, targets } from './notify'
 
 test('delivery merges saved choices over defaults and never repeats button-less categories', () => {
   assert.equal(delivery(undefined, 'reminders').mode, 'repeat')
@@ -27,4 +27,16 @@ test('repeat sends the first message plus `times` more, spaced `everyMin` apart'
   assert.equal(repeatStep(d, 2, 30), 'resend')
   assert.equal(repeatStep(d, 3, 30), 'expire')
   assert.equal(repeatStep(delivery(undefined, 'alerts'), 1, 999), 'expire')
+})
+
+test('targets: the category\'s channels, kept to the ones that are set up', () => {
+  const both = delivery(undefined, 'reminders')
+  assert.deepEqual(both.channels, ['telegram', 'push'], 'everything goes everywhere by default')
+  assert.deepEqual(targets(both, ['telegram', 'push']), ['telegram', 'push'])
+  assert.deepEqual(targets(both, ['push']), ['push'], 'push only')
+  assert.deepEqual(targets(both, ['telegram']), ['telegram'], 'Telegram only, like before push existed')
+  assert.deepEqual(targets(both, []), [], 'nowhere to send')
+  const tg = delivery({ categories: { alerts: { channels: ['telegram'] } }, quiet: null }, 'alerts')
+  assert.deepEqual(targets(tg, ['telegram', 'push']), ['telegram'], 'a category can opt out of push')
+  assert.deepEqual(targets(tg, ['push']), ['push'], 'chose Telegram, only push exists: falls back so it never goes silent')
 })

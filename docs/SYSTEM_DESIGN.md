@@ -126,6 +126,8 @@ every minute:
 button tap → checks upsert (schedule_id, occurrence) done|skipped|snoozed
 ```
 
+One `notifications` row is one logical message. `flushOutbox` sends it to every channel the category allows (`channels`: Telegram, web push, or both), so quiet hours, daily caps, repeats and "answered" behave the same on each; a row per channel would double the caps and need answered-state syncing.
+
 Catch-up policy after downtime: occurrences missed in the last 12 hours are collapsed into one "You missed while offline" digest message instead of a burst.
 
 ### 3.3 AI loop
@@ -277,7 +279,7 @@ Testing: one `parsers.test.ts` loops over `fixtures/*.{txt,json}` and compares a
 | `POST /api/ingest` | bearer `INGEST_TOKEN` (a legacy `ingest`-scope device) | optional direct push from Shortcuts over Tailscale |
 | `GET /api/health` | none (localhost) | DB reachable, worker heartbeat age, last sync per connector |
 | `/api/activity`, `/api/companion` | bearer `ACTIVITY_TOKEN` (a legacy `companion`-scope device) or a device token | the Chrome extension (time, and the popup's Today tab); validated with `@relife/contract` |
-| `/api/v1/*` | device cookie or bearer token (`pair/*` and `hello` are open) | one versioned API for every device: `hello`, `me`, `today`, `activity`, `devices`, `events` (SSE), `pair/*` (offers, requests, redeem, poll, approve). Shapes are zod schemas in `packages/contract`. `/api/activity` and `/api/companion` stay as aliases while old extensions exist, with the same code behind both (`src/core/v1`). |
+| `/api/v1/*` | device cookie or bearer token (`pair/*` and `hello` are open) | one versioned API for every device: `hello`, `me`, `today`, `activity`, `devices`, `events` (SSE), `pair/*` (offers, requests, redeem, poll, approve), `health` (`ingest` scope: Health Connect days from the Android app), `push/subscription` and `push/action` (web push: a browser's subscription, and the buttons on a notification). Shapes are zod schemas in `packages/contract`. `/api/activity` and `/api/companion` stay as aliases while old extensions exist, with the same code behind both (`src/core/v1`). |
 
 The worker writes a heartbeat row every minute; the dashboard shows a banner if it is older than 3 minutes.
 
@@ -406,6 +408,7 @@ The project was briefly called Savepoint, with its own crystal logo, in November
   any Host besides loopback, `*.ts.net` and `RELIFE_ALLOWED_HOSTS`, so a web page can't reach ReLife through DNS rebinding.
 - Sign-in (`RELIFE_MODE=self-host`, the default; `cloud` is a switch only, its emailed codes are not built): the Mac the server runs on is trusted on loopback (a loopback Host and no proxy headers, on a top-level page navigation only; Settings → Devices → "Require sign-in on this Mac" turns it off, and so does naming other hosts in `RELIFE_ALLOWED_HOSTS` or binding beyond loopback, `RELIFE_BIND`. Never put a tunnel or proxy in front that rewrites Host to localhost: every visitor would look like this Mac); every other device pairs once, by QR or code. No passwords. Shell access means ownership (`npm run signin` prints a one-time link and a terminal QR; set `RELIFE_PUBLIC_URL` when the address a phone must use is not the Tailscale name). A hosted cloud mode would add email sign-in codes and invites.
 - Devices: a token is `rlf_<kind>_<32 random bytes>`, stored only as SHA-256, shown once, scoped (`full`, `companion`, `ingest`), revocable per device, expiring 180 days after last use. The extension gets only `companion`, so a stolen extension token cannot read wealth data or connector keys. The pre-commit hook blocks anything shaped like a device token.
+- Phone access: "Use on your phone" lists which of this server's origin, Tailscale, LAN and `RELIFE_PUBLIC_URL` addresses a phone can open, and builds the pairing QR from the one chosen. A plain-`http` LAN address works for the web app but not for notifications or install (browsers need HTTPS or `localhost` for service workers); the page says so. Web push uses VAPID keys (`RELIFE_VAPID_PUBLIC_KEY`/`RELIFE_VAPID_PRIVATE_KEY`, else `data/vapid.json`, created on first use and never committed) and one `push_subscriptions` row per browser device, deleted when the push service answers 403, 404 or 410, when the device is revoked, and after 20 failed sends. A notification's buttons call `/api/v1/push/action` with the device's own session, through the same core functions the Telegram buttons use. The Android app's token is `ingest` only; it can post health days and read `me`, and nothing else.
 - Pairing: codes are 8 Crockford base32 characters, single use, 2 minutes (offers) or 10 minutes (requests), a wrong guess never uses up anyone's live codes (that would let a stranger expire the owner's), and failed redeems are rate limited per caller: 20 per 10 minutes, counted against the address the proxy reports (the rightmost `X-Forwarded-For` hop, which our own proxy wrote), this Mac, or the tunnel name for a tunnel we do not trust. The QR secret travels in the URL fragment so it never reaches logs or link previews. The approve page names the device and where the request came from.
 - Known limits of device sign-in, accepted for now:
   - Cookies are not port-isolated: another web app on `127.0.0.1` or `localhost` (any port) is sent the same session cookie when the browser visits it, and cookies from a sibling port can be overwritten. Run ReLife on a host name no other local app uses (`localhost` versus `127.0.0.1` are separate cookie jars) if that matters.
@@ -512,9 +515,10 @@ relife/
         worker/               # entry: bot + cron + inbox watcher + heartbeat
       public/  scripts/       # static files; mock, seed-demo, binance-import, service.sh
     extension/                # Chrome MV3 extension, plain JS typed with JSDoc + checkJs
-    mac/                      # native SwiftUI app (planned; Swift package, no package.json)
+    mac/                      # native SwiftUI app (Swift package, no package.json)
+    android/                  # Kotlin + Compose Health Connect sync app (Gradle, no package.json; own AGENTS.md)
   packages/
-    tokens/                   # tokens.json + build.mjs -> CSS, extension CSS, Swift
+    tokens/                   # tokens.json + build.mjs -> CSS, extension CSS, Swift, Kotlin
     contract/                 # zod schemas for /api/v1 + JSON fixtures shared with Swift tests
     brand/                    # name, tagline, logo source, build.mjs (icons), publicReady flag
 ```

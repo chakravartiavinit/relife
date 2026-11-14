@@ -144,7 +144,10 @@ export function DevicesPanel({ initial, waiting: initialWaiting, requireSignIn, 
 function DeviceRow({ d, editing, onEdit, onSave, onCancel, onLeave }: {
   d: DeviceListItem; editing: boolean; onEdit: () => void; onSave: (name: string) => void; onCancel: () => void; onLeave: () => void
 }) {
-  const detail = [DETAIL[d.kind], d.appVersion ? `${brand.name} ${d.appVersion}` : null, d.platform, d.via && d.via !== 'local' ? `via ${d.via}` : null].filter(Boolean).join(' · ')
+  // The Android app says `android-app/<version>` as its platform.
+  const android = !!d.platform?.startsWith('android-app')
+  const healthOnly = !d.legacy && d.scopes.length === 1 && d.scopes[0] === 'ingest'
+  const detail = [android ? 'Android app · Health Connect' : DETAIL[d.kind], android ? d.platform!.split('/')[1] : d.appVersion ? `${brand.name} ${d.appVersion}` : null, android ? null : d.platform, d.via && d.via !== 'local' ? `via ${d.via}` : null].filter(Boolean).join(' · ')
   const age = d.lastSeenAt ? Date.now() - new Date(d.lastSeenAt).getTime() : Infinity
   const tone = age < 10 * 60_000 ? 'bg-good' : age < 7 * 86_400_000 ? 'bg-ink-3' : 'bg-warn'
   const seen = age < 2 * 60_000 ? 'Active now' : ago(d.lastSeenAt)
@@ -160,9 +163,11 @@ function DeviceRow({ d, editing, onEdit, onSave, onCancel, onLeave }: {
           <p className="flex flex-wrap items-center gap-2 text-body font-medium text-ink">
             <span className="truncate">{d.name}</span>
             {d.current ? <Badge color="var(--pill)">This device</Badge> : null}
+            {healthOnly ? <Badge color="var(--pill)">Health data only</Badge> : null}
           </p>
         )}
         <p className="mt-0.5 truncate text-caption text-ink-3">{detail}</p>
+        {android ? <p className="mt-0.5 text-caption text-ink-3 tabular-nums">Last sync {ago(d.lastSeenAt)}</p> : null}
         {d.legacy ? <p className="mt-1 flex items-center gap-2 text-caption text-ink-3"><Badge color="var(--warn)">Old token</Badge>Remove it once the extension is updated.</p> : null}
       </div>
       <span className="flex items-center gap-2 text-small text-ink-2 tabular-nums">

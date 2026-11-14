@@ -1,13 +1,13 @@
 import brand from '@relife/brand/brand.json'
 import Link from 'next/link'
-import { Check, CalendarCheck, Compass, Plug, Send, Smartphone, Target, type LucideIcon } from 'lucide-react'
+import { Check, CalendarCheck, Compass, Plug, QrCode, Send, Smartphone, Target, type LucideIcon } from 'lucide-react'
 import { hideSetupChecklist } from '@/app/actions'
 import type { Step } from '../onboarding'
 import { Capsule } from '../capsule'
 import { Card, SystemLabel } from '../card'
 import { buttonClass } from '../button'
 
-const ICON: Record<string, LucideIcon> = { routine: CalendarCheck, goals: Target, telegram: Send, sources: Plug, iphone: Smartphone }
+const ICON: Record<string, LucideIcon> = { routine: CalendarCheck, goals: Target, telegram: Send, sources: Plug, phone: QrCode, iphone: Smartphone }
 
 /**
  * Day one: a full-width setup card that stands in for the sections that have nothing to show yet (Check first,

@@ -25,6 +25,7 @@ import { DemoBanner, DemoSidebarBadge } from '@/ui/components/demo-banner'
 import { DemoGuard } from '@/ui/components/demo-guard'
 import { connection } from 'next/server'
 import { isDemo } from '@/core/demo'
+import { SwRegister } from '@/ui/components/sw-register'
 
 export const metadata = rootMetadata
 export const viewport = rootViewport
@@ -54,7 +55,8 @@ async function DemoMount() {
 }
 
 /**
- * What keeps open pages current: new-payment toasts, the refresh poll and the event stream, and the "device waiting" banner.
+ * What keeps open pages current: new-payment toasts, the refresh poll and the event stream, the "device waiting" banner and
+ * the service worker that shows web push.
  * Each asks the server through a server action, which the demo gate refuses. The demo's data never changes and has no
  * devices, so it runs none of them (and holds no event stream: a browser allows six connections to one host).
  */
@@ -65,6 +67,7 @@ async function LiveParts() {
     <>
       <PaymentToasts />
       <LiveRefresh />
+      <SwRegister />
       {/* usePathname() needs a Suspense boundary on dynamic routes under Cache Components. */}
       <Suspense fallback={null}><WaitingBanner /></Suspense>
     </>

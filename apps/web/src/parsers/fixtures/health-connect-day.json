@@ -1,0 +1,158 @@
+{
+  "note": "Fixture: one Health Connect day from the Android app. Sleep, resting heart rate and weight share trackers with the wearables; steps, calories and exercise keep their own.",
+  "event": {
+    "source": "health-connect",
+    "externalId": "day:2026-11-12",
+    "at": "2026-11-12T10:00:00.000Z",
+    "body": {
+      "date": "2026-11-12",
+      "steps": 9120,
+      "activeKcal": 412.5,
+      "heartRateAvg": 71.4,
+      "heartRateMin": 48,
+      "heartRateMax": 142,
+      "restingHr": 54,
+      "weightKg": 72.6,
+      "sleepMinutes": 433,
+      "bedtime": "2026-11-11T17:20:00.000Z",
+      "wake": "2026-11-12T01:05:00.000Z",
+      "exercise": [
+        {
+          "type": "running",
+          "minutes": 32
+        },
+        {
+          "type": "strength_training",
+          "minutes": 25
+        }
+      ]
+    }
+  },
+  "expected": [
+    {
+      "kind": "entry",
+      "tracker": "sleep.hours",
+      "date": "2026-11-12",
+      "value": 7.2,
+      "source": "health-connect",
+      "verified": true,
+      "meta": {
+        "bedtime": "2026-11-11T17:20:00.000Z",
+        "wake": "2026-11-12T01:05:00.000Z"
+      },
+      "defaults": {
+        "name": "Sleep",
+        "category": "health",
+        "unit": "h",
+        "target": 7.5,
+        "aggregate": "last",
+        "direction": "up"
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "resting.hr",
+      "date": "2026-11-12",
+      "value": 54,
+      "source": "health-connect",
+      "verified": true,
+      "defaults": {
+        "name": "Resting heart rate",
+        "category": "health",
+        "unit": "bpm",
+        "aggregate": "last",
+        "direction": "down"
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "weight",
+      "date": "2026-11-12",
+      "value": 72.6,
+      "source": "health-connect",
+      "verified": true,
+      "defaults": {
+        "name": "Weight",
+        "category": "health",
+        "unit": "kg",
+        "aggregate": "last",
+        "direction": "down"
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "heart.rate",
+      "date": "2026-11-12",
+      "value": 71.4,
+      "source": "health-connect",
+      "verified": true,
+      "meta": {
+        "min": 48,
+        "max": 142
+      },
+      "defaults": {
+        "name": "Heart rate",
+        "category": "health",
+        "unit": "bpm",
+        "aggregate": "last"
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "health-connect.steps",
+      "date": "2026-11-12",
+      "value": 9120,
+      "source": "health-connect",
+      "verified": true,
+      "defaults": {
+        "name": "Android steps",
+        "category": "health",
+        "direction": "up",
+        "target": 8000
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "health-connect.active.kcal",
+      "date": "2026-11-12",
+      "value": 412.5,
+      "source": "health-connect",
+      "verified": true,
+      "defaults": {
+        "name": "Android active calories",
+        "category": "health",
+        "kind": "number",
+        "unit": "kcal",
+        "direction": "up"
+      }
+    },
+    {
+      "kind": "entry",
+      "tracker": "health-connect.exercise.minutes",
+      "date": "2026-11-12",
+      "value": 57,
+      "source": "health-connect",
+      "verified": true,
+      "meta": {
+        "exercise": [
+          {
+            "type": "running",
+            "minutes": 32
+          },
+          {
+            "type": "strength_training",
+            "minutes": 25
+          }
+        ]
+      },
+      "defaults": {
+        "name": "Android exercise",
+        "category": "health",
+        "kind": "duration",
+        "unit": "min",
+        "direction": "up",
+        "target": 30
+      }
+    }
+  ]
+}

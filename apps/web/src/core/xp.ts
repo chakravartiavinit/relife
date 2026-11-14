@@ -14,11 +14,11 @@ import type { User } from './user'
 
 export const BALANCE_XP = 50
 /** Steps from the phone and each wearable (one tracker per device, so they don't add up). */
-const STEPS = ['steps', 'oura.steps', 'withings.steps']
+const STEPS = ['steps', 'oura.steps', 'withings.steps', 'health-connect.steps']
 const TRACKERS = [
   'sleep.hours', 'steps', 'mood', 'meditation', 'github.commits', 'github.prs', 'learning.minutes', 'people.contacts', 'cp.solved',
   'exercise.minutes', 'tasks.done', 'coding.minutes', 'duolingo.xp', 'typing.minutes', 'focus.minutes',
-  'tracked.minutes', 'productive.minutes', 'highlights.made', 'anki.cards', 'books.read', 'hevy.minutes', 'oura.steps', 'withings.steps',
+  'tracked.minutes', 'productive.minutes', 'highlights.made', 'anki.cards', 'books.read', 'hevy.minutes', 'oura.steps', 'withings.steps', 'health-connect.steps', 'health-connect.exercise.minutes',
 ]
 /** Hobby trackers that are time spent, not practice (Last.fm, Steam): shown on Hobbies, no hobby XP. */
 const PASSIVE = new Set(['listening', 'playtime'])
@@ -55,9 +55,9 @@ export async function scoreRange(user: User, from: string, to: string, now = new
   }
   // Synced entries only, per day: a number typed into a synced tracker doesn't skip the manual cap.
   const synced = (slug: string, d: string) => t(slug)?.verifiedDays.get(d)
-  // Hevy can post its workouts to Strava as well, so take the larger rather than adding them.
+  // Hevy can post its workouts to Strava as well, and Health Connect holds both, so take the largest rather than adding them.
   const workoutMin = (d: string) => {
-    const xs = [synced('exercise.minutes', d), synced('hevy.minutes', d)].filter((v) => v != null)
+    const xs = [synced('exercise.minutes', d), synced('hevy.minutes', d), synced('health-connect.exercise.minutes', d)].filter((v) => v != null)
     return xs.length ? Math.max(...xs) : undefined
   }
   const spendByDay = new Map<string, number>()

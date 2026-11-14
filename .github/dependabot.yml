@@ -26,3 +26,18 @@ updates:
     groups:
       actions:
         patterns: ['*']
+
+  # The Android app. Grouped like npm; Gradle is not part of the pre-push hook, so CI's android.yml is what checks these PRs.
+  - package-ecosystem: gradle
+    directory: /apps/android
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Asia/Kolkata
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      gradle-minor-and-patch:
+        update-types: [minor, patch]

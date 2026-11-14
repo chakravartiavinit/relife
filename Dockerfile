@@ -52,7 +52,7 @@ COPY apps/web/public apps/web/public
 COPY apps/web/drizzle apps/web/drizzle
 COPY docker/entrypoint.sh docker/entrypoint.sh
 
-# /data holds secret.key, library/ and coins/; /backups holds backups. Named volumes copy this ownership on first use.
+# /data holds secret.key, vapid.json, library/ and coins/; /backups holds backups. Named volumes copy this ownership on first use.
 RUN ln -s /app/docker/entrypoint.sh /usr/local/bin/relife \
  && mkdir -p /data /backups && chown node:node /data /backups
 USER node

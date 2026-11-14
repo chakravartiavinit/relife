@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { spawnSync } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import postgres from 'postgres'
@@ -26,6 +26,8 @@ test('backup and restore round trip, key checks and safety backup', { skip: !ena
   mkdirSync(dataDir)
   const myKey = randomBytes(32).toString('base64')
   writeFileSync(join(dataDir, 'secret.key'), myKey)
+  const vapid = JSON.stringify({ publicKey: 'pub-test', privateKey: 'priv-test' })
+  writeFileSync(join(dataDir, 'vapid.json'), vapid)
   mkdirSync(join(dataDir, 'library'))
   writeFileSync(join(dataDir, 'library', 'cover.jpg'), 'cover')
   process.env.RELIFE_DATA_DIR = dataDir
@@ -84,6 +86,7 @@ test('backup and restore round trip, key checks and safety backup', { skip: !ena
   assert.match(r.stdout, /1 of 1 saved keys readable/)
   assert.deepEqual(await rowCounts(scratchName), await rowCounts(new URL(databaseUrl).pathname.slice(1)))
   assert.ok(existsSync(join(tmp, 'scratch', 'secret.key')) && existsSync(join(tmp, 'scratch', 'library', 'cover.jpg')))
+  assert.equal(readFileSync(join(tmp, 'scratch', 'vapid.json'), 'utf8'), vapid, 'the push keys travel with the subscriptions')
   assert.ok(!readdirSync(process.env.RELIFE_BACKUP_DIR!).some((n) => n.includes('pre-restore')), 'an empty database needs no safety backup')
 
   // 3. Restoring over a database that has data takes a pre-restore safety backup first.

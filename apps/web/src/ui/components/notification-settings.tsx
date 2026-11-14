@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from 'react'
 import { BellRing, Check, Lightbulb, Loader2, Moon, Search, Sparkles, Swords, TriangleAlert, type LucideIcon } from 'lucide-react'
 import { saveNotifications } from '@/app/actions'
-import { CATEGORY_INFO, DEFAULT_QUIET, NOTIFY_CATEGORIES, delivery, type Delivery, type NotifyCategory, type NotifyPrefs } from '@/domain/notify'
+import { CATEGORY_INFO, CHANNELS, DEFAULT_QUIET, NOTIFY_CATEGORIES, delivery, type Channel, type Delivery, type NotifyCategory, type NotifyPrefs } from '@/domain/notify'
 import { Switch } from '@/ui/beui/motion/switch'
 import { Input, Select } from './form'
 import { SettingsRow, SettingsSection } from './settings-layout'
@@ -13,10 +13,14 @@ const ICON: Record<NotifyCategory, LucideIcon> = { system: Swords, reminders: Be
 const EVERY = [10, 15, 30, 60, 120, 240]
 const TIMES = [1, 2, 3, 5]
 const CAPS = [1, 2, 3, 5, 6, 10]
+const CHANNEL_LABEL: Record<Channel, string> = { telegram: 'Telegram', push: 'Push' }
 const every = (m: number) => (m < 60 ? `${m} min` : `${m / 60} ${m === 60 ? 'hour' : 'hours'}`)
 
-/** You › Notifications: quiet hours, then one row per category with how it's delivered. Saves as you change it. */
-export function NotificationSettings({ initial }: { initial?: NotifyPrefs }) {
+/**
+ * You › Notifications: quiet hours, then one row per category with how it's delivered. Saves as you change it. `both` is true
+ * when Telegram is connected and at least one device has push on: only then does a category choose where it goes.
+ */
+export function NotificationSettings({ initial, both = false }: { initial?: NotifyPrefs; both?: boolean }) {
   const [quiet, setQuiet] = useState(initial && 'quiet' in initial ? initial.quiet : DEFAULT_QUIET)
   const [cats, setCats] = useState(() => Object.fromEntries(NOTIFY_CATEGORIES.map((c) => [c, delivery(initial, c)])) as Record<NotifyCategory, Delivery>)
   const [state, setState] = useState<'idle' | 'saved' | 'error'>('idle')
@@ -38,7 +42,7 @@ export function NotificationSettings({ initial }: { initial?: NotifyPrefs }) {
     <SettingsSection
       id="notifications"
       title="Notifications"
-      description="What ReLife sends to Telegram, and how often. Everything also shows in the app, even when a message isn't sent."
+      description="What ReLife sends to Telegram and as push, and how often. Everything also shows in the app, even when a message isn't sent."
       action={
         <span aria-live="polite" className={cn('inline-flex h-8 items-center gap-1.5 text-[12.5px]', state === 'error' ? 'text-bad' : 'text-ink-3')}>
           {pending ? <><Loader2 className="size-3.5 animate-spin" strokeWidth={1.5} /> Saving</> : state === 'saved' ? <><Check className="size-3.5" strokeWidth={1.5} /> Saved</> : state === 'error' ? 'Couldn’t save' : null}
@@ -85,6 +89,28 @@ export function NotificationSettings({ initial }: { initial?: NotifyPrefs }) {
                   )
                 })}
               </div>
+
+              {d.mode !== 'off' && both ? (
+                <div role="group" aria-label={`${info.label}: send to`} className="flex flex-wrap items-center gap-2 text-[13px] text-ink-2">
+                  Send to
+                  {CHANNELS.map((ch) => {
+                    const on = d.channels.includes(ch)
+                    const last = on && d.channels.length === 1
+                    return (
+                      <button
+                        key={ch} type="button" aria-pressed={on} disabled={last} title={last ? 'At least one stays on' : undefined}
+                        onClick={() => setCat(c, { channels: on ? d.channels.filter((x) => x !== ch) : CHANNELS.filter((x) => x === ch || d.channels.includes(x)) })}
+                        className={cn(
+                          'inline-flex h-8 items-center rounded-full px-3 text-[13px] font-medium transition-[background-color,color,box-shadow,scale] duration-150 ease-out-quint active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill disabled:cursor-default',
+                          on ? 'bg-pill-wash text-pill-ink shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--pill)_30%,transparent)]' : 'bg-surface-2 text-ink-3 hover:text-ink',
+                        )}
+                      >
+                        {CHANNEL_LABEL[ch]}
+                      </button>
+                    )
+                  })}
+                </div>
+              ) : null}
 
               {d.mode === 'repeat' ? (
                 <div className="flex flex-wrap items-center gap-2 text-[13px] text-ink-2">

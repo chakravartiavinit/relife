@@ -76,6 +76,8 @@ export async function revokeDevice(userId: string, id: string) {
     .returning({ id: schema.devices.id })
   if (!rows.length) return false
   forgetDevice(id)
+  // A signed-out device gets no more notifications (sending also joins `devices` where it is not revoked).
+  await db.delete(schema.pushSubscriptions).where(eq(schema.pushSubscriptions.deviceId, id))
   await publish({ userId, event: { type: 'device.revoked', id } })
   return true
 }

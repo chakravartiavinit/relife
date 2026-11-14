@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { and, eq, inArray, sql } from 'drizzle-orm'
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { ArrowRight, Check, ChevronRight, Compass } from 'lucide-react'
 import { db, schema } from '@/db'
 import type { User } from '@/core/user'
@@ -14,11 +14,12 @@ export type Step = { id: string; title: string; body: string; href: string; cta:
 
 /** First-run checklist. Each step is "done" from real state, never a stored flag. */
 export async function onboardingSteps(user: User): Promise<Step[]> {
-  const [[routines], [inbox], on] = await Promise.all([
+  const [[routines], [inbox], on, [phone]] = await Promise.all([
     db.select({ n: sql<number>`count(*)::int` }).from(schema.schedules).where(eq(schema.schedules.userId, user.id)),
     db.select({ n: sql<number>`count(*)::int` }).from(schema.rawEvents)
-      .where(and(eq(schema.rawEvents.userId, user.id), inArray(schema.rawEvents.source, ['shortcuts', 'sleep']))),
+      .where(and(eq(schema.rawEvents.userId, user.id), inArray(schema.rawEvents.source, ['shortcuts', 'sleep', 'health-connect']))),
     db.select({ id: schema.connections.connectorId }).from(schema.connections).where(and(eq(schema.connections.userId, user.id), eq(schema.connections.enabled, true))),
+    db.select({ n: sql<number>`count(*)::int` }).from(schema.devices).where(and(eq(schema.devices.userId, user.id), eq(schema.devices.kind, 'phone'), isNull(schema.devices.revokedAt))),
   ])
   const has = (k: string) => !!env(k)
   // A data source connected anywhere counts, including the username ones from setup's Connect step (not Telegram or an AI key).
@@ -40,6 +41,10 @@ export async function onboardingSteps(user: User): Promise<Step[]> {
       id: 'sources', title: 'Connect GitHub, Binance or an order app', cta: 'Connect an app', href: '/you/connections',
       body: 'Commits, trades and what you spend on Zomato, Amazon and others flow in by themselves, at full XP.',
       done: sources || has('GITHUB_TOKEN') || has('BINANCE_API_KEY'),
+    },
+    {
+      id: 'phone', title: 'Use it on your phone', cta: 'Set up', href: '/you/settings/devices/phone',
+      body: 'Scan a code, add it to your home screen, get reminders there.', done: phone.n > 0,
     },
     {
       id: 'iphone', title: 'Send steps and sleep from your iPhone', cta: 'Open guide', href: '/you/connections',

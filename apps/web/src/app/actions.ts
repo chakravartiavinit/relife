@@ -15,6 +15,7 @@ import { persist, processOne } from '@/core/ingest'
 import { localDate } from '@/core/time'
 import { buildRRule, MAX_PER_DAY, WEEKDAYS } from '@/domain/recurrence'
 import { isIsoCurrency } from '@/domain/money'
+import { CHANNELS } from '@/domain/notify'
 import { acceptInsight, dismissInsight } from '@/core/insights'
 import type { XpNews } from '@/core/xp'
 import type { AskResult } from '@/ai/ask'
@@ -520,6 +521,7 @@ export async function saveProfile(_prev: FormState, form: FormData): Promise<For
 
 const deliverySchema = z.object({
   mode: z.enum(['off', 'once', 'repeat']),
+  channels: z.array(z.enum(CHANNELS)).min(1).max(2),
   everyMin: z.number().int().min(5).max(24 * 60),
   times: z.number().int().min(0).max(10),
   quiet: z.boolean(),
@@ -610,11 +612,13 @@ export async function sendTestMessage() {
   // getUser() loads the saved keys first, so the Telegram check below reads the current ones.
   const user = await getUser()
   const { telegramConfigured } = await import('@/core/notify')
-  if (!telegramConfigured()) return { ok: false as const, error: 'Telegram isn’t connected yet. Connect it first.' }
-  const { notify, outcome } = await import('@/core/outbox')
+  const { pushDeviceCount } = await import('@/core/push')
+  if (!telegramConfigured() && !(await pushDeviceCount(user.id))) return { ok: false as const, error: 'Nothing is connected yet. Connect Telegram, or turn on push on a device.' }
+  const { notify, outcome, channelsFor } = await import('@/core/outbox')
   const ref = `test:${crypto.randomUUID()}`
   await notify(user, 'events', { text: `⭐ Test message from ${brand.name}\nIf you can read this, Progress messages reach you here.`, ref })
-  return { ok: true as const, result: await outcome(user.id, ref) }
+  const result = await outcome(user.id, ref)
+  return { ok: true as const, result, channels: result === 'sent' ? await channelsFor(user.id, ref) : [] }
 }
 
 /** Settings → Notifications: quiet hours and per-category delivery. The worker reads it each minute. */

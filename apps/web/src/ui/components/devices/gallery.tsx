@@ -11,7 +11,7 @@ import type { WaitingDevice } from '@/app/devices-actions'
 /** /dev/ui: the pairing parts in every state. Nothing here talks to the server. */
 
 const sample = (soon: string): WaitingDevice => ({
-  id: 'sample', kind: 'browser', name: 'Firefox on Linux', platform: 'Linux', code: 'QJFH-5KAQ', ip: '192.168.1.24', via: 'localhost',
+  id: 'sample', kind: 'browser', name: 'Firefox on Linux', platform: 'Linux', scopes: ['full'], code: 'QJFH-5KAQ', ip: '192.168.1.24', via: 'localhost',
   askedAt: soon, expiresAt: soon,
 })
 

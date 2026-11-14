@@ -9,6 +9,7 @@ import type { TypingDay } from '@/connectors/monkeytype'
 import type { OuraDay } from '@/connectors/oura'
 import type { WhoopDay } from '@/connectors/whoop'
 import type { WithingsDay } from '@/connectors/withings'
+import type { HealthDay } from '@relife/contract'
 import type { CalendarDay } from '@/connectors/google-calendar'
 import type { TogglDay } from '@/connectors/toggl'
 import type { RescueDay } from '@/connectors/rescuetime'
@@ -41,6 +42,9 @@ const body = (d: { sleepHours?: number; sleepScore?: number; hrv?: number; resti
   { tracker: 'resting.hr', value: d.restingHr, defaults: RESTING_HR },
 ]
 
+const HEART_RATE: TrackerDefaults = { name: 'Heart rate', category: 'health', unit: 'bpm', aggregate: 'last' }
+const WEIGHT: TrackerDefaults = { name: 'Weight', category: 'health', unit: 'kg', aggregate: 'last', direction: 'down' }
+
 const DAYS: Record<string, (b: Record<string, unknown>) => Entry[]> = {
   oura: (b) => {
     const d = b as OuraDay
@@ -61,6 +65,22 @@ const DAYS: Record<string, (b: Record<string, unknown>) => Entry[]> = {
       { tracker: 'weight', value: d.weight, defaults: { name: 'Weight', category: 'health', unit: 'kg', aggregate: 'last', direction: 'down' } },
       { tracker: 'body.fat', value: d.fat, defaults: { name: 'Body fat', category: 'health', unit: '%', aggregate: 'last', direction: 'down' } },
       steps('withings.steps', 'Withings steps', d.steps),
+    ]
+  },
+  // The Android app (apps/android): one Health Connect summary per day, in the server's time zone. Sleep, resting heart rate
+  // and weight share trackers with the other wearables; the summed numbers keep their own so two sources never add up.
+  'health-connect': (b) => {
+    const d = b as HealthDay
+    const exercise = d.exercise ?? []
+    const exerciseMin = exercise.reduce((s, x) => s + x.minutes, 0)
+    return [
+      { tracker: 'sleep.hours', value: d.sleepMinutes ? Math.round((d.sleepMinutes / 60) * 10) / 10 : undefined, meta: { bedtime: d.bedtime, wake: d.wake }, defaults: SLEEP },
+      { tracker: 'resting.hr', value: d.restingHr, defaults: RESTING_HR },
+      { tracker: 'weight', value: d.weightKg, defaults: WEIGHT },
+      { tracker: 'heart.rate', value: d.heartRateAvg, meta: { min: d.heartRateMin, max: d.heartRateMax }, defaults: HEART_RATE },
+      steps('health-connect.steps', 'Android steps', d.steps),
+      { tracker: 'health-connect.active.kcal', value: d.activeKcal, defaults: { name: 'Android active calories', category: 'health', kind: 'number', unit: 'kcal', direction: 'up' } },
+      { tracker: 'health-connect.exercise.minutes', value: exerciseMin || undefined, meta: { exercise }, defaults: { name: 'Android exercise', category: 'health', kind: 'duration', unit: 'min', direction: 'up', target: 30 } },
     ]
   },
   'google-calendar': (b) => {

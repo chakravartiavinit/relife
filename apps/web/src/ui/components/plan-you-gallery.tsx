@@ -3,6 +3,7 @@
 import { ConnectSuccess, SuggestedForYou, YourSources } from './connections-status'
 import type { ConnectorItem } from './connector-market'
 import { NotificationChannel } from './notification-channel'
+import { PushRow } from './push-row'
 import { ReviewDueCard } from './goals/goal-card'
 
 // /dev/ui: the Plan and You pieces from fixtures. Actions on fixture ids fail soft, as in the other galleries.
@@ -50,8 +51,8 @@ export function PlanYouGallery() {
       <Sub title="Your sources: two fixes pinned, healthy rows, a first sync"><YourSources items={SOURCES} manage={manage} /></Sub>
       <Sub title="Suggested for your areas (username apps connect inline)"><SuggestedForYou items={SUGGESTED} manage={manage} /></Sub>
       <div className="grid gap-6 lg:grid-cols-2">
-        <Sub title="Notifications: where they go (Telegram on)"><NotificationChannel telegram stats={{ sent: 41, held: 6, skipped: 0 }} /></Sub>
-        <Sub title="Notifications: Telegram not connected"><NotificationChannel telegram={false} stats={{ sent: 0, held: 0, skipped: 0 }} /></Sub>
+        <Sub title="Notifications: where they go (Telegram on)"><NotificationChannel telegram stats={{ sent: 41, held: 6, skipped: 0 }} pushDevices={0} push={<PushRow state="off" devices={0} />} /></Sub>
+        <Sub title="Notifications: Telegram not connected"><NotificationChannel telegram={false} stats={{ sent: 0, held: 0, skipped: 0 }} pushDevices={0} push={<PushRow state="off" devices={0} />} /></Sub>
       </div>
     </div>
   )

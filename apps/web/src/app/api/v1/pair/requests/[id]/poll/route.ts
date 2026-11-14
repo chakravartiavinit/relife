@@ -16,7 +16,7 @@ export async function POST(req: Request, ctx: RouteContext<'/api/v1/pair/request
   try {
     const r = await poll(id, body.data.pollSecret)
     if (r.status !== 'approved') return Response.json({ status: r.status } satisfies PairPoll)
-    const native = r.kind === 'mac' || r.kind === 'extension' || r.kind === 'cli'
+    const native = r.kind === 'mac' || r.kind === 'extension' || r.kind === 'cli' || !r.device.scopes.includes('full')
     const res = NextResponse.json((native ? { status: 'approved', token: r.token, device: toInfo(r.device) } : { status: 'approved', device: toInfo(r.device) }) satisfies PairPoll)
     if (!native && !fromExtension(req.headers)) { const c = sessionCookie(r.token, req.headers); res.cookies.set(c.name, c.value, c.options) }
     return res

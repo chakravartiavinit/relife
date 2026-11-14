@@ -20,7 +20,7 @@ const walk = (dir: string) => {
 walk(root)
 
 const urlOf = (file: string) => '/' + relative(root, file).split(sep).slice(0, -1).map((s) => (s.startsWith('[') ? 'x' : s)).join('/')
-const authenticates = (src: string) => /\bauthenticate\(/.test(src)
+const authenticates = (src: string) => /\bauthenticate(Any)?\(/.test(src) // authenticateAny: any scope (me, signing itself out)
 
 test('there are routes to check', () => assert.ok(routes.length > 15))
 

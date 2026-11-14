@@ -15,7 +15,7 @@ import { useToast } from '../toast'
 
 const ARM_MS = 4000
 
-const GOES = ['Routines, entries, payments, trades and goals', 'XP, quests and achievements', 'Connections and every saved key', 'Browser sign-ins for shopping apps', 'Library pictures, the Coach conversation and notes']
+const GOES = ['Routines, entries, payments, trades and goals', 'XP, quests and achievements', 'Connections and every saved key', 'Browser sign-ins for shopping apps', 'Library pictures, the Coach conversation and notes', 'Notification subscriptions (turn them on again on each device)']
 const STAYS = ['Devices that are already signed in', 'Your region and the theme', 'The key file (data/secret.key), which protects nothing once the keys are gone', 'Backups and exports you already made']
 
 /** After a wipe the page does a full load: drop what the browser kept for the old data (the sidebar choices stay). */

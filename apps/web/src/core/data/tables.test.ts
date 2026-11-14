@@ -15,8 +15,8 @@ test('tables that are not exported say why', () => {
   for (const t of TABLES) if (!t.export) assert.ok(t.why, `${t.name} needs a reason`)
 })
 
-test('devices and pairings are never exported', () => {
-  for (const n of ['devices', 'pairings']) assert.equal(TABLES.find((t) => t.name === n)?.export, false, n)
+test('devices, pairings and push subscriptions are never exported', () => {
+  for (const n of ['devices', 'pairings', 'push_subscriptions']) assert.equal(TABLES.find((t) => t.name === n)?.export, false, n)
 })
 
 test('saved keys never leave: connections drop the encrypted column and the cursor', () => {
