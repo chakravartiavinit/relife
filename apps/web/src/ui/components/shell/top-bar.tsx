@@ -12,12 +12,13 @@ import { Wordmark } from '../logo'
 
 // Top bar. Laptop (≥ lg): sticky, 72px, left the breadcrumb, centre the Capture field, right the status trio
 // (sync, Coach bell, level avatar). Phone: 56px, wordmark and the two status pieces; it scrolls away.
+// The breadcrumb never runs into the Capture field: the left column can shrink to nothing, the last crumb truncates and the rest keep their size.
 // Status pieces arrive as slots, each in its own Suspense island (shell-status.tsx).
 
 /** Stays 72px (`--topbar-h`, which also sets where the Sheet panel starts). */
 export function TopBar({ date, sync, bell, avatar }: { date: ReactNode; sync: ReactNode; bell: ReactNode; avatar: ReactNode }) {
   return (
-    <header className="sticky top-0 z-30 hidden h-[var(--topbar-h)] grid-cols-[1fr_minmax(0,520px)_1fr] items-center gap-4 bg-[color-mix(in_oklch,var(--bg)_86%,transparent)] pr-10 pl-7 backdrop-blur-md lg:grid">
+    <header className="sticky top-0 z-30 hidden h-[var(--topbar-h)] grid-cols-[minmax(0,1fr)_minmax(0,520px)_minmax(0,1fr)] items-center gap-6 bg-[color-mix(in_oklch,var(--bg)_86%,transparent)] pr-10 pl-7 backdrop-blur-md lg:grid">
       <Suspense fallback={null}><Crumbs date={date} /></Suspense>
       <CaptureField />
       <div className="flex items-center justify-end gap-1">{sync}{bell}{avatar}</div>
@@ -42,13 +43,13 @@ function Crumbs({ date }: { date: ReactNode }) {
   const last = crumbs.at(-1)
   if (!last) return <div />
   return (
-    <Breadcrumb className="justify-self-start">
-      <BreadcrumbList maxItems={4} className="flex-nowrap text-body">
+    <Breadcrumb className="max-w-full justify-self-start">
+      <BreadcrumbList maxItems={4} className="flex-nowrap overflow-hidden text-body">
         {crumbs.map((c, i) => (
-          <BreadcrumbItem key={c.path}>
+          <BreadcrumbItem key={c.path} className={c === last ? 'min-w-0' : 'shrink-0'}>
             {i > 0 ? <BreadcrumbSeparator /> : null}
             {c === last ? (
-              <BreadcrumbPage className="text-heading whitespace-nowrap [overflow-wrap:normal]">{c.label}</BreadcrumbPage>
+              <BreadcrumbPage className="block truncate text-heading">{c.label}</BreadcrumbPage>
             ) : (
               <BreadcrumbLink href={c.path} render={(p) => <Link {...p} href={c.path} />} className="text-ink-3">{c.label}</BreadcrumbLink>
             )}
