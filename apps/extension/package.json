@@ -11,7 +11,7 @@
   "devDependencies": {
     "@relife/contract": "*",
     "@types/chrome": "^0.3.7",
-    "lucide-react": "^1.69.0",
+    "lucide-react": "^1.71.0",
     "typescript": "^5"
   }
 }
