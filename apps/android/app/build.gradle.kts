@@ -44,7 +44,10 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
+            // Without a keystore a local release build falls back to the debug key, so it installs for testing. CI must
+            // never ship that: a release built there without the keystore fails instead of quietly using the debug key.
+            signingConfig = signingConfigs.findByName("release")
+                ?: if (System.getenv("CI") != null) null else signingConfigs.getByName("debug")
         }
     }
 
@@ -86,4 +89,13 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+}
+
+// A release built on CI has to be signed with the real key. Checked as soon as the task graph is known, so it fails in
+// seconds, before anything is compiled.
+gradle.taskGraph.whenReady {
+    val releasing = allTasks.any { it.project == project && (it.name == "assembleRelease" || it.name == "bundleRelease" || it.name == "packageRelease") }
+    if (releasing && System.getenv("CI") != null && System.getenv("ANDROID_KEYSTORE_PATH") == null) {
+        throw GradleException("CI release builds need ANDROID_KEYSTORE_PATH (and the other ANDROID_KEY* variables). Refusing to sign with the debug key.")
+    }
 }

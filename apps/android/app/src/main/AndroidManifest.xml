@@ -42,6 +42,10 @@
             </intent-filter>
         </activity>
 
+        <!-- The code scanner is a Google Play services module; this has it downloaded when the app is installed, so the
+             first scan doesn't have to wait for it. -->
+        <meta-data android:name="com.google.mlkit.vision.DEPENDENCIES" android:value="barcode_ui" />
+
         <!-- Health Connect shows this from its permission sheet (Android 13 and older). -->
         <activity
             android:name=".PermissionsRationaleActivity"
