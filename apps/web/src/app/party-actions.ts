@@ -27,21 +27,29 @@ async function run<T extends object>(fn: (user: Awaited<ReturnType<typeof getUse
 
 const Id = z.uuid()
 
-export const startParty = (input: { name: string; invite: string[]; share: PartyShare }) =>
-  run(async (user) => {
+export async function startParty(input: { name: string; invite: string[]; share: PartyShare }) {
+  return run(async (user) => {
     const parsed = z.object({ name: z.string().max(80), invite: z.array(Id).max(7), share: PartyShare }).parse(input)
     return { id: await createParty(user, parsed) }
   })
+}
 
-export const inviteToPartyAction = (partyId: string, userId: string) =>
-  run((user) => inviteToParty(user, Id.parse(partyId), Id.parse(userId)))
+export async function inviteToPartyAction(partyId: string, userId: string) {
+  return run((user) => inviteToParty(user, Id.parse(partyId), Id.parse(userId)))
+}
 
-export const answerPartyInvite = (partyId: string, accept: boolean, share?: PartyShare) =>
-  run((user) => answerInvite(user, Id.parse(partyId), z.boolean().parse(accept), share ? PartyShare.parse(share) : undefined))
+export async function answerPartyInvite(partyId: string, accept: boolean, share?: PartyShare) {
+  return run((user) => answerInvite(user, Id.parse(partyId), z.boolean().parse(accept), share ? PartyShare.parse(share) : undefined))
+}
 
-export const leavePartyAction = (partyId: string) => run((user) => leaveParty(user, Id.parse(partyId)))
+export async function leavePartyAction(partyId: string) {
+  return run((user) => leaveParty(user, Id.parse(partyId)))
+}
 
-export const changePartyShare = (partyId: string, share: PartyShare) =>
-  run((user) => setShare(user, Id.parse(partyId), PartyShare.parse(share)))
+export async function changePartyShare(partyId: string, share: PartyShare) {
+  return run((user) => setShare(user, Id.parse(partyId), PartyShare.parse(share)))
+}
 
-export const cheerAction = (memberId: string) => run((user) => cheer(user, Id.parse(memberId)))
+export async function cheerAction(memberId: string) {
+  return run((user) => cheer(user, Id.parse(memberId)))
+}

@@ -15,6 +15,7 @@
     "db:migrate": "tsx --env-file=../../.env scripts/migrate.ts",
     "dev:mock": "npm run mock:seed && export RELIFE_BIND=${RELIFE_BIND:-127.0.0.1} && RELIFE_MOCK=1 next dev -H $RELIFE_BIND -p 3001",
     "mock:seed": "tsx --env-file=../../.env scripts/mock.ts",
+    "mock:people": "RELIFE_MOCK=1 tsx --env-file=../../.env scripts/mock-people.ts",
     "seed:demo": "tsx --env-file=../../.env scripts/seed-demo.ts",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "tsx --env-file=../../.env --test src/domain/*.test.ts src/core/*.test.ts src/core/imports/*.test.ts src/core/auth/*.test.ts src/core/data/*.test.ts src/connectors/shop/*.test.ts src/ai/*.test.ts src/parsers/*.test.ts src/worker/*.test.ts src/connectors/*.test.ts src/rules/*.test.ts src/bot/*.test.ts src/ui/*.test.ts src/ui/share/*.test.ts",
