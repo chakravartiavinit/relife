@@ -121,6 +121,17 @@ test('a manual Capture spend links to a matching bank row the same way', { skip:
     const [manual] = await db.select().from(T).where(and(eq(T.userId, user.id), eq(T.externalRef, 'manual:test-link')))
     assert.equal(bank.linkedTo, manual.id)
     assert.equal(manual.linkedTo, null)
+    // "Not the same payment": clears the link for good, and Undo (linking back) works.
+    const { setTransactionLink } = await import('./statement-link')
+    assert.deepEqual(await setTransactionLink(user, bank.id, null), { before: manual.id })
+    assert.equal(await linkStatements(user, { from: day, to: day }), 0)
+    const [cleared] = await db.select().from(T).where(eq(T.id, bank.id))
+    assert.equal(cleared.linkedTo, null)
+    assert.deepEqual((cleared.meta as { linkRejected?: string[] }).linkRejected, [manual.id])
+    assert.deepEqual(await setTransactionLink(user, bank.id, manual.id), { before: null })
+    const [back] = await db.select().from(T).where(eq(T.id, bank.id))
+    assert.equal(back.linkedTo, manual.id)
+    assert.deepEqual((back.meta as { linkRejected?: string[] }).linkRejected, [])
   } finally {
     await db.delete(T).where(and(eq(T.userId, user.id), sql`${T.externalRef} in ('statement:test-link:1', 'manual:test-link')`))
     await db.delete(schema.accounts).where(and(eq(schema.accounts.userId, user.id), eq(schema.accounts.key, 'statement:test-link')))
