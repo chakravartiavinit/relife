@@ -40,7 +40,15 @@ ask() { # ask "question" default -> answer
   printf '%s' "${answer:-$2}"
 }
 
+# The port on this computer: the shell's RELIFE_PORT beats .env, as it does for Compose.
+host_port() {
+  p="${RELIFE_PORT:-}"
+  if [ -z "$p" ] && [ -f .env ]; then p=$(sed -n 's/^RELIFE_PORT=//p' .env | tail -n 1); fi
+  printf '%s' "${p:-3030}"
+}
+
 write_env() {
+  port=$(host_port)
   password=$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')
   timezone=""
   if [ -r /etc/timezone ]; then timezone=$(cat /etc/timezone); fi
@@ -49,7 +57,7 @@ write_env() {
   say ""
   say "Where will you open it?"
   say "  1) On this computer only (localhost)"
-  say "  2) Over Tailscale (recommended for your phone: run 'tailscale serve --bg 3030' afterwards)"
+  say "  2) Over Tailscale (recommended for your phone: run 'tailscale serve --bg $port' afterwards)"
   say "  3) On my home network (a LAN address)"
   say "  4) On a domain behind a reverse proxy with HTTPS"
   choice=$(ask "Choose 1-4" 1)
@@ -57,7 +65,7 @@ write_env() {
   case "$choice" in
     3)
       host=$(ask "The address you will type in the browser, e.g. 192.168.1.20" "")
-      listen="0.0.0.0"; hosts="$host"; [ -n "$host" ] && public="http://$host:3030" ;;
+      listen="0.0.0.0"; hosts="$host"; [ -n "$host" ] && public="http://$host:$port" ;;
     4)
       host=$(ask "Your domain, e.g. relife.example.com" "")
       hosts="$host"; [ -n "$host" ] && public="https://$host" ;;
@@ -72,6 +80,7 @@ write_env() {
     echo "POSTGRES_PASSWORD=$password"
     if [ -n "$timezone" ]; then echo "RELIFE_TIMEZONE=$timezone"; fi
     echo "RELIFE_LISTEN=$listen"
+    if [ -n "${RELIFE_PORT:-}" ]; then echo "RELIFE_PORT=$RELIFE_PORT"; fi
     if [ -n "$hosts" ]; then echo "RELIFE_ALLOWED_HOSTS=$hosts"; fi
     if [ -n "$public" ]; then echo "RELIFE_PUBLIC_URL=$public"; fi
     case "$profiles" in *ai*) echo "RELIFE_LOCAL_AI_MODEL=$model"; echo "LLM_DEFAULT=local:$model" ;; esac
@@ -112,7 +121,7 @@ main() {
   say ""
   # -T: no terminal is attached under `curl | sh`; </dev/null keeps the command from reading the rest of this script.
   dc exec -T web relife signin </dev/null
-  say "It is running. Open http://127.0.0.1:3030 (or the address you chose) and go to /pair."
+  say "It is running. Open http://127.0.0.1:$(host_port) (or the address you chose) and go to /pair."
   say "More: $DIR/docs/SELF_HOSTING.md"
 }
 

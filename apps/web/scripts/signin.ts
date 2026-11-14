@@ -33,7 +33,7 @@ async function main() {
   const code = formatCode(offer.userCode)
   if (firstRun) {
     const bar = '─'.repeat(64)
-    console.log(`\n${bar}\n  First sign-in: open ${brand.name}, go to /pair and type ${code} (valid 10 minutes).\n  Expired? Run: docker compose exec web relife signin\n${bar}\n`)
+    console.log(`\n${bar}\n  First sign-in: open ${process.env.RELIFE_HOST_PORT ? `http://127.0.0.1:${process.env.RELIFE_HOST_PORT}` : brand.name}, go to /pair and type ${code} (valid 10 minutes).\n  Expired? Run: docker compose exec web relife signin\n${bar}\n`)
     if (base) console.log(`  Or open ${base}/pair#s=${offer.secret}\n`)
     await sql.end()
     return
@@ -46,7 +46,9 @@ async function main() {
     if (base !== local && !container) console.log(`  On this Mac: ${local}/pair#s=${offer.secret}`)
     console.log(`  Or open ${base}/pair and type the code ${code}\n`)
   } else {
-    console.log(`  Open ${brand.name} in your browser, go to /pair and type the code ${code}\n`)
+    // The container knows the port it is published on (RELIFE_HOST_PORT, set by docker-compose.yml), not 3030 inside.
+    const at = process.env.RELIFE_HOST_PORT ? `http://127.0.0.1:${process.env.RELIFE_HOST_PORT}/pair` : `${brand.name} in your browser, go to /pair`
+    console.log(`  Open ${at} and type the code ${code}\n`)
   }
   await sql.end()
 }
