@@ -1,0 +1,1 @@
+ALTER TABLE "trackers" ADD COLUMN "meta" jsonb DEFAULT '{}'::jsonb NOT NULL;

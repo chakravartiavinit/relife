@@ -173,6 +173,8 @@ export const trackers = pgTable('trackers', {
   // how a day's value is combined when several entries arrive for the same source
   aggregate: text('aggregate').$type<'sum' | 'last'>().notNull().default('sum'),
   archivedAt: timestamp('archived_at', { withTimezone: true }),
+  // `pack`: { id, version, importId } on a tracker a pack made, so Undo removes exactly that import's trackers.
+  meta: meta(),
   ...stamps(),
 }, (t) => [uniqueIndex('trackers_user_slug').on(t.userId, t.slug)])
 
