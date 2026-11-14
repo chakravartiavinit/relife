@@ -98,6 +98,7 @@ export const MONEY_EMPTY: MoneyView = { total: '₹0', payments: [], more: 0, re
 export const STEPS: Step[] = [
   { id: 'routine', title: 'Routines picked', body: '6 routines from setup', href: '/plan/routines', cta: 'Add routine', done: true },
   { id: 'telegram', title: 'Telegram reminders', body: 'Connected as @avinit', href: '/you/connections', cta: 'Connect Telegram', done: true },
+  { id: 'phone', title: 'Use it on your phone', body: 'Scan a code, add it to your home screen, get reminders there.', href: '/you/settings/devices/phone', cta: 'Set up', done: false },
   { id: 'iphone', title: 'Sleep and steps', body: 'Apple Health, Oura, WHOOP or Withings', href: '/you/connections', cta: 'Connect', done: false },
   { id: 'sources', title: 'Spending', body: 'Swiggy, Zomato, Blinkit and Zepto orders', href: '/you/connections', cta: 'Connect', done: false },
   { id: 'import', title: 'Bring your history', body: 'A bank statement, a tracker CSV, an Apple Health or Google Takeout export.', href: '/you/connections?import=1', cta: 'Import a file', done: false },
