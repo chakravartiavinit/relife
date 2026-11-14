@@ -227,7 +227,7 @@ export function StepAreas({ v, set, picks, options, onRefuse }: { v: V; set: Set
 // ── 4 · Connect ─────────────────────────────────────────────────────────────────────────────────────
 /** The one thing you need at hand, said in a few words. */
 const howNote = (c: ConnectorItem) =>
-  c.oauth ? 'sign-in' : c.login ? 'Chrome login on your Mac' : c.fields.some((f) => f.secret && !f.optional) ? 'token' : c.fields.length ? 'username, no key' : 'a Shortcut'
+  c.oauth ? 'sign-in' : c.login ? 'Chrome login on your computer' : c.fields.some((f) => f.secret && !f.optional) ? 'token' : c.fields.length ? 'username, no key' : 'a Shortcut'
 
 /** One source: its logo and what it brings in, then the one control that fits how it connects. */
 function SourceRow({ c }: { c: ConnectorItem }) {
@@ -271,7 +271,7 @@ export function StepConnect({ rows }: { rows: ConnectorItem[] }) {
       </motion.div>
       <ImportDialog open={importing} onClose={() => setImporting(false)} />
       <motion.p variants={item} className="mt-4 flex items-start gap-2 text-caption text-ink-3">
-        <Lock aria-hidden className="mt-px size-3.5 shrink-0" strokeWidth={1.5} />Keys stay encrypted on your Mac. Usernames need no key.
+        <Lock aria-hidden className="mt-px size-3.5 shrink-0" strokeWidth={1.5} />Keys stay encrypted on your server. Usernames need no key.
       </motion.p>
     </>
   )
