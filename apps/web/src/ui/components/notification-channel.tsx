@@ -17,7 +17,7 @@ const NAME: Record<Channel, string> = { telegram: 'Telegram', push: 'push' }
 
 /**
  * Where messages go: Telegram (on or not), push on this device, the app's own copy in Coach › History, a test that goes
- * through the outbox, and what the last 7 days did. The test obeys the user's own settings like real messages do, and says
+ * through the outbox (once Telegram is connected), and what the last 7 days did. The test obeys the user's own settings like real messages do, and says
  * which channels took it, or when they hold it back. `push` stands in for the live push row (the gallery draws its states).
  */
 export function NotificationChannel({ telegram, stats, pushDevices, push, locked }: { telegram: boolean; stats: ChannelStats; pushDevices: number; push?: React.ReactNode; locked?: string }) {
@@ -55,7 +55,8 @@ export function NotificationChannel({ telegram, stats, pushDevices, push, locked
         <MessageSquare aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-3" strokeWidth={1.5} />
         <p className="text-small text-ink-2">In the app: <Link href="/coach/history" className="font-medium text-pill-ink hover:underline">Coach › History</Link> keeps every message, even ones Telegram doesn’t get.</p>
       </div>
-      {telegram || devices > 0 ? (
+      {/* Only once Telegram is connected. Push has its own "Send a test to this device" in its row, and Connect Telegram below is the next step before it. */}
+      {telegram ? (
         <div className="flex flex-col gap-2">
           <Button onClick={test} disabled={pending} className="w-full">
             {pending ? <Loader2 className="size-4 animate-spin" strokeWidth={1.5} aria-hidden /> : <Send className="size-4" strokeWidth={1.5} aria-hidden />}
