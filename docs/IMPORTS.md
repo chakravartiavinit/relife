@@ -20,7 +20,10 @@ Undo** removes exactly that import and nothing else. Running the same file twice
 
 1. Download the statement as CSV from your bank's website or app. Use the whole month or year, not a single transaction.
 2. In the dialog, pick **Bank or card statement**, choose the file, and check the columns ReLife guessed (date, description,
-   amount, or separate debit and credit columns). The preview shows the first rows; change a column if one is wrong.
+   amount, separate debit and credit columns, or an unsigned amount with a **Dr / Cr** column). The preview shows the first
+   rows; change a column if one is wrong. If the dates could be read two ways (01/02/2024), you pick the order before the
+   import can start. A file that matches an earlier import (same columns, same dates) shows a warning; rows already there
+   are skipped.
 3. Tick **Purchases are positive numbers in this file** when the preview shows your spending as a plus. Card statements often do. Pick Bank or Card for the account.
 4. Import. ReLife remembers the column choice for the next file from the same bank.
 
@@ -66,5 +69,10 @@ languages aren't yet.
 ## Past imports
 
 The last ten imports are listed under the button: kind, file, date, what was added, linked and skipped, and **Undo**.
-Undo asks once, then removes the rows of that import, unlinks any bank rows it matched, and refreshes your totals.
-Uploads that were never started, and failed ones, are cleaned up after a day.
+Undo asks once, then removes the rows of that import, unlinks any bank rows it matched, and refreshes your totals. If a
+later import repeated some of those rows, they go too (a row belongs to the first import that added it). A failed import,
+or one that stopped while running, shows **Remove**, which also takes out any rows it had already written.
+Uploads that were never started are cleaned up after a day.
+
+Matched bank rows are listed on Spending ("N bank rows matched app orders"); open one to see it and choose "Not the same
+payment". A spend typed in Capture only matches a bank row whose description holds its name.
