@@ -10,7 +10,7 @@ import postgres from 'postgres'
  */
 const enabled = process.env.RELIFE_MIGRATE_INTEGRATION === '1'
 
-/** Undoes what the migrations after number `n` added (1 = the baseline, 2 = + phone push, 5 = + people and parties), keeping the history rows. */
+/** Undoes what the migrations after number `n` added (1 = the baseline, 2 = + phone push, 4 = + tracker meta, 5 = + people and parties), keeping the history rows. */
 async function shapeOf(sql: postgres.Sql, n: number) {
   if (n < 5) { // 0004: people, roles and parties
     await sql`drop table if exists party_members`
@@ -20,6 +20,7 @@ async function shapeOf(sql: postgres.Sql, n: number) {
     await sql`alter table llm_runs drop column if exists user_id`
     await sql`alter table sync_runs drop column if exists user_id`
   }
+  if (n < 4) await sql`alter table trackers drop column if exists meta` // 0003: tracker meta
   if (n < 3) {
     await sql`drop table if exists imports`
     await sql`alter table transactions drop column if exists linked_to`
@@ -89,6 +90,7 @@ test('migrations apply, and a database made by push is adopted', { skip: !enable
         assert.ok((await sql`select 1 from information_schema.columns where table_name = 'notifications' and column_name = 'channels'`).length, 'the channels column is there')
         assert.ok((await sql`select 1 from information_schema.columns where table_name = 'transactions' and column_name = 'linked_to'`).length, 'the linked_to column is there')
         assert.ok((await sql`select 1 from pg_indexes where indexname = 'transactions_linked_to'`).length, 'the unique link index is there')
+        assert.ok((await sql`select 1 from information_schema.columns where table_name = 'trackers' and column_name = 'meta'`).length, 'the tracker meta column is there')
         assert.ok((await sql`select 1 from information_schema.columns where table_name = 'users' and column_name = 'role'`).length, 'the role column is there')
         assert.equal((await sql`select count(*)::int as n from users where role = 'owner'`)[0].n, 0, 'no one yet, so no owner to backfill')
       } finally { await sql.end() }
