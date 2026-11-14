@@ -8,6 +8,9 @@ import { SettingsRail } from '@/ui/components/settings-rail'
 import { PhoneSetup } from '@/ui/components/devices/phone-setup'
 import { loadReach } from '@/core/auth/reach'
 import { isPhoneUa } from '@/core/auth/names'
+import { isDemo } from '@/core/demo'
+import { EmptyState } from '@/ui/components/empty'
+import { MonitorOff } from 'lucide-react'
 
 export const metadata: Metadata = { title: 'Use on your phone' }
 
@@ -29,6 +32,8 @@ export default function PhonePage() {
 
 async function Phone() {
   await connection()
+  // The demo has no devices, and the page would list this server's own network addresses.
+  if (isDemo()) return <EmptyState icon={MonitorOff} title="Phones are off in the demo" description="Nobody signs in to the demo, so there is nothing to pair or notify. Run your own copy to use it on your phone." />
   const h = await headers()
   const reach = await loadReach(h)
   return <PhoneSetup reach={reach} phone={isPhoneUa(h.get('user-agent') ?? '')} />

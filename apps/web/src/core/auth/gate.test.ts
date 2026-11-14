@@ -235,6 +235,9 @@ test('demo: every write is refused with "Demo: changes are off", whatever its pa
       ['/api/v1/me', { method: 'DELETE' }], ['/coach', { method: 'PUT' }], ['/', { method: 'PATCH' }],
       ['/', { method: 'GET', headers: { 'next-action': 'abc' } }], ['/you/settings', { method: 'POST', headers: { 'next-action': 'abc' } }],
       ['/api/oauth/strava/start', { method: 'GET' }], ['/api/oauth/strava/callback', { method: 'GET' }], ['/api/v1/pair/redeem', { method: 'GET' }],
+      // The phone: a Health Connect batch, a push subscription (add and remove) and a tapped notification button.
+      ['/api/v1/health', { method: 'POST' }], ['/api/v1/push/subscription', { method: 'POST' }], ['/api/v1/push/subscription', { method: 'DELETE' }],
+      ['/api/v1/push/action', { method: 'POST' }],
     ] as [string, { method?: string; headers?: Record<string, string> }][]) {
       const r = await gate(req(path, o), deps())
       assert.equal(r.status, 403, `${o.method} ${path}`)
