@@ -3,7 +3,7 @@
 import brand from '@relife/brand/brand.json'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useId, useState } from 'react'
-import { BedDouble, Check, CircleAlert, Clock, Droplet, Footprints, LoaderCircle, Lock, RefreshCw, SlidersHorizontal, Sparkles, Sun, Wallet, type LucideIcon } from 'lucide-react'
+import { BedDouble, Check, CircleAlert, Clock, Droplet, FileUp, Footprints, LoaderCircle, Lock, RefreshCw, SlidersHorizontal, Sparkles, Sun, Wallet, type LucideIcon } from 'lucide-react'
 import type { Pack } from '@relife/contract'
 import type { Category } from '@/db/schema'
 import type { Template } from '@/core/onboarding'
@@ -16,6 +16,7 @@ import { Select } from './form'
 import { CurrencyPicker, TimezonePicker } from './region-picker'
 import { AREA_ICON, CapsuleIcon } from './capsule-icon'
 import { Cmd } from './local-ai-check'
+import { ImportDialog } from './imports/import-dialog'
 import type { LocalAiResult } from '@/app/actions'
 import { AppLogo } from './app-logo'
 import { ConnectorDialog, type ConnectorItem } from './connector-market'
@@ -252,6 +253,7 @@ function SourceRow({ c }: { c: ConnectorItem }) {
 }
 
 export function StepConnect({ rows }: { rows: ConnectorItem[] }) {
+  const [importing, setImporting] = useState(false)
   return (
     <>
       <Title step={AT.connect} title="Connect what you use" body="Picked from your areas. Skip any: they wait on Today’s setup list." />
@@ -262,6 +264,11 @@ export function StepConnect({ rows }: { rows: ConnectorItem[] }) {
       ) : (
         <motion.p variants={item} className="rounded-md bg-surface-2 p-3 text-small text-ink-2">Nothing to connect yet. Every source is in You › Connections whenever you want one.</motion.p>
       )}
+      <motion.div variants={item} className="mt-3 flex items-center justify-between gap-3 rounded-lg bg-surface p-3 shadow-1">
+        <p className="min-w-0 text-small text-ink-2">Have an export? A bank statement, Apple Health or Google Takeout fills your history while you set up.</p>
+        <Button variant="secondary" size="sm" className="shrink-0" onClick={() => setImporting(true)}><FileUp aria-hidden className="size-3.5" strokeWidth={1.5} />Import a file</Button>
+      </motion.div>
+      <ImportDialog open={importing} onClose={() => setImporting(false)} />
       <motion.p variants={item} className="mt-4 flex items-start gap-2 text-caption text-ink-3">
         <Lock aria-hidden className="mt-px size-3.5 shrink-0" strokeWidth={1.5} />Keys stay encrypted on your Mac. Usernames need no key.
       </motion.p>

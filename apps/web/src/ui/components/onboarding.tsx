@@ -14,12 +14,13 @@ export type Step = { id: string; title: string; body: string; href: string; cta:
 
 /** First-run checklist. Each step is "done" from real state, never a stored flag. */
 export async function onboardingSteps(user: User): Promise<Step[]> {
-  const [[routines], [inbox], on, [phone]] = await Promise.all([
+  const [[routines], [inbox], on, [phone], [imported]] = await Promise.all([
     db.select({ n: sql<number>`count(*)::int` }).from(schema.schedules).where(eq(schema.schedules.userId, user.id)),
     db.select({ n: sql<number>`count(*)::int` }).from(schema.rawEvents)
       .where(and(eq(schema.rawEvents.userId, user.id), inArray(schema.rawEvents.source, ['shortcuts', 'sleep', 'health-connect']))),
     db.select({ id: schema.connections.connectorId }).from(schema.connections).where(and(eq(schema.connections.userId, user.id), eq(schema.connections.enabled, true))),
     db.select({ n: sql<number>`count(*)::int` }).from(schema.devices).where(and(eq(schema.devices.userId, user.id), eq(schema.devices.kind, 'phone'), isNull(schema.devices.revokedAt))),
+    db.select({ n: sql<number>`count(*)::int` }).from(schema.imports).where(and(eq(schema.imports.userId, user.id), eq(schema.imports.status, 'done'), isNull(schema.imports.undoneAt))),
   ])
   const has = (k: string) => !!env(k)
   // A data source connected anywhere counts, including the username ones from setup's Connect step (not Telegram or an AI key).
@@ -49,6 +50,10 @@ export async function onboardingSteps(user: User): Promise<Step[]> {
     {
       id: 'iphone', title: 'Send steps and sleep from your iPhone', cta: 'Open guide', href: '/you/connections',
       body: 'A few Shortcuts automations, and your step and sleep quests clear themselves.', done: inbox.n > 0,
+    },
+    {
+      id: 'import', title: 'Bring your history', cta: 'Import a file', href: '/you/connections?import=1',
+      body: 'A bank statement, a tracker CSV, an Apple Health or Google Takeout export. Your charts start with the past, not an empty page.', done: imported.n > 0,
     },
   ]
 }
