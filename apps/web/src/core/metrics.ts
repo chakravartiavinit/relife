@@ -95,6 +95,13 @@ export async function linkedRowCount(user: User, from: string, to: string) {
   return r?.n ?? 0
 }
 
+/** The bank rows counted as `linkedRowCount`, newest first (at most 100), so each can be opened and unlinked. */
+export async function linkedRows(user: User, from: string, to: string) {
+  const T = schema.transactions
+  return db.select({ id: T.id, localDate: T.localDate, amount: T.amount, currency: T.currency, merchant: T.merchant, description: sql<string | null>`${T.meta}->>'description'` })
+    .from(T).where(and(eq(T.userId, user.id), gte(T.localDate, from), lte(T.localDate, to), sql`${T.linkedTo} is not null`)).orderBy(sql`${T.at} desc`).limit(100)
+}
+
 const NOT_SPEND = new Set(['Transfers', 'Investments', 'Income'])
 
 /** Money out, excluding transfers between own accounts and investments. */

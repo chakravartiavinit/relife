@@ -14,9 +14,11 @@ import { useToast } from '../../toast'
 import { usePeekChanged } from '../peek-context'
 import { BrandLogo } from '../../brand-logo'
 import { CategorySelect } from '../../wealth/category-select'
+import { PeekLink } from '../peek-link'
 import { PeekFooter, PeekNote, PeekOpen, PeekRow, PeekSection } from '../peek-parts'
 
 const WEALTH = CATEGORY.wealth.color
+const LINK = 'rounded-xs font-medium text-pill-ink underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill'
 const name = (d: { merchant: string | null; upiId: string | null }) => d.merchant ?? d.upiId ?? 'Payment'
 
 export function txnHeading(d: TxnPeek) {
@@ -60,7 +62,7 @@ function SamePayment({ id, order }: { id: string; order: { id: string; label: st
   })
   return (
     <PeekNote label="Same payment">
-      <p>Same payment as {order.label} · not counted twice.</p>
+      <p>Same payment as <PeekLink to={{ type: 'txn', id: order.id }} className={LINK}>{order.label}</PeekLink> · not counted twice.</p>
       <Button size="sm" variant="secondary" className="mt-2" disabled={pending} onClick={unlink}><Link2Off className="size-3.5" strokeWidth={1.5} aria-hidden />Not the same payment</Button>
     </PeekNote>
   )
@@ -78,7 +80,12 @@ export function TxnPeekView({ data: d }: { data: TxnPeek }) {
       {d.category === 'Uncategorized' ? <div className="mt-2"><Badge color="var(--warn)">Needs a category</Badge></div> : null}
 
       {d.sameAs ? <SamePayment id={d.id} order={d.sameAs} /> : null}
-      {d.paidFrom ? <PeekNote label="Paid from">Paid from {d.paidFrom.account ?? 'your bank statement'} on {d.paidFrom.when}.</PeekNote> : null}
+      {d.paidFrom ? (
+        <PeekNote label="Paid from">
+          Paid from {d.paidFrom.account ?? 'your bank statement'} on {d.paidFrom.when}.{' '}
+          <PeekLink to={{ type: 'txn', id: d.paidFrom.id }} className={LINK}>See the bank row</PeekLink>, where “Not the same payment” unlinks it.
+        </PeekNote>
+      ) : null}
 
       <CategoryBlock id={d.id} category={d.category} categories={d.categories} merchant={name(d)} rule={d.rule} />
 

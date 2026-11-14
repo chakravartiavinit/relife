@@ -54,7 +54,7 @@ export async function loadTxnPeek(user: User, id: string): Promise<TxnPeek | nul
     rule,
     platform: meta.platform ?? null,
     sameAs: order ? { id: order.id, label: orderLabel(order.source, (order.meta as { platform?: string }).platform) } : null,
-    paidFrom: bank ? { account: bankAccount, when: formatDay(bank.localDate) } : null,
+    paidFrom: bank ? { id: bank.id, account: bankAccount, when: formatDay(bank.localDate) } : null,
     items: (Array.isArray(meta.items) ? meta.items : []).filter((i) => i?.name).map((i) => ({ name: i.name!, qty: i.qty || 1, price: i.price ?? null })),
   }
 }

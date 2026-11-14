@@ -43,7 +43,7 @@ export const PEEK_FIXTURES: Record<PeekData['type'] | 'txnLinked', PeekData> = {
     type: 'txn', id: 't1', merchant: 'Big Basket', upiId: 'bigbasket@icici', amount: 1840, currency: 'INR', base: 1840, baseCurrency: 'INR', when: 'Today, 11:20', category: 'Groceries',
     categories: ['Groceries', 'Food', 'Transport', 'Other'], source: 'sms', account: 'HDFC ··4321', rule: { pattern: 'big basket', category: 'Groceries' }, platform: 'Big Basket',
     items: [{ name: 'Tomatoes 1 kg', qty: 1, price: 64 }, { name: 'Basmati rice 5 kg', qty: 1, price: 720 }, { name: 'Curd', qty: 4, price: null }],
-    paidFrom: { account: 'HDFC ··4321', when: 'Fri, 13 Nov' },
+    paidFrom: { id: 'bank-row-1', account: 'HDFC ··4321', when: 'Fri, 13 Nov' },
   },
   txnLinked: {
     type: 'txn', id: 't2', merchant: 'UPI-BIGBASKET GROCERY', upiId: null, amount: -1840, currency: 'INR', base: -1840, baseCurrency: 'INR', when: 'Fri, 13 Nov', category: 'Groceries',

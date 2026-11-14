@@ -95,7 +95,7 @@ export type TxnPeek = {
   /** A bank row that is the same payment as an app order: counted once, as the order. */
   sameAs?: { id: string; label: string } | null
   /** An app order that a bank row paid: where from and when. */
-  paidFrom?: { account: string | null; when: string } | null
+  paidFrom?: { id: string; account: string | null; when: string } | null
 }
 
 export type MerchantPeek = {
