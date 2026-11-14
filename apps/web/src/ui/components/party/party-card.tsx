@@ -99,7 +99,11 @@ function PartySection({ entry }: { entry: PartyEntry }) {
           {quest.cleared ? <Badge color="var(--good)">Cleared</Badge> : <span className="text-small text-ink-3 tabular-nums">{quest.onTrack} of {quest.members} on track</span>}
         </div>
         <Capsule className="mt-2.5" size="sm" value={quest.cleared ? quest.members : quest.onTrack} max={Math.max(1, quest.members)} color="var(--cat-relationships)" label={`${quest.onTrack} of ${quest.members} on track for ${quest.title}`} />
-        {quest.members < 2 && !quest.cleared ? <p className="mt-2 text-caption text-ink-3">It needs at least two people from the start of the week. Ask someone in.</p> : null}
+        {quest.members < 2 && !quest.cleared ? (
+          <p className="mt-2 text-caption text-ink-3">
+            {view.members.length >= 2 ? 'Counts from Monday: it needs two people who were in since the start of the week.' : 'It needs at least two people from the start of the week. Ask someone in.'}
+          </p>
+        ) : null}
       </div>
       <ul className="flex flex-col divide-y divide-divider">
         {view.members.map((m) => <MemberRow key={m.id} m={m} target={quest.target} />)}

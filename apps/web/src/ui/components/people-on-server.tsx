@@ -138,7 +138,7 @@ export function InviteBody({ invite, left }: { invite: Invite; left: number | nu
         <>
           <QrCode value={invite.link} label="Invite link as a QR code" className="mx-auto w-full max-w-[240px]" dim={left === 0} />
           <CopyLine lines={[invite.link]} label="invite link" />
-          <p className="text-caption text-ink-3 tabular-nums">{left === null ? 'Works once, for 7 days.' : left === 0 ? 'Expired. Make a new one.' : `Works once. Runs out in ${until(invite.expiresAt ?? '')}.`}</p>
+          <p className="text-caption text-ink-3 tabular-nums">{left === null ? 'Works once, for 7 days.' : left === 0 ? 'Expired. Make a new one.' : `Works once. Runs out ${until(invite.expiresAt ?? '')}.`}</p>
         </>
       ) : (
         <div className="flex flex-col items-center gap-2 rounded-[20px] bg-surface-2 p-5 text-center">
