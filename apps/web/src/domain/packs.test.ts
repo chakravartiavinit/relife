@@ -6,7 +6,7 @@ import { IMPROVE } from '@/ui/components/onboarding-data'
 import { BUILT_IN_PACKS } from '@/packs'
 import { CATEGORIES } from './categories'
 import { checkGoalDraft } from './goals'
-import { applyPack, packGoalToRaw, type PackAnswers } from './packs'
+import { addedLine, applyPack, packGoalToRaw, planPack, templateToPackRoutine, type PackAnswers, type PackState } from './packs'
 import { addDays } from '@/core/time'
 import { pickSources } from './onboarding'
 import { TEMPLATES } from './templates'
@@ -110,4 +110,97 @@ test('pickSources puts a pack\'s sources first, keeps Telegram last and fills th
   assert.equal(new Set(ids).size, ids.length)
   assert.ok(!ids.includes('claude') && !ids.includes('nope'))
   assert.ok(ids.length <= 6)
+})
+
+// ─── The templates gallery: planPack ───
+
+const TODAY = '2026-11-14'
+const noState = (o: Partial<PackState> = {}): PackState => ({ routineNames: new Set(), routineIds: new Map(), trackers: new Map(), goalTitles: new Set(), activeGoals: 0, areas: [], ...o })
+const keys = (l: { key: string }[]) => l.map((x) => x.key)
+
+test('planPack: a new user gets every routine, and the goal that links two of them', () => {
+  const plan = planPack(pack('fitness'), noState(), TODAY)
+  assert.deepEqual(keys(plan.routines), ['workout', 'stretch', 'evening-walk', 'water'])
+  assert.deepEqual(keys(plan.goals), ['active-days'])
+  assert.deepEqual(plan.skip, [])
+  assert.deepEqual(plan.areasToAdd, [])
+})
+
+test('planPack: running it again adds nothing, and each skipped item says why', () => {
+  const have = noState({ routineNames: new Set(['workout', 'stretch', 'evening walk', 'drink water']), routineIds: new Map([['workout', 'a'], ['evening-walk', 'b']]), goalTitles: new Set(['walk 8,000 steps on five days a week']) })
+  const plan = planPack(pack('fitness'), have, TODAY)
+  assert.deepEqual([plan.routines, plan.trackers, plan.targets, plan.goals], [[], [], [], []])
+  assert.deepEqual(plan.skip.map((s) => s.reason), ['exists', 'exists', 'exists', 'exists', 'exists'])
+})
+
+test('planPack: an existing routine with the pack goal\'s name still lets the goal link it', () => {
+  const have = noState({ routineNames: new Set(['workout', 'evening walk']), routineIds: new Map([['workout', 'a'], ['evening walk', 'b']]) })
+  assert.deepEqual(keys(planPack(pack('fitness'), have, TODAY).goals), ['active-days'])
+})
+
+test('planPack: the goal slots are respected and the goal is skipped with that reason', () => {
+  const plan = planPack(pack('fitness'), noState({ activeGoals: 3 }), TODAY)
+  assert.deepEqual(plan.goals, [])
+  assert.deepEqual(plan.skip, [{ kind: 'goal', key: 'active-days', name: 'Walk 8,000 steps on five days a week', reason: 'goal_slots' }])
+  assert.equal(planPack(pack('fitness'), noState({ activeGoals: 2 }), TODAY).goals.length, 1)
+})
+
+test('planPack: an area the user has off is skipped, or added with the area when they allow it', () => {
+  const state = noState({ areas: ['mind'] })
+  const off = planPack(pack('fitness'), state, TODAY, { addAreas: false })
+  assert.deepEqual([off.routines.length, off.goals.length], [0, 0])
+  assert.ok(off.skip.every((s) => s.reason === 'area_off'))
+  const on = planPack(pack('fitness'), state, TODAY, { addAreas: true })
+  assert.equal(on.routines.length, 4)
+  assert.deepEqual(on.areasToAdd, ['health'])
+  assert.equal(planPack(pack('fitness'), noState(), TODAY).areasToAdd.length, 0) // no areas chosen means all of them are on
+})
+
+test('planPack: choices narrow what is added; a goal whose routine was not picked is skipped', () => {
+  const plan = planPack(pack('fitness'), noState(), TODAY, { routineKeys: ['stretch'], goalKeys: ['active-days'] })
+  assert.deepEqual(keys(plan.routines), ['stretch'])
+  assert.deepEqual(plan.skip.map((s) => s.reason), ['no_action'])
+})
+
+test('planPack: a goal on a tracker needs that tracker, from the pack or from the user; a target is set only where there is none', () => {
+  const p = Pack.parse({
+    format: 'relife.pack', version: 1, id: 'x', name: 'X', description: 'x', areas: ['health'],
+    routines: [{ key: 'walk', name: 'Walk', area: 'health', kind: 'routine', rule: { freq: 'daily', times: ['07:00'] } }],
+    trackers: [{ slug: 'steps', name: 'Steps', area: 'health', kind: 'number', target: 9000, direction: 'up', aggregate: 'sum' }],
+    goals: [{ key: 'g', title: 'More steps', reason: 'r', area: 'health', measure: { tracker: 'steps' }, direction: 'up', target: 9000, weeks: 6, cadence: 'weekly', actions: ['walk'] }],
+  })
+  const fresh = planPack(p, noState(), TODAY)
+  assert.deepEqual([fresh.trackers.map((x) => x.slug), keys(fresh.goals)], [['steps'], ['g']])
+  const t = (target: number | null) => new Map([['steps', { id: 'i', name: 'Steps', unit: null, category: 'health' as const, target }]])
+  assert.deepEqual(planPack(p, noState({ trackers: t(null) }), TODAY).targets.map((x) => x.slug), ['steps'])
+  const kept = planPack(p, noState({ trackers: t(5000) }), TODAY)
+  assert.deepEqual(kept.targets, [])
+  assert.deepEqual(kept.skip.map((s) => s.reason), ['exists'])
+  const none = planPack(p, noState(), TODAY, { trackerSlugs: [] })
+  assert.deepEqual(none.skip.map((s) => s.reason), ['unknown_tracker'])
+})
+
+test('planPack: a goal the sensitivity rules refuse is left out', () => {
+  const p = Pack.parse({
+    format: 'relife.pack', version: 1, id: 'x', name: 'X', description: 'x', areas: ['health'],
+    routines: [{ key: 'eat', name: 'Eat', area: 'health', kind: 'routine', rule: { freq: 'daily', times: ['07:00'] } }],
+    trackers: [],
+    goals: [{ key: 'g', title: 'Lose 10 kg', reason: 'r', area: 'health', measure: { checkIn: 'Weight', unit: 'kg' }, direction: 'down', target: 60, weeks: 8, cadence: 'weekly', actions: ['eat'] }],
+  })
+  assert.deepEqual(planPack(p, noState(), TODAY).skip.map((s) => s.reason), ['not_allowed'])
+})
+
+test('planPack and templateToPackRoutine: the setup templates are pack routines with the same rule', () => {
+  for (const t of TEMPLATES) {
+    const r = templateToPackRoutine(t)
+    assert.equal(r.key, t.id)
+    assert.equal(r.name, t.name)
+    assert.equal(r.rule.freq, t.rule.freq)
+  }
+})
+
+test('addedLine: the toast after adding names what was added and never "0 goals"', () => {
+  assert.equal(addedLine({ routines: 4, trackers: 0, goals: 1 }), 'Added 4 routines, 1 goal')
+  assert.equal(addedLine({ routines: 1, trackers: 2, goals: 0 }), 'Added 1 routine, 2 trackers')
+  assert.equal(addedLine({ routines: 0, trackers: 0, goals: 0 }), 'Nothing new to add')
 })
