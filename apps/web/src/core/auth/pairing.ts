@@ -302,6 +302,8 @@ export async function redeemInvite(o: {
   if (!name) throw new PairError('bad_request', 'Enter a name.')
 
   const made = await db.transaction(async (tx) => {
+    // One new person at a time (the cap below is a count): the same lock core/user.ts takes to make a user.
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('relife:create-user'))`)
     const claimed = await tx.update(schema.pairings).set({ status: 'redeemed' }).where(and(eq(schema.pairings.id, pairing.id), live(now))).returning()
     if (!claimed.length) throw expired()
     // The count is taken after the claim so two invites opened together cannot both take the last place.

@@ -3,6 +3,7 @@ import { eq, sql as dsql } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { forgetDevice } from '../auth/cache'
 import { dataDir } from '../paths'
+import { dropUserKeys } from '../env'
 import { clearUserCache, getUser, type User } from '../user'
 import { wipeGlobalTables } from './tables'
 
@@ -39,13 +40,14 @@ export async function wipeUserData(user: User): Promise<void> {
     await tx.delete(schema.users).where(eq(schema.users.id, old.id))
     // This person's job state (the new id starts clean) and replay keys. Global tables are emptied only when no one else is here.
     await tx.delete(schema.jobs).where(dsql`${schema.jobs.id} like ${'%@' + old.id}`)
-    await tx.execute(dsql`delete from parties p where not exists (select 1 from party_members m where m.party_id = p.id and m.status <> 'left')`)
+    await tx.execute(dsql`delete from parties p where not exists (select 1 from party_members m where m.party_id = p.id and m.status = 'active')`)
     for (const name of wipeGlobalTables()) {
       if (n === 1) await tx.execute(dsql`delete from ${dsql.identifier(name)}`)
       else if (name === 'idempotency') await tx.execute(dsql`delete from idempotency where device_id in (select id from devices where user_id = ${fresh.id})`)
     }
   })
   for (const id of moved) forgetDevice(id) // the cached device row still names the old person
+  dropUserKeys(user.id) // the old id's keys must not outlive the person
   // Shop logins and cookies, library covers, and any uploaded import files still on disk. Public coin logos stay.
   // With other people on the server only this person's logins and uploads go: the folders are shared with them.
   if (alone) await Promise.all(['browser', 'library', 'imports'].map((d) => rm(dataDir(d), { recursive: true, force: true })))

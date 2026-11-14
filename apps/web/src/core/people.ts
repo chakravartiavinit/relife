@@ -2,8 +2,10 @@ import { rm } from 'node:fs/promises'
 import { and, count, eq, isNull, like, max, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { forgetDevice } from './auth/cache'
+import { publish } from './auth/events'
 import { dropUserKeys } from './env'
 import { pendingRequests } from './auth/pairing'
+import { normalizeCode } from './auth/tokens'
 import { clearUsersCache, hasMembers } from './multi-user'
 import { dataDir } from './paths'
 import { clearUserCache, type User } from './user'
@@ -57,9 +59,12 @@ export async function removePerson(owner: User, id: string): Promise<boolean> {
     await tx.delete(schema.users).where(eq(schema.users.id, id))
     await tx.delete(schema.jobs).where(like(schema.jobs.id, `%@${id}`))
     // A party nobody is left in has no one to see it.
-    await tx.execute(sql`delete from parties p where not exists (select 1 from party_members m where m.party_id = p.id and m.status <> 'left')`)
+    await tx.execute(sql`delete from parties p where not exists (select 1 from party_members m where m.party_id = p.id and m.status = 'active')`)
   })
-  for (const d of devices) forgetDevice(d.id)
+  for (const d of devices) {
+    forgetDevice(d.id)
+    await publish({ userId: id, event: { type: 'device.revoked', id: d.id } }) // their open streams close, and every instance forgets the token
+  }
   dropUserKeys(id)
   clearUsersCache()
   clearUserCache()
@@ -77,4 +82,13 @@ export async function removePerson(owner: User, id: string): Promise<boolean> {
  */
 export async function visibleRequests(viewer: Pick<User, 'role'>) {
   return viewer.role === 'owner' || !(await hasMembers()) ? pendingRequests() : []
+}
+
+/**
+ * Whether this viewer may approve or deny a waiting device. The owner always may (and on a one-person server anyone signed
+ * in); a member only by the code the device is showing, so they cannot answer a request someone else started.
+ */
+export async function mayAnswerRequest(viewer: Pick<User, 'role'>, pairing: { userCode: string | null }, code?: string) {
+  if (viewer.role === 'owner' || !(await hasMembers())) return true
+  return !!code && !!pairing.userCode && normalizeCode(code) === pairing.userCode
 }
