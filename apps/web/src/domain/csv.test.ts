@@ -11,7 +11,7 @@ test('commas, quotes and newlines are quoted, quotes doubled', () => {
 })
 
 test('text that starts like a formula gets a quote prefix, numbers do not', () => {
-  assert.equal(csvRow(['=SUM(A1)', '+1', '@cmd', '-5', 'ok']), "'=SUM(A1),'+1,'@cmd,-5,ok\r\n")
+  assert.equal(csvRow(['=SUM(A1)', '+1', '@cmd', '-5+2', 'ok']), "'=SUM(A1),'+1,'@cmd,'-5+2,ok\r\n")
   assert.equal(csvRow([-5, 0, 12.5, true]), '-5,0,12.5,true\r\n')
   assert.equal(csvRow(['\tx']), "'\tx\r\n")
   assert.equal(csvRow(['\rx']), "\"'\rx\"\r\n")
