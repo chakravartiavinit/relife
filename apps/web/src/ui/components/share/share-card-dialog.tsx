@@ -88,17 +88,17 @@ function ShareBody({ req }: { req: ShareRequest }) {
     return () => { clearTimeout(t); ac.abort() }
   }, [url, attempt])
 
-  const filename = `relife-${req.kind}-${new Date().toISOString().slice(0, 10)}.png`
+  const filenameNow = () => `relife-${req.kind}-${new Date().toISOString().slice(0, 10)}.png`
   const download = () => {
     if (!blob.current) return
     const href = URL.createObjectURL(blob.current)
-    const a = Object.assign(document.createElement('a'), { href, download: filename })
+    const a = Object.assign(document.createElement('a'), { href, download: filenameNow() })
     a.click()
     setTimeout(() => URL.revokeObjectURL(href), 1000)
   }
   const share = async () => {
     if (!blob.current) return
-    try { await navigator.share({ files: [new File([blob.current], filename, { type: 'image/png' })], title: brand.name }) } catch (e) {
+    try { await navigator.share({ files: [new File([blob.current], filenameNow(), { type: 'image/png' })], title: brand.name }) } catch (e) {
       if (!(e instanceof DOMException && e.name === 'AbortError')) toast.error('Could not open the share sheet', 'Download the picture instead.')
     }
   }

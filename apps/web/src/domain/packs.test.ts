@@ -6,7 +6,8 @@ import { IMPROVE } from '@/ui/components/onboarding-data'
 import { BUILT_IN_PACKS } from '@/packs'
 import { CATEGORIES } from './categories'
 import { checkGoalDraft } from './goals'
-import { addedLine, applyPack, packGoalToRaw, planPack, templateToPackRoutine, type PackAnswers, type PackState } from './packs'
+import { describe as describeRRule, buildRRule } from './recurrence'
+import { addedLine, applyPack, describePackRule, packGoalToRaw, planPack, templateToPackRoutine, type PackAnswers, type PackState } from './packs'
 import { addDays } from '@/core/time'
 import { pickSources } from './onboarding'
 import { TEMPLATES } from './templates'
@@ -217,4 +218,12 @@ test('every community pack plans cleanly for a new user: all routines and goals 
     assert.equal(plan.routines.length, r.pack.routines.length, f)
     assert.equal(plan.goals.length, r.pack.goals.length, f)
   }
+})
+
+test('describePackRule reads the same as the Routines list for every built-in and community rule', async () => {
+  const { readdirSync, readFileSync } = await import('node:fs')
+  const { join } = await import('node:path')
+  const dir = join(process.cwd(), '../../community/packs')
+  const packs = [...BUILT_IN_PACKS, ...readdirSync(dir).filter((x) => x.endsWith('.json') && x !== 'index.json').map((f) => Pack.parse(JSON.parse(readFileSync(join(dir, f), 'utf8'))))]
+  for (const r of packs.flatMap((p) => p.routines)) assert.equal(describePackRule(r.rule), describeRRule(buildRRule({ ...r.rule, start: '2026-01-01' })), r.key)
 })

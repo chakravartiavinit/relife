@@ -2,7 +2,6 @@ import type { Pack, PackGoal, PackRoutine, PackTracker } from '@relife/contract'
 import { addDays } from '@/core/time'
 import type { Category } from './categories'
 import { MAX_ACTIVE, checkGoalDraft, type RawGoalDraft } from './goals'
-import { buildRRule, describe } from './recurrence'
 import type { Template } from './templates'
 
 // Applying a starter pack to the answers of setup (/welcome): pure, so it is tested. `v` is the flow's state (`V` in
@@ -188,8 +187,14 @@ export function addedLine(n: { routines: number; trackers: number; goals: number
   return parts.length ? `Added ${parts.join(', ')}` : 'Nothing new to add'
 }
 
-/** "Daily · 07:00": a pack routine's rule in words, the way the Routines list says it. */
-export const describePackRule = (rule: PackRoutine['rule']) => describe(buildRRule({ ...rule, start: '2026-01-01' }))
+/** "Weekly on Mo, We, Fr · 07:00": a pack routine's rule in words, worded like `describe` in recurrence.ts. Plain code, since
+ * the rrule library reads the clock and this runs while a client component renders. */
+export function describePackRule(rule: PackRoutine['rule']) {
+  const every = rule.interval && rule.interval > 1 ? `Every ${rule.interval} ${{ daily: 'day', weekly: 'week', monthly: 'month' }[rule.freq]}s` : rule.freq.charAt(0).toUpperCase() + rule.freq.slice(1)
+  const days = rule.freq === 'weekly' && rule.byweekday?.length ? ` on ${rule.byweekday.map((d) => d.charAt(0) + d.charAt(1).toLowerCase()).join(', ')}` : ''
+  const md = rule.freq === 'monthly' && rule.bymonthday ? ` on day ${rule.bymonthday}` : ''
+  return `${every}${days}${md} · ${rule.times.join(', ')}`
+}
 
 /** "4 routines · 1 goal": what a pack holds, for its card. */
 export function countsLine(pack: Pick<Pack, 'routines' | 'trackers' | 'goals'>) {
