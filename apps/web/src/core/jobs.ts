@@ -2,6 +2,8 @@ import { Cron } from 'croner'
 import { hostname } from 'node:os'
 import { and, eq, sql as dsql } from 'drizzle-orm'
 import { db, schema, sql } from '@/db'
+import { runAs } from './context'
+import type { User } from './user'
 
 // The job engine: anything that runs on a schedule or on an event. Jobs are declared in src/jobs; this
 // file runs them.
@@ -12,6 +14,9 @@ import { db, schema, sql } from '@/db'
 //     daily job whose time passed while the worker was off (it catches up once, within catchUpMinutes).
 //   - requestJob() runs a job as soon as possible (a connector was just connected, new data to parse).
 //     It wakes the worker at once through Postgres LISTEN/NOTIFY; the 15-second tick is the fallback.
+//   - Several people on one server: a job is per person unless it says `scope: 'instance'` (heartbeat, exchange rates,
+//     pruning, backups). `expandJobs` turns each per-person job into one job per person, `<id>@<userId>`, that runs as them
+//     (`runAs`, in their time zone). Built for a household (up to about 10 people), not for a hosted service.
 
 export type Schedule = { cron: string } | { everyMinutes: number }
 
@@ -31,6 +36,10 @@ export type Job = {
   backoff?: boolean
   /** Events that make this job run now, e.g. 'raw.added', 'connector.connected:binance'. */
   on?: string[]
+  /** `instance`: one job for the whole server (heartbeat, exchange rates, pruning, backup). Default: one per person. */
+  scope?: 'instance'
+  /** Set by `expandJobs`: the person this copy runs for. */
+  user?: User
 }
 
 type State = typeof schema.jobs.$inferSelect
@@ -64,6 +73,30 @@ export function due(job: Job, state: Pick<State, 'nextRunAt' | 'requestedAt'> | 
   return { run: true }
 }
 
+/** The id of `job` for one person: `<id>@<userId>`, or its own id when it is for the whole server. */
+export const jobIdFor = (job: Pick<Job, 'id' | 'scope'>, userId: string) => (job.scope === 'instance' ? job.id : `${job.id}@${userId}`)
+
+/** The person a job id belongs to, or null for a server job. */
+export const jobUserId = (id: string) => (id.includes('@') ? id.slice(id.lastIndexOf('@') + 1) : null)
+
+/**
+ * One copy of every per-person job for each person who is not disabled, `<id>@<userId>`, running as them in their time
+ * zone. Server jobs stay as they are. Pure apart from `runAs`, so it is tested without a database.
+ */
+export function expandJobs(jobs: Job[], users: User[]): Job[] {
+  const live = users.filter((u) => !u.disabledAt)
+  return jobs.flatMap((job) => {
+    if (job.scope === 'instance') return [job]
+    return live.map((user): Job => ({
+      ...job,
+      id: jobIdFor(job, user.id),
+      user,
+      run: () => runAs(user, job.run),
+      enabled: job.enabled && (() => runAs(user, job.enabled!)),
+    }))
+  })
+}
+
 /** Run a job now if nobody else is running it. Returns null when it was already running. */
 export async function runJob(job: Job, tz: string): Promise<{ ok: boolean; result: string } | null> {
   await db.insert(schema.jobs).values({ id: job.id }).onConflictDoNothing()
@@ -92,6 +125,19 @@ export async function runJob(job: Job, tz: string): Promise<{ ok: boolean; resul
   return { ok, result }
 }
 
+/**
+ * Jobs were one set for the one person; they are per person now (`<id>@<userId>`). Gives each old per-person row the
+ * owner's suffix, keeping when it last ran, and leaves server jobs (`instanceIds`) alone. Safe to run on every start:
+ * a renamed row has an `@`, and an old row whose new id already exists is dropped instead.
+ */
+export async function adoptJobIds(ownerId: string, instanceIds: string[]) {
+  const stale = dsql`${schema.jobs.id} not like '%@%' and not (${schema.jobs.id} = any(${dsql.raw(`array[${instanceIds.map((i) => `'${i.replace(/'/g, "''")}'`).join(',')}]::text[]`)}))`
+  await db.transaction(async (tx) => {
+    await tx.delete(schema.jobs).where(dsql`${stale} and exists (select 1 from jobs k where k.id = ${schema.jobs.id} || '@' || ${ownerId}::text)`)
+    await tx.update(schema.jobs).set({ id: dsql`${schema.jobs.id} || '@' || ${ownerId}::text` }).where(stale)
+  })
+}
+
 /** Ask for a job to run as soon as possible. Safe to call from the web app; the worker picks it up. */
 export async function requestJob(id: string) {
   await db.insert(schema.jobs).values({ id, requestedAt: new Date() })
@@ -99,9 +145,9 @@ export async function requestJob(id: string) {
   await sql.notify(CHANNEL, id).catch(() => {}) // wake the worker now; the tick covers a missed notice
 }
 
-/** Something happened: run every job listening for it. */
-export async function emitEvent(event: string, jobs: Job[]) {
-  for (const j of jobs) if (j.on?.includes(event)) await requestJob(j.id)
+/** Something happened for one person: run every job listening for it, as soon as possible. */
+export async function emitEvent(event: string, jobs: Job[], userId: string) {
+  for (const j of jobs) if (j.on?.includes(event)) await requestJob(jobIdFor(j, userId))
 }
 
 /** Leases held by processes on this machine that no longer exist (killed, crashed, reloaded): free them. */
@@ -122,8 +168,8 @@ async function releaseOrphans() {
  * The scheduler: every 15 seconds (and whenever a request arrives) start each job that's due, at most
  * CONCURRENCY at a time. Jobs run in the background, so a long sync never holds up the others.
  */
-/** `timeZone` is read on every tick, so a time zone changed in Settings applies without a restart. */
-export function startScheduler(jobs: Job[], timeZone: () => string, log = console.log) {
+/** `jobs` is asked on every tick (people come and go) and `timeZone` is the server's, for jobs with no person: a time zone changed in Settings applies without a restart. */
+export function startScheduler(jobs: () => Promise<Job[]>, timeZone: () => string, log = console.log) {
   const running = new Set<string>()
   let ticking = false
   let stopped = false
@@ -134,9 +180,9 @@ export function startScheduler(jobs: Job[], timeZone: () => string, log = consol
       await releaseOrphans()
       const states = new Map((await db.select().from(schema.jobs)).map((s) => [s.id, s]))
       const now = new Date()
-      const tz = timeZone()
       const syncs = () => [...running].filter(isSync).length
-      for (const job of jobs) {
+      for (const job of await jobs()) {
+        const tz = job.user?.timezone ?? timeZone()
         if (running.has(job.id)) continue
         if (isSync(job.id) ? syncs() >= SYNC_CONCURRENCY : running.size - syncs() >= CONCURRENCY) continue
         const state = states.get(job.id)

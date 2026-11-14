@@ -2,12 +2,15 @@ import { and, eq, lt } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { connectors } from '@/connectors'
 import { rules } from '@/rules'
-import { emitEvent, requestJob, runJob, type Job } from '@/core/jobs'
-import { getUser } from '@/core/user'
+import { emitEvent, expandJobs, requestJob, runJob, type Job } from '@/core/jobs'
+import { runAs } from '@/core/context'
+import { getUser, type User } from '@/core/user'
 import { connectorUnavailable } from '@/core/platform'
 
 // Every scheduled or event-driven job, in one list. To add one, append an entry: an id, a schedule
-// ({ cron } in the user's time zone, or { everyMinutes }), and run(). Add `on: ['some.event']` to also
+// ({ cron } in the user's time zone, or { everyMinutes }), and run(). A job runs once for each person on the server, as
+// them (`getUser()` inside `run` is that person); `scope: 'instance'` makes it run once for the whole server (the heartbeat,
+// exchange rates, pruning and backups) and it must not touch one person's data. Add `on: ['some.event']` to also
 // run it the moment that event fires (emit('some.event')). A job tied to a connection (a connector,
 // Telegram, an AI model) has `enabled`, so it only runs while that's connected. The engine is src/core/jobs.ts.
 //
@@ -32,10 +35,30 @@ async function connected(id: string, keys: string[] = []) {
 const loadKeys = async () => (await import('@/core/secrets')).applySecrets((await getUser()).id)
 
 /** Jobs that only talk to Telegram, and jobs that need an AI model, run only while those are connected. */
-const telegram = async () => { await loadKeys(); return (await import('@/core/notify')).telegramConfigured() }
+const telegram = async () => { await loadKeys(); return (await import('@/core/notify')).telegramConfigured(await getUser()) }
 const ai = async () => { await loadKeys(); return (await import('@/ai/models')).aiEnabled('plan') }
 
-const connectorJobs: Job[] = connectors.map((c) => ({
+/** Exchange rates are public and shared, so they sync once for everyone, as the first person who has them on. */
+const fxUsers = async () => (await db.select({ u: schema.users }).from(schema.connections)
+  .innerJoin(schema.users, eq(schema.users.id, schema.connections.userId))
+  .where(and(eq(schema.connections.connectorId, 'fx'), eq(schema.connections.enabled, true)))).map((r) => r.u)
+
+const connectorJobs: Job[] = connectors.map((c) => c.id === 'fx' ? ({
+  id: 'sync:fx',
+  scope: 'instance',
+  schedule: { everyMinutes: c.everyMinutes },
+  backoff: true,
+  timeoutMinutes: 60,
+  enabled: async () => (await fxUsers()).length > 0,
+  on: ['connector.connected:fx'],
+  run: async () => {
+    const [user] = await fxUsers()
+    if (!user) return
+    const { runConnector } = await import('@/worker/sync')
+    const r = await runAs(user, () => runConnector('fx'))
+    if (!r.ok) throw new Error(r.error ?? 'sync failed')
+  },
+} satisfies Job) : ({
   id: `sync:${c.id}`,
   schedule: { everyMinutes: c.everyMinutes },
   backoff: true,
@@ -50,10 +73,10 @@ const connectorJobs: Job[] = connectors.map((c) => ({
     if (r.events) await emit('raw.added')
     return r.events ? `${r.events} new` : undefined
   },
-}))
+} satisfies Job))
 
 export const JOBS: Job[] = [
-  { id: 'heartbeat', schedule: { everyMinutes: 1 }, run: async () => {
+  { id: 'heartbeat', scope: 'instance', schedule: { everyMinutes: 1 }, run: async () => {
     await db.insert(schema.heartbeats).values({ name: 'worker', at: new Date() })
       .onConflictDoUpdate({ target: schema.heartbeats.name, set: { at: new Date() } })
   } },
@@ -93,19 +116,20 @@ export const JOBS: Job[] = [
   } },
   // Failed parses get one more chance a day (a parser may have improved).
   { id: 'retry-failed', schedule: { cron: '30 3 * * *' }, catchUpMinutes: 12 * 60, run: async () => {
-    await db.update(schema.rawEvents).set({ status: 'new' }).where(eq(schema.rawEvents.status, 'failed'))
+    const user = await getUser()
+    await db.update(schema.rawEvents).set({ status: 'new' }).where(and(eq(schema.rawEvents.userId, user.id), eq(schema.rawEvents.status, 'failed')))
     await emit('raw.added')
   } },
 
   // Sync history is only shown as each connector's last few runs; the iCloud inbox alone adds 1,440 rows a day.
-  { id: 'prune-sync-runs', schedule: { cron: '45 3 * * *' }, catchUpMinutes: 12 * 60, run: async () => {
+  { id: 'prune-sync-runs', scope: 'instance', schedule: { cron: '45 3 * * *' }, catchUpMinutes: 12 * 60, run: async () => {
     const { count } = await db.delete(schema.syncRuns).where(lt(schema.syncRuns.startedAt, new Date(Date.now() - 30 * 86_400_000)))
     return count ? `removed ${count} sync runs older than 30 days` : undefined
   } },
 
   // A backup every night, before the prune jobs: pg_dump plus secret.key and library covers (src/core/data/backup.ts). Off
   // when RELIFE_BACKUP_KEEP=0, in the demo, or when pg_dump is not installed (Settings → Data & privacy says so).
-  { id: 'backup', schedule: { cron: '30 3 * * *' }, catchUpMinutes: 12 * 60, timeoutMinutes: 60, enabled: async () => {
+  { id: 'backup', scope: 'instance', schedule: { cron: '30 3 * * *' }, catchUpMinutes: 12 * 60, timeoutMinutes: 60, enabled: async () => {
     const [{ keepDaily }, { pgDumpInstalled }, { isDemo }] = await Promise.all([import('@/core/data/backup'), import('@/core/data/pg'), import('@/core/demo')])
     return keepDaily() !== 0 && pgDumpInstalled() && !isDemo()
   }, run: async () => {
@@ -114,7 +138,7 @@ export const JOBS: Job[] = [
   } },
 
   // The outbox, reminder history and model logs are kept 90 days, handled raw events a year.
-  { id: 'prune-old-data', schedule: { cron: '55 3 * * *' }, catchUpMinutes: 12 * 60, run: async () => {
+  { id: 'prune-old-data', scope: 'instance', schedule: { cron: '55 3 * * *' }, catchUpMinutes: 12 * 60, run: async () => {
     const { pruneOldData } = await import('@/core/prune')
     const r = await pruneOldData()
     const total = r.notifications + r.reminders + r.llmRuns + r.rawEvents + r.imports
@@ -122,7 +146,7 @@ export const JOBS: Job[] = [
   } },
 
   // Devices: ended pairings, old idempotency keys, long-revoked devices and rate-limit windows.
-  { id: 'prune-devices', schedule: { cron: '50 3 * * *' }, catchUpMinutes: 12 * 60, run: async () => {
+  { id: 'prune-devices', scope: 'instance', schedule: { cron: '50 3 * * *' }, catchUpMinutes: 12 * 60, run: async () => {
     await (await import('@/core/auth/pairing')).cleanup()
   } },
 
@@ -182,14 +206,24 @@ export const JOBS: Job[] = [
   } },
 ]
 
-/** Something happened: run every job listening for it, as soon as possible. */
-export const emit = (event: string) => emitEvent(event, JOBS)
+/**
+ * Something happened for a person (the signed-in one, or `userId`): run every job listening for it, as soon as
+ * possible. A job for the whole server is asked for as it is, a per-person one as `<id>@<userId>`.
+ */
+export async function emit(event: string, userId?: string) {
+  return emitEvent(event, JOBS, userId ?? (await getUser()).id)
+}
 
-/** Run a job here and now (the web's "Sync now"). Null when it's already running somewhere. */
-export async function runNow(id: string) {
-  const job = JOBS.find((j) => j.id === id)
-  if (!job) throw new Error(`Unknown job ${id}`)
-  return runJob(job, (await getUser()).timezone)
+/** What the worker runs on each tick: every per-person job for each person, plus the server's own. */
+export const jobsForUsers = (users: User[]) => expandJobs(JOBS, users)
+
+/** Run a job here and now, for the signed-in person (the web's "Sync now"). Null when it's already running somewhere. */
+export async function runNow(id: string, user?: User) {
+  const base = JOBS.find((j) => j.id === id)
+  if (!base) throw new Error(`Unknown job ${id}`)
+  const who = user ?? (await getUser())
+  const job = base.scope === 'instance' ? base : expandJobs([base], [who])[0]
+  return runJob(job, who.timezone)
 }
 
 /** Parse new raw events now (iPhone inbox, Telegram), or leave them to the parse already running. */
