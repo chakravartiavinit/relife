@@ -81,7 +81,7 @@ export const wipeGlobalTables = () => TABLES.filter((t) => t.wipe === 'all').map
 
 /** Every table in db/schema.ts, with its SQL name and columns. */
 export function schemaTables() {
-  return Object.values(schema).filter((v): v is PgTable => is(v, PgTable)).map((t) => getTableConfig(t))
+  return (Object.values(schema).filter((v) => is(v, PgTable)) as PgTable[]).map((t) => getTableConfig(t))
 }
 
 /** Changes whenever a table or column is added, renamed or removed. An import warns when it differs. */

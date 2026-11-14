@@ -22,7 +22,8 @@ import { isWebUrl } from '@/domain/text'
 import { connectorUnavailable } from '@/core/platform'
 import { requestJob } from '@/core/jobs'
 import { DEMO_OFF, isDemo } from '@/core/data/demo'
-import { WIPE_CONFIRM, wipeUserData } from '@/core/data/wipe'
+import { WIPE_CONFIRM } from '@/core/data/wipe-confirm'
+import { wipeUserData } from '@/core/data/wipe'
 
 // Local single-user app: the server binds to 127.0.0.1 / Tailscale, and every action scopes
 // writes to getUser(). When multi-user lands, getUser() becomes the session check.

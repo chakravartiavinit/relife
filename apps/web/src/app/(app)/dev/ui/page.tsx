@@ -30,6 +30,7 @@ import type { RecoveryView } from '@/domain/recovery'
 import { GOAL_FOOTNOTE, goalSnapshot } from '@/domain/goals'
 import { OutcomeGoalCard, PausedFinishedList } from '@/ui/components/goals/goal-card'
 import { DevicesGallery } from '@/ui/components/devices/gallery'
+import { DataGallery } from '@/ui/components/data/data-gallery'
 import { GoalReviewCard } from '@/ui/components/goals/goal-review'
 import type { GoalViewData } from '@/ui/components/goals/format'
 
@@ -185,6 +186,10 @@ export default function UiGallery() {
 
       <Section title="Plan and You: review card, Your sources, suggestions, connect success, notification channel">
         <PlanYouGallery />
+      </Section>
+
+      <Section title="Data & privacy: backups in every state, delete, the privacy list">
+        <DataGallery />
       </Section>
 
       <Section title="Setup: the four steps and the save file">

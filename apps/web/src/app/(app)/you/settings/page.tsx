@@ -3,9 +3,9 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
-import { and, eq, gte, isNotNull, sql } from 'drizzle-orm'
-import { ArrowUpRight, Database, KeyRound, ShieldCheck, type LucideIcon } from 'lucide-react'
-import { databaseUrl, db, isMock, schema } from '@/db'
+import { gte, sql } from 'drizzle-orm'
+import { ArrowUpRight } from 'lucide-react'
+import { db, schema } from '@/db'
 import { getUser } from '@/core/user'
 import { aiEnabled, modelId, type Task } from '@/ai'
 import { Badge, Skeleton } from '@/ui/components/card'
@@ -29,7 +29,7 @@ export default function SettingsPage() {
   return (
     <>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <p className="max-w-[60ch] text-body text-ink-2">Your profile, how {brand.name} looks, which AI it uses and where your data lives. Data sources and API keys are in Connections; Telegram messages are in Notifications.</p>
+        <p className="max-w-[60ch] text-body text-ink-2">Your profile, how {brand.name} looks and which AI it uses. Export, backups, privacy and deleting your data are under Data & privacy; data sources and API keys are in Connections; Telegram messages are in Notifications.</p>
         <div className="flex items-center gap-2">
           {/* A full load: the tour opens from the address on arrival. */}
           <a href="/?tour" className={buttonClass({ variant: 'ghost', size: 'sm' })}>Take the tour</a>
@@ -52,20 +52,14 @@ async function Settings() {
   await connection()
   const user = await getUser()
   const since = new Date(Date.now() - 30 * 86_400_000)
-  const [[llm], [keys], [beat], { signals }] = await Promise.all([
+  const [[llm], { signals }] = await Promise.all([
     db.select({
       calls: sql<number>`count(*)::int`,
       failed: sql<number>`count(*) filter (where not ${schema.llmRuns.ok})::int`,
       tokens: sql<number>`coalesce(sum(${schema.llmRuns.inputTokens}), 0)::int + coalesce(sum(${schema.llmRuns.outputTokens}), 0)::int`,
     }).from(schema.llmRuns).where(gte(schema.llmRuns.createdAt, since)),
-    db.select({ n: sql<number>`count(*)::int` }).from(schema.connections)
-      .where(and(eq(schema.connections.userId, user.id), eq(schema.connections.enabled, true), isNotNull(schema.connections.secretsEncrypted))),
-    db.select().from(schema.heartbeats).where(eq(schema.heartbeats.name, 'worker')),
     loadSignals(user),
   ])
-  const dbName = new URL(databaseUrl).pathname.slice(1)
-  const workerUp = beat && Date.now() - beat.at.getTime() < 3 * 60_000
-  const masked = process.env.LLM_MASK !== 'false'
 
   return (
     <>
@@ -118,27 +112,6 @@ async function Settings() {
           </dl>
         </SettingsRow>
       </SettingsSection>
-
-      <SettingsSection id="privacy" title="Data & privacy" description={`${brand.name} is local-first. Nothing leaves this Mac unless you connect a service.`}>
-        <SettingsRow label="Your data" hint="Every routine, entry, payment and XP point.">
-          <Fact icon={Database}>Postgres on this Mac, database <code className="rounded-xs bg-surface-2 px-1 text-[12.5px]">{dbName}</code>{isMock ? <Badge color="var(--warn)" className="ml-2">Mock</Badge> : null}</Fact>
-        </SettingsRow>
-        <SettingsRow label="Saved keys" hint="Keys you enter in Connections.">
-          <Fact icon={KeyRound}>
-            {keys.n ? `${keys.n} connection${keys.n === 1 ? '' : 's'} with saved keys, ` : 'No saved keys yet. When you add some, they’re '}
-            encrypted with AES-256-GCM using {process.env.RELIFE_SECRET_KEY ? <code className="rounded-xs bg-surface-2 px-1 text-[12.5px]">RELIFE_SECRET_KEY</code> : <code className="rounded-xs bg-surface-2 px-1 text-[12.5px]">data/secret.key</code>}. Back it up with your database.
-          </Fact>
-        </SettingsRow>
-        <SettingsRow label="What AI sees" hint="Set LLM_MASK in .env to change this.">
-          <Fact icon={ShieldCheck}>{masked ? 'Account numbers and UPI handles are masked before anything is sent to a model.' : 'Masking is off: prompts include account numbers and UPI handles.'}</Fact>
-        </SettingsRow>
-        <SettingsRow label="Background worker" hint="Runs reminders, syncs, XP and AI jobs.">
-          <span className="inline-flex items-center gap-2 text-[13.5px] text-ink-2">
-            <span aria-hidden className="size-2 rounded-full" style={{ background: workerUp ? 'var(--good)' : 'var(--warn)' }} />
-            {workerUp ? `Running · heartbeat ${Math.max(1, Math.round((Date.now() - beat!.at.getTime()) / 1000))} s ago` : 'Not running. Start it with npm run dev.'}
-          </span>
-        </SettingsRow>
-      </SettingsSection>
     </>
   )
 }
@@ -149,15 +122,6 @@ function Usage({ label, value, bad }: { label: string; value: string; bad?: bool
       <dt className="text-[11.5px] text-ink-3">{label}</dt>
       <dd className={`mt-0.5 font-display text-[18px] font-bold tabular-nums ${bad ? 'text-bad' : 'text-ink'}`}>{value}</dd>
     </div>
-  )
-}
-
-function Fact({ icon: Icon, children }: { icon: LucideIcon; children: React.ReactNode }) {
-  return (
-    <p className="flex items-start gap-2.5 text-[13.5px] leading-relaxed text-ink-2">
-      <Icon className="mt-0.5 size-4 shrink-0 text-ink-3" strokeWidth={1.5} aria-hidden />
-      <span>{children}</span>
-    </p>
   )
 }
 

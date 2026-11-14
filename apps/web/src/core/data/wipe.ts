@@ -5,9 +5,6 @@ import { dataDir } from '../paths'
 import { clearUserCache, getUser, type User } from '../user'
 import { wipeGlobalTables } from './tables'
 
-/** What the Delete button types back to the server. */
-export const WIPE_CONFIRM = 'delete-everything'
-
 /**
  * Delete everything of yours. The users row goes, and the database cascades through every table; the paired devices move
  * to a fresh row first, so nobody is signed out. A new id (not row-by-row deletes) means a sync that is still running
