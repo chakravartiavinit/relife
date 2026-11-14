@@ -13,7 +13,7 @@ import { DevicesPanel } from '@/ui/components/devices/devices-panel'
 import { listDevices } from '@/core/auth/devices'
 import { toListItem, toWaiting } from '@/core/auth/device-view'
 import { mode } from '@/core/auth/mode'
-import { pendingRequests } from '@/core/auth/pairing'
+import { visibleRequests } from '@/core/people'
 import { viewerDevice } from '@/core/auth/viewer'
 import { isLoopbackHost } from '@/core/auth/trust'
 import { getUser } from '@/core/user'
@@ -46,7 +46,7 @@ async function Devices({ searchParams }: { searchParams: PageProps<'/you/setting
   const user = await getUser()
   const me = await viewerDevice()
   const q = await searchParams
-  const [devices, waiting] = await Promise.all([listDevices(user.id), pendingRequests()])
+  const [devices, waiting] = await Promise.all([listDevices(user.id), visibleRequests(user)])
   return (
     <DevicesPanel
       initial={devices.map((d) => toListItem(d, me?.id ?? null))}

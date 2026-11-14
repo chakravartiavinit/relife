@@ -13,6 +13,8 @@ import { callbackPath } from '@/core/oauth'
 import { integration } from '@/core/integrations'
 import type { SetupField } from '@/core/types'
 import { env } from '@/core/env'
+import { aiAllowed, ownerUser } from '@/core/multi-user'
+import { chatIdOf } from '@/core/notify'
 import { connectorUnavailable } from '@/core/platform'
 import { localAiDown, localAiStatus } from '@/ai/local'
 
@@ -63,11 +65,15 @@ async function connectorItems(user: User, origin: string, o: { probeLocal?: bool
     db.select().from(schema.connections).where(eq(schema.connections.userId, user.id)),
     db.select().from(schema.jobs).where(or(like(schema.jobs.id, `%@${user.id}`), eq(schema.jobs.id, 'sync:fx'))),
   ])
+  // The server's own things (AI models, the Telegram bot) are the owner's. Everyone else sees them read-only.
+  const owner = await ownerUser()
+  const mine = !owner || owner.id === user.id
+  const theirs = (what: string) => `Set up by ${owner?.name ?? 'the person who runs this server'}. ${what}`
   const workerAlive = heartbeat && Date.now() - heartbeat.at.getTime() < 3 * 60_000
   const isConnected = (id: string) => !!rows.find((r) => r.connectorId === id)?.enabled
   const view = (id: string, fields: SetupField[]): FieldView[] => fields.map((f) => {
     const v = saved.get(id)?.[f.env]
-    return { ...f, saved: !!v, fromEnv: !!envDefault(f.env), envSource: process.env.RELIFE_SECRETS === 'dotsafe' ? 'dotsafe' as const : '.env' as const, value: f.secret ? undefined : v }
+    return { ...f, saved: !!v, fromEnv: mine && !!envDefault(f.env), envSource: process.env.RELIFE_SECRETS === 'dotsafe' ? 'dotsafe' as const : '.env' as const, value: f.secret ? undefined : v }
   })
 
   const items: ConnectorItem[] = sources.map((c) => {
@@ -95,23 +101,27 @@ async function connectorItems(user: User, origin: string, o: { probeLocal?: bool
   const tg = integration('telegram')!
   const tgConnected = isConnected('telegram')
   const tgMissing = tgConnected ? missing(tg.required) : []
+  const chat = chatIdOf(user)
+  const botReady = !!env('TELEGRAM_BOT_TOKEN')
   items.push({
-    id: 'telegram', name: 'Telegram', section: 'messaging', connected: tgConnected, fields: view('telegram', tg.fields),
+    id: 'telegram', name: 'Telegram', section: 'messaging', connected: mine ? tgConnected : !!chat, fields: mine ? view('telegram', tg.fields) : [],
     description: 'Reminders with one-tap Done and Snooze, quick logging like “water 250”, and /ask. Only your chat is answered.',
     provides: ['Reminders', 'Quick log', '/ask'],
-    missingEnv: tgMissing,
-    status: !tgConnected ? 'off' : tgMissing.length ? 'setup' : env('TELEGRAM_ALLOWED_CHAT_ID') ? 'ok' : 'waiting',
-    statusLabel: tgConnected && !tgMissing.length && !env('TELEGRAM_ALLOWED_CHAT_ID') ? 'Add your chat ID' : undefined,
-    detail: env('TELEGRAM_ALLOWED_CHAT_ID') ? 'Bot runs with the worker' : 'Send /start to your bot to get your chat ID',
+    missingEnv: mine ? tgMissing : [],
+    status: mine ? (!tgConnected ? 'off' : tgMissing.length ? 'setup' : chat ? 'ok' : 'waiting') : chat ? 'ok' : 'off',
+    statusLabel: mine && tgConnected && !tgMissing.length && !chat ? 'Link your chat' : undefined,
+    detail: chat ? 'Bot runs with the worker' : mine ? 'Link your chat in Notifications' : botReady ? 'Link your own chat in Notifications' : 'The bot is not set up yet',
+    ...(mine ? {} : { unavailable: theirs(botReady ? 'Link your own chat in Notifications.' : 'It is not set up yet.') }),
   })
 
   const tasks: Task[] = ['parse', 'plan', 'chat']
+  const shared = await aiAllowed(user)
   // The local server is probed only when it is connected and in use (cached 30 s; never throws), and only for pages that
   // show its row: area pages and most peeks pass `probeLocal: false`.
   const local = isConnected('local') && o.probeLocal !== false ? await localAiStatus('chat') : null
   for (const p of AI) {
     const spec = integration(p.id)!
-    const connected = isConnected(p.id)
+    const connected = mine ? isConnected(p.id) : !missing(spec.required).length // a member's view of the owner's model
     const usedBy = tasks.filter((t) => modelId(t)?.startsWith(`${p.id}:`))
     const miss = connected ? missing(spec.required) : []
     // A local model that is not answering is an error to fix, with the fix as the detail.
@@ -122,6 +132,7 @@ async function connectorItems(user: User, origin: string, o: { probeLocal?: bool
       status: !connected ? 'off' : miss.length ? 'setup' : down ? 'error' : usedBy.length ? 'ok' : 'ready',
       detail: down?.message ?? (usedBy.length ? `Used for ${usedBy.join(', ')}` : 'Set a default model to use it'),
       ...(down ? { error: 'Local AI not running' } : {}),
+      ...(mine ? {} : { unavailable: theirs(shared ? 'You use their model.' : 'They turned it off for everyone else.'), fields: [], missingEnv: [] }),
     })
   }
 

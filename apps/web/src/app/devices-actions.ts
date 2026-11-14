@@ -4,6 +4,7 @@ import brand from '@relife/brand/brand.json'
 import { cookies, headers } from 'next/headers'
 import { z } from 'zod'
 import type { DeviceKind } from '@relife/contract'
+import { visibleRequests } from '@/core/people'
 import { getUser, mergeProfile } from '@/core/user'
 import { pairBase, type PairBase } from '@/core/auth/base-url'
 import { loadReach, type ReachId } from '@/core/auth/reach'
@@ -78,7 +79,7 @@ export async function offerState(id: string) {
 /** Devices waiting to be approved (flow B), for the list and the banner. */
 export async function waitingDevices(): Promise<WaitingDevice[]> {
   await requireDevice()
-  return (await pendingRequests()).map(toWaiting)
+  return (await visibleRequests(await getUser())).map(toWaiting)
 }
 
 /** The code typed into the dialog (what a device is showing): the waiting device it belongs to, or why not. */

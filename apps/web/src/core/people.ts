@@ -3,7 +3,8 @@ import { and, count, eq, isNull, like, max, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { forgetDevice } from './auth/cache'
 import { dropUserKeys } from './env'
-import { clearUsersCache } from './multi-user'
+import { pendingRequests } from './auth/pairing'
+import { clearUsersCache, hasMembers } from './multi-user'
 import { dataDir } from './paths'
 import { clearUserCache, type User } from './user'
 
@@ -67,4 +68,13 @@ export async function removePerson(owner: User, id: string): Promise<boolean> {
     ...uploads.map((u) => rm(dataDir('imports', u.id), { recursive: true, force: true })),
   ])
   return true
+}
+
+/**
+ * Device requests belong to no one until approved, so with several people on a server only the owner sees the list: a member
+ * would otherwise see (and could approve into their own account) a device someone else is setting up. A member still
+ * approves their own device by the code it shows.
+ */
+export async function visibleRequests(viewer: Pick<User, 'role'>) {
+  return viewer.role === 'owner' || !(await hasMembers()) ? pendingRequests() : []
 }
