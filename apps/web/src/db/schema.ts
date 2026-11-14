@@ -66,8 +66,11 @@ export type UserProfile = {
   prefs?: { theme?: 'light' | 'dark' | 'system' }
   /** Self-host: ask every browser on this Mac to connect too, instead of trusting loopback ("Require sign-in on this Mac"). */
   requireSignIn?: boolean
-  /** This person's Telegram chat, saved when they send the bot `/start <code>` (src/core/telegram-link.ts). */
-  telegram?: { chatId: string; linkedAt: string }
+  /**
+   * This person's Telegram chat, saved when they send the bot `/start <code>` (src/core/telegram-link.ts). Without `chatId`
+   * but with `unlinkedAt` the person unlinked on purpose: the owner's old typed-in chat id must not come back.
+   */
+  telegram?: { chatId?: string; linkedAt?: string; unlinkedAt?: string }
   /** Server-wide settings, kept on the owner's row. `shareAi` (default on): the other people on this server may use the owner's AI model. */
   instance?: { shareAi?: boolean }
 }

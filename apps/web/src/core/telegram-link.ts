@@ -40,7 +40,7 @@ export async function redeemLinkCode(raw: string, chatId: string, now = new Date
   if (!userId) return { ok: false, reason: 'bad_code' }
   // A chat belongs to one person: linking it to someone else lets go of the old link.
   const rows = await db.transaction(async (tx) => {
-    await tx.update(schema.users).set({ profile: sql`${schema.users.profile} - 'telegram'` }).where(sql`${schema.users.profile}->'telegram'->>'chatId' = ${chatId}`)
+    await releaseChat(tx, chatId, now)
     return tx.update(schema.users).set({ profile: sql`coalesce(${schema.users.profile}, '{}'::jsonb) || ${JSON.stringify({ telegram: { chatId, linkedAt: now.toISOString() } })}::jsonb` })
       .where(eq(schema.users.id, userId)).returning()
   })
@@ -49,9 +49,24 @@ export async function redeemLinkCode(raw: string, chatId: string, now = new Date
   return { ok: true, user: rows[0] }
 }
 
-/** Forget this person's chat (and, for the owner, the old typed-in chat id is ignored too: see `unlinked`). */
+/** Whoever had this chat lets go of it, and the .env chat id does not come back for them (the `unlinkedAt` marker). */
+const releaseChat = (tx: Pick<typeof db, 'update'>, chatId: string, now: Date) =>
+  tx.update(schema.users).set({ profile: sql`coalesce(${schema.users.profile}, '{}'::jsonb) || ${JSON.stringify({ telegram: { unlinkedAt: now.toISOString() } })}::jsonb` })
+    .where(sql`${schema.users.profile}->'telegram'->>'chatId' = ${chatId}`)
+
+/** The owner typed a chat id in Connections: it becomes their linked chat (and leaves anyone else who had it). */
+export async function setTypedChat(userId: string, chatId: string, now = new Date()) {
+  await db.transaction(async (tx) => {
+    await releaseChat(tx, chatId, now)
+    await tx.update(schema.users).set({ profile: sql`coalesce(${schema.users.profile}, '{}'::jsonb) || ${JSON.stringify({ telegram: { chatId, linkedAt: now.toISOString() } })}::jsonb` })
+      .where(eq(schema.users.id, userId))
+  })
+  clearUserCache()
+}
+
+/** Forget this person's chat. A marker stays, so the owner's old typed-in chat id (.env) is not used again either. */
 export async function unlinkTelegram(user: Pick<User, 'id'>) {
-  await db.update(schema.users).set({ profile: sql`${schema.users.profile} - 'telegram'` }).where(eq(schema.users.id, user.id))
+  await db.update(schema.users).set({ profile: sql`coalesce(${schema.users.profile}, '{}'::jsonb) || ${JSON.stringify({ telegram: { unlinkedAt: new Date().toISOString() } })}::jsonb` }).where(eq(schema.users.id, user.id))
   clearUserCache()
 }
 
@@ -78,7 +93,7 @@ export async function anyoneLinked(): Promise<boolean> {
  * Called at worker start.
  */
 export async function adoptLegacyChat(owner: User) {
-  if (owner.profile.telegram?.chatId) return
+  if (owner.profile.telegram) return // linked, or unlinked on purpose
   const chat = chatIdOf(owner)
   if (!chat) return
   await db.update(schema.users).set({ profile: sql`coalesce(${schema.users.profile}, '{}'::jsonb) || ${JSON.stringify({ telegram: { chatId: chat, linkedAt: new Date().toISOString() } })}::jsonb` })

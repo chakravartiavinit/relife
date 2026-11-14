@@ -23,8 +23,9 @@ function client() {
  * Connections page before people could link their own. The .env value is the server's: a member never inherits it.
  */
 export function chatIdOf(user: Pick<User, 'id' | 'role' | 'profile'>): string | undefined {
-  const linked = user.profile?.telegram?.chatId
-  if (linked) return linked
+  const t = user.profile?.telegram
+  if (t?.chatId) return t.chatId
+  if (t) return undefined // unlinked on purpose: the .env value does not come back
   return user.role === 'owner' ? envFor(user.id, 'TELEGRAM_ALLOWED_CHAT_ID') || undefined : undefined
 }
 
@@ -46,7 +47,7 @@ export function keyboard(rows?: Button[][]) {
 /** Send an HTML message to `opts.chatId` (a person's own chat). Returns the Telegram message id, or null when not sent. */
 export async function sendMessage(text: string, opts: { buttons?: Button[][]; chatId?: string } = {}): Promise<number | null> {
   const c = client()
-  const chat = opts.chatId ?? env('TELEGRAM_ALLOWED_CHAT_ID')
+  const chat = opts.chatId // always the person's own (chatIdOf): the .env chat id is the owner's, not "the" chat
   if (!c || !chat) {
     console.log(`[notify] (telegram not configured) ${text.replace(/<[^>]+>/g, '')}`)
     return null
@@ -63,7 +64,7 @@ export async function sendMessage(text: string, opts: { buttons?: Button[][]; ch
 /** Remove a message (an older copy of a repeated reminder). Fails quietly: Telegram only deletes recent ones. */
 export async function deleteMessage(messageId: number, chatId?: string) {
   const c = client()
-  const chat = chatId ?? env('TELEGRAM_ALLOWED_CHAT_ID')
+  const chat = chatId
   if (!c || !chat) return
   await c.deleteMessage(chat, messageId).catch(() => {})
 }

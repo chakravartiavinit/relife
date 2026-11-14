@@ -273,6 +273,9 @@ export async function connect(userId: string, id: string, input: Record<string, 
     return { ok: true }
   })
   if (result.ok) await applySecrets(userId)
+  // A chat id typed in here is this person's chat from now on: the one place a chat is kept is their profile.
+  const chat = typed.get('TELEGRAM_ALLOWED_CHAT_ID')
+  if (result.ok && id === 'telegram' && chat) await (await import('./telegram-link')).setTypedChat(userId, chat)
   return result
 }
 

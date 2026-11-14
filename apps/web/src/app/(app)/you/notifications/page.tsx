@@ -30,7 +30,7 @@ async function Notifications() {
   const pushDevices = await pushDeviceCount(user.id).catch(() => 0)
   const telegram = telegramConfigured(user)
   const owner = await ownerUser()
-  const link = { bot: !!env('TELEGRAM_BOT_TOKEN'), linked: !!user.profile.telegram, member: user.role !== 'owner', owner: owner?.name }
+  const link = { bot: !!env('TELEGRAM_BOT_TOKEN'), linked: !!user.profile.telegram?.chatId, member: user.role !== 'owner', owner: owner?.name }
   return (
     <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
       <div className="min-w-0 max-lg:order-2"><NotificationSettings initial={user.profile.notifications} both={telegram && pushDevices > 0} /></div>
