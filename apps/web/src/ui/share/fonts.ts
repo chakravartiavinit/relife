@@ -2,7 +2,8 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 // The one loader for the card fonts. Satori needs static ttf, otf or woff: next/font gives no files and cannot read
-// variable fonts. Read once per process, as the next/og docs show. To cover more scripts, add a Noto subset here.
+// variable fonts. Read once per process. They hold Latin only: `cardText` (domain/share-card.ts) drops every other character, so
+// nothing needs a fallback font. To cover another script, add its font here and widen `CARD_CHARS` to match (fonts.test.ts checks).
 const dir = join(process.cwd(), 'assets/og/fonts')
 const load = (file: string) => readFile(join(dir, file))
 

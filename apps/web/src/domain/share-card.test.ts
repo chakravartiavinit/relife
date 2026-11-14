@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
-  SHARE_FIELDS, SHARE_KINDS, cardModel, defaultShow, isoWeek, parseShow, spendDirection, streakMilestone, stripEmoji, weekRange, type ShareData,
+  SHARE_FIELDS, SHARE_KINDS, cardModel, defaultShow, isoWeek, parseShow, spendDirection, streakMilestone, cardText, weekRange, type ShareData,
 } from './share-card'
 
 const weekly: ShareData = {
@@ -33,11 +33,28 @@ test('parseShow: absent is the defaults, empty is nothing, an unknown id is refu
   assert.equal(parseShow('level', 'steps'), undefined)
 })
 
-test('stripEmoji removes pictographs and joiners, keeps text', () => {
-  assert.equal(stripEmoji('Early bird 🌅'), 'Early bird')
-  assert.equal(stripEmoji('7-day 🔥 streak ❤️‍🔥'), '7-day streak')
-  assert.equal(stripEmoji('Ärger über Zoë'), 'Ärger über Zoë')
-  assert.equal(stripEmoji('3️⃣ things'), '3 things')
+test('cardText keeps what the card fonts have and drops the rest: emoji, flags, marks, other scripts', () => {
+  assert.equal(cardText('Early bird 🌅'), 'Early bird')
+  assert.equal(cardText('7-day 🔥 streak ❤️‍🔥'), '7-day streak')
+  assert.equal(cardText('Ärger über Zoë'), 'Ärger über Zoë')
+  assert.equal(cardText('3️⃣ things'), '3 things')
+  assert.equal(cardText('Asha 🇮🇳 👍🏽 ★ ✓'), 'Asha')
+  assert.equal(cardText('Rahul राहुल'), 'Rahul')
+  assert.equal(cardText('राहुल 🇮🇳 ★'), '')
+  assert.equal(cardText('Week 46 · 9–15 Nov'), 'Week 46 · 9–15 Nov')
+})
+
+test('the name is dropped when nothing of it can be drawn, and every card string is clean', () => {
+  const lvl: ShareData = { kind: 'level', name: 'राहुल 🇮🇳 ★', level: 3, title: 'Rookie ★', totalXp: 1200, areas: [{ label: 'Health 🌿', level: 2 }] }
+  const m = cardModel(lvl, ['name', 'level', 'title', 'xp', 'areas'])
+  assert.equal(m.name, null)
+  assert.equal(m.caption, 'Rookie')
+  assert.deepEqual(m.stats.map((x) => x.label), ['Total XP', 'Health'])
+  const named = cardModel({ ...lvl, name: 'Rahul राहुल ★' }, ['name'])
+  assert.equal(named.name, 'Rahul')
+  // A headline that is nothing but unsupported characters is left out, not drawn blank.
+  const ach: ShareData = { kind: 'achievement', name: 'A', title: '★ ✓', tier: 'gold', date: null }
+  assert.equal(cardModel(ach, ['title', 'tier']).hero, null)
 })
 
 test('streakMilestone is true for the listed days only', () => {

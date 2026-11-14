@@ -2,7 +2,7 @@ import og from '@relife/tokens/og.json'
 import type { CardModel, ShareSize, TierName } from '@/domain/share-card'
 import { SHARE_SIZES } from '@/domain/share-card'
 
-// The share card as Satori markup (next/og): flexbox and inline styles only, no Tailwind, no grid, no oklch. Colours come
+// The share card as Satori markup (Satori): flexbox and inline styles only, no Tailwind, no grid, no oklch. Colours come
 // from packages/tokens/og.json (sRGB copies of the tokens). One layout per kind; the halftone corner is drawn as SVG dots.
 
 export type CardTheme = 'light' | 'dark'

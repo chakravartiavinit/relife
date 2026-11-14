@@ -64,11 +64,15 @@ export const STREAK_MILESTONES = [3, 7, 14, 30, 50, 100, 200, 365]
 export const streakMilestone = (n: number) => STREAK_MILESTONES.includes(n)
 
 /**
- * Card text has no emoji. `@vercel/og` fetches a twemoji image from a CDN when it meets one, and a card must render
- * without touching the network, so every string is stripped first.
+ * Card text is drawn only with characters the vendored card fonts have (`assets/og/fonts`): Basic Latin, Latin-1, a few
+ * punctuation marks and arrows. Anything else (emoji, flags, skin-tone marks, stars and ticks, Devanagari or Han names)
+ * is dropped. That keeps the renderer from ever looking for a missing glyph: Satori would otherwise fetch a font
+ * (with the text in the address) or an emoji image from a CDN, and a card is made on this machine without the network.
+ * `ui/share/fonts.test.ts` checks this list against the font files.
  */
-export function stripEmoji(text: string) {
-  return text.replace(/[\p{Extended_Pictographic}‍️⃣]/gu, '').replace(/\s{2,}/g, ' ').trim()
+export const CARD_CHARS = /[\u0020-\u007e\u00a0-\u00ac\u00ae-\u00ff\u2013\u2014\u2018-\u201a\u201c\u201d\u2022\u2026\u2190-\u2193\u2212]/u
+export function cardText(text: string) {
+  return [...text.normalize('NFC')].filter((c) => CARD_CHARS.test(c)).join('').replace(/\s{2,}/g, ' ').trim()
 }
 
 // ─── The data each card is made from. The server loads it from the signed-in user; the query only picks which. ───
@@ -127,18 +131,21 @@ const TIER_LABEL: Record<TierName, string> = { bronze: 'Bronze', silver: 'Silver
 const SPEND_LABEL = { less: 'Less', more: 'More', same: 'Same' } as const
 
 /**
- * The lines of a card, from the data and the ticked field ids. Only ticked fields appear; text is emoji-free.
+ * The lines of a card, from the data and the ticked field ids. Only ticked fields appear; every string is `cardText`-clean.
  * A field whose value is unknown (no steps recorded, no goals) is left out instead of printing a zero.
  */
 export function cardModel(data: ShareData, show: readonly string[]): CardModel {
   const on = (id: string) => show.includes(id)
-  const base = { range: null, hero: null, caption: null, days: null, tier: null, stats: [] as CardStat[], name: on('name') ? stripEmoji(data.name) || null : null }
-  const clean = (m: CardModel): CardModel => ({
-    ...m,
-    hero: m.hero ? { ...m.hero, value: stripEmoji(m.hero.value) } : null,
-    caption: m.caption ? stripEmoji(m.caption) : null,
-    stats: m.stats.map((s) => ({ ...s, label: stripEmoji(s.label), value: stripEmoji(s.value) })),
-  })
+  const base = { range: null, hero: null, caption: null, days: null, tier: null, stats: [] as CardStat[], name: on('name') ? cardText(data.name) || null : null }
+  // Every string on the card passes through `cardText`; a headline or a stat left empty is dropped, not drawn blank.
+  const clean = (m: CardModel): CardModel => {
+    const hero = m.hero ? { ...m.hero, value: cardText(m.hero.value), ...(m.hero.unit ? { unit: cardText(m.hero.unit) } : {}) } : null
+    return {
+      ...m, label: cardText(m.label), range: m.range ? cardText(m.range) : null,
+      hero: hero?.value ? hero : null, caption: (m.caption && cardText(m.caption)) || null,
+      stats: m.stats.map((s) => ({ ...s, label: cardText(s.label), value: cardText(s.value) })).filter((s) => s.label && s.value),
+    }
+  }
   switch (data.kind) {
     case 'level': {
       const stats: CardStat[] = []

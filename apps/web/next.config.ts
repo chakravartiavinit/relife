@@ -37,7 +37,7 @@ const nextConfig: NextConfig = {
     }]
   },
   devIndicators: { position: 'bottom-right' },
-  serverExternalPackages: ['ccxt', 'grammy', 'postgres', 'playwright-core', 'web-push'],
+  serverExternalPackages: ['ccxt', 'grammy', 'postgres', 'playwright-core', 'web-push', '@resvg/resvg-js'],
   // data/ is private runtime state (keys, Chrome profiles, caches): never part of a build.
   outputFileTracingExcludes: { '*': ['data/**', '../../data/**'] },
   // Allow opening the dev server from your phone over Tailscale (MagicDNS names).
