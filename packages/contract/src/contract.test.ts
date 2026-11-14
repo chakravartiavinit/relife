@@ -60,7 +60,7 @@ test('a pack refuses a newer version, a money tracker, an http link and too many
   const base = JSON.parse(readFileSync(new URL('Pack.minimal.json', dir), 'utf8'))
   assert.equal(contract.Pack.safeParse(base).success, true)
   const newer = contract.parsePack(JSON.stringify({ ...base, version: 2 }))
-  assert.deepEqual(newer, { ok: false, error: 'Made by a newer version of ReLife' })
+  assert.deepEqual(newer, { ok: false, error: 'Made by a newer version' })
   assert.equal(contract.Pack.safeParse({ ...base, trackers: [{ slug: 'spend', name: 'Spend', area: 'wealth', kind: 'money' }] }).success, false)
   assert.equal(contract.Pack.safeParse({ ...base, homepage: 'http://example.com' }).success, false)
   assert.equal(contract.Pack.safeParse({ ...base, homepage: 'https://example.com/pack' }).success, true)

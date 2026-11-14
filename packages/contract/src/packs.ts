@@ -74,7 +74,7 @@ export const PackGoal = z.object({
 
 export const Pack = z.object({
   format: z.literal(PACK_FORMAT),
-  version: z.literal(PACK_VERSION, { error: 'Made by a newer version of ReLife' }),
+  version: z.literal(PACK_VERSION, { error: 'Made by a newer version' }),
   id: slug,
   name: z.string().min(1).max(60),
   description: z.string().min(1).max(280),

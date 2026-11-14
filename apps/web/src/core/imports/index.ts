@@ -1,3 +1,4 @@
+import brand from '@relife/brand/brand.json'
 import { mkdir, open, rm, stat, statfs, appendFile } from 'node:fs/promises'
 import { and, desc, eq, inArray, isNull, lt, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
@@ -54,11 +55,11 @@ export async function createImport(user: User, input: { kind: ImportKind; fileNa
   if (input.size > limit * 1024 * 1024) {
     throw new Error(isCsvKind(input.kind)
       ? `A CSV can be up to ${limit} MB. This one is ${Math.ceil(input.size / 1048576)} MB: export a shorter period.`
-      : `Files up to ${limit} MB are accepted. This one is ${Math.ceil(input.size / 1048576)} MB. Raise RELIFE_IMPORT_MAX_MB in .env and restart ReLife.`)
+      : `Files up to ${limit} MB are accepted. This one is ${Math.ceil(input.size / 1048576)} MB. Raise RELIFE_IMPORT_MAX_MB in .env and restart ${brand.name}.`)
   }
   await mkdir(dataDir('imports'), { recursive: true })
   const fs = await statfs(dataDir('imports'))
-  if (fs.bavail * fs.bsize < input.size * 1.1) throw new Error(`Not enough free disk space for a ${Math.ceil(input.size / 1048576)} MB file (ReLife needs about 10% extra).`)
+  if (fs.bavail * fs.bsize < input.size * 1.1) throw new Error(`Not enough free disk space for a ${Math.ceil(input.size / 1048576)} MB file (${brand.name} needs about 10% extra).`)
   const [row] = await db.insert(I).values({ userId: user.id, kind: input.kind, fileName: input.fileName.slice(0, 200), sizeBytes: Math.round(input.size) }).returning({ id: I.id })
   await mkdir(importDir(row.id), { recursive: true })
   return { id: row.id, chunkBytes: CHUNK_BYTES }
@@ -148,7 +149,7 @@ const STALE_RUN_MIN = 70
 
 /** Queued imports, oldest first, one at a time. A run the process died in is marked failed so it can be retried. */
 export async function runQueuedImports(): Promise<string | undefined> {
-  await db.update(I).set({ status: 'failed', error: 'ReLife stopped while this import was running. Try again.' })
+  await db.update(I).set({ status: 'failed', error: `${brand.name} stopped while this import was running. Try again.` })
     .where(and(eq(I.status, 'running'), lt(I.updatedAt, new Date(Date.now() - STALE_RUN_MIN * 60_000))))
   let n = 0
   for (;;) {

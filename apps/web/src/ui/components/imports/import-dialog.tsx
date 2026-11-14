@@ -1,5 +1,6 @@
 'use client'
 
+import brand from '@relife/brand/brand.json'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -76,7 +77,7 @@ export function ImportDialog({ open, onClose, zipMaxMb = 2048 }: { open: boolean
   const send = async () => {
     if (!file) return
     setError(null); setStage('sending'); setSent(0)
-    const made = await createImportAction({ kind, fileName: file.name, size: file.size }).catch(() => ({ ok: false as const, error: 'Could not reach ReLife. Try again.' }))
+    const made = await createImportAction({ kind, fileName: file.name, size: file.size }).catch(() => ({ ok: false as const, error: `Could not reach ${brand.name}. Try again.` }))
     if (!made.ok) { setError(made.error); setStage('pick'); return }
     setImportId(made.id)
     const ctl = (abort.current = new AbortController())
