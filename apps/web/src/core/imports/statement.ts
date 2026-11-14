@@ -1,8 +1,9 @@
-import { and, eq, like } from 'drizzle-orm'
+import { and, between, eq, like, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, schema } from '@/db'
 import { categorize } from '@/core/categorize'
-import { wallToUtc } from '@/core/time'
+import { addDays, wallToUtc } from '@/core/time'
+import { matchStatementRows, type LinkOrder, type LinkRow } from '@/domain/statement-link'
 import { detectDateFormat, findHeader, headerSignature, parseDate } from '@/domain/csv'
 import { isIsoCurrency } from '@/domain/money'
 import { slugify } from '@/domain/quicklog'
@@ -78,18 +79,44 @@ export async function previewStatement(file: string, user: User, fileName: strin
     mapping = { ...base, invert: defaultInvert(base.account.kind, amounts) }
   }
   const out = scan(body, mapping, headerRow, ready)
+  const matches = await previewMatches(user, out.good, mapping.currency)
   const sample: StatementPreview['sample'] = []
-  for (const r of out.good.slice(0, 5)) {
+  for (const [i, r] of out.good.slice(0, 5).entries()) {
     const c = await categorize(user.id, cleanDescription(r.description) || undefined)
-    sample.push({ date: r.date, amount: r.amount, merchant: c.merchant ?? r.description, category: r.amount > 0 && c.category === 'Uncategorized' ? 'Income' : c.category })
+    sample.push({ date: r.date, amount: r.amount, merchant: c.merchant ?? r.description, category: r.amount > 0 && c.category === 'Uncategorized' ? 'Income' : c.category, ...(matches.get(i) ? { match: matches.get(i) } : {}) })
   }
   return {
     ok: true, kind: 'statement', header, signature, mapping, ready: ready && out.good.length > 0,
     ...(saved && !given ? { savedFrom: saved.fileName } : {}),
     dateChoices: given ? [] : choices(dates.candidates, dateSamples),
     rows: out.good.length, from: out.from, to: out.to, invalid: out.invalid, invalidSamples: out.invalidSamples.slice(0, 5),
-    sample, accounts,
+    sample, accounts, linkable: matches.size,
   }
+}
+
+/** How an order is named next to a bank row: "Swiggy" for an app order, "Manual spend" for one typed in Capture. */
+export const orderLabel = (source: string, platform?: string) => (source === 'manual' || !platform ? 'Manual spend' : platform.charAt(0).toUpperCase() + platform.slice(1))
+
+/**
+ * A dry run of the link rule: which rows of this file match an app order (or a manual spend) that no bank row has been
+ * linked to yet. Row index → the order's platform. Nothing is written; the import does the linking itself.
+ */
+async function previewMatches(user: User, good: { date: string; amount: number; description: string }[], currency: string): Promise<Map<number, string>> {
+  const out = new Map<number, string>()
+  const rows: LinkRow[] = good.flatMap((r, i) => (r.amount < 0 ? [{ id: String(i), localDate: r.date, amount: r.amount, currency, description: r.description }] : []))
+  if (!rows.length) return out
+  const T = schema.transactions
+  const dates = rows.map((r) => r.localDate).sort()
+  const [from, to] = [addDays(dates[0], -2), addDays(dates[dates.length - 1], 2)]
+  const orders = await db.select().from(T).where(and(eq(T.userId, user.id), sql`(${T.meta}->>'appOrder' = 'true' or ${T.source} = 'manual')`, sql`${T.amount} < 0`, between(T.localDate, from, to)))
+  if (!orders.length) return out
+  const taken = new Set((await db.select({ linkedTo: T.linkedTo }).from(T).where(and(eq(T.userId, user.id), sql`${T.linkedTo} is not null`))).map((r) => r.linkedTo))
+  const free: LinkOrder[] = orders.filter((o) => !taken.has(o.id)).map((o) => ({
+    id: o.id, localDate: o.localDate, amount: o.amount, currency: o.currency, platform: (o.meta as { platform?: string }).platform ?? o.merchant,
+  }))
+  const name = new Map(orders.map((o) => [o.id, orderLabel(o.source, (o.meta as { platform?: string }).platform)]))
+  for (const l of matchStatementRows(rows, free)) out.set(Number(l.rowId), name.get(l.orderId) ?? 'order')
+  return out
 }
 
 function scan(body: string[][], m: StatementMapping, headerRow: number, ready: boolean) {

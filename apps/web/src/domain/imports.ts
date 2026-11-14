@@ -19,6 +19,10 @@ export type ImportSummary = {
   invalidSamples: string[]
   /** Statement rows matched to an app order and counted once. */
   linked?: number
+  /** Which orders they matched: platform name → rows ("Swiggy": 21). */
+  linkedBy?: Record<string, number>
+  /** Spending this file added (money out not matched to an app order), biggest category first. */
+  spend?: { category: string; total: number }[]
   from?: string
   to?: string
   /** Days added per tracker (Health, Takeout and tracker CSV imports). */
@@ -75,7 +79,10 @@ export type StatementPreview = PreviewBase & {
   savedFrom?: string
   /** More than one date format reads every date: the user chooses, with an example for each. */
   dateChoices: DateChoice[]
-  sample: { date: string; amount: number; merchant: string; category: string }[]
+  /** `match`: the app order this row would be linked to (its platform), when it matches one. */
+  sample: { date: string; amount: number; merchant: string; category: string; match?: string }[]
+  /** Rows that match an app order and will be linked, not counted twice. */
+  linkable: number
   accounts: { key: string; name: string; kind: 'bank' | 'card' }[]
 }
 

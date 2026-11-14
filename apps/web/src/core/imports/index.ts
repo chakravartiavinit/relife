@@ -1,5 +1,6 @@
 import { mkdir, open, rm, stat, statfs, appendFile } from 'node:fs/promises'
-import { and, desc, eq, inArray, lt, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull, lt, sql } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/pg-core'
 import { db, schema } from '@/db'
 import { env } from '@/core/env'
 import { emitRawMany } from '@/core/ingest'
@@ -12,7 +13,7 @@ import {
 } from '@/domain/imports'
 import { emitAppleHealth, previewAppleHealth } from './apple-health'
 import type { ImportKindImpl } from './kinds'
-import { emitStatement, previewStatement, statementMapping } from './statement'
+import { emitStatement, orderLabel, previewStatement, statementMapping } from './statement'
 import { emitTakeout, previewTakeout } from './takeout'
 import { emitTrackerCsv, previewTrackerCsv, trackerCsvMapping } from './tracker-csv'
 
@@ -210,10 +211,23 @@ async function waitForParse(id: string) {
 async function summarize(kind: ImportKind, id: string, r: { rows: number; invalid: number; invalidSamples: string[]; from?: string; to?: string; note?: string }): Promise<ImportSummary> {
   let added = 0, linked: number | undefined
   let trackers: Record<string, number> | undefined
+  let linkedBy: Record<string, number> | undefined
+  let spend: { category: string; total: number }[] | undefined
   if (kind === 'statement') {
     const T = schema.transactions
-    const [c] = await db.select({ n: sql<number>`count(*)::int`, linked: sql<number>`count(${T.linkedTo})::int` }).from(T).where(sql`${T.meta}->>'importId' = ${id}`)
+    const O = alias(schema.transactions, 'o')
+    const mine = sql`${T.meta}->>'importId' = ${id}`
+    const [c] = await db.select({ n: sql<number>`count(*)::int`, linked: sql<number>`count(${T.linkedTo})::int` }).from(T).where(mine)
     added = c.n; linked = c.linked
+    // Which orders the linked rows matched, and what the rest of the file spent (credits and transfers are not spending).
+    const by = await db.select({ source: O.source, platform: sql<string | null>`${O.meta}->>'platform'`, n: sql<number>`count(*)::int` })
+      .from(T).innerJoin(O, eq(T.linkedTo, O.id)).where(mine).groupBy(O.source, sql`${O.meta}->>'platform'`)
+    linkedBy = {}
+    for (const b of by) { const k = orderLabel(b.source, b.platform ?? undefined); linkedBy[k] = (linkedBy[k] ?? 0) + b.n }
+    const cats = await db.select({ category: sql<string>`coalesce(${T.category}, 'Uncategorized')`, total: sql<number>`sum(-${T.amount})::float8` }).from(T)
+      .where(and(mine, sql`${T.amount} < 0`, isNull(T.linkedTo), sql`coalesce(${T.category}, '') not in ('Transfers', 'Income')`))
+      .groupBy(sql`coalesce(${T.category}, 'Uncategorized')`).orderBy(sql`sum(-${T.amount}) desc`).limit(4)
+    spend = cats.map((x) => ({ category: x.category, total: Math.round(x.total * 100) / 100 }))
   } else {
     const E = schema.entries
     const rows = await db.select({ slug: schema.trackers.slug, n: sql<number>`count(*)::int` }).from(E)
@@ -223,7 +237,7 @@ async function summarize(kind: ImportKind, id: string, r: { rows: number; invali
   }
   return {
     rows: r.rows, added, duplicates: Math.max(0, r.rows - added), invalid: r.invalid, invalidSamples: r.invalidSamples,
-    ...(linked !== undefined ? { linked } : {}), ...(r.from ? { from: r.from } : {}), ...(r.to ? { to: r.to } : {}),
+    ...(linked !== undefined ? { linked } : {}), ...(linkedBy && Object.keys(linkedBy).length ? { linkedBy } : {}), ...(spend?.length ? { spend } : {}), ...(r.from ? { from: r.from } : {}), ...(r.to ? { to: r.to } : {}),
     ...(trackers ? { trackers } : {}), ...(r.note ? { note: r.note } : {}),
   }
 }
