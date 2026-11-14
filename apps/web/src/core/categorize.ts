@@ -7,7 +7,6 @@ import { ruleMatches } from '@/domain/merchant-rule'
 const BUILTIN: [pattern: string, merchant: string, category: string][] = [
   // A card bill paid from a bank account must not count on top of the card's own rows (statement imports).
   ['credit card payment', 'Card payment', 'Transfers'],
-  ['card payment', 'Card payment', 'Transfers'],
   ['cc payment', 'Card payment', 'Transfers'],
   ['self transfer', 'Self transfer', 'Transfers'],
   ['instamart', 'Swiggy Instamart', 'Groceries'],
@@ -50,7 +49,7 @@ const BUILTIN: [pattern: string, merchant: string, category: string][] = [
   ['zerodha', 'Zerodha', 'Investments'],
   ['groww', 'Groww', 'Investments'],
   ['binance', 'Binance', 'Investments'],
-  ['autopay', 'Autopay', 'Transfers'],
+  ['credit card autopay', 'Card payment', 'Transfers'],
 ]
 
 export type Categorized = { merchant?: string; category: string }

@@ -121,6 +121,16 @@ export function Note({ icon: Icon = Link2, children }: { icon?: LucideIcon; chil
   return <p className="flex items-start gap-2 text-caption text-pretty text-ink-3"><Icon aria-hidden className="mt-px size-3.5 shrink-0" strokeWidth={1.5} />{children}</p>
 }
 
+/** An earlier import covered the same file and dates: a warning, not a stop. Undo can take the new one back. */
+export function RepeatWarning({ repeat }: { repeat: { fileName: string; at: string } }) {
+  return (
+    <p role="status" className="flex items-start gap-2 rounded-[16px] bg-warn/10 p-3 text-small text-pretty text-ink">
+      <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warn" strokeWidth={1.5} />
+      <span>Looks like you already imported this: <strong className="font-semibold">{repeat.fileName}</strong> covered the same dates on {fmtDay(repeat.at.slice(0, 10))}. Rows already there are skipped, so nothing is added twice.</span>
+    </p>
+  )
+}
+
 export const PRIVACY = 'Read on this machine. Nothing is uploaded anywhere.'
 export function PrivacyLine() {
   return <span className="inline-flex items-center gap-1.5"><Lock aria-hidden className="size-3" strokeWidth={1.5} />{PRIVACY}</span>
@@ -180,23 +190,28 @@ export function StatementColumns({ preview, onChange, idBase = 'imp' }: { previe
             <Pair label="Credit" hint="money in" htmlFor={`${idBase}-credit`}><Select id={`${idBase}-credit`} value={col('credit')} onChange={pick('credit')}>{colOptions(preview.header, 'None')}</Select></Pair>
           </>
         ) : null}
+        {!split ? (
+          <Pair label="Dr / Cr" hint="optional" htmlFor={`${idBase}-sign`}><Select id={`${idBase}-sign`} value={col('sign')} onChange={pick('sign')}>{colOptions(preview.header, 'None: the amount has a sign')}</Select></Pair>
+        ) : null}
         <Pair label="Balance" hint="optional" htmlFor={`${idBase}-bal`}><Select id={`${idBase}-bal`} value={col('balance')} onChange={pick('balance')}>{colOptions(preview.header, 'None')}</Select></Pair>
       </div>
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[16px] bg-pill-wash p-3">
         <Calendar aria-hidden className="size-4 shrink-0 text-pill-ink" strokeWidth={1.5} />
         <p className="min-w-0 flex-1 basis-56 text-small text-ink">
-          Dates read as <strong className="font-semibold">{m.dateFormat}</strong>
-          {example ? <span className="text-ink-2"> · first row is {example}</span> : null}
+          {preview.dateChoices.length ? <strong className="font-semibold">Which way do dates read?</strong> : (
+            <>Dates read as <strong className="font-semibold">{m.dateFormat}</strong>{example ? <span className="text-ink-2"> · first row is {example}</span> : null}</>
+          )}
         </p>
         <div className="w-40 shrink-0">
-          <Select aria-label="Date format" variant="field" value={m.dateFormat} onChange={(e) => onChange({ ...m, dateFormat: e.target.value })}>
+          <Select aria-label="Date format" variant="field" value={preview.dateChoices.length ? '' : m.dateFormat} onChange={(e) => onChange({ ...m, dateFormat: e.target.value })}>
+            {preview.dateChoices.length ? <option value="" disabled>Choose…</option> : null}
             {(preview.dateChoices.length ? preview.dateChoices.map((c) => c.format) : [...DATE_FORMATS]).map((f) => <option key={f} value={f}>{f}</option>)}
           </Select>
         </div>
         {preview.dateChoices.length ? (
           <p className="basis-full ps-7 text-caption text-ink-2">
-            More than one reading fits: {preview.dateChoices.map((c) => `${c.format} → ${fmtDay(c.example)}`).join(' · ')}. Pick the one that matches your bank.
+            More than one reading fits: {preview.dateChoices.map((c) => `${c.format} → ${fmtDay(c.example)}`).join(' · ')}. Pick the one that matches your bank to continue.
           </p>
         ) : null}
       </div>
@@ -241,9 +256,12 @@ export function TrackerColumns({ preview, onChange, idBase = 'imp' }: { preview:
       </div>
       <div className="flex items-center gap-3 rounded-[16px] bg-pill-wash p-3">
         <Calendar aria-hidden className="size-4 shrink-0 text-pill-ink" strokeWidth={1.5} />
-        <p className="min-w-0 flex-1 text-small text-ink">Dates read as <strong className="font-semibold">{m.dateFormat}</strong></p>
+        <p className="min-w-0 flex-1 text-small text-ink">
+          {preview.dateChoices.length ? <strong className="font-semibold">Which way do dates read?</strong> : <>Dates read as <strong className="font-semibold">{m.dateFormat}</strong></>}
+        </p>
         <div className="w-40 shrink-0">
-          <Select aria-label="Date format" value={m.dateFormat} onChange={(e) => onChange({ ...m, dateFormat: e.target.value })}>
+          <Select aria-label="Date format" value={preview.dateChoices.length ? '' : m.dateFormat} onChange={(e) => onChange({ ...m, dateFormat: e.target.value })}>
+            {preview.dateChoices.length ? <option value="" disabled>Choose…</option> : null}
             {(preview.dateChoices.length ? preview.dateChoices.map((c) => c.format) : [...DATE_FORMATS]).map((f) => <option key={f} value={f}>{f}</option>)}
           </Select>
         </div>

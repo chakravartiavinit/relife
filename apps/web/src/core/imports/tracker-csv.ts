@@ -65,12 +65,15 @@ export async function previewTrackerCsv(file: string, user: User, given?: Tracke
       }
     })
   }
+  // More than one date order fits and nothing says which: the user picks before anything is read.
+  const dateChoices = !given && !savedMap && dates.candidates.length > 1
+    ? dates.candidates.map((format) => ({ format, example: parseDate(dateSamples.find((s) => s.trim()) ?? '', format) ?? '' })) : []
   const trackers = await db.select({ slug: schema.trackers.slug, name: schema.trackers.name }).from(schema.trackers)
     .where(and(eq(schema.trackers.userId, user.id)))
   return {
-    ok: true, kind: 'tracker-csv', header, signature, mapping, ready: ok && count > 0,
+    ok: true, kind: 'tracker-csv', header, signature, mapping, ready: ok && count > 0 && !dateChoices.length,
     ...(saved && !given ? { savedFrom: saved.fileName } : {}),
-    dateChoices: !given && dates.candidates.length > 1 ? dates.candidates.map((format) => ({ format, example: parseDate(dateSamples.find((s) => s.trim()) ?? '', format) ?? '' })) : [],
+    dateChoices,
     rows: count, from, to, invalid, invalidSamples, sample, trackers,
   }
 }

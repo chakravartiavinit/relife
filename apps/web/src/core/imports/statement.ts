@@ -24,7 +24,7 @@ export const statementMapping = z.object({
   dateFormat: z.string().max(20),
   columns: z.object({
     date: col, description: col, amount: col.optional(), debit: col.optional(), credit: col.optional(),
-    balance: col.optional(), currency: col.optional(), ref: col.optional(),
+    balance: col.optional(), sign: col.optional(), currency: col.optional(), ref: col.optional(),
   }).refine((c) => c.amount !== undefined || c.debit !== undefined || c.credit !== undefined, 'Pick the amount column, or the debit and credit columns'),
   invert: z.boolean(),
   currency: z.string().trim().toUpperCase().refine(isIsoCurrency, 'Use a currency code like INR or USD'),
@@ -70,6 +70,8 @@ export async function previewStatement(file: string, user: User, fileName: strin
     invert: false, currency: given?.currency ?? savedMap?.currency ?? user.baseCurrency,
     account: given?.account ?? savedMap?.account ?? { name: stem(fileName), kind: 'bank' },
   }
+  // More than one date order fits and nothing says which: nothing is read until the user picks one.
+  const choose = !given && !savedMap ? choices(dates.candidates, dateSamples) : []
   const ready = statementMapping.safeParse(base).success && base.columns.date >= 0 && base.columns.description >= 0
   let mapping = base
   if (given) mapping = { ...base, invert: given.invert }
@@ -86,9 +88,9 @@ export async function previewStatement(file: string, user: User, fileName: strin
     sample.push({ date: r.date, amount: r.amount, merchant: c.merchant ?? r.description, category: r.amount > 0 && c.category === 'Uncategorized' ? 'Income' : c.category, ...(matches.get(i) ? { match: matches.get(i) } : {}) })
   }
   return {
-    ok: true, kind: 'statement', header, signature, mapping, ready: ready && out.good.length > 0,
+    ok: true, kind: 'statement', header, signature, mapping, ready: ready && out.good.length > 0 && !choose.length,
     ...(saved && !given ? { savedFrom: saved.fileName } : {}),
-    dateChoices: given ? [] : choices(dates.candidates, dateSamples),
+    dateChoices: choose,
     rows: out.good.length, from: out.from, to: out.to, invalid: out.invalid, invalidSamples: out.invalidSamples.slice(0, 5),
     sample, accounts, linkable: matches.size,
   }
@@ -112,7 +114,7 @@ async function previewMatches(user: User, good: { date: string; amount: number; 
   if (!orders.length) return out
   const taken = new Set((await db.select({ linkedTo: T.linkedTo }).from(T).where(and(eq(T.userId, user.id), sql`${T.linkedTo} is not null`))).map((r) => r.linkedTo))
   const free: LinkOrder[] = orders.filter((o) => !taken.has(o.id)).map((o) => ({
-    id: o.id, localDate: o.localDate, amount: o.amount, currency: o.currency, platform: (o.meta as { platform?: string }).platform ?? o.merchant,
+    id: o.id, localDate: o.localDate, amount: o.amount, currency: o.currency, platform: (o.meta as { platform?: string }).platform ?? o.merchant, needsName: o.source === 'manual',
   }))
   const name = new Map(orders.map((o) => [o.id, orderLabel(o.source, (o.meta as { platform?: string }).platform)]))
   for (const l of matchStatementRows(rows, free)) out.set(Number(l.rowId), name.get(l.orderId) ?? 'order')
@@ -142,6 +144,10 @@ export async function emitStatement(file: string, ctx: EmitCtx): Promise<EmitRes
   const body = rows.slice(m.headerRow + 1)
   const key = accountKey(m.account.name)
   const seen = new Map<string, number>()
+  // Rows of one day share a time, and the account takes the balance of the latest one. A millisecond per row in time
+  // order (newest-first files are read backwards) makes the closing balance the last row of the day, every time.
+  const dates = body.map((r) => parseDate(r[m.columns.date] ?? '', m.dateFormat)).filter((d): d is string => !!d)
+  const newestFirst = dates.length > 1 && dates[0] > dates[dates.length - 1]
   let batch: RawEvent[] = []
   let invalid = 0, done = 0, from: string | undefined, to: string | undefined
   const invalidSamples: string[] = []
@@ -154,7 +160,7 @@ export async function emitStatement(file: string, ctx: EmitCtx): Promise<EmitRes
     seen.set(same, n + 1)
     batch.push({
       source: 'statement', externalId: `${key}:${statementRowId(key, r, n)}`,
-      at: wallToUtc(new Date(`${r.date}T12:00:00Z`), ctx.user.timezone),
+      at: new Date(wallToUtc(new Date(`${r.date}T12:00:00Z`), ctx.user.timezone).getTime() + (newestFirst ? body.length - 1 - i : i)),
       body: { importId: ctx.importId, account: { key, name: m.account.name, kind: m.account.kind }, ...r },
     })
     if (!from || r.date < from) from = r.date

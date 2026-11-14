@@ -17,7 +17,7 @@ import { Dialog, FormError } from '../forms/dialog'
 import { useToast } from '../toast'
 import { cn } from '../../cn'
 import {
-  ACCEPT, FileRow, ImportProgress, ImportRail, ImportResult, KindPicker, Note, PRIVACY, ResultBar, SavedChip, StatementColumns, StatementTable,
+  ACCEPT, FileRow, ImportProgress, ImportRail, ImportResult, KindPicker, Note, PRIVACY, RepeatWarning, ResultBar, SavedChip, StatementColumns, StatementTable,
   TrackerColumns, TrackerTable, ZipFound, fmtDay, fmtSize,
 } from './import-view'
 import { uploadFile } from './upload'
@@ -101,7 +101,9 @@ export function ImportDialog({ open, onClose, zipMaxMb = 2048 }: { open: boolean
     setTimeout(async () => {
       if (mine !== seq.current) return
       const p = await previewImportAction(importId, m).catch(() => null)
-      if (mine === seq.current && p?.ok) setPreview(p)
+      if (mine !== seq.current) return
+      if (p?.ok) setPreview(p)
+      else setPreview((prev) => (prev && 'ready' in prev ? { ...prev, ready: false } : prev)) // a half-typed choice: nothing to start yet
     }, 250)
   }
 
@@ -190,6 +192,7 @@ export function ImportDialog({ open, onClose, zipMaxMb = 2048 }: { open: boolean
               detail={[statement || tracker ? `${toAdd.toLocaleString('en-US')} ${statement ? 'rows' : 'values'}` : '', statement?.from && statement.to ? `${fmtDay(statement.from)} to ${fmtDay(statement.to)}` : '',
                 (statement ?? tracker)?.savedFrom ? `same columns as ${(statement ?? tracker)!.savedFrom}` : ''].filter(Boolean).join(' · ')}
               action={(statement ?? tracker)?.savedFrom ? <SavedChip /> : undefined} />
+            {preview.repeat ? <RepeatWarning repeat={preview.repeat} /> : null}
             {statement && mapping?.kind === 'statement' ? (
               <>
                 <section aria-label="Columns"><h3 className="mb-2 text-small font-semibold text-ink">Columns</h3><StatementColumns preview={{ ...statement, mapping }} onChange={edit} /></section>

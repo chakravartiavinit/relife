@@ -169,6 +169,7 @@ export function parseAmount(s: string, decimal: Decimal = '.'): number | null {
   if (/\bdr\.?$/i.test(t)) { neg = true; t = t.replace(/\s*dr\.?$/i, '') }
   else if (/\bcr\.?$/i.test(t)) t = t.replace(/\s*cr\.?$/i, '')
   t = t.replace(/[−–]/g, '-')
+  t = t.replace(/^[^\d\-(.,]+\.?\s*(?=[\d\-(.,])/, '') // a prefix such as "Rs." or "USD " (its dot is not a decimal mark)
   if (t.includes('-')) { neg = !neg; t = t.replace(/-/g, '') } // a leading or trailing minus
   t = t.replace(/[^\d.,]/g, '') // currency signs and codes, spaces, apostrophes
   if (!t) return null

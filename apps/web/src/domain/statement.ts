@@ -10,6 +10,8 @@ export type StatementColumns = {
   debit?: number
   credit?: number
   balance?: number
+  /** A column that says Dr or Cr (or Debit, Credit, D, C) next to an unsigned amount. */
+  sign?: number
   currency?: number
   ref?: number
 }
@@ -27,6 +29,7 @@ export type StatementMapping = {
 }
 
 const ROLES: [keyof StatementColumns, RegExp][] = [
+  ['sign', /^(dr\s*\/?\s*cr|cr\s*\/?\s*dr|d\s*\/\s*c|c\s*\/\s*d|(txn |transaction )?type|debit\s*\/\s*credit|credit\s*\/\s*debit)$/i],
   ['balance', /balance|saldo|closing/i],
   ['debit', /debit|withdraw|paid out|money out|spent|\bdr\b|\bbelastung/i],
   ['credit', /credit|deposit|paid in|money in|received|\bcr\b|\bgutschrift/i],
@@ -34,6 +37,8 @@ const ROLES: [keyof StatementColumns, RegExp][] = [
   ['currency', /currency|ccy|curr\b|währung|moneda/i],
   ['ref', /\bref|cheque|chq|reference|utr|transaction id|txn id|check no/i],
 ]
+const DEBIT_WORD = /^(dr|d|db|debit|withdrawal)\.?$/i
+const CREDIT_WORD = /^(cr|c|credit|deposit)\.?$/i
 const DATE_EXACT = /^(transaction |trans\.? |txn |posting |posted |booking |buchungs)?(date|datum|fecha|buchungstag)$/i
 const DATE_LOOSE = /date|datum|fecha|posting|posted|buchungstag/i
 const DESCRIPTION = /description|narration|particulars|details|payee|memo|merchant|text|verwendungszweck|concepto|reference text|remarks?/i
@@ -66,6 +71,13 @@ export function guessMapping(header: string[], sample: string[][]): {
     if (best >= 0) cols.description = best
   }
   const col = (i?: number) => (i === undefined ? [] : sample.map((r) => r[i] ?? '').filter((x) => x.trim()))
+  // A column named Dr / Cr (or one a debit or credit name landed on) that only holds those words is a sign marker, not money.
+  const onlyWords = (i?: number) => { const v = col(i); return v.length > 0 && v.every((x) => DEBIT_WORD.test(x.trim()) || CREDIT_WORD.test(x.trim())) }
+  for (const role of ['debit', 'credit'] as const) {
+    if (cols.sign === undefined && cols[role] !== undefined && onlyWords(cols[role])) { cols.sign = cols[role]; delete cols[role] }
+  }
+  if (cols.sign !== undefined && !onlyWords(cols.sign)) delete cols.sign
+  if (cols.sign !== undefined && cols.amount === undefined) delete cols.sign // nothing to sign
   const money = [...col(cols.amount), ...col(cols.debit), ...col(cols.credit)]
   return { columns: cols, decimal: guessDecimal(money), dates: detectDateFormat(col(cols.date)) }
 }
@@ -82,6 +94,11 @@ export function rowAmount(row: string[], m: Pick<StatementMapping, 'columns' | '
   let n: number | null = null
   if (c.amount !== undefined) {
     n = parseAmount(row[c.amount] ?? '', m.decimal)
+    if (n !== null && c.sign !== undefined) {
+      const word = (row[c.sign] ?? '').trim()
+      if (DEBIT_WORD.test(word)) n = -Math.abs(n)
+      else if (CREDIT_WORD.test(word)) n = Math.abs(n)
+    }
     if (n !== null && m.invert) n = -n
   } else {
     const debit = c.debit !== undefined ? parseAmount(row[c.debit] ?? '', m.decimal) : null

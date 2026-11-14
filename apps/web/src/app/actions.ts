@@ -1,5 +1,6 @@
 'use server'
 
+import type { ImportMapping } from '@/domain/imports'
 import brand from '@relife/brand/brand.json'
 import { and, eq, inArray, sql } from 'drizzle-orm'
 import { refresh } from 'next/cache'
@@ -1034,7 +1035,17 @@ export async function finishUploadAction(id: string) {
 export async function previewImportAction(id: string, mapping: unknown) {
   idArg.parse(id)
   const { previewImport } = await import('@/core/imports')
-  return previewImport(await getUser(), id, mapping as never)
+  // The mapping comes from the browser: it is checked here. A half-typed one (a two-letter currency) keeps the last preview.
+  let m: ImportMapping | null = null
+  if (mapping != null) {
+    const kind = (mapping as { kind?: unknown }).kind
+    const { statementMapping } = await import('@/core/imports/statement')
+    const { trackerCsvMapping } = await import('@/core/imports/tracker-csv')
+    const parsed = kind === 'statement' ? statementMapping.safeParse(mapping) : kind === 'tracker-csv' ? trackerCsvMapping.safeParse(mapping) : null
+    if (!parsed?.success) return { ok: false as const, error: 'Check the column choices.' }
+    m = parsed.data as ImportMapping
+  }
+  return previewImport(await getUser(), id, m)
 }
 
 export async function startImportAction(id: string, mapping?: unknown) {

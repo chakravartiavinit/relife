@@ -81,3 +81,25 @@ test('readStatementRow gives the reason a row is skipped', () => {
   const withCols = readStatementRow(['13/01/2024', 'x', '-3', '9.5', 'usd', 'R1'], { ...base, columns: { ...base.columns, balance: 3, currency: 4, ref: 5 } }, 2)
   assert.deepEqual(withCols, { ok: true, row: { date: '2024-01-13', amount: -3, currency: 'USD', description: 'x', balance: 9.5, ref: 'R1' } })
 })
+
+test('guessMapping reads a Dr / Cr marker column next to an unsigned amount', () => {
+  const header = ['Tran Date', 'Description', 'Amount', 'Dr / Cr', 'Balance']
+  const rows = [['13/01/2024', 'Coffee', '120.00', 'Dr', '880.00'], ['14/01/2024', 'Salary', '5,000.00', 'Cr', '5,880.00']]
+  const g = guessMapping(header, rows)
+  assert.deepEqual(g.columns, { date: 0, sign: 3, balance: 4, amount: 2, description: 1 })
+  const m: StatementMapping = { ...base, columns: { date: 0, description: 1, amount: 2, sign: 3, balance: 4 } }
+  assert.equal(rowAmount(rows[0], m), -120)
+  assert.equal(rowAmount(rows[1], m), 5000)
+  // Words other than Dr / Cr leave the amount's own sign alone; invert still flips.
+  assert.equal(rowAmount(['x', 'y', '-7.00', '', ''], m), -7)
+  assert.equal(rowAmount(rows[0], { ...m, invert: true }), 120)
+})
+
+test('guessMapping: a column that Debit or Credit named but that only holds Dr / Cr words is the marker', () => {
+  const g = guessMapping(['Date', 'Narration', 'Amount', 'Debit/Credit'], [['13/01/2024', 'Coffee', '120.00', 'Debit'], ['14/01/2024', 'Refund', '9.00', 'Credit']])
+  assert.equal(g.columns.sign, 3)
+  assert.equal(g.columns.debit, undefined)
+  // Real money columns stay debit and credit.
+  const s = guessMapping(['Date', 'Narration', 'Debit', 'Credit'], [['13/01/2024', 'Coffee', '120.00', ''], ['14/01/2024', 'Refund', '', '9.00']])
+  assert.deepEqual([s.columns.debit, s.columns.credit, s.columns.sign], [2, 3, undefined])
+})
