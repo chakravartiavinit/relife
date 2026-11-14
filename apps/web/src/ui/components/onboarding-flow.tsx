@@ -305,9 +305,13 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
   )
 }
 
-/** The six steps as labelled capsules. Finished ones jump back. */
+/**
+ * The six steps as labelled capsules. Finished ones jump back. Below `sm` six labels don't fit side by side, so the
+ * capsules go bare and one line under them names the step you are on.
+ */
 export function Rail({ current, onJump }: { current: number; onJump: (k: number) => void }) {
   return (
+    <>
     <ol aria-label="Setup steps" className="grid grid-cols-6 gap-1.5">
       {STEPS.map((s, k) => {
         const state = k < current ? 'done' : k === current ? 'now' : 'next'
@@ -316,7 +320,7 @@ export function Rail({ current, onJump }: { current: number; onJump: (k: number)
             <button type="button" disabled={state !== 'done'} onClick={() => onJump(k)}
               aria-current={state === 'now' ? 'step' : undefined}
               aria-label={`Step ${k + 1} of ${STEPS.length}: ${s.label}${state === 'done' ? ' (done, go back)' : state === 'now' ? ' (current)' : ''}`}
-              className="group flex w-full min-w-0 flex-col gap-2 rounded-md pt-2 pb-1 text-start disabled:cursor-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">
+              className="group flex w-full min-w-0 flex-col gap-2 rounded-md pt-2 pb-1 text-start max-sm:py-3 disabled:cursor-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">
               <span className="relative block h-1.5 w-full overflow-hidden rounded-full bg-ink/[0.08] dark:bg-white/[0.1]">
                 {/* Slides instead of scaling, so the round end stays round. */}
                 <span className={cn(
@@ -325,7 +329,7 @@ export function Rail({ current, onJump }: { current: number; onJump: (k: number)
                   state === 'next' ? '-translate-x-[101%]' : 'translate-x-0', 'bg-pill',
                 )} />
               </span>
-              <span className={cn('flex min-w-0 items-center gap-1 text-caption transition-[color] duration-150',
+              <span className={cn('flex min-w-0 items-center gap-1 text-caption transition-[color] duration-150 max-sm:hidden',
                 state === 'now' ? 'font-semibold text-ink' : state === 'done' ? 'text-ink-2 group-hover:text-ink' : 'text-ink-3')}>
                 {state === 'done' ? <Check aria-hidden className="size-3 shrink-0" strokeWidth={2.5} /> : null}
                 <span className="truncate">{s.label}</span>
@@ -335,6 +339,8 @@ export function Rail({ current, onJump }: { current: number; onJump: (k: number)
         )
       })}
     </ol>
+    <p aria-hidden className="mt-1 text-caption text-ink-2 sm:hidden"><span className="font-semibold text-ink">{STEPS[current]?.label}</span> · step {current + 1} of {STEPS.length}</p>
+    </>
   )
 }
 
