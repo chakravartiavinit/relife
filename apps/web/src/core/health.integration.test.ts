@@ -75,11 +75,10 @@ test('a Health Connect batch lands as entries, a resend changes nothing, a chang
     assert.equal((await post({ source: 'fitbit', days: [] })).status, 400)
   })
 
-  await t.test('an ingest token reaches nothing else: 403 on Today, but it may ask who it is and sign itself out', async () => {
+  await t.test('an ingest token reads nothing: 403 on Today and on /me, but it may sign itself out', async () => {
     assert.equal((await getToday(new Request('http://127.0.0.1:3030/api/v1/today', { headers }))).status, 403)
     const me = await getMe(new Request('http://127.0.0.1:3030/api/v1/me', { headers }))
-    assert.equal(me.status, 200)
-    assert.deepEqual((await me.json()).device.scopes, ['ingest'])
+    assert.equal(me.status, 403, 'it cannot read the account, as the approval card says')
     const out = await revoke(new Request('http://127.0.0.1:3030/api/v1/devices/me/revoke', { method: 'POST', headers }), { params: Promise.resolve({ id: 'me' }) } as never)
     assert.equal(out.status, 200)
     assert.equal((await post(fixture)).status, 401, 'signed out: the token is dead')
