@@ -1,11 +1,13 @@
 import type { Metadata } from 'next'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
+import { DEMO_MESSAGE, isDemo } from '@/core/demo'
 import { getUser } from '@/core/user'
 import { localDate } from '@/core/time'
 import { Skeleton } from '@/ui/components/card'
 import { NewScheduleButton } from '@/ui/components/forms/schedule-form'
 import { PlanRoutines } from '@/ui/components/habits/routines-list'
+import { TemplatesButton } from '@/ui/components/templates/templates-button'
 
 export const metadata: Metadata = { title: 'Routines' }
 
@@ -22,7 +24,10 @@ async function Routines() {
   const user = await getUser()
   return (
     <div>
-      <div className="mb-4 flex justify-end"><NewScheduleButton today={localDate(new Date(), user.timezone)} listenToUrl /></div>
+      <div className="mb-4 flex flex-wrap justify-end gap-2">
+        <TemplatesButton locked={isDemo() ? DEMO_MESSAGE : undefined} />
+        <NewScheduleButton today={localDate(new Date(), user.timezone)} listenToUrl />
+      </div>
       <PlanRoutines user={user} />
     </div>
   )
@@ -31,7 +36,7 @@ async function Routines() {
 function RoutinesSkeleton() {
   return (
     <div aria-busy>
-      <Skeleton className="mb-4 ml-auto h-10 w-36" />
+      <Skeleton className="mb-4 ml-auto h-10 w-72" />
       <Skeleton className="h-[420px] rounded-lg" />
     </div>
   )

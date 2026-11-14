@@ -5,6 +5,7 @@ import { ChevronDown, Lock, Trophy } from 'lucide-react'
 import { ACHIEVEMENT_ICON as ICON, TIER_COLOR as TIER } from '../achievement-icons'
 import { CATEGORY } from '../tokens'
 import { cn } from '../cn'
+import { ShareButton } from './share/share-button'
 
 export type BoardItem = {
   key: string; name: string; description: string; tier: 'bronze' | 'silver' | 'gold'
@@ -137,7 +138,8 @@ function Tile({ a }: { a: BoardItem }) {
   const done = !!a.unlockedAt
   const area = a.area !== 'general' ? CATEGORY[a.area] : null
   return (
-    <li className={cn('flex flex-col items-center rounded-lg px-3 pt-5 pb-4 text-center', done ? 'bg-surface shadow-1' : 'bg-surface/60 shadow-[inset_0_0_0_1px_var(--hairline)]')}>
+    <li className={cn('relative flex flex-col items-center rounded-lg px-3 pt-5 pb-4 text-center', done ? 'bg-surface shadow-1' : 'bg-surface/60 shadow-[inset_0_0_0_1px_var(--hairline)]')}>
+      {done ? <ShareButton kind="achievement" refId={a.key} label={`Share ${a.name}`} className="absolute end-1.5 top-1.5" /> : null}
       <Medallion a={a} />
       <h3 className={cn('mt-3 text-[13.5px] font-semibold', done ? 'text-ink' : 'text-ink-2')}>{a.name}</h3>
       <p className="mt-0.5 line-clamp-2 min-h-[2lh] text-[12px] leading-snug text-ink-3">{a.description}</p>

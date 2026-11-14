@@ -13,10 +13,13 @@ export const PACK_VERSION = 1
 /** Files over this size are refused before they are parsed. */
 export const PACK_MAX_BYTES = 64 * 1024
 
+/** How many of each a pack may hold. The schema below and the web app's server action checks both read this. */
+export const PACK_LIMITS = { routines: 40, trackers: 20, goals: 3, slug: 40 } as const
+
 export const PACK_CATEGORIES = ['health', 'mind', 'skills', 'wealth', 'hobbies', 'relationships'] as const
 export const PackCategory = z.enum(PACK_CATEGORIES)
 
-const slug = z.string().regex(/^[a-z0-9][a-z0-9.-]*$/).max(40)
+const slug = z.string().regex(/^[a-z0-9][a-z0-9.-]*$/).max(PACK_LIMITS.slug)
 const HHMM = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)
 const Weekday = z.enum(['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'])
 
@@ -83,9 +86,9 @@ export const Pack = z.object({
   areas: z.array(PackCategory).max(6).optional(),
   /** Signal ids from the web app's patterns (`tracker:steps`, `spend`…). Unknown ids are dropped on import. */
   improve: z.array(z.string().max(60)).max(3).optional(),
-  routines: z.array(PackRoutine).max(40),
-  trackers: z.array(PackTracker).max(20),
-  goals: z.array(PackGoal).max(3),
+  routines: z.array(PackRoutine).max(PACK_LIMITS.routines),
+  trackers: z.array(PackTracker).max(PACK_LIMITS.trackers),
+  goals: z.array(PackGoal).max(PACK_LIMITS.goals),
   /**
    * Setup extras of the built-in starter packs (not part of a shared pack's effect): daily targets for the
    * Routines step, and connector ids to suggest on the Connect step.

@@ -5,6 +5,7 @@ import brand from '@relife/brand/brand.json'
 import { and, eq, inArray, sql } from 'drizzle-orm'
 import { refresh } from 'next/cache'
 import { after } from 'next/server'
+import { PACK_LIMITS } from '@relife/contract'
 import { z } from 'zod'
 import { db, schema } from '@/db'
 import { CATEGORIES } from '@/db/schema'
@@ -1088,4 +1089,68 @@ export async function undoImportAction(id: string) {
   } catch (e) {
     return { ok: false as const, error: e instanceof Error ? e.message : 'Could not remove this import.' }
   }
+}
+
+// ─── Templates gallery (packs) ───────────────────────────────────────────────────────────────────────────────────
+// The browser sends the pack's text (a built-in one, a file or a link it fetched itself); it is parsed again here, so
+// nothing the browser says is trusted. Preview writes nothing; apply plans again from what is stored.
+
+const packText = z.string().max(80_000)
+const packChoices = z.object({
+  routineKeys: z.array(z.string().max(PACK_LIMITS.slug)).max(PACK_LIMITS.routines),
+  trackerSlugs: z.array(z.string().max(PACK_LIMITS.slug)).max(PACK_LIMITS.trackers),
+  goals: z.array(z.object({ key: z.string().max(PACK_LIMITS.slug), baselineValue: z.number().finite().min(-1_000_000).max(1_000_000).optional() })).max(PACK_LIMITS.goals),
+  addAreas: z.boolean(),
+})
+
+export async function previewPackAction(text: string) {
+  const { parsePack } = await import('@relife/contract')
+  const parsed = parsePack(packText.parse(text))
+  if (!parsed.ok) return { ok: false as const, error: parsed.error }
+  const { previewPack } = await import('@/core/packs')
+  return { ok: true as const, pack: parsed.pack, preview: await previewPack(await getUser(), parsed.pack) }
+}
+
+export async function applyPackAction(text: string, choices: unknown) {
+  if (isDemo()) return { ok: false as const, error: DEMO_MESSAGE }
+  const c = packChoices.safeParse(choices)
+  if (!c.success) return { ok: false as const, error: 'Check your choices.' }
+  const { parsePack } = await import('@relife/contract')
+  const parsed = parsePack(packText.parse(text))
+  if (!parsed.ok) return { ok: false as const, error: parsed.error }
+  const { applyPack } = await import('@/core/packs')
+  const r = await applyPack(await getUser(), parsed.pack, c.data)
+  const { clearUserCache } = await import('@/core/user')
+  clearUserCache()
+  refresh()
+  return { ok: true as const, ...r }
+}
+
+export async function undoPackAction(importId: string) {
+  if (isDemo()) return { ok: false as const, error: DEMO_MESSAGE }
+  idArg.parse(importId)
+  const { undoPackImport } = await import('@/core/packs')
+  const r = await undoPackImport(await getUser(), importId)
+  const { clearUserCache } = await import('@/core/user')
+  clearUserCache()
+  refresh()
+  return { ok: true as const, ...r }
+}
+
+/** What "Share my setup" can list: the user's routines, trackers and goals (never medicines or money). */
+export async function packExportChoicesAction() {
+  const { exportChoices } = await import('@/core/packs')
+  return exportChoices(await getUser())
+}
+
+export async function exportPackAction(input: unknown) {
+  const p = z.object({
+    scheduleIds: z.array(idArg).max(PACK_LIMITS.routines, `A pack holds up to ${PACK_LIMITS.routines} routines`), trackerIds: z.array(idArg).max(PACK_LIMITS.trackers, `A pack holds up to ${PACK_LIMITS.trackers} trackers`), goalIds: z.array(idArg).max(PACK_LIMITS.goals, `A pack holds up to ${PACK_LIMITS.goals} goals`), includeNotes: z.boolean(),
+    name: z.string().trim().min(1, 'Give your pack a name').max(60), description: z.string().trim().min(1, 'Say what it is for').max(280), author: z.string().trim().max(60).optional(),
+  }).safeParse(input)
+  if (!p.success) return { ok: false as const, error: p.error.issues[0]?.message ?? 'Check the form.' }
+  const { exportPack } = await import('@/core/packs')
+  const { name, description, author, ...pick } = p.data
+  const r = await exportPack(await getUser(), pick, { name, description, author })
+  return r.ok ? { ok: true as const, text: `${JSON.stringify(r.pack, null, 2)}\n`, filename: r.filename } : r
 }

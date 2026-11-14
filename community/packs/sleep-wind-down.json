@@ -1,0 +1,29 @@
+{
+  "format": "relife.pack",
+  "version": 1,
+  "id": "sleep-wind-down",
+  "name": "Sleep wind-down",
+  "description": "A calm last hour of the day: screens off, a short reading slot and a lights-out reminder, with a weekly count of nights you made it.",
+  "author": "Community",
+  "areas": ["health", "mind"],
+  "routines": [
+    { "key": "screens-off", "name": "Screens off", "area": "health", "kind": "routine", "rule": { "freq": "daily", "times": ["22:00"] }, "note": "Phone on the charger, across the room" },
+    { "key": "read", "name": "Read a few pages", "area": "mind", "kind": "routine", "rule": { "freq": "daily", "times": ["22:15"] }, "note": "Paper, not a screen" },
+    { "key": "lights-out", "name": "Lights out", "area": "health", "kind": "routine", "rule": { "freq": "daily", "times": ["22:45"] } }
+  ],
+  "trackers": [],
+  "goals": [
+    {
+      "key": "lights-out-nights",
+      "title": "Lights out on time on five nights a week",
+      "reason": "A steady bedtime helps most of the rest of the day.",
+      "area": "mind",
+      "measure": { "checkIn": "Nights with lights out by 23:00", "unit": "nights" },
+      "direction": "up",
+      "target": 5,
+      "weeks": 6,
+      "cadence": "weekly",
+      "actions": ["screens-off", "lights-out"]
+    }
+  ]
+}

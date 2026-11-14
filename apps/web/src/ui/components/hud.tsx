@@ -10,6 +10,7 @@ import { cn } from '../cn'
 import { AREA_ICON, CapsuleIcon } from './capsule-icon'
 import { Ticker } from './ticker'
 import { AREA_HREF } from './nav'
+import { ShareButton } from './share/share-button'
 
 // The character sheet at the top of Progress: who you are in the game (level, title, XP),
 // your streak, and your areas as stats.
@@ -109,6 +110,7 @@ function Heading({ heading, eyebrow, s }: { heading: string; eyebrow?: React.Rea
         <span className="inline-flex h-6 items-center rounded-full bg-ink px-2 text-[12px] font-bold text-bg tabular-nums">Lv {s.level}</span>
         <span className="ms-2 font-semibold text-ink">{s.title}</span>
         <span className="text-ink-3"> · {formatNumber(s.total)} XP</span>
+        <ShareButton kind="level" label="Share your level" className="ms-1 align-middle" />
       </p>
     </>
   )

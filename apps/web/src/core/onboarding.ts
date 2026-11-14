@@ -5,7 +5,8 @@ import { buildRRule, type SimpleRule } from '@/domain/recurrence'
 import { slugify } from './quicklog'
 import { ensureTracker } from './ingest'
 import { localDate } from './time'
-import { insertPackGoalDraft } from './packs'
+import { templateToPackRoutine } from '@/domain/packs'
+import { insertPackGoalDraft, insertRoutines } from './packs'
 import { lockUser } from './recovery'
 import { mergeProfile, profileMerge, type User } from './user'
 
@@ -105,22 +106,9 @@ export async function completeOnboarding(user: User, input: OnboardingInput, now
     // Routine id by template id, for the pack's goal draft: a routine kept because the name already existed is found by name.
     const byName = new Map((await tx.select({ id: schema.schedules.id, name: schema.schedules.name }).from(schema.schedules)
       .where(and(eq(schema.schedules.userId, user.id), eq(schema.schedules.active, true), eq(schema.schedules.kind, 'routine')))).map((r) => [r.name.toLowerCase(), r.id]))
-    const routineIds = new Map<string, string>()
-    let added = 0
-    for (const t of [...TEMPLATES, ...(input.generated ?? [])]) {
-      if (!input.templates?.includes(t.id) || !areas.includes(t.area) || existing.has(t.name.toLowerCase())) continue
-      existing.add(t.name.toLowerCase())
-      const trackerSlug = t.quantity ? slugify(t.name) : undefined
-      const [row] = await tx.insert(schema.schedules).values({
-        userId: user.id, name: t.name, kind: t.kind, category: t.area,
-        rrule: buildRRule({ ...t.rule, start: today }),
-        target: t.quantity ? input.waterMl ?? null : null, unit: t.quantity?.unit ?? null,
-        meta: Object.fromEntries(Object.entries({ notes: t.note, dose: t.dose, doseCount: t.dose ? 1 : undefined, trackerSlug, step: t.quantity?.step })
-          .filter(([, v]) => v !== undefined)),
-      }).returning({ id: schema.schedules.id })
-      routineIds.set(t.id, row.id)
-      added++
-    }
+    const picked = [...TEMPLATES, ...(input.generated ?? [])].filter((t) => input.templates?.includes(t.id) && areas.includes(t.area))
+    const routineIds = await insertRoutines(tx, user, picked.map(templateToPackRoutine), today, { existing, waterTarget: input.waterMl ?? null })
+    const added = routineIds.size
     if (input.pack) await insertPackGoalDraft(tx, user, input.pack, routineIds, byName, today)
     return { added, fresh }
   })

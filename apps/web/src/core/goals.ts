@@ -264,14 +264,16 @@ const forDirection = (direction: Goal['direction'], f: GoalFields): GoalFields =
   direction === 'range' ? { ...f, target: null } : { ...f, rangeLow: null, rangeHigh: null }
 
 /** Create or edit a goal. A recorded baseline is always recomputed here; the client value is not trusted. */
-export async function saveGoal(user: User, input: SaveGoalInput, now = new Date()): Promise<GoalResult> {
+export async function saveGoal(user: User, input: SaveGoalInput, now = new Date(), outer?: Tx): Promise<GoalResult> {
+  // `outer`: a transaction that already holds the user lock (a pack import creates routines, trackers and goals together).
+  const x = outer ?? db
   const today = localDate(now, user.timezone)
-  const [existing] = input.id ? await db.select().from(G).where(and(eq(G.id, input.id), eq(G.userId, user.id))) : []
+  const [existing] = input.id ? await x.select().from(G).where(and(eq(G.id, input.id), eq(G.userId, user.id))) : []
   if (input.id && !existing) return { status: 'not_found' }
   let g: GoalInput = { ...input, title: input.title.trim(), reason: input.reason.trim() }
   let baselineObservations: number | null = null
   if (!existing && g.measureKind === 'tracker' && g.trackerId) {
-    const [t] = await db.select().from(schema.trackers).where(and(eq(schema.trackers.id, g.trackerId), eq(schema.trackers.userId, user.id), isNull(schema.trackers.archivedAt)))
+    const [t] = await x.select().from(schema.trackers).where(and(eq(schema.trackers.id, g.trackerId), eq(schema.trackers.userId, user.id), isNull(schema.trackers.archivedAt)))
     if (t) {
       g = { ...g, measureName: t.name, unit: t.unit }
       if (input.useRecorded) {
@@ -287,7 +289,8 @@ export async function saveGoal(user: User, input: SaveGoalInput, now = new Date(
   if (existing) g = inputOf(existing, forDirection(existing.direction, goalFields(g)))
   const before = existing ? await computeSnapshot(user, existing, today, now) : null
 
-  return db.transaction(async (tx) => {
+  const run = <T>(f: (tx: Tx) => Promise<T>) => (outer ? f(outer) : db.transaction(f))
+  return run(async (tx) => {
     await lockUser(tx, user.id)
     const [current] = existing ? await tx.select().from(G).where(and(eq(G.id, existing.id), eq(G.userId, user.id))).for('update') : []
     if (existing && (!current || current.version !== input.version)) return { status: 'stale' as const }

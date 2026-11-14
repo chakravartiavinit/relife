@@ -3,9 +3,11 @@
 import { useState } from 'react'
 import { AnimatePresence } from 'motion/react'
 import { Check } from 'lucide-react'
+import { streakMilestone } from '@/domain/share-card'
 import { cn } from '@/ui/cn'
 import { Capsule } from '../capsule'
 import { Card } from '../card'
+import { ShareButton } from '../share/share-button'
 import { ChestArt, ChestModal, RARITY, type ChestItem } from '../quests'
 
 const PIECES = [
@@ -52,6 +54,7 @@ export function DayComplete({ done, total, streak, xp, chests }: { done: number;
           <span className={cn('shrink-0 rounded-full bg-ink px-3.5 py-2 text-caption font-semibold text-bg')}>Open</span>
         </button>
       ) : null}
+      {streakMilestone(streak) ? <ShareButton kind="streak" label="Share streak" className="mt-3">Share streak</ShareButton> : null}
       <AnimatePresence>{opening ? <ChestModal key="chest" chests={chests} onClose={() => setOpening(false)} /> : null}</AnimatePresence>
     </Card>
   )

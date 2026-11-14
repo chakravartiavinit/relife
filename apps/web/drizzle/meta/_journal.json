@@ -22,6 +22,13 @@
       "when": 1794620837240,
       "tag": "0002_imports",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794623176690,
+      "tag": "0003_tracker_meta",
+      "breakpoints": true
     }
   ]
 }

@@ -6,6 +6,7 @@ import { Suspense } from 'react'
 import { gte, sql } from 'drizzle-orm'
 import { ArrowUpRight } from 'lucide-react'
 import { db, schema } from '@/db'
+import { DEMO_MESSAGE, isDemo } from '@/core/demo'
 import { getUser } from '@/core/user'
 import { aiEnabled, modelId, type Task } from '@/ai'
 import { Badge, Skeleton } from '@/ui/components/card'
@@ -14,6 +15,7 @@ import { ProfileForm, ThemePicker } from '@/ui/components/settings-ui'
 import { SettingsRow, SettingsSection } from '@/ui/components/settings-layout'
 import { SettingsRail } from '@/ui/components/settings-rail'
 import { SystemFocus } from '@/ui/components/system-focus'
+import { TemplatesButton } from '@/ui/components/templates/templates-button'
 import { AreasSettings } from '@/ui/components/areas-settings'
 import { loadSignals } from '@/core/patterns'
 
@@ -30,9 +32,12 @@ export default function SettingsPage() {
     <>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <p className="max-w-[60ch] text-body text-ink-2">Your profile, how {brand.name} looks and which AI it uses. Export, backups, privacy and deleting your data are under Data & privacy; data sources and API keys are in Connections; Telegram messages are in Notifications.</p>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* A full load: the tour opens from the address on arrival. */}
           <a href="/?tour" className={buttonClass({ variant: 'ghost', size: 'sm' })}>Take the tour</a>
+          <Suspense fallback={<Skeleton className="h-8 w-36" />}>
+            <TemplatesAction />
+          </Suspense>
           <Link href="/welcome" className={buttonClass({ variant: 'secondary', size: 'sm' })}>Run setup again</Link>
         </div>
       </div>
@@ -46,6 +51,12 @@ export default function SettingsPage() {
       </div>
     </>
   )
+}
+
+/** The demo is a runtime setting, so the locked state is read per request, not baked into the prerendered page. */
+async function TemplatesAction() {
+  await connection()
+  return <TemplatesButton size="sm" locked={isDemo() ? DEMO_MESSAGE : undefined} />
 }
 
 async function Settings() {

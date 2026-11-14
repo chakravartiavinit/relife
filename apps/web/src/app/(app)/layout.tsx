@@ -19,6 +19,7 @@ import { ToastProvider } from '@/ui/components/toast'
 import { AppMotion } from '@/ui/components/motion-config'
 import { Celebration } from '@/ui/components/petals'
 import { Celebrations } from '@/ui/components/celebrate'
+import { ShareCardDialog } from '@/ui/components/share/share-card-dialog'
 import { PaymentToasts } from '@/ui/components/payment-toasts'
 import { LiveRefresh } from '@/ui/components/live-refresh'
 import { DemoBanner, DemoSidebarBadge } from '@/ui/components/demo-banner'
@@ -114,6 +115,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
           <Tour />
           <Celebration />
           <Celebrations />
+          <ShareCardDialog />
           <Suspense fallback={null}><LiveParts /></Suspense>
           <Suspense fallback={null}><ThemeFromServer /></Suspense>
         </ToastProvider>
