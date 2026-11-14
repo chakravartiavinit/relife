@@ -2,6 +2,8 @@ import { authenticate, denied } from '@/core/auth/request'
 import { env } from '@/core/env'
 import { emitRawMany } from '@/core/ingest'
 import type { RawEvent } from '@/core/types'
+import { runAs } from '@/core/context'
+import { ownerUser } from '@/core/multi-user'
 import { parseNow } from '@/jobs'
 import { lineToRawEvent } from '@/connectors/icloud-inbox'
 
@@ -13,7 +15,10 @@ export async function POST(req: Request) {
   // The old shared INGEST_TOKEN is a device with scope `ingest` (src/core/auth/devices.ts); a full device works too.
   const a = await authenticate(req, 'ingest')
   if (!a.ok) {
-    if (!env('INGEST_TOKEN') && a.reason !== 'scope') return Response.json({ error: 'INGEST_TOKEN is not set on this computer. Add it to .env and restart ReLife.' }, { status: 503 })
+    // The shared INGEST_TOKEN is the owner's own key.
+    const owner = await ownerUser()
+    const noToken = owner ? await runAs(owner, async () => !env('INGEST_TOKEN')) : true
+    if (noToken && a.reason !== 'scope') return Response.json({ error: 'INGEST_TOKEN is not set on this computer. Add it to .env and restart ReLife.' }, { status: 503 })
     return denied(a, { legacy: true })
   }
 
@@ -42,6 +47,6 @@ export async function POST(req: Request) {
   let inserted = 0
   for (let i = 0; i < events.length; i += 1000) inserted += await emitRawMany(user.id, events.slice(i, i + 1000))
   // The events are saved; if parsing can't start now, the parse job picks them up.
-  const parsed = inserted ? await parseNow().catch((e) => { console.error('[ingest] parse failed, the parse job retries:', e instanceof Error ? e.message : e); return 'queued' }) : 'nothing new'
+  const parsed = inserted ? await runAs(user, () => parseNow()).catch((e) => { console.error('[ingest] parse failed, the parse job retries:', e instanceof Error ? e.message : e); return 'queued' }) : 'nothing new'
   return Response.json({ received, inserted, skipped, parsed })
 }

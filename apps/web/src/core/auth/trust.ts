@@ -181,7 +181,7 @@ export function narrowScopes(requested: readonly Scope[] | undefined, kind: stri
 
 /** Paths that need no sign-in. `/api/health` stays loopback-only (checked by the gate). */
 export function isPublicPath(pathname: string) {
-  return pathname === '/signin' || pathname === '/pair' || pathname === '/api/v1/hello' || pathname.startsWith('/api/v1/pair/')
+  return pathname === '/signin' || pathname === '/pair' || pathname === '/join' || pathname === '/api/v1/hello' || pathname.startsWith('/api/v1/pair/')
     || pathname === '/manifest.webmanifest' || pathname === '/icon.png' || pathname === '/apple-icon.png' || pathname === '/favicon.ico'
     || pathname.startsWith('/_next/') || pathname.startsWith('/brand/') || pathname === '/sw.js'
 }

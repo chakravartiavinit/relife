@@ -1,7 +1,8 @@
-import { eq } from 'drizzle-orm'
+import { eq, like, or } from 'drizzle-orm'
 import { isDemo } from '@/core/demo'
 import { db, isMock, schema } from '@/db'
 import type { User } from '@/core/user'
+import { runAs } from '@/core/context'
 import { formatDay, formatTime, localDate } from '@/core/time'
 import { connectorStatus, recentSyncRuns } from '@/worker/sync'
 import { KEY_ENV, modelId, type Task } from '@/ai/models'
@@ -48,14 +49,19 @@ const AI: { id: string; name: string; description: string; provides: string[] }[
 ]
 
 /** `origin` is the address the page was opened on (OAuth sends you back to it). `getUser()` has already applied connected keys. */
-export async function loadConnectorItems(user: User, origin: string, o: { probeLocal?: boolean } = {}) {
+export function loadConnectorItems(user: User, origin: string, o: { probeLocal?: boolean } = {}) {
+  // Keys are per person: read them as this person (core/context.ts).
+  return runAs(user, () => connectorItems(user, origin, o))
+}
+
+async function connectorItems(user: User, origin: string, o: { probeLocal?: boolean } = {}) {
   const [sources, [heartbeat], runs, saved, rows, jobs] = await Promise.all([
     connectorStatus(),
     db.select().from(schema.heartbeats).where(eq(schema.heartbeats.name, 'worker')),
-    recentSyncRuns(),
+    recentSyncRuns(4, user.id),
     savedFields(user.id),
     db.select().from(schema.connections).where(eq(schema.connections.userId, user.id)),
-    db.select().from(schema.jobs),
+    db.select().from(schema.jobs).where(or(like(schema.jobs.id, `%@${user.id}`), eq(schema.jobs.id, 'sync:fx'))),
   ])
   const workerAlive = heartbeat && Date.now() - heartbeat.at.getTime() < 3 * 60_000
   const isConnected = (id: string) => !!rows.find((r) => r.connectorId === id)?.enabled
@@ -68,7 +74,7 @@ export async function loadConnectorItems(user: User, origin: string, o: { probeL
     const conn = c.connection
     const connected = isConnected(c.id)
     // The worker's sync job for this connector (src/jobs): running right now, or when it runs next.
-    const job = jobs.find((j) => j.id === `sync:${c.id}`)
+    const job = jobs.find((j) => j.id === `sync:${c.id}@${user.id}` || j.id === `sync:${c.id}`)
     const syncing = !!job?.lockedUntil && job.lockedUntil > new Date()
     // Signed in, or a pasted refresh token (Strava) stands in until you do.
     const authed = !c.oauth || isMock || signedIn(saved, c.id) || !!(c.oauth.refreshTokenEnv && env(c.oauth.refreshTokenEnv))

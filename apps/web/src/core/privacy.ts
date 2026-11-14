@@ -21,7 +21,7 @@ export async function loadPrivacy(user: User): Promise<PrivacyView> {
     db.select({ id: schema.connections.connectorId, enabled: schema.connections.enabled, lastSyncAt: schema.connections.lastSyncAt })
       .from(schema.connections).where(eq(schema.connections.userId, user.id)),
     db.select({ task: schema.llmRuns.task, n: sql<number>`count(*)::int` }).from(schema.llmRuns)
-      .where(and(gte(schema.llmRuns.createdAt, since))).groupBy(schema.llmRuns.task),
+      .where(and(eq(schema.llmRuns.userId, user.id), gte(schema.llmRuns.createdAt, since))).groupBy(schema.llmRuns.task),
   ])
   const byId = new Map(conns.map((c) => [c.id, c]))
   const runsFor = (use: (typeof AI_USES)[number]) => runs.filter((r) => matchesUse(use, r.task)).reduce((n, r) => n + Number(r.n), 0)

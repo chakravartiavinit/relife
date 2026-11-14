@@ -4,14 +4,17 @@ import { homedir } from 'node:os'
 import path from 'node:path'
 import type { BrowserContext, Page } from 'playwright-core'
 import { env } from '@/core/env'
+import { scopedUser } from '@/core/context'
 import { dataDir } from '@/core/paths'
 
 // One Chrome profile per app, kept in data/browser/<id> (git-ignored, like the key file). You log in
 // once in a visible window; syncs reuse the saved session in a hidden one. Uses your installed Chrome
 // (or CHROME_PATH), so nothing extra is downloaded.
 
+// A member's logins live in their own folder, data/browser/<userId>/<id>; the owner keeps the original data/browser/<id>.
 const profileDir = (id: string) => {
-  const dir = dataDir('browser', id)
+  const who = scopedUser()
+  const dir = who && who.role !== 'owner' ? dataDir('browser', who.id, id) : dataDir('browser', id)
   mkdirSync(dir, { recursive: true })
   return dir
 }

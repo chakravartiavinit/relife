@@ -1,16 +1,20 @@
 import { asc } from 'drizzle-orm'
 import { db, schema } from '@/db'
-import { getUser } from '../user'
+import { ensureOwner } from '../user'
 import { createDevice } from './devices'
 import { browserDeviceName } from './names'
 
 // "Trust this Mac": a loopback request without a session gets a browser device (src/proxy.ts decides, trust.ts has the rules).
 
-/** The "Require sign-in on this Mac" setting turns loopback trust off. */
+/**
+ * The "Require sign-in on this Mac" setting (the owner's) turns loopback trust off, and so does a second person: with
+ * two people on the server, anyone at the Mac would otherwise be the owner.
+ */
 export async function requireSignIn() {
   // Read fresh (the proxy and the settings action may not share the cached user): this runs only when a request has no session.
-  const [u] = await db.select({ profile: schema.users.profile }).from(schema.users).orderBy(asc(schema.users.createdAt)).limit(1)
-  return !!u?.profile.requireSignIn
+  const rows = await db.select({ role: schema.users.role, profile: schema.users.profile }).from(schema.users).orderBy(asc(schema.users.createdAt))
+  if (rows.length > 1) return true
+  return !!(rows.find((r) => r.role === 'owner') ?? rows[0])?.profile.requireSignIn
 }
 
 // Parallel first requests (page, data, assets) carry no cookie yet; they share one new device instead of making one each.
@@ -22,7 +26,7 @@ export function mintLoopbackDevice(host: string, userAgent: string): Promise<str
   const hit = minting().get(key)
   if (hit) return hit
   const p = (async () => {
-    const user = await getUser()
+    const user = await ensureOwner() // trust is the owner's: it is off once anyone else is on the server
     const { token } = await createDevice({
       userId: user.id, kind: 'browser', name: browserDeviceName(userAgent), scopes: ['full'], via: host.split(':')[0],
       meta: { userAgent: userAgent.slice(0, 200) },

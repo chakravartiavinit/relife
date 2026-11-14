@@ -39,3 +39,27 @@ export function integration(id: string): Integration | undefined {
 
 /** Every env var any integration owns. Only these are switched on and off by connect/disconnect. */
 export const MANAGED_ENV = [...new Set([...connectors.flatMap((c) => [...c.env, ...c.fields.map((f) => f.env)]), ...EXTRA.flatMap((x) => x.fields.map((f) => f.env))])]
+
+// ── Scope: who a key belongs to ─────────────────────────────────────────────────────────────────
+// An instance key is the server's (the owner sets it, everyone uses it): AI provider keys, LLM_*, LOCAL_LLM_URL, the
+// Telegram bot token and OAuth app credentials. Every other key is a person's own (a connector key or token) and is
+// read only while code runs as that person (core/env.ts, core/context.ts).
+
+const AI_KEYS = new Set(['ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'GOOGLE_GENERATIVE_AI_API_KEY', 'OPENROUTER_API_KEY', 'LOCAL_LLM_URL', 'TELEGRAM_BOT_TOKEN'])
+const OAUTH_APP_KEYS = new Set(connectors.flatMap((c) => (c.oauth ? [c.oauth.clientIdEnv, c.oauth.clientSecretEnv] : [])))
+
+export const isInstanceKey = (key: string) => key.startsWith('LLM_') || AI_KEYS.has(key) || OAUTH_APP_KEYS.has(key) || /_CLIENT_(ID|SECRET)$/.test(key)
+
+/** Every managed key that belongs to the whole server. */
+export const INSTANCE_ENV = MANAGED_ENV.filter(isInstanceKey)
+
+/**
+ * `instance` when the owner sets all of an integration up for everyone (an AI provider, the Telegram bot), else `user`: each
+ * person connects their own, even when a part of it (an OAuth app's client ID) is the server's.
+ */
+export function integrationScope(id: string): 'instance' | 'user' {
+  const spec = integration(id)
+  if (!spec || spec.oauth) return 'user' // each person signs in with their own account
+  const keys = [...new Set([...spec.required, ...spec.fields.map((f) => f.env)])].filter((k) => k !== 'TELEGRAM_ALLOWED_CHAT_ID')
+  return keys.length && keys.every(isInstanceKey) ? 'instance' : 'user'
+}

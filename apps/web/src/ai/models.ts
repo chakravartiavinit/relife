@@ -5,6 +5,8 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { env } from '@/core/env'
 import { isDemo } from '@/core/demo'
+import { scopedUser } from '@/core/context'
+import { aiAllowedSync } from '@/core/multi-user'
 
 // Bring your own key: pick any model per task with env vars like
 //   LLM_DEFAULT=anthropic:claude-sonnet-5-5
@@ -45,6 +47,8 @@ export function modelId(task: Task): string | undefined {
 
 export function aiEnabled(task: Task = 'chat'): boolean {
   if (isDemo()) return false // a stray key must never spend money in the read-only demo
+  const who = scopedUser()
+  if (who && !aiAllowedSync(who)) return false // the owner turned the shared model off (core/multi-user.ts)
   const id = modelId(task)
   if (!id || !id.includes(':')) return false
   const provider = id.slice(0, id.indexOf(':'))

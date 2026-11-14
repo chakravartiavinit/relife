@@ -2,7 +2,7 @@ import brand from '@relife/brand/brand.json'
 import { NextResponse, type NextRequest } from 'next/server'
 import { allowedHost } from '../hosts'
 import { safeNext } from './next'
-import { getUser } from '../user'
+import { warmInstance } from '../user'
 import { DEMO_HEADER, DEMO_MESSAGE, demoMethodAllowed, isDemo } from '../demo'
 import { findByToken, touchIfDue } from './devices'
 import { mintLoopbackDevice, requireSignIn } from './loopback'
@@ -21,7 +21,7 @@ import { cookieName, hasProxyHeaders, isLoopbackHost, isPageNavigation, isPublic
 //    API call or server action gets 401 JSON.
 
 export type GateDeps = {
-  /** Loads the saved keys, so the legacy ACTIVITY_TOKEN and INGEST_TOKEN rows exist before a token is looked up. */
+  /** Loads the server's saved keys and the owner's, so the legacy ACTIVITY_TOKEN and INGEST_TOKEN rows exist before a token is looked up. */
   warm: () => Promise<unknown>
   findByToken: typeof findByToken
   touchIfDue: typeof touchIfDue
@@ -29,7 +29,7 @@ export type GateDeps = {
   mintLoopbackDevice: (host: string, userAgent: string) => Promise<string>
 }
 
-export const realDeps: GateDeps = { warm: getUser, findByToken, touchIfDue, requireSignIn: () => requireSignIn().catch(() => false), mintLoopbackDevice }
+export const realDeps: GateDeps = { warm: warmInstance, findByToken, touchIfDue, requireSignIn: () => requireSignIn().catch(() => false), mintLoopbackDevice }
 
 /** These routes answered `{ error: string }` before device tokens; extensions before 0.7 still read that. */
 const LEGACY_BODY = new Set(['/api/companion', '/api/activity', '/api/ingest'])
@@ -42,7 +42,7 @@ const LEGACY_BODY = new Set(['/api/companion', '/api/activity', '/api/ingest'])
 function demoGate(req: NextRequest, host: string | null): NextResponse | Response {
   const { pathname } = req.nextUrl
   if (pathname === '/api/health') return isLoopbackHost(host) && !hasProxyHeaders(req.headers) ? NextResponse.next() : new NextResponse('Not found', { status: 404 })
-  if (pathname === '/signin' || pathname === '/pair') return NextResponse.redirect(new URL('/', req.url))
+  if (pathname === '/signin' || pathname === '/pair' || pathname === '/join') return NextResponse.redirect(new URL('/', req.url))
   if (pathname.startsWith('/api/oauth/') || pathname.startsWith('/api/v1/pair/') || !demoMethodAllowed(req.method) || req.headers.has('next-action')) {
     const res = apiError(403, 'forbidden', DEMO_MESSAGE, { legacy: LEGACY_BODY.has(pathname) })
     res.headers.set(DEMO_HEADER, 'read-only')
