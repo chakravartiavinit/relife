@@ -73,6 +73,7 @@ async function main() {
   // Fixed id: a running mock server caches the user, so reseeding live keeps working.
   const [user] = await db.insert(schema.users).values({
     id: '00000000-0000-4000-8000-00000000a1e5',
+    role: 'owner',
     name: process.env.RELIFE_USER_NAME || 'Alex',
     timezone: tz,
     baseCurrency: process.env.RELIFE_BASE_CURRENCY || 'INR',
