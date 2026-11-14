@@ -48,7 +48,7 @@ function Crumbs({ date }: { date: ReactNode }) {
           <BreadcrumbItem key={c.path}>
             {i > 0 ? <BreadcrumbSeparator /> : null}
             {c === last ? (
-              <BreadcrumbPage className="text-heading">{c.label}</BreadcrumbPage>
+              <BreadcrumbPage className="text-heading whitespace-nowrap [overflow-wrap:normal]">{c.label}</BreadcrumbPage>
             ) : (
               <BreadcrumbLink href={c.path} render={(p) => <Link {...p} href={c.path} />} className="text-ink-3">{c.label}</BreadcrumbLink>
             )}
