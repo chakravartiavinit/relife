@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { CommunityIndex, communityPackUrl, normalizePackUrl } from './pack-source'
+import brand from '@relife/brand/brand.json'
+import { CommunityIndex, communityPackUrl, normalizePackUrl, packErrorText } from './pack-source'
 
 test('normalizePackUrl: https only, a GitHub page becomes its raw file, junk is refused with a reason', () => {
   assert.deepEqual(normalizePackUrl(' https://example.com/a.json#x '), { ok: true, url: 'https://example.com/a.json' })
@@ -16,4 +17,9 @@ test('the community index checks every entry, and an id cannot reach another pat
   assert.equal(CommunityIndex.safeParse([{ id: 'good-sleep', name: 'Sleep', description: 'd', areas: ['health'] }]).success, true)
   assert.equal(CommunityIndex.safeParse([{ id: '../x', name: 'Sleep', description: 'd', areas: [] }]).success, false)
   assert.equal(communityPackUrl('good-sleep'), 'https://raw.githubusercontent.com/chakravartiavinit/relife/main/community/packs/good-sleep.json')
+})
+
+test('packErrorText: a newer-version pack says to update the app; other errors pass through', () => {
+  assert.equal(packErrorText('Made by a newer version'), `Made by a newer version of ${brand.name}. Update ${brand.name} to open this pack.`)
+  assert.equal(packErrorText('This is not a pack file (not valid JSON).'), 'This is not a pack file (not valid JSON).')
 })

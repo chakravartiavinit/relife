@@ -1,0 +1,4 @@
+[
+  { "id": "sleep-wind-down", "name": "Sleep wind-down", "description": "A calm last hour of the day: screens off, a short reading slot and a lights-out reminder, with a weekly count of nights you made it.", "author": "ReLife community", "areas": ["health", "mind"] },
+  { "id": "weekly-reset", "name": "Weekly reset", "description": "One calm hour on Sunday to look at the week behind and set up the week ahead, plus a short daily tidy.", "author": "ReLife community", "areas": ["mind", "skills"] }
+]

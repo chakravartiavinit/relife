@@ -1,0 +1,16 @@
+{
+  "format": "relife.pack",
+  "version": 1,
+  "id": "weekly-reset",
+  "name": "Weekly reset",
+  "description": "One calm hour on Sunday to look at the week behind and set up the week ahead, plus a short daily tidy.",
+  "author": "ReLife community",
+  "areas": ["mind", "skills"],
+  "routines": [
+    { "key": "review-week", "name": "Review the week", "area": "mind", "kind": "routine", "rule": { "freq": "weekly", "times": ["17:00"], "byweekday": ["SU"] }, "note": "What went well, what to change" },
+    { "key": "plan-week", "name": "Plan the week", "area": "skills", "kind": "routine", "rule": { "freq": "weekly", "times": ["17:30"], "byweekday": ["SU"] }, "note": "Three things that matter" },
+    { "key": "tidy", "name": "Ten-minute tidy", "area": "mind", "kind": "routine", "rule": { "freq": "daily", "times": ["20:00"] } }
+  ],
+  "trackers": [],
+  "goals": []
+}

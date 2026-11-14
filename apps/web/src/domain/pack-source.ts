@@ -1,3 +1,4 @@
+import brand from '@relife/brand/brand.json'
 import { PACK_MAX_BYTES } from '@relife/contract'
 import { z } from 'zod'
 import { CATEGORIES } from './categories'
@@ -44,3 +45,7 @@ export function normalizePackUrl(input: string): { ok: true; url: string } | { o
 }
 
 export const PACK_FETCH_LIMIT = PACK_MAX_BYTES
+
+/** A parse error as the person reads it: a pack from a newer version says to update the app. */
+export const packErrorText = (message: string) =>
+  message.startsWith('Made by a newer version') ? `Made by a newer version of ${brand.name}. Update ${brand.name} to open this pack.` : message

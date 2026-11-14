@@ -25,6 +25,7 @@ import { PlanYouGallery } from '@/ui/components/plan-you-gallery'
 import { OnboardingGallery } from '@/ui/components/onboarding-gallery'
 import { ImportGallery } from '@/ui/components/imports/import-gallery'
 import { ShareGallery } from '@/ui/components/share/share-gallery'
+import { TemplatesGallery } from '@/ui/components/templates/templates-gallery'
 import { builtInPacks } from '@/core/packs'
 import { TEMPLATES } from '@/core/onboarding'
 import { InstalledBeuiGallery, PeekLinkDemo, SegmentTabsDemo, SheetDemo, ShellDemo, TypeScale } from '@/ui/components/gallery-foundations'
@@ -207,6 +208,10 @@ export default function UiGallery() {
 
       <Section title="Share cards: the dialog in each state, every card, look and size">
         <ShareGallery />
+      </Section>
+
+      <Section title="Templates: the window in each state (sources, preview, share my setup)">
+        <TemplatesGallery />
       </Section>
 
       <Section title="Shell pieces">

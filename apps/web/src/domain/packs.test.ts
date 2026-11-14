@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { Pack, PACK_CATEGORIES } from '@relife/contract'
+import { Pack, PACK_CATEGORIES, parsePack } from '@relife/contract'
 import { connectors } from '@/connectors'
 import { IMPROVE } from '@/ui/components/onboarding-data'
 import { BUILT_IN_PACKS } from '@/packs'
@@ -203,4 +203,18 @@ test('addedLine: the toast after adding names what was added and never "0 goals"
   assert.equal(addedLine({ routines: 4, trackers: 0, goals: 1 }), 'Added 4 routines, 1 goal')
   assert.equal(addedLine({ routines: 1, trackers: 2, goals: 0 }), 'Added 1 routine, 2 trackers')
   assert.equal(addedLine({ routines: 0, trackers: 0, goals: 0 }), 'Nothing new to add')
+})
+
+test('every community pack plans cleanly for a new user: all routines and goals can be added', async () => {
+  const { readdirSync, readFileSync } = await import('node:fs')
+  const { join } = await import('node:path')
+  const dir = join(process.cwd(), '../../community/packs')
+  for (const f of readdirSync(dir).filter((x) => x.endsWith('.json') && x !== 'index.json')) {
+    const r = parsePack(readFileSync(join(dir, f), 'utf8'))
+    assert.ok(r.ok, f)
+    const plan = planPack(r.pack, noState(), TODAY)
+    assert.deepEqual(plan.skip, [], f)
+    assert.equal(plan.routines.length, r.pack.routines.length, f)
+    assert.equal(plan.goals.length, r.pack.goals.length, f)
+  }
 })

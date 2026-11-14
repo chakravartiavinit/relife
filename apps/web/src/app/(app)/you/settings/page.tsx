@@ -6,6 +6,7 @@ import { Suspense } from 'react'
 import { gte, sql } from 'drizzle-orm'
 import { ArrowUpRight } from 'lucide-react'
 import { db, schema } from '@/db'
+import { DEMO_MESSAGE, isDemo } from '@/core/demo'
 import { getUser } from '@/core/user'
 import { aiEnabled, modelId, type Task } from '@/ai'
 import { Badge, Skeleton } from '@/ui/components/card'
@@ -14,6 +15,7 @@ import { ProfileForm, ThemePicker } from '@/ui/components/settings-ui'
 import { SettingsRow, SettingsSection } from '@/ui/components/settings-layout'
 import { SettingsRail } from '@/ui/components/settings-rail'
 import { SystemFocus } from '@/ui/components/system-focus'
+import { TemplatesButton } from '@/ui/components/templates/templates-button'
 import { AreasSettings } from '@/ui/components/areas-settings'
 import { loadSignals } from '@/core/patterns'
 
@@ -33,6 +35,7 @@ export default function SettingsPage() {
         <div className="flex items-center gap-2">
           {/* A full load: the tour opens from the address on arrival. */}
           <a href="/?tour" className={buttonClass({ variant: 'ghost', size: 'sm' })}>Take the tour</a>
+          <TemplatesButton size="sm" locked={isDemo() ? DEMO_MESSAGE : undefined} />
           <Link href="/welcome" className={buttonClass({ variant: 'secondary', size: 'sm' })}>Run setup again</Link>
         </div>
       </div>

@@ -2,6 +2,7 @@ import type { Pack, PackGoal, PackRoutine, PackTracker } from '@relife/contract'
 import { addDays } from '@/core/time'
 import type { Category } from './categories'
 import { MAX_ACTIVE, checkGoalDraft, type RawGoalDraft } from './goals'
+import { buildRRule, describe } from './recurrence'
 import type { Template } from './templates'
 
 // Applying a starter pack to the answers of setup (/welcome): pure, so it is tested. `v` is the flow's state (`V` in
@@ -185,4 +186,13 @@ export function addedLine(n: { routines: number; trackers: number; goals: number
   const part = (c: number, one: string) => (c ? [`${c} ${c === 1 ? one : `${one}s`}`] : [])
   const parts = [...part(n.routines, 'routine'), ...part(n.trackers, 'tracker'), ...part(n.goals, 'goal')]
   return parts.length ? `Added ${parts.join(', ')}` : 'Nothing new to add'
+}
+
+/** "Daily · 07:00": a pack routine's rule in words, the way the Routines list says it. */
+export const describePackRule = (rule: PackRoutine['rule']) => describe(buildRRule({ ...rule, start: '2026-01-01' }))
+
+/** "4 routines · 1 goal": what a pack holds, for its card. */
+export function countsLine(pack: Pick<Pack, 'routines' | 'trackers' | 'goals'>) {
+  const part = (c: number, one: string) => (c ? [`${c} ${c === 1 ? one : `${one}s`}`] : [])
+  return [...part(pack.routines.length, 'routine'), ...part(pack.trackers.length, 'tracker'), ...part(pack.goals.length, 'goal')].join(' · ')
 }
