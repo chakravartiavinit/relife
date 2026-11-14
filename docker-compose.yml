@@ -5,8 +5,9 @@
 #   ... --profile ai                           adds a local AI model (Ollama).
 #   ... --profile demo                         a read-only demo with sample data, on port 3001.
 
+# One image runs migrate, web and worker. Only `migrate` has a `build:`; with three, Compose builds the same tag three
+# times in parallel and the exports collide ("image already exists"). The others wait for migrate, so the image exists.
 x-app: &app
-  build: .
   image: ${RELIFE_IMAGE:-relife:local}
   init: true
   # Your connector keys and settings from .env. The image has no .env of its own.
@@ -21,6 +22,8 @@ x-app: &app
     RELIFE_DATA_DIR: /data
     RELIFE_BACKUP_DIR: /backups
     RELIFE_BIND: 0.0.0.0
+    # The port published on the host, so `relife signin` can print the address you type.
+    RELIFE_HOST_PORT: ${RELIFE_PORT:-3030}
     RELIFE_ALLOWED_HOSTS: ${RELIFE_ALLOWED_HOSTS:-}
     RELIFE_PUBLIC_URL: ${RELIFE_PUBLIC_URL:-}
     LOCAL_LLM_URL: ${LOCAL_LLM_URL:-http://ollama:11434/v1}
@@ -46,6 +49,7 @@ services:
   # Runs once at every start: applies the migrations and creates the key file.
   migrate:
     <<: *app
+    build: .
     profiles: [app]
     command: migrate
     restart: "no"
@@ -54,6 +58,7 @@ services:
 
   web:
     <<: *app
+    pull_policy: never
     profiles: [app]
     command: web
     # Localhost only by default (safe on a server). Set RELIFE_LISTEN=0.0.0.0 to reach it from your network.
@@ -70,6 +75,7 @@ services:
 
   worker:
     <<: *app
+    pull_policy: never
     profiles: [app]
     command: worker
     restart: unless-stopped
@@ -111,6 +117,8 @@ services:
       interval: 5s
       retries: 10
 
+  # The demo has its own `build:` because `--profile demo up --build demo` starts neither migrate nor web. Do not combine
+  # it with the app profile on a cold build (two builds of one tag); build once with `docker compose --profile app build`.
   demo:
     build: .
     image: ${RELIFE_IMAGE:-relife:local}
