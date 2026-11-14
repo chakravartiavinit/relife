@@ -55,6 +55,11 @@ test('every pack goal passes checkGoalDraft, which also enforces the sensitivity
   }
 })
 
+test('the Fitness pack asks for the same steps its goal counts', () => {
+  const fit = BUILT_IN_PACKS.find((p) => p.id === 'fitness')!
+  assert.ok(fit.goals[0].title.includes(fit.targets!.steps!.toLocaleString('en-US')), 'the goal names the steps target')
+})
+
 test('a pack goal is a check-in measure with a baseline the user types, never a tracker the user lacks', () => {
   for (const p of BUILT_IN_PACKS) assert.ok('checkIn' in p.goals[0].measure, p.id)
   const raw = packGoalToRaw(pack('money').goals[0], '2026-11-13', () => undefined)
@@ -79,10 +84,10 @@ test('applyPack fills the answers the flow asks for', () => {
 
 test('switching packs applies the new one over the old; a pack without targets keeps them; Custom keeps everything', () => {
   const fit = applyPack(base, pack('fitness'))
-  assert.equal(fit.steps, 10000)
+  assert.equal(fit.steps, 8000)
   const money = applyPack(fit, pack('money'))
   assert.deepEqual([money.areas, money.templates, money.pack], [['wealth'], ['budget', 'log-spends', 'save', 'no-spend-day'], 'money'])
-  assert.deepEqual([money.steps, money.sleepHours], [10000, 7.5], 'Money sets no targets, so the earlier ones stay')
+  assert.deepEqual([money.steps, money.sleepHours], [8000, 7.5], 'Money sets no targets, so the earlier ones stay')
   const custom = applyPack(money, null)
   assert.deepEqual({ ...custom, pack: money.pack }, money)
   assert.equal(custom.pack, null)

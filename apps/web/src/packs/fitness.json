@@ -100,7 +100,7 @@
   ],
   "targets": {
     "sleepHours": 7.5,
-    "steps": 10000
+    "steps": 8000
   },
   "sources": [
     "strava",
