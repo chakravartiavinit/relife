@@ -28,9 +28,13 @@ test('one message fans out to Telegram and push, with the rules applied once', {
   outbox.senders.sendMessage = async (text) => { if (!telegram.ok) return null; telegram.sent.push(text); return ++nextId }
   outbox.senders.deleteMessage = async (id) => { telegram.deleted.push(id) }
   outbox.senders.sendPush = async (_user, p) => { push.sent.push({ tag: p.tag, title: p.title, renotify: p.renotify, actions: p.actions.length }); return push.ok }
-  const keys = ['TELEGRAM_BOT_TOKEN', 'TELEGRAM_ALLOWED_CHAT_ID'] as const
+  // A person's chat is the one they linked (users.profile.telegram); the typed-in TELEGRAM_ALLOWED_CHAT_ID is the owner's only.
+  const keys = ['TELEGRAM_BOT_TOKEN'] as const
+  let linkedChat = false
+  const profileNow = (categories: NonNullable<typeof user.profile.notifications>['categories'] = user.profile.notifications?.categories ?? {}) =>
+    ({ notifications: { quiet: null, categories }, ...(linkedChat ? { telegram: { chatId: 'test', linkedAt: new Date().toISOString() } } : {}) }) as typeof user.profile
   const saved = Object.fromEntries(keys.map((k) => [k, process.env[k]]))
-  const setTelegram = (on: boolean) => { for (const k of keys) { if (on) process.env[k] = 'test'; else delete process.env[k] } }
+  const setTelegram = (on: boolean) => { for (const k of keys) { if (on) process.env[k] = 'test'; else delete process.env[k] }; linkedChat = on; user.profile = profileNow() }
   const setPush = async (on: boolean) => {
     await db.delete(schema.pushSubscriptions).where(eq(schema.pushSubscriptions.userId, user.id))
     if (on) await db.insert(schema.pushSubscriptions).values({ userId: user.id, deviceId: device.id, endpoint: `https://push.example/${crypto.randomUUID()}`, p256dh: 'p'.repeat(20), auth: 'a'.repeat(12) })
@@ -42,7 +46,7 @@ test('one message fans out to Telegram and push, with the rules applied once', {
   }
   // No quiet hours, so the tests do not depend on the time of day.
   const setPrefs = async (categories: NonNullable<typeof user.profile.notifications>['categories']) => {
-    user.profile = { notifications: { quiet: null, categories } }
+    user.profile = profileNow(categories)
     await db.update(schema.users).set({ profile: user.profile }).where(eq(schema.users.id, user.id))
   }
   const rows = () => db.select().from(schema.notifications).where(eq(schema.notifications.userId, user.id))

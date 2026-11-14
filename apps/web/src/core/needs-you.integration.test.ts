@@ -15,11 +15,12 @@ test('the shell badge count equals the Coach list length', { skip: !enabled }, a
   const { getUser } = await import('./user')
   const { loadNeedsYou } = await import('./needs-you')
   const { loadShellStatus } = await import('./shell')
+  try {
   const user = await getUser()
   const [{ items }, status] = await Promise.all([loadNeedsYou(user), loadShellStatus(user)])
   assert.ok(items.length > 0, 'seed the mock database first: npm run mock:seed')
   assert.equal(items.length, status.needsYou.total)
   assert.equal(items.filter((i) => i.kind === 'categorise' || i.kind === 'unread').length, status.needsYou.data)
   assert.equal(items.filter((i) => i.kind !== 'categorise' && i.kind !== 'unread').length, status.needsYou.decisions)
-  await sql.end()
+  } finally { await sql.end() } // a failed assertion must not leave the pool open and hang the run
 })

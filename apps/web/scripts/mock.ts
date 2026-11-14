@@ -401,11 +401,11 @@ async function main() {
   await db.insert(schema.syncRuns).values(Array.from({ length: 10 }, (_, i) => {
     const id = r.pick(['github', 'binance', 'icloud-inbox', 'gmail', 'fx'])
     const startedAt = new Date(now.getTime() - (i * 37 + r.int(1, 30)) * 60_000)
-    return { connectorId: id, startedAt, finishedAt: new Date(startedAt.getTime() + r.int(400, 9000)), ok: id !== 'gmail', error: id === 'gmail' ? 'invalid_grant: token expired' : null, eventsCount: id === 'gmail' ? 0 : r.int(0, 14) }
+    return { userId: uid, connectorId: id, startedAt, finishedAt: new Date(startedAt.getTime() + r.int(400, 9000)), ok: id !== 'gmail', error: id === 'gmail' ? 'invalid_grant: token expired' : null, eventsCount: id === 'gmail' ? 0 : r.int(0, 14) }
   }))
   await db.insert(schema.heartbeats).values({ name: 'worker', at: now })
   await db.insert(schema.llmRuns).values(Array.from({ length: 18 }, (_, i) => ({
-    task: r.pick(['parse', 'ask', 'weekly-review', 'nudge']), model: 'anthropic:claude-sonnet-5-5', ok: i % 9 !== 0,
+    userId: uid, task: r.pick(['parse', 'ask', 'weekly-review', 'nudge']), model: 'anthropic:claude-sonnet-5-5', ok: i % 9 !== 0,
     inputTokens: r.int(400, 4000), outputTokens: r.int(60, 900), ms: r.int(700, 6000), createdAt: ago(r.int(0, 6)),
   })))
 
