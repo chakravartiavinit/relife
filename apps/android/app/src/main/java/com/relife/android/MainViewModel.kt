@@ -50,6 +50,8 @@ data class UiState(
     val confirm: Confirm? = null,
 ) {
     val missing: Set<String> get() = HealthAccess.permissions - granted
+    /** Each type stands alone: syncing starts as soon as one is allowed, and the rest are optional. */
+    val canRead: Boolean get() = missing.size < HealthAccess.permissions.size
     val backgroundGranted: Boolean get() = HealthAccess.BACKGROUND in granted
 }
 
@@ -87,12 +89,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     /** The scanner returned text. Anything that isn't a pairing link is told so, not silently dropped. */
     fun scanned(text: String) {
-        val link = PairLink.parse(text) ?: return fail("That isn't a pairing code. Scan the one on the \"Use on your phone\" page.")
+        val link = PairLink.parse(text)
+            ?: return fail(if (PairLink.isPlainPublicHttp(text)) NOT_ENCRYPTED else "That isn't a pairing code. Scan the one on the \"Use on your phone\" page.")
         if (link.encrypted) redeem(link) else _ui.update { it.copy(confirm = Confirm.Scan(link)) }
     }
 
     fun typed(address: String) {
-        val server = PairLink.normalizeServer(address) ?: return fail("That doesn't look like an address. Try something like 192.168.1.20:3030.")
+        val server = PairLink.normalizeServer(address)
+            ?: return fail(if (PairLink.isPlainPublicHttp(address)) NOT_ENCRYPTED else "That doesn't look like an address. Try something like 192.168.1.20:3030.")
         if (server.startsWith("https://")) request(server) else _ui.update { it.copy(confirm = Confirm.Typed(server)) }
     }
 
@@ -171,7 +175,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun syncNow() {
         prefs.recordNote(null)
-        Sync.now(getApplication())
+        Sync.now(getApplication(), replace = true)
         refresh()
     }
 
@@ -198,6 +202,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         is ApiException -> e.message.orEmpty()
         is IOException -> e.message?.takeIf { it.startsWith("That") || it.startsWith("The server") } ?: "Can't reach the server. Is this phone on the same network (or Tailscale)?"
         else -> e.message ?: "Something went wrong."
+    }
+
+    private companion object {
+        const val NOT_ENCRYPTED = "That address isn't encrypted, and it isn't on your home network or Tailscale. Use its https:// address."
     }
 
     private fun fail(message: String) = _ui.update { it.copy(error = message) }

@@ -65,4 +65,30 @@ class PairLinkTest {
         listOf("8.8.8.8", "172.32.0.1", "100.128.0.1", "100.63.0.1", "192.169.0.1", "example.com", "1.2.3", "300.1.1.1")
             .forEach { assertFalse(it, PairLink.isPrivateHost(it)) }
     }
+
+    @Test fun plainHttpIsOnlyForPrivateHosts() {
+        assertNull(PairLink.parse("http://relife.example.com/pair#s=$secret"))
+        assertNull(PairLink.parse("http://8.8.8.8:3030/pair#s=$secret"))
+        assertNull(PairLink.parse("relife://pair?server=http%3A%2F%2Frelife.example.com&s=$secret"))
+        assertNull(PairLink.normalizeServer("http://relife.example.com"))
+        assertTrue(PairLink.isPlainPublicHttp("http://relife.example.com"))
+        assertFalse(PairLink.isPlainPublicHttp("http://192.168.1.2:3030"))
+        assertFalse(PairLink.isPlainPublicHttp("https://relife.example.com"))
+        assertEquals("http://mymac.local:3030", PairLink.parse("http://mymac.local:3030/pair#s=$secret")!!.server)
+    }
+
+    @Test fun ipv6Hosts() {
+        listOf("::1", "[::1]", "fe80::1", "febf::1", "fd00::1", "fd7a:115c:a1e0::1234", "[fd7a:115c:a1e0:ab12::7]")
+            .forEach { assertTrue(it, PairLink.isPrivateHost(it)) }
+        listOf("2001:db8::1", "fec0::1", "fc00::1", "2607:f8b0:4005:80a::200e", "not:ipv6", "::2")
+            .forEach { assertFalse(it, PairLink.isPrivateHost(it)) }
+    }
+
+    @Test fun bracketedIpv6AddressesKeepTheirBracketsAndPorts() {
+        assertEquals("http://[fd7a:115c:a1e0::1234]:3030", PairLink.normalizeServer("[fd7a:115c:a1e0::1234]:3030"))
+        assertEquals("http://[::1]:3030", PairLink.normalizeServer("[::1]:3030"))
+        assertEquals("https://[2001:db8::1]:8443", PairLink.normalizeServer("[2001:db8::1]:8443"))
+        assertEquals("http://[fd7a:115c:a1e0::1234]:3030", PairLink.parse("http://[fd7a:115c:a1e0::1234]:3030/pair#s=$secret")!!.server)
+        assertNull(PairLink.parse("http://[2001:db8::1]:3030/pair#s=$secret"))
+    }
 }
