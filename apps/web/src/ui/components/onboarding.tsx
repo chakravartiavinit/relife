@@ -7,7 +7,8 @@ import { hideSetupChecklist } from '@/app/actions'
 import { Capsule } from './capsule'
 import { buttonClass } from './button'
 import { cn } from '../cn'
-import { env } from '@/core/env'
+import { envFor } from '@/core/env'
+import { telegramConfigured } from '@/core/notify'
 import { connectors } from '@/connectors'
 
 export type Step = { id: string; title: string; body: string; href: string; cta: string; done: boolean }
@@ -22,7 +23,7 @@ export async function onboardingSteps(user: User): Promise<Step[]> {
     db.select({ n: sql<number>`count(*)::int` }).from(schema.devices).where(and(eq(schema.devices.userId, user.id), eq(schema.devices.kind, 'phone'), isNull(schema.devices.revokedAt))),
     db.select({ n: sql<number>`count(*)::int` }).from(schema.imports).where(and(eq(schema.imports.userId, user.id), eq(schema.imports.status, 'done'), isNull(schema.imports.undoneAt))),
   ])
-  const has = (k: string) => !!env(k)
+  const has = (k: string) => !!envFor(user.id, k)
   // A data source connected anywhere counts, including the username ones from setup's Connect step (not Telegram or an AI key).
   const sources = on.some((c) => connectors.some((k) => k.id === c.id && k.category))
   return [
@@ -36,7 +37,7 @@ export async function onboardingSteps(user: User): Promise<Step[]> {
     },
     {
       id: 'telegram', title: 'Get reminders on Telegram', cta: 'Connect Telegram', href: '/you/connections',
-      body: 'Check things off with one tap from your phone.', done: has('TELEGRAM_BOT_TOKEN') && has('TELEGRAM_ALLOWED_CHAT_ID'),
+      body: 'Check things off with one tap from your phone.', done: telegramConfigured(user),
     },
     {
       id: 'sources', title: 'Connect GitHub, Binance or an order app', cta: 'Connect an app', href: '/you/connections',

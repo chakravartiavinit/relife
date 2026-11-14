@@ -3,7 +3,7 @@
 import { and, eq } from 'drizzle-orm'
 import { db, schema, sql } from '@/db'
 import { seedDemoAllowed } from '@/core/demo'
-import { getUser } from '@/core/user'
+import { ensureOwner } from '@/core/user'
 import { buildRRule } from '@/domain/recurrence'
 import { localDate } from '@/core/time'
 import { persist } from '@/core/ingest'
@@ -26,7 +26,7 @@ async function guard() {
 
 async function main() {
   await guard()
-  const user = await getUser()
+  const user = await ensureOwner() // the person who runs this server; outside a request there is no one else to ask
   const today = localDate(new Date(), user.timezone)
   const day1 = `${today.slice(0, 8)}01`
   const add = async (v: Omit<typeof schema.schedules.$inferInsert, 'userId'>) => {

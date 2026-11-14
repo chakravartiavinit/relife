@@ -2,7 +2,7 @@ import type { Hello } from '@relife/contract'
 import { findByToken } from '@/core/auth/devices'
 import { mode } from '@/core/auth/mode'
 import { tokenOf } from '@/core/auth/trust'
-import { getUser } from '@/core/user'
+import { warmInstance } from '@/core/user'
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import pkg from '../../../../../package.json'
@@ -14,7 +14,7 @@ export async function GET(req: Request) {
   let name: string | null = null
   const t = tokenOf(req.headers)
   if (t) {
-    await getUser()
+    await warmInstance() // the legacy token rows exist before the lookup; a bad token is name: null, never a 500
     const found = await findByToken(t.token)
     if (found.ok) {
       const [u] = await db.select({ name: schema.users.name }).from(schema.users).where(eq(schema.users.id, found.device.userId)).limit(1)

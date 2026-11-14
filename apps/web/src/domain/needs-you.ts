@@ -35,6 +35,8 @@ export type NeedsYouItem =
   /** `recovery` is null once the day it was for has gone by: the choice closed at midnight. */
   | { kind: 'recovery'; id: string; insight: InsightLite; recovery: RecoveryView | null; at: string }
   | { kind: 'goal-draft'; id: string; insight: InsightLite; draft: GoalDraft; at: string }
+  /** Someone on this server asked you into a party. Only the party's name and who asked: nothing of theirs. `id` is the party id. */
+  | { kind: 'party-invite'; id: string; party: string; from: string | null; members: number; at: string }
   | { kind: 'unread'; id: string; rawEventIds: string[]; summary: InboxSummary; reason: string; original: string; at: string }
   | { kind: 'categorise'; id: string; merchant: string; sampleTxnId: string; count: number; total: number; currency: string; at: string }
 
@@ -55,7 +57,7 @@ export function countNeedsYou(items: NeedsYouItem[]): NeedsYou {
   return { total: items.length, decisions: items.length - data, data }
 }
 
-const ORDER: NeedsYouKind[] = ['recovery', 'alert', 'review', 'goal-draft', 'plan', 'nudge', 'unread', 'categorise']
+const ORDER: NeedsYouKind[] = ['recovery', 'alert', 'review', 'goal-draft', 'party-invite', 'plan', 'nudge', 'unread', 'categorise']
 
 /** Is this nudge past its three days? (The SQL behind the badge applies the same rule to `created_at`.) */
 export const nudgeExpired = (at: string, now: Date) => now.getTime() - new Date(at).getTime() >= NUDGE_TTL_DAYS * 86_400_000

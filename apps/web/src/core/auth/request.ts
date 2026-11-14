@@ -2,7 +2,7 @@ import brand from '@relife/brand/brand.json'
 import { eq } from 'drizzle-orm'
 import type { ApiError, Scope } from '@relife/contract'
 import { db, schema } from '@/db'
-import { getUser, type User } from '../user'
+import { getUser, warmInstance, type User } from '../user'
 import { findByToken, touchIfDue, type Device } from './devices'
 import { COOKIE_MAX_AGE_S } from './mode'
 import { DEMO_MESSAGE, demoDevice, demoMethodAllowed, isDemo } from '../demo'
@@ -20,9 +20,12 @@ export async function authenticate(req: Request, scope: Scope): Promise<Authed |
   // Read the request before any database call: that makes `next build` treat the route as dynamic instead of
   // prerendering it (a prerender would query the database, which the Docker build doesn't have).
   const t = tokenOf(req.headers)
-  const me = await getUser() // loads saved keys; with them the legacy ACTIVITY_TOKEN and INGEST_TOKEN rows exist before the lookup
   // The read-only demo: everyone is one synthetic browser, for reads only (the gate has already refused the rest).
-  if (isDemo()) return demoMethodAllowed(req.method) && req.method !== 'OPTIONS' ? { ok: true, device: demoDevice(me.id), user: me, via: 'cookie' } : { ok: false, reason: 'demo' }
+  if (isDemo()) {
+    const me = await getUser() // the demo has one person
+    return demoMethodAllowed(req.method) && req.method !== 'OPTIONS' ? { ok: true, device: demoDevice(me.id), user: me, via: 'cookie' } : { ok: false, reason: 'demo' }
+  }
+  await warmInstance() // the server's keys, and with them the legacy ACTIVITY_TOKEN and INGEST_TOKEN rows, exist before the lookup
   if (!t) return { ok: false, reason: 'missing' }
   const found = await findByToken(t.token)
   if (!found.ok) return { ok: false, reason: found.reason }
@@ -30,7 +33,7 @@ export async function authenticate(req: Request, scope: Scope): Promise<Authed |
   if (!scopeAllows(found.device.scopes, scope)) return { ok: false, reason: 'scope' }
   await touchIfDue(found.device).catch((e) => console.error('[auth] touch failed', e instanceof Error ? e.message : e))
   const [user] = await db.select().from(schema.users).where(eq(schema.users.id, found.device.userId)).limit(1)
-  if (!user) return { ok: false, reason: 'invalid' }
+  if (!user || user.disabledAt) return { ok: false, reason: 'invalid' }
   return { ok: true, device: found.device, user, via: t.via }
 }
 

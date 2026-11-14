@@ -82,6 +82,7 @@ export const anki: Connector = {
   env: [],
   everyMinutes: 60,
   reach: 'lan',
+  hostLocal: true,
   async check(get) {
     // Anki is often closed when you connect, and that is fine: only a wrong address or key is a problem to fix now.
     await call(ankiUrl(get('ANKI_CONNECT_URL')), get('ANKI_CONNECT_KEY')?.trim() || undefined, 'version').catch((e) => { if (!isNotOpen(e)) throw e })

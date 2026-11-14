@@ -75,6 +75,22 @@ Subscriptions stay out of exports; a backup holds them (and `data/vapid.json`, t
 - Exports and backups, until you move them yourself.
 - Window contents: the Mac watcher records only the name of the app in front and the time.
 
+## Sharing a server
+
+One ReLife server can hold several people (a household or friends; built for about ten). Each person has their own routines,
+money, keys and devices, and the app only ever shows you your own.
+
+- **The person who runs the server can read everything stored on it**, including the other people's data and their saved
+  connector keys (one server encryption key protects them all). Tell the people you invite. The invite dialog says so.
+- Members use the owner's AI model by default, so what is sent to the provider goes under the owner's key. The owner can turn
+  this off, and sees how many calls each person made, never what was in them.
+- **Party mode** is opt-in. People in a party see only what each of them ticked: name, level, streak, today as a count, quest
+  progress as a percentage, achievement names. Never values, health numbers, money, routine names, notes, goals, Coach messages
+  or sources. Nobody is ranked. Whether you are on track for the party quest counts even if you tick nothing.
+- Each person can export or delete their own data. The owner cannot delete theirs while others are on the server, and an
+  import into a shared server is refused (it would replace everyone). Backups cover the whole server and are the owner's.
+- Telegram: one bot per server; each person links their own chat, and a chat that nobody linked gets nothing.
+
 ## Your copy of the data
 
 - **Export** (`GET /api/export`, the Export button): a ZIP with one JSON Lines file per table, CSVs of entries, payments,

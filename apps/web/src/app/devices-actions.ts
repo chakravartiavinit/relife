@@ -4,6 +4,7 @@ import brand from '@relife/brand/brand.json'
 import { cookies, headers } from 'next/headers'
 import { z } from 'zod'
 import type { DeviceKind } from '@relife/contract'
+import { mayAnswerRequest, visibleRequests } from '@/core/people'
 import { getUser, mergeProfile } from '@/core/user'
 import { pairBase, type PairBase } from '@/core/auth/base-url'
 import { loadReach, type ReachId } from '@/core/auth/reach'
@@ -78,7 +79,7 @@ export async function offerState(id: string) {
 /** Devices waiting to be approved (flow B), for the list and the banner. */
 export async function waitingDevices(): Promise<WaitingDevice[]> {
   await requireDevice()
-  return (await pendingRequests()).map(toWaiting)
+  return (await visibleRequests(await getUser())).map(toWaiting)
 }
 
 /** The code typed into the dialog (what a device is showing): the waiting device it belongs to, or why not. */
@@ -97,18 +98,25 @@ export async function findWaitingByCode(code: string): Promise<{ ok: true; devic
 export async function waitingById(id: string): Promise<WaitingDevice | null> {
   await requireDevice()
   const p = await requestById(z.uuid().parse(id))
-  return p ? toWaiting(p) : null
+  // By id only for the owner: a member finds a device by the code it shows (findWaitingByCode).
+  return p && (await mayAnswerRequest(await getUser(), p)) ? toWaiting(p) : null
 }
 
-export async function approveDevice(id: string) {
+const NOT_YOURS = 'This request is not yours to answer. Type the code the device is showing.'
+
+export async function approveDevice(id: string, code?: string) {
   const device = await requireDevice()
+  const waiting = await requestById(z.uuid().parse(id))
+  if (waiting && !(await mayAnswerRequest(await getUser(), waiting, z.string().max(40).optional().parse(code)))) return { ok: false as const, error: NOT_YOURS }
   const p = await approveRequest({ id: z.uuid().parse(id), userId: device.userId, deviceId: device.id })
   revalidatePath('/you/settings/devices')
   return p ? { ok: true as const, name: p.deviceName ?? 'Device' } : { ok: false as const, error: 'This request expired or was already answered. Ask the device to connect again.' }
 }
 
-export async function denyDevice(id: string) {
+export async function denyDevice(id: string, code?: string) {
   const device = await requireDevice()
+  const waiting = await requestById(z.uuid().parse(id))
+  if (waiting && !(await mayAnswerRequest(await getUser(), waiting, z.string().max(40).optional().parse(code)))) return { ok: false }
   const ok = await denyRequest({ id: z.uuid().parse(id), userId: device.userId })
   revalidatePath('/you/settings/devices')
   return { ok }

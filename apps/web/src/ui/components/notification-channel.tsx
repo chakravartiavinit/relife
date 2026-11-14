@@ -2,9 +2,10 @@
 
 import Link from 'next/link'
 import { useState, useTransition } from 'react'
-import { BellRing, Check, Loader2, MessageSquare, Send } from 'lucide-react'
+import { BellRing, Check, ExternalLink, Loader2, MessageSquare, Send, Unlink } from 'lucide-react'
 import type { Channel } from '@/domain/notify'
 import { sendTestMessage } from '@/app/actions'
+import { linkTelegramAction, unlinkTelegramAction } from '@/app/people-actions'
 import { Button, buttonClass } from './button'
 import { Card, SystemLabel } from './card'
 import { cn } from '../cn'
@@ -20,7 +21,27 @@ const NAME: Record<Channel, string> = { telegram: 'Telegram', push: 'push' }
  * through the outbox (once Telegram is connected), and what the last 7 days did. The test obeys the user's own settings like real messages do, and says
  * which channels took it, or when they hold it back. `push` stands in for the live push row (the gallery draws its states).
  */
-export function NotificationChannel({ telegram, stats, pushDevices, push, locked }: { telegram: boolean; stats: ChannelStats; pushDevices: number; push?: React.ReactNode; locked?: string }) {
+export type TelegramLink = {
+  /** The server's bot token is set, so a person can link their own chat to it. */
+  bot: boolean
+  /** This person's chat is linked (not just the owner's old typed-in chat id). */
+  linked: boolean
+  /** Someone who does not run the server: the bot is the owner's to set up. */
+  member: boolean
+  owner?: string
+}
+
+export function NotificationChannel({ telegram, stats, pushDevices, push, locked, link }: { telegram: boolean; stats: ChannelStats; pushDevices: number; push?: React.ReactNode; locked?: string; link?: TelegramLink }) {
+  const [code, setCode] = useState<{ url: string; code: string } | null>(null)
+  const [linkError, setLinkError] = useState<string | null>(null)
+  const [linking, startLink] = useTransition()
+  const [unlinked, setUnlinked] = useState(false)
+  const makeLink = () => startLink(async () => {
+    setLinkError(null)
+    const r = await linkTelegramAction().catch(() => ({ ok: false as const, error: 'Couldn’t make a link. Try again.' }))
+    if (r.ok) { setCode({ url: r.url, code: r.code }); window.open(r.url, '_blank', 'noopener') } else setLinkError(r.error)
+  })
+  const unlink = () => startLink(async () => { const r = await unlinkTelegramAction().catch(() => null); if (r?.ok) setUnlinked(true) })
   const [devices, setDevices] = useState(pushDevices)
   const [pending, start] = useTransition()
   const [result, setResult] = useState<Result | null>(null)
@@ -67,7 +88,31 @@ export function NotificationChannel({ telegram, stats, pushDevices, push, locked
           </p>
         </div>
       ) : null}
-      {telegram ? null : (
+      {link && telegram && link.linked && !unlinked ? (
+        <Button variant="ghost" size="sm" onClick={unlink} disabled={linking} className="self-start"><Unlink className="size-4" strokeWidth={1.5} aria-hidden />Unlink this chat</Button>
+      ) : null}
+      {link && (!telegram || unlinked) ? (
+        link.bot ? (
+          <div className="flex flex-col gap-2">
+            <Button onClick={makeLink} disabled={linking || !!locked} className="w-full">
+              {linking ? <Loader2 className="size-4 animate-spin" strokeWidth={1.5} aria-hidden /> : <BellRing className="size-4" strokeWidth={1.5} aria-hidden />}
+              {code ? 'Make a new link' : 'Link Telegram'}
+            </Button>
+            {code ? (
+              <p role="status" className="text-small text-ink-2">
+                <a href={code.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-pill-ink hover:underline">Open Telegram<ExternalLink className="size-3.5" aria-hidden /></a>
+                {' '}and press Start. Or send <span className="font-mono tabular-nums">/start {code.code}</span> to the bot. It works once, for 10 minutes.
+              </p>
+            ) : <p className="text-caption text-ink-3">Opens the bot in Telegram. Only this chat gets your messages.</p>}
+            {linkError ? <p role="alert" className="text-small text-bad">{linkError}</p> : null}
+          </div>
+        ) : link.member ? (
+          <p className="text-small text-ink-3">{link.owner ?? 'The person who runs this server'} hasn’t set up a Telegram bot yet. Ask them to add the bot token in Connections.</p>
+        ) : (
+          <Link href="/you/connections?peek=connector:telegram" className={buttonClass({ variant: devices > 0 ? 'secondary' : 'primary', className: 'w-full' })}><BellRing className="size-4" strokeWidth={1.5} aria-hidden />Connect Telegram</Link>
+        )
+      ) : null}
+      {link ? null : telegram ? null : (
         <Link href="/you/connections?peek=connector:telegram" className={buttonClass({ variant: devices > 0 ? 'secondary' : 'primary', className: 'w-full' })}><BellRing className="size-4" strokeWidth={1.5} aria-hidden />Connect Telegram</Link>
       )}
       <dl className="grid grid-cols-3 gap-3 border-t border-divider pt-4 text-center">

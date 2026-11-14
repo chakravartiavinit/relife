@@ -3,13 +3,17 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
-import { gte, sql } from 'drizzle-orm'
+import { and, eq, gte, sql } from 'drizzle-orm'
 import { ArrowUpRight } from 'lucide-react'
 import { db, schema } from '@/db'
 import { DEMO_MESSAGE, isDemo } from '@/core/demo'
 import { getUser } from '@/core/user'
 import { aiEnabled, modelId, type Task } from '@/ai'
+import { listInvites } from '@/core/auth/pairing'
+import { listUsers } from '@/core/multi-user'
+import { listPeople } from '@/core/people'
 import { Badge, Skeleton } from '@/ui/components/card'
+import { PeopleOnServer, ShareAiSwitch } from '@/ui/components/people-on-server'
 import { buttonClass } from '@/ui/components/button'
 import { ProfileForm, ThemePicker } from '@/ui/components/settings-ui'
 import { SettingsRow, SettingsSection } from '@/ui/components/settings-layout'
@@ -63,14 +67,27 @@ async function Settings() {
   await connection()
   const user = await getUser()
   const since = new Date(Date.now() - 30 * 86_400_000)
-  const [[llm], { signals }] = await Promise.all([
+  const everyone = await listUsers()
+  const owner = everyone.find((u) => u.role === 'owner') ?? everyone[0]
+  const isOwner = user.id === owner?.id
+  const shareAi = owner?.profile.instance?.shareAi !== false
+  const [[llm], { signals }, people, invites, perPerson] = await Promise.all([
     db.select({
       calls: sql<number>`count(*)::int`,
       failed: sql<number>`count(*) filter (where not ${schema.llmRuns.ok})::int`,
       tokens: sql<number>`coalesce(sum(${schema.llmRuns.inputTokens}), 0)::int + coalesce(sum(${schema.llmRuns.outputTokens}), 0)::int`,
-    }).from(schema.llmRuns).where(gte(schema.llmRuns.createdAt, since)),
+    }).from(schema.llmRuns).where(and(eq(schema.llmRuns.userId, user.id), gte(schema.llmRuns.createdAt, since))),
     loadSignals(user),
+    isOwner ? listPeople(user) : Promise.resolve([]),
+    isOwner && !isDemo() ? listInvites(user.id) : Promise.resolve([]),
+    isOwner ? db.select({
+      userId: schema.llmRuns.userId,
+      calls: sql<number>`count(*)::int`,
+      tokens: sql<number>`coalesce(sum(${schema.llmRuns.inputTokens}), 0)::int + coalesce(sum(${schema.llmRuns.outputTokens}), 0)::int`,
+    }).from(schema.llmRuns).where(gte(schema.llmRuns.createdAt, since)).groupBy(schema.llmRuns.userId) : Promise.resolve([]),
   ])
+  const usage = new Map(perPerson.map((r) => [r.userId, r]))
+  const allowed = isOwner || shareAi // the owner may turn the shared model off for everyone else
 
   return (
     <>
@@ -93,6 +110,19 @@ async function Settings() {
         </SettingsRow>
       </SettingsSection>
 
+      {isOwner && !isDemo() ? (
+        <PeopleOnServer
+          people={people.map((p) => ({ id: p.id, name: p.name, role: p.role, you: p.id === user.id, devices: p.devices, lastSeenAt: p.lastSeenAt?.toISOString() ?? null }))}
+          invites={invites.map((i) => ({ id: i.id, expiresAt: i.expiresAt.toISOString(), expired: i.expired }))}
+        />
+      ) : !isOwner ? (
+        <SettingsSection id="people" title="This server" description={`You use ${brand.name} on ${owner?.name ?? 'someone'}’s server. Your routines, money and keys are yours alone, but the person who runs a server can read everything on it, so keep that in mind.`}>
+          <SettingsRow label="Run by" hint="The owner can remove you and everything you added.">
+            <span className="text-body text-ink">{owner?.name}</span>
+          </SettingsRow>
+        </SettingsSection>
+      ) : null}
+
       <SettingsSection
         id="ai"
         title="AI"
@@ -105,23 +135,44 @@ async function Settings() {
           </SettingsRow>
         ) : TASKS.map(({ task, label, hint }) => {
           const id = modelId(task)
-          const ok = aiEnabled(task)
+          const ok = allowed && aiEnabled(task)
           return (
             <SettingsRow key={task} label={label} hint={hint}>
               <div className="flex flex-wrap items-center gap-2.5">
                 <code className="min-w-0 truncate rounded-sm bg-surface-2 px-2 py-1 text-[12.5px] text-ink">{id ?? 'No model'}</code>
-                <Badge color={ok ? 'var(--good)' : id ? 'var(--bad)' : undefined}>{ok ? 'Ready' : id ? 'Key missing' : 'Not set'}</Badge>
+                <Badge color={ok ? 'var(--good)' : id ? 'var(--bad)' : undefined}>{ok ? 'Ready' : !allowed ? `Turned off by ${owner?.name ?? 'the owner'}` : id ? 'Key missing' : 'Not set'}</Badge>
               </div>
             </SettingsRow>
           )
         })}
-        <SettingsRow label="Usage" hint="Last 30 days.">
+        {isOwner && everyone.length > 1 && !isDemo() ? <ShareAiSwitch initial={shareAi} /> : null}
+        {!isOwner ? (
+          <SettingsRow label="Shared by" hint={shareAi ? `You use ${owner?.name ?? 'the owner'}’s model. Your own calls are counted below.` : `${owner?.name ?? 'The owner'} turned the model off for everyone else.`}>
+            <Badge color={shareAi ? 'var(--good)' : 'var(--warn)'}>{shareAi ? 'On' : 'Off'}</Badge>
+          </SettingsRow>
+        ) : null}
+        <SettingsRow label="Usage" hint={isOwner && everyone.length > 1 ? 'Yours, last 30 days.' : 'Last 30 days.'}>
           <dl className="grid max-w-md grid-cols-3 gap-2">
             <Usage label="Calls" value={fmt(llm?.calls ?? 0)} />
             <Usage label="Tokens" value={fmt(llm?.tokens ?? 0)} />
             <Usage label="Failed" value={fmt(llm?.failed ?? 0)} bad={!!llm?.failed} />
           </dl>
         </SettingsRow>
+        {isOwner && everyone.length > 1 ? (
+          <SettingsRow label="Usage by person" hint="Last 30 days. Counts calls to the model you connected.">
+            <ul className="flex max-w-md flex-col gap-1.5">
+              {people.map((p) => {
+                const u = usage.get(p.id)
+                return (
+                  <li key={p.id} className="flex items-baseline justify-between gap-3 text-small">
+                    <span className="min-w-0 truncate text-ink">{p.name}{p.id === user.id ? ' (you)' : ''}</span>
+                    <span className="shrink-0 text-ink-3 tabular-nums">{fmt(u?.calls ?? 0)} calls · {fmt(u?.tokens ?? 0)} tokens</span>
+                  </li>
+                )
+              })}
+            </ul>
+          </SettingsRow>
+        ) : null}
       </SettingsSection>
     </>
   )

@@ -1,15 +1,103 @@
-// Connected keys live in this map, not in process.env. Changing process.env inside the Next dev
-// server makes Turbopack rebuild and reload the page in a loop, so applySecrets() fills this instead.
+// Connected keys live in these maps, not in process.env. Changing process.env inside the Next dev
+// server makes Turbopack rebuild and reload the page in a loop, so applySecrets() fills them instead.
 // No imports: connectors, the bot and the AI layer all read through here.
+//
+// A key has a scope (core/integrations.ts `isInstanceKey`):
+//   instance  AI provider keys, LLM_*, the Telegram bot token, OAuth app credentials. One value for the whole server,
+//             set by the owner (`__relifeInstanceKeys`, then process.env).
+//   user      connector keys and tokens. One value per person (`__relifeUserKeys`), read for the person `runAs()` set.
+// With exactly one person loaded and no `runAs()`, a user key reads that person's value: that is how a single-user
+// install, a script and the tests behave. With several, no `runAs()` means no answer: it fails closed, so one person's
+// Binance key can never serve another.
 
-const g = globalThis as unknown as { __relifeKeys?: Map<string, string | undefined> }
+type Keys = Map<string, string | undefined>
+const g = globalThis as unknown as {
+  __relifeInstanceKeys?: Keys
+  __relifeUserKeys?: Map<string, Keys>
+  __relifeKeyScope?: Set<string>
+  __relifeMulti?: boolean
+  __relifeScope?: { getStore(): { user: { id: string; role?: string } } | undefined }
+  __relifeWarned?: Set<string>
+}
+
+// What anyone may read from the server's own environment, whoever they are: how the server runs (RELIFE_*, NODE_ENV,
+// PORT, TZ, HOSTNAME, DATABASE_URL, CHROME_PATH) and its shared keys (the AI providers and LLM_* — the AI layer decides
+// who may use them — the Telegram bot token, OAuth app credentials; the same set as core/integrations.ts `isInstanceKey`,
+// a test keeps them in step). Every other name is a person's own, so a member whose keys are not loaded reads nothing:
+// that holds even if no other module has loaded, because the allow-list is here, not registered from elsewhere.
+const SERVER_NAMES = /^(RELIFE_|LLM_|NODE_ENV$|PORT$|TZ$|HOSTNAME$|DATABASE_URL$|CHROME_PATH$|LOCAL_LLM_URL$|TELEGRAM_BOT_TOKEN$|ANTHROPIC_API_KEY$|OPENAI_API_KEY$|GOOGLE_GENERATIVE_AI_API_KEY$|OPENROUTER_API_KEY$)|_CLIENT_(ID|SECRET)$/
+export const isServerName = (name: string) => SERVER_NAMES.test(name)
+
+const warn = (name: string) => {
+  const seen = (g.__relifeWarned ??= new Set())
+  if (seen.has(name)) return
+  seen.add(name)
+  console.error(`[env] ${name} was read outside a signed-in context while several people share this server: returning nothing. Wrap the code in runAs(user, …).`)
+}
 
 /** A connector key: the connected value if ReLife manages it, else plain process.env. */
 export function env(name: string): string | undefined {
-  const m = g.__relifeKeys
+  if (g.__relifeKeyScope?.has(name)) {
+    const m = g.__relifeInstanceKeys
+    return m?.has(name) ? m.get(name) : process.env[name] || undefined
+  }
+  const users = g.__relifeUserKeys
+  const who = g.__relifeScope?.getStore()?.user
+  // A member whose keys are not loaded yet reads only the server's own settings: the rest of the process env is the owner's.
+  if (who && who.role !== 'owner' && !users?.has(who.id) && !isServerName(name)) return undefined
+  if (!users?.size) return process.env[name] || undefined
+  const me = who?.id
+  let m = me ? users.get(me) : undefined
+  if (!m && !me) {
+    if (users.size === 1 && !g.__relifeMulti) m = users.values().next().value
+    else {
+      // Several people: only a managed key is withheld; anything else (RELIFE_PUBLIC_URL, …) is the server's own.
+      for (const k of users.values()) if (k.has(name)) { warn(name); return undefined }
+      return process.env[name] || undefined
+    }
+  }
   return m?.has(name) ? m.get(name) : process.env[name] || undefined
 }
 
-export function setKeys(values: Map<string, string | undefined>) {
-  g.__relifeKeys = values
+/** One person's key by id, for code that handles several people in one go (a notification to someone else). */
+export function envFor(userId: string, name: string): string | undefined {
+  if (g.__relifeKeyScope?.has(name)) return env(name)
+  const m = g.__relifeUserKeys?.get(userId)
+  // Several people and this one's keys are not loaded: only the server's own settings, never the owner's .env value.
+  if (!m && g.__relifeMulti && !isServerName(name)) return undefined
+  return m?.has(name) ? m.get(name) : process.env[name] || undefined
+}
+
+/** Fill one person's keys. The first call with nothing else loaded is also the single-user fallback. */
+export function setUserKeys(userId: string, values: Keys) {
+  ;(g.__relifeUserKeys ??= new Map()).set(userId, values)
+}
+
+/** Forget a person's keys (they were removed). */
+export function dropUserKeys(userId: string) {
+  g.__relifeUserKeys?.delete(userId)
+}
+
+export function setInstanceKeys(values: Keys, names: Iterable<string>) {
+  g.__relifeInstanceKeys = values
+  g.__relifeKeyScope = new Set(names)
+}
+
+/** Said by the code that lists people (`warmInstance`, the worker): more than one means no fallback to "the" user. */
+export function setMulti(multi: boolean) {
+  g.__relifeMulti = multi
+}
+
+/** For tests: forget everything. */
+export function resetKeys() {
+  g.__relifeInstanceKeys = undefined
+  g.__relifeUserKeys = undefined
+  g.__relifeKeyScope = undefined
+  g.__relifeMulti = false
+  g.__relifeWarned = undefined
+}
+
+/** The whole user-key map for one anonymous person: tests and scripts that set keys without a database. */
+export function setKeys(values: Keys) {
+  g.__relifeUserKeys = new Map([['', values]])
 }

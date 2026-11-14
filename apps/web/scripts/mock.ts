@@ -73,6 +73,7 @@ async function main() {
   // Fixed id: a running mock server caches the user, so reseeding live keeps working.
   const [user] = await db.insert(schema.users).values({
     id: '00000000-0000-4000-8000-00000000a1e5',
+    role: 'owner',
     name: process.env.RELIFE_USER_NAME || 'Alex',
     timezone: tz,
     baseCurrency: process.env.RELIFE_BASE_CURRENCY || 'INR',
@@ -400,11 +401,11 @@ async function main() {
   await db.insert(schema.syncRuns).values(Array.from({ length: 10 }, (_, i) => {
     const id = r.pick(['github', 'binance', 'icloud-inbox', 'gmail', 'fx'])
     const startedAt = new Date(now.getTime() - (i * 37 + r.int(1, 30)) * 60_000)
-    return { connectorId: id, startedAt, finishedAt: new Date(startedAt.getTime() + r.int(400, 9000)), ok: id !== 'gmail', error: id === 'gmail' ? 'invalid_grant: token expired' : null, eventsCount: id === 'gmail' ? 0 : r.int(0, 14) }
+    return { userId: uid, connectorId: id, startedAt, finishedAt: new Date(startedAt.getTime() + r.int(400, 9000)), ok: id !== 'gmail', error: id === 'gmail' ? 'invalid_grant: token expired' : null, eventsCount: id === 'gmail' ? 0 : r.int(0, 14) }
   }))
   await db.insert(schema.heartbeats).values({ name: 'worker', at: now })
   await db.insert(schema.llmRuns).values(Array.from({ length: 18 }, (_, i) => ({
-    task: r.pick(['parse', 'ask', 'weekly-review', 'nudge']), model: 'anthropic:claude-sonnet-5-5', ok: i % 9 !== 0,
+    userId: uid, task: r.pick(['parse', 'ask', 'weekly-review', 'nudge']), model: 'anthropic:claude-sonnet-5-5', ok: i % 9 !== 0,
     inputTokens: r.int(400, 4000), outputTokens: r.int(60, 900), ms: r.int(700, 6000), createdAt: ago(r.int(0, 6)),
   })))
 

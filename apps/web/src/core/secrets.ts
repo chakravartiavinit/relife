@@ -2,16 +2,18 @@ import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { and, asc, eq, isNotNull, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
-import { MANAGED_ENV, integration, type Integration } from './integrations'
-import { setKeys } from './env'
+import { INSTANCE_ENV, MANAGED_ENV, integration, integrationScope, isInstanceKey, type Integration } from './integrations'
+import { envFor, setInstanceKeys, setUserKeys } from './env'
+import { ownerId } from './multi-user'
+import { HOST_LOCAL } from './platform'
 import { dataDir } from './paths'
 import type { SetupField } from './types'
 
 // Keys typed into the Connect dialog are stored AES-256-GCM encrypted in connections.secrets_encrypted.
 // The encryption key is RELIFE_SECRET_KEY (32 bytes, base64) or a file created on first use in the data folder (core/paths.ts).
 //
-// ponytail: one global key map (core/env.ts). Single user, so that is enough for connectors, the bot
-// and the AI layer. Multi-user needs per-user lookups instead.
+// Keys have a scope (core/integrations.ts `isInstanceKey`): instance keys (AI, the Telegram bot, OAuth apps) are the
+// owner's and serve everyone; the rest are each person's own, loaded into that person's map (core/env.ts).
 
 /** .env values. Blank dialog fields fall back to these. */
 const FROM_ENV: Record<string, string | undefined> = Object.fromEntries(MANAGED_ENV.map((k) => [k, process.env[k] || undefined]))
@@ -100,41 +102,71 @@ function stored(row: { secretsEncrypted: Buffer | null }) {
 }
 
 /**
- * Load what the user connected into the key map read by env(). Integrations that aren't connected
- * read as unset, even when .env has them; .env values only fill blanks for connected ones.
+ * Load what a person connected into their key map, read by env() while code runs as them. Integrations that aren't
+ * connected read as unset, even when .env has them; .env values only fill blanks for connected ones, and only for the
+ * owner (the .env is the server's: it must not hand a member the owner's own Binance key). Instance keys are not loaded
+ * here: they come from the owner's connections (`applyInstanceSecrets`).
  */
 export async function applySecrets(userId: string) {
   // A missing key must not take the app down: saved keys read as not saved (connections fall back to .env), and
   // Connect explains the problem. Logged once.
   const problem = await keyProblem()
   if (problem && !warned) { warned = true; console.error('[secrets]', problem) }
+  const owner = await ownerId()
+  const mine = userId === owner || !owner
   const rows = await db.select().from(schema.connections)
     .where(and(eq(schema.connections.userId, userId), eq(schema.connections.enabled, true)))
     .orderBy(asc(schema.connections.updatedAt)) // later connections win shared keys like LLM_DEFAULT
-  const keys = new Map<string, string | undefined>(MANAGED_ENV.map((k) => [k, undefined]))
+  const keys = new Map<string, string | undefined>(MANAGED_ENV.filter((k) => !isInstanceKey(k)).map((k) => [k, undefined]))
   for (const row of rows) {
     const spec = integration(row.connectorId)
     if (!spec) continue
     const saved = stored(row)
     for (const k of new Set([...spec.required, ...spec.fields.map((f) => f.env)])) {
-      const v = saved[k] || FROM_ENV[k]
+      if (isInstanceKey(k)) continue
+      const v = saved[k] || (mine ? FROM_ENV[k] : undefined)
       if (v) keys.set(k, v)
     }
   }
-  setKeys(keys)
+  setUserKeys(userId, keys)
+  // The owner's own save may have changed a server key (an AI key): make it count at once in this process.
+  if (mine) await applyInstanceSecrets()
   // Saved tokens are unreadable without the key: syncing now would delete the legacy device rows (and forget a
   // revocation, so restoring the key would bring a revoked token back).
   if (!problem) await syncLegacyOnce(userId)
 }
 
+/** The server's keys, from the owner's connections: AI providers, the Telegram bot token and OAuth app credentials. */
+export async function applyInstanceSecrets() {
+  const owner = await ownerId()
+  const keys = new Map<string, string | undefined>(INSTANCE_ENV.map((k) => [k, undefined]))
+  if (owner) {
+    const rows = await db.select().from(schema.connections)
+      .where(and(eq(schema.connections.userId, owner), eq(schema.connections.enabled, true)))
+      .orderBy(asc(schema.connections.updatedAt))
+    for (const row of rows) {
+      const spec = integration(row.connectorId)
+      if (!spec) continue
+      const saved = stored(row)
+      for (const k of new Set([...spec.required, ...spec.fields.map((f) => f.env)])) {
+        if (!isInstanceKey(k)) continue
+        const v = saved[k] || FROM_ENV[k]
+        if (v) keys.set(k, v)
+      }
+    }
+  }
+  setInstanceKeys(keys, INSTANCE_ENV)
+}
+
 // ACTIVITY_TOKEN and INGEST_TOKEN become device rows (src/core/auth/devices.ts). Keys load often, so only a change is synced.
-let legacySeen = ''
+const legacySeen = new Map<string, string>()
 async function syncLegacyOnce(userId: string) {
-  const { env } = await import('./env')
-  const fingerprint = `${userId}|${env('ACTIVITY_TOKEN') ?? ''}|${env('INGEST_TOKEN') ?? ''}`
-  if (fingerprint === legacySeen) return
-  await (await import('./auth/devices')).syncLegacyTokens(userId)
-  legacySeen = fingerprint
+  const { envFor } = await import('./env')
+  const get = (k: string) => envFor(userId, k)
+  const fingerprint = `${userId}|${get('ACTIVITY_TOKEN') ?? ''}|${get('INGEST_TOKEN') ?? ''}`
+  if (legacySeen.get(userId) === fingerprint) return
+  await (await import('./auth/devices')).syncLegacyTokens(userId, get)
+  legacySeen.set(userId, fingerprint)
 }
 
 /** Which fields already have a value, for the dialog. Secret values never leave the server. */
@@ -190,9 +222,15 @@ export async function connect(userId: string, id: string, input: Record<string, 
   if (problem) return { ok: false, error: problem }
   const spec = integration(id)
   if (!spec) return { ok: false, error: 'Unknown connector.' }
+  // Server keys (AI, the Telegram bot, an OAuth app) are the owner's to set; a member uses them, never writes them.
+  const owner = await ownerId()
+  const isOwner = !owner || owner === userId
+  if (!isOwner && integrationScope(id) === 'instance') return { ok: false, error: 'This is set up by the person who runs this server.' }
+  if (!isOwner && spec.hostLocal) return { ok: false, error: HOST_LOCAL }
   // Malformed input is refused before anything is sent to the service.
   const typed = new Map<string, string>()
   for (const f of spec.fields) {
+    if (!isOwner && isInstanceKey(f.env)) continue
     const { v, error } = cleanField(id, f, input[f.env])
     if (error) return { ok: false, error }
     if (v) typed.set(f.env, v)
@@ -202,7 +240,7 @@ export async function connect(userId: string, id: string, input: Record<string, 
     const [row] = await db.select().from(schema.connections)
       .where(and(eq(schema.connections.userId, userId), eq(schema.connections.connectorId, id)))
     const saved: Record<string, string> = row ? stored(row) : {}
-    const get = (k: string) => typed.get(k) ?? saved[k] ?? FROM_ENV[k]
+    const get = (k: string) => typed.get(k) ?? saved[k] ?? (isInstanceKey(k) ? envFor(userId, k) : isOwner ? FROM_ENV[k] : undefined)
     // Missing required fields are reported below with a clearer message.
     if (spec.fields.every((f) => f.optional || get(f.env))) {
       const problem = await checkKeys(spec.check, get)
@@ -223,7 +261,7 @@ export async function connect(userId: string, id: string, input: Record<string, 
       const after = [spec.oauth.clientIdEnv, spec.oauth.refreshTokenEnv].map((k) => (k ? values[k] || FROM_ENV[k] : undefined))
       if (after.some((v, i) => v !== before[i])) delete values[OAUTH_KEY]
     }
-    const missing = spec.fields.find((f) => !f.optional && !values[f.env] && !FROM_ENV[f.env])
+    const missing = spec.fields.find((f) => !f.optional && !values[f.env] && !(isOwner ? FROM_ENV[f.env] : false) && !(!isOwner && isInstanceKey(f.env) && envFor(userId, f.env)))
     if (missing) return { ok: false, error: `Add your ${/^[A-Z][A-Z]/.test(missing.label) ? missing.label : missing.label[0].toLowerCase() + missing.label.slice(1)}.` }
 
     const patch = {
@@ -235,6 +273,9 @@ export async function connect(userId: string, id: string, input: Record<string, 
     return { ok: true }
   })
   if (result.ok) await applySecrets(userId)
+  // A chat id typed in here is this person's chat from now on: the one place a chat is kept is their profile.
+  const chat = typed.get('TELEGRAM_ALLOWED_CHAT_ID')
+  if (result.ok && id === 'telegram' && chat) await (await import('./telegram-link')).setTypedChat(userId, chat)
   return result
 }
 

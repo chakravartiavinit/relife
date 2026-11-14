@@ -21,19 +21,19 @@ export async function runConnector(connectorId: string): Promise<{ ok: boolean; 
   const c = connectors.find((x) => x.id === connectorId)
   if (!c) return { ok: false, events: 0, error: `Unknown connector "${connectorId}"` }
   // Shopping apps can't run in Docker: say so, and leave the connection alone (not a failure to count).
-  const unavailable = connectorUnavailable(c)
+  const user = await getUser()
+  const unavailable = connectorUnavailable(c, process.env, user.role !== 'owner')
   if (unavailable) return { ok: false, events: 0, error: unavailable }
   const missing = missingEnv(c)
   if (missing.length) return { ok: false, events: 0, error: `Missing env: ${missing.join(', ')}` }
 
-  const user = await getUser()
   const [conn] = await db.select().from(schema.connections)
     .where(and(eq(schema.connections.userId, user.id), eq(schema.connections.connectorId, c.id)))
   if (!conn?.enabled) return { ok: false, events: 0, error: `${c.name} isn’t connected` }
   // Not signed in yet: wait quietly, like a missing key, instead of piling up failures.
   if (c.oauth && !(await (await import('@/core/oauth')).canAuthorize(user, c))) return { ok: false, events: 0, error: `Sign in with ${c.name} to finish connecting` }
 
-  const [run] = await db.insert(schema.syncRuns).values({ connectorId: c.id }).returning()
+  const [run] = await db.insert(schema.syncRuns).values({ userId: user.id, connectorId: c.id }).returning()
   let cursor = conn.cursor
   let events = 0
   // Raw events are written in batches of 250 (one statement each) rather than one by one.
@@ -71,10 +71,10 @@ export async function runConnector(connectorId: string): Promise<{ ok: boolean; 
  * The last `perConnector` runs of every connector. Ranked per connector, so one that syncs every minute (the
  * iCloud inbox) can't push the hourly and daily ones out of a shared "latest N" list.
  */
-export async function recentSyncRuns(perConnector = 4) {
+export async function recentSyncRuns(perConnector = 4, userId?: string) {
   const r = schema.syncRuns
   const ranked = db.select({ ...getTableColumns(r), n: sql<number>`row_number() over (partition by ${r.connectorId} order by ${r.startedAt} desc)::int`.as('n') })
-    .from(r).as('ranked')
+    .from(r).where(userId ? eq(r.userId, userId) : undefined).as('ranked')
   return db.select().from(ranked).where(lte(ranked.n, perConnector)).orderBy(ranked.connectorId, ranked.n)
 }
 
@@ -91,7 +91,7 @@ export async function connectorStatus() {
     env: c.env,
     everyMinutes: c.everyMinutes,
     login: c.login,
-    unavailable: connectorUnavailable(c),
+    unavailable: connectorUnavailable(c, process.env, user.role !== 'owner'),
     oauth: c.oauth,
     // Mock mode shows seeded connection states (connected, failing) instead of "key missing".
     missingEnv: isMock ? [] : missingEnv(c),

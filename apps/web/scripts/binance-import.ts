@@ -8,7 +8,7 @@
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { emitRaw, processNew } from '@/core/ingest'
-import { getUser } from '@/core/user'
+import { ensureOwner } from '@/core/user'
 import { db, schema, sql } from '@/db'
 import { and, eq, like, min } from 'drizzle-orm'
 import { tradesFromStatement } from '@/parsers/binance'
@@ -45,7 +45,7 @@ async function main() {
     console.error('Usage: scripts/binance-import.ts <file.csv> [...]')
     process.exit(1)
   }
-  const user = await getUser()
+  const user = await ensureOwner() // the person who runs this server; outside a request there is no one else to ask
   // The API's oldest spot trade: anything from then on is already in.
   const [{ first }] = await db.select({ first: min(schema.trades.at) }).from(schema.trades)
     .where(and(eq(schema.trades.userId, user.id), eq(schema.trades.kind, 'spot'), like(schema.trades.externalRef, 'trade:%')))

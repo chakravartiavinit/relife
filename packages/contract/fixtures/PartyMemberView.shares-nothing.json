@@ -1,0 +1,12 @@
+{
+  "id": "8d2a4b6c-1e3f-4a5b-8c7d-9e0f1a2b3c4d",
+  "you": false,
+  "status": "active",
+  "name": null,
+  "level": null,
+  "streak": null,
+  "today": null,
+  "quests": null,
+  "achievements": null,
+  "week": { "onTrack": false, "days": null }
+}

@@ -3,13 +3,14 @@ import { mkdir, open, rm, stat, statfs, appendFile } from 'node:fs/promises'
 import { and, desc, eq, inArray, isNull, lt, ne, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { db, schema } from '@/db'
+import { runAs } from '@/core/context'
 import { DEMO_MESSAGE, isDemo } from '@/core/demo'
 import { env } from '@/core/env'
 import { emitRawMany } from '@/core/ingest'
 import { dataDir } from '@/core/paths'
 import { lockUser } from '@/core/recovery'
 import { linkStatements } from '@/core/statement-link'
-import type { User } from '@/core/user'
+import { getUser, type User } from '@/core/user'
 import {
   CHUNK_BYTES, CSV_MAX_MB, isCsvKind, type ImportKind, type ImportMapping, type ImportPreview, type ImportSummary,
 } from '@/domain/imports'
@@ -178,11 +179,12 @@ export async function listImports(user: User, limit = 10) {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 /** Queued imports, oldest first, one at a time. A run the process died in is marked failed so it can be retried. */
 export async function runQueuedImports(): Promise<string | undefined> {
+  const user = await getUser() // the job runs once per person: only this person's imports
   await db.update(I).set({ status: 'failed', error: `${brand.name} stopped while this import was running. Try again.` })
-    .where(and(eq(I.status, 'running'), lt(I.updatedAt, new Date(Date.now() - STALE_RUN_MIN * 60_000))))
+    .where(and(eq(I.userId, user.id), eq(I.status, 'running'), lt(I.updatedAt, new Date(Date.now() - STALE_RUN_MIN * 60_000))))
   let n = 0
   for (;;) {
-    const [row] = await db.select().from(I).where(eq(I.status, 'queued')).orderBy(I.createdAt).limit(1)
+    const [row] = await db.select().from(I).where(and(eq(I.userId, user.id), eq(I.status, 'queued'))).orderBy(I.createdAt).limit(1)
     if (!row) break
     await runImport(row)
     n++
@@ -194,7 +196,14 @@ async function setProgress(id: string, progress: ImportRow['progress']) {
   await db.update(I).set({ progress }).where(eq(I.id, id))
 }
 
+/** Runs as the person who uploaded the file, so the parsers, the XP and the keys it touches are theirs and no one else's. */
 export async function runImport(row: ImportRow) {
+  const [owner] = await db.select().from(schema.users).where(eq(schema.users.id, row.userId))
+  if (!owner) { await db.update(I).set({ status: 'failed', error: 'User not found' }).where(eq(I.id, row.id)); return }
+  return runAs(owner, () => runImportAs(row))
+}
+
+async function runImportAs(row: ImportRow) {
   const { id } = row
   try {
     const [user] = await db.select().from(schema.users).where(eq(schema.users.id, row.userId))

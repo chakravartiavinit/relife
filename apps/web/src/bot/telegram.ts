@@ -1,3 +1,4 @@
+import brand from '@relife/brand/brand.json'
 import { Bot, type Context } from 'grammy'
 import { and, eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
@@ -11,6 +12,8 @@ import { applyQuickLog, parseQuickLog } from '@/core/quicklog'
 import { addGoalProgress, setCheck } from '@/core/schedules'
 import { formatTime } from '@/core/time'
 import { getUser } from '@/core/user'
+import { runAs } from '@/core/context'
+import { anyoneLinked, redeemLinkCode, userForChat } from '@/core/telegram-link'
 import { aiEnabled } from '@/ai/models'
 import { askData } from '@/ai/ask'
 import { goalStep, helpView, questsView, reminderAnswered, reminderMessage, statusView, todayView, unpackOcc } from './messages'
@@ -19,22 +22,34 @@ import { env } from '@/core/env'
 
 const SNOOZE = [{ min: 15, label: '15 min' }, { min: 60, label: '1 hour' }, { min: 180, label: '3 hours' }]
 
-/** Long-polling bot. Returns null when TELEGRAM_BOT_TOKEN is not set. */
+/** Long-polling bot, one for the server: each chat belongs to a person, and a handler runs as them. Returns null when TELEGRAM_BOT_TOKEN is not set. */
 export function startBot(): Bot | null {
   const token = env('TELEGRAM_BOT_TOKEN')
   if (!token) return null
   const bot = new Bot(token)
 
-  // Only the owner's chat gets through. Until it is configured, /start reveals the chat id.
+  // Only a linked chat gets through, and it runs as the person it belongs to (runAs wraps the handler, not the registration:
+  // the person is found per update). `/start <code>` links a chat to the person whose code it is (You › Notifications).
   bot.use(async (ctx, next) => {
     const chat = String(ctx.chat?.id ?? '')
-    const allowed = env('TELEGRAM_ALLOWED_CHAT_ID') // read each time: it can be added on /connectors while running
-    if (allowed && chat === allowed) return next()
-    if (!allowed && ctx.message?.text?.startsWith('/start')) {
+    const text = ctx.message?.text ?? ''
+    const code = text.match(/^\/start(?:@\w+)?\s+(\S+)/)?.[1]
+    if (code) {
+      const r = await redeemLinkCode(code, chat)
+      await ctx.reply(r.ok ? `Linked to ${esc(r.user.name)}. Send /today to try it.` : r.reason === 'rate_limited' ? 'Too many tries. Wait a few minutes.' : `That code did not work. Make a new one in ${brand.name} under You › Notifications.`, { parse_mode: 'HTML' })
+      return
+    }
+    const user = await userForChat(chat)
+    if (user) return runAs(user, async () => { await (await import('@/core/secrets')).applySecrets(user.id); return next() })
+    if (text.startsWith('/start')) {
       await ctx.reply(
-        `Your chat id is <code>${esc(chat)}</code>.\nPaste it into Telegram → Manage in ReLife, under You › Connections.`,
+        (await anyoneLinked())
+          ? `This chat isn't linked to anyone on this ${brand.name}. Open You › Notifications in ${brand.name} and tap Link Telegram.`
+          : `Your chat id is <code>${esc(chat)}</code>.\nPaste it into Telegram → Manage in ${brand.name}, under You › Connections, or tap Link Telegram under You › Notifications.`,
         { parse_mode: 'HTML' },
       )
+    } else if (ctx.chat) {
+      await ctx.reply(`This chat isn't linked to anyone on this ${brand.name}.`).catch(() => {})
     }
   })
 
@@ -114,7 +129,7 @@ export function startBot(): Bot | null {
   // Any tap on a notification counts as a response, so it stops repeating.
   bot.on('callback_query', async (ctx, next) => {
     const mid = ctx.callbackQuery.message?.message_id
-    if (mid && ctx.callbackQuery.data !== 'noop') await markAnswered(mid)
+    if (mid && ctx.callbackQuery.data !== 'noop') await markAnswered((await getUser()).id, mid)
     return next()
   })
 
@@ -255,7 +270,7 @@ export function startBot(): Bot | null {
 
   // A wrong token (401) or a second poller (409) rejects here. Log it instead of crashing the worker,
   // which would take the scheduler (and, under `npm run dev`, the web app) down with it.
-  bot.start({ drop_pending_updates: false, onStart: (me) => console.log(`[bot] @${me.username} polling${env('TELEGRAM_ALLOWED_CHAT_ID') ? '' : ' (no chat ID yet: send /start to get it)'}`) })
+  bot.start({ drop_pending_updates: false, onStart: (me) => console.log(`[bot] @${me.username} polling`) })
     .catch((e) => console.error('[bot] stopped:', e instanceof Error ? e.message : e))
   return bot
 }

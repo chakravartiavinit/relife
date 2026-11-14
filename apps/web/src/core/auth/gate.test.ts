@@ -41,6 +41,16 @@ test('a person opening a page on this Mac is signed in without asking', async ()
   assert.equal(minted.length, 1)
 })
 
+test('an invite page on loopback mints no session: the person who opens /join must not be signed in as the owner', async () => {
+  for (const path of ['/join', '/pair', '/signin']) {
+    const minted: string[] = []
+    const r = await gate(req(path, { headers: NAV }), deps({ minted }))
+    assert.equal(minted.length, 0, path)
+    assert.ok(!setsCookie(r), path)
+    assert.equal(kind(r), 'next', path)
+  }
+})
+
 test('only a top-level GET navigation mints: nothing else on loopback gets a device', async () => {
   const cases: [string, { method?: string; headers?: Record<string, string> }][] = [
     ['/api/ingest', { method: 'POST', headers: { 'sec-fetch-site': 'cross-site', 'sec-fetch-mode': 'no-cors', 'content-type': 'text/plain' } }],

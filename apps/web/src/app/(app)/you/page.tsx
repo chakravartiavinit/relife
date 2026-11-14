@@ -21,6 +21,8 @@ import { LifeKpis } from '@/ui/components/life-kpis'
 import { freezesHeld } from '@/core/quests'
 import { ACHIEVEMENT_ICON, TIER_COLOR } from '@/ui/achievement-icons'
 import { showUpStreak } from '@/ui/components/life-kpis'
+import { PartyCard } from '@/ui/components/party/party-card'
+import { partyCard } from '@/core/party'
 
 export const metadata: Metadata = { title: 'Progress' }
 
@@ -65,6 +67,11 @@ async function Progress() {
           <TitleTrack level={s.level} titles={TITLES} />
         </div>
       </CharacterBanner>
+
+      {/* Its own read, so a slow or failing party never holds up the rest of the page. No wrapper when nothing shows. */}
+      <Suspense fallback={<Skeleton className="h-[200px] rounded-lg max-lg:order-1" />}>
+        <PartySlot />
+      </Suspense>
 
       <section id="streak" aria-label="This week" className="scroll-mt-6 max-lg:order-1">
         <LifeKpis user={user} now={now} />
@@ -174,6 +181,15 @@ function Rule({ color, title, children }: { color: string; title: string; childr
       <span><span className="font-medium text-ink">{title}.</span> {children}</span>
     </li>
   )
+}
+
+async function PartySlot() {
+  await connection()
+  const user = await getUser()
+  const card = await partyCard(user, new Date())
+  // A server with one person and no party has nothing to show: no card, and no gap where it would be.
+  if (!card.parties.length && !card.invites.length && !card.people.length) return null
+  return <div className="max-lg:order-1"><PartyCard card={card} /></div>
 }
 
 function ProgressSkeleton() {

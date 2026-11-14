@@ -246,7 +246,8 @@ export async function refreshXp(user: User, now = new Date()): Promise<XpNews> {
   const unlocked = await checkAchievements(user, now)
   const after = levelFor(await totalXp(user)).level
   await levelChests(user, before, after)
-  const chests = await awardQuestChests(user, now)
+  const { awardPartyChests } = await import('./party')
+  const chests = (await awardQuestChests(user, now)) + (await awardPartyChests(user, now))
   return { levelUp: after > before ? { level: after, title: titleFor(after), from: before, newTitle: titleFor(after) !== titleFor(before) } : undefined, unlocked, chests }
 }
 

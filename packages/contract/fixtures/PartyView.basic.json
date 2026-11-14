@@ -1,0 +1,11 @@
+{
+  "id": "0a1b2c3d-4e5f-4a6b-8c7d-8e9f0a1b2c3d",
+  "name": "Flat 4B",
+  "week": "2026-11-09",
+  "quest": { "title": "Everyone shows up on 5 of 7 days", "target": 5, "onTrack": 2, "members": 3, "cleared": false },
+  "members": [
+    { "id": "5c0b7e0e-2f6a-4a41-9d5a-0d6f2a9a1b10", "you": true, "status": "active", "name": "Aarav", "level": { "level": 14, "title": "Steady" }, "streak": 11, "today": { "done": 2, "total": 4 }, "quests": [100], "achievements": [], "week": { "onTrack": true, "days": 5 } },
+    { "id": "8d2a4b6c-1e3f-4a5b-8c7d-9e0f1a2b3c4d", "you": false, "status": "active", "name": "Maya", "level": { "level": 12, "title": "Steady" }, "streak": null, "today": null, "quests": null, "achievements": null, "week": { "onTrack": true, "days": null } },
+    { "id": "9e3b5c7d-2f4a-4b6c-9d8e-0f1a2b3c4d5e", "you": false, "status": "invited", "name": "Ravi", "level": null, "streak": null, "today": null, "quests": null, "achievements": null, "week": { "onTrack": false, "days": null } }
+  ]
+}

@@ -15,10 +15,10 @@ const FOREVER = new Date('2999-01-01T00:00:00Z')
 
 export async function createDevice(o: {
   userId: string; kind: DeviceKind; name: string; scopes: Scope[]; via?: string | null; meta?: DeviceMeta; now?: Date
-}) {
+}, tx: Pick<typeof db, 'insert'> = db) {
   const { token, hash } = makeToken(o.kind)
   const now = o.now ?? new Date()
-  const [device] = await db.insert(schema.devices).values({
+  const [device] = await tx.insert(schema.devices).values({
     userId: o.userId, kind: o.kind, name: o.name.trim().slice(0, 80) || 'Device', scopes: o.scopes, tokenHash: hash,
     via: o.via ?? null, meta: o.meta ?? {}, lastSeenAt: now, expiresAt: new Date(now.getTime() + DEVICE_TTL_MS),
   }).returning()

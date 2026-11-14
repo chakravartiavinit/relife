@@ -5,6 +5,8 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { env } from '@/core/env'
 import { isDemo } from '@/core/demo'
+import { scopedUser } from '@/core/context'
+import { aiAllowed, aiAllowedSync } from '@/core/multi-user'
 
 // Bring your own key: pick any model per task with env vars like
 //   LLM_DEFAULT=anthropic:claude-sonnet-5-5
@@ -45,12 +47,19 @@ export function modelId(task: Task): string | undefined {
 
 export function aiEnabled(task: Task = 'chat'): boolean {
   if (isDemo()) return false // a stray key must never spend money in the read-only demo
+  const who = scopedUser()
+  if (who && !aiAllowedSync(who)) return false // the owner turned the shared model off (core/multi-user.ts)
   const id = modelId(task)
   if (!id || !id.includes(':')) return false
   const provider = id.slice(0, id.indexOf(':'))
   if (!(provider in KEY_ENV)) return false
   const keyEnv = KEY_ENV[provider]
   return keyEnv === null || !!env(keyEnv)
+}
+
+/** `aiEnabled` for a page or action that already has the signed-in person: it also asks whether the owner shares the model. */
+export async function aiEnabledFor(user: Parameters<typeof aiAllowed>[0], task: Task = 'chat'): Promise<boolean> {
+  return aiEnabled(task) && (await aiAllowed(user))
 }
 
 export function model(task: Task): LanguageModel {

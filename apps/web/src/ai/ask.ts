@@ -2,6 +2,7 @@ import { stepCountIs } from 'ai'
 import { getUser } from '@/core/user'
 import { saveCoachMessage, threadForModel } from '@/core/coach-messages'
 import { historyForModel, proposalIds, sourcesFromSteps, type CoachSource } from '@/domain/coach-thread'
+import { AI_OFF_MESSAGE, aiAllowed } from '@/core/multi-user'
 import { aiEnabled, model } from './models'
 import { generate } from './run'
 import { COACH_SYSTEM, digestText } from './context'
@@ -32,11 +33,12 @@ function maskedTools(user: Parameters<typeof dataTools>[0]) {
 export async function askData(question: string, { channel = 'app' }: { channel?: 'app' | 'telegram' } = {}): Promise<AskResult> {
   const q = question.trim().slice(0, 2000)
   if (!q) return { answer: '', error: 'Ask a question, e.g. “How did I sleep this week?”' }
+  const user = await getUser()
+  if (!(await aiAllowed(user))) return { answer: '', error: AI_OFF_MESSAGE }
   if (!aiEnabled('chat')) {
     return { answer: '', error: 'No LLM configured. Set LLM_DEFAULT (e.g. anthropic:claude-sonnet-5-5) and the provider key in .env.' }
   }
   try {
-    const user = await getUser()
     const history = historyForModel(await threadForModel(user))
     const asked = await saveCoachMessage(user, { role: 'user', text: q, channel })
     try {

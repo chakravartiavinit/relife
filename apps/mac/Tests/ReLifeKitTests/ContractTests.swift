@@ -7,7 +7,7 @@ import Testing
 @Suite("Contract fixtures")
 struct ContractTests {
     /// Contract types only the web server, the phone's web push and the Android app use. The Mac app has no model for them.
-    static let notForMac: Set<String> = ["HealthBatch", "HealthIngestResult", "PushAction", "PushActionResult"]
+    static let notForMac: Set<String> = ["HealthBatch", "HealthIngestResult", "PushAction", "PushActionResult", "PairJoin", "PairJoinResult", "PartyMemberView", "PartyView"]
 
     @Test("every fixture decodes", arguments: try Fixtures.names())
     func decodes(file: String) throws {

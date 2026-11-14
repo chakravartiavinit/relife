@@ -8,6 +8,8 @@ import { databaseUrl, db, isMock, schema } from '@/db'
 import { loadBackupStatus } from '@/core/data/backup-status'
 import { exportTables } from '@/core/data/tables'
 import { dataDir } from '@/core/paths'
+import { hasMembers, isOwner } from '@/core/multi-user'
+import { OWNER_WIPE_REFUSED } from '@/core/data/wipe'
 import { loadPrivacy } from '@/core/privacy'
 import { getUser } from '@/core/user'
 import { Badge, PageHeader, Skeleton } from '@/ui/components/card'
@@ -50,6 +52,7 @@ const code = 'rounded-xs bg-surface-2 px-1 text-caption'
 async function DataSections() {
   await connection()
   const user = await getUser()
+  const [owner, shared] = await Promise.all([isOwner(user), hasMembers()])
   const [[keys], backups, privacy] = await Promise.all([
     db.select({ n: sql<number>`count(*)::int` }).from(schema.connections)
       .where(and(eq(schema.connections.userId, user.id), eq(schema.connections.enabled, true), isNotNull(schema.connections.secretsEncrypted))),
@@ -64,9 +67,11 @@ async function DataSections() {
         <SettingsRow label="Your data" hint="Every routine, entry, payment and XP point.">
           <Fact icon={Database}>Postgres, database <code className={code}>{dbName}</code>{isMock ? <Badge color="var(--warn)" className="ml-2">Mock</Badge> : null}</Fact>
         </SettingsRow>
-        <SettingsRow label="Data folder" hint="Library pictures, shop sign-ins and the key file.">
-          <Fact icon={FolderOpen}><code className={`${code} block truncate`} title={folder}>{folder}</code></Fact>
-        </SettingsRow>
+        {owner ? (
+          <SettingsRow label="Data folder" hint="Library pictures, shop sign-ins and the key file.">
+            <Fact icon={FolderOpen}><code className={`${code} block truncate`} title={folder}>{folder}</code></Fact>
+          </SettingsRow>
+        ) : null}
         <SettingsRow label="Saved keys" hint="Keys you enter in Connections.">
           <Fact icon={KeyRound}>
             {keys.n ? `${keys.n} connection${keys.n === 1 ? '' : 's'} with saved keys, ` : 'No saved keys yet. When you add some, they’re '}
@@ -90,13 +95,13 @@ async function DataSections() {
         </SettingsRow>
       </SettingsSection>
 
-      <BackupsCard status={backups} />
+      {owner ? <BackupsCard status={backups} /> : null}
 
       <PrivacyList view={privacy} now={Date.now()} />
 
       <SettingsSection id="delete" title="Delete everything" description={`Removes everything ${brand.name} knows about you from this machine and opens setup again.`}>
-        <SettingsRow label="Delete all data" hint="Export first if you might want it back.">
-          <WipeData backupDir={backups.dir} />
+        <SettingsRow label="Delete all data" hint={owner && shared ? OWNER_WIPE_REFUSED : owner ? 'Export first if you might want it back.' : 'Only your data goes. Everyone else on this server keeps theirs.'}>
+          {owner && shared ? null : <WipeData backupDir={owner ? backups.dir : undefined} />}
         </SettingsRow>
       </SettingsSection>
     </>

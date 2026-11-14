@@ -13,11 +13,11 @@ import { pairBase } from '@/core/auth/base-url'
 import { formatCode } from '@/core/auth/tokens'
 import { createOffer } from '@/core/auth/pairing'
 import { inContainer } from '@/core/platform'
-import { getUser } from '@/core/user'
+import { ensureOwner } from '@/core/user'
 
 async function main() {
   const firstRun = process.argv.includes('--first-run')
-  const user = await getUser()
+  const user = await ensureOwner() // shell access means ownership: this signs in the person who runs the server
   if (firstRun) {
     const [live] = await db.select({ id: schema.devices.id }).from(schema.devices).where(and(eq(schema.devices.kind, 'browser'), isNull(schema.devices.revokedAt), gt(schema.devices.expiresAt, new Date()))).limit(1)
     // Browsers only: the extension's legacy token is a device row too, and says nothing about anyone being signed in.

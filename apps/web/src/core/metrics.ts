@@ -111,9 +111,10 @@ export function isSpend(t: { base: number; category: string | null }) {
 
 /**
  * Days the user did something on purpose: a routine checked off, a manual log, or code shipped. Passive
- * syncs (sleep, steps) don't count. Days a streak freeze covered count too, so every streak survives them.
+ * syncs (sleep, steps) don't count. Days a streak freeze covered count too, so every streak survives them
+ * (`freezes: false` leaves them out: the days the person really showed up, which is what a party counts).
  */
-export async function activeDays(user: User, from: string) {
+export async function activeDays(user: User, from: string, o: { freezes?: boolean } = {}) {
   const [checks, entries, frozen] = await Promise.all([
     db.selectDistinct({ d: schema.checks.localDate }).from(schema.checks)
       .innerJoin(schema.schedules, eq(schema.schedules.id, schema.checks.scheduleId))
@@ -123,7 +124,7 @@ export async function activeDays(user: User, from: string) {
         eq(schema.entries.userId, user.id), gte(schema.entries.localDate, from),
         or(eq(schema.entries.source, 'manual'), and(eq(schema.entries.source, 'github'), gt(schema.entries.value, 0))),
       )),
-    db.select({ d: schema.streakFreezes.localDate }).from(schema.streakFreezes)
+    o.freezes === false ? Promise.resolve([]) : db.select({ d: schema.streakFreezes.localDate }).from(schema.streakFreezes)
       .where(and(eq(schema.streakFreezes.userId, user.id), gte(schema.streakFreezes.localDate, from))),
   ])
   return new Set([...checks, ...entries, ...frozen].map((r) => r.d))

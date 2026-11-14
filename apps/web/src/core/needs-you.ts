@@ -47,7 +47,7 @@ const original = (body: unknown) => (typeof body === 'string' ? body : JSON.stri
  */
 export async function loadNeedsYou(user: User, now = new Date()): Promise<{ items: NeedsYouItem[]; categories: string[] }> {
   const R = schema.rawEvents, T = schema.transactions
-  const [pending, failed, uncategorised, used, recovery] = await Promise.all([
+  const [pending, failed, uncategorised, used, recovery, invites] = await Promise.all([
     db.select().from(schema.insights).where(pendingInsight(user.id)).orderBy(desc(schema.insights.createdAt)).limit(200),
     db.select().from(R).where(and(eq(R.userId, user.id), eq(R.status, 'failed'), sql`${UNREAD_FILTER}`)).orderBy(desc(R.at)).limit(300),
     db.select({ id: T.id, merchant: T.merchant, upiId: T.upiId, amount: T.amount, currency: T.currency, at: T.at }).from(T)
@@ -57,6 +57,7 @@ export async function loadNeedsYou(user: User, now = new Date()): Promise<{ item
       .where(and(eq(T.userId, user.id), sql`${T.category} is not null`, ne(T.category, 'Uncategorized'), ne(T.category, 'Income'), ne(T.category, 'Transfers')))
       .groupBy(T.category).orderBy(desc(sql`count(*)`)).limit(8),
     import('./recovery').then((r) => r.getRecovery(user, now)),
+    import('./party').then((p) => p.partyInvites(user)),
   ])
 
   const items: NeedsYouItem[] = pending.map((i): NeedsYouItem => {
@@ -72,6 +73,7 @@ export async function loadNeedsYou(user: User, now = new Date()): Promise<{ item
     })
   }
   items.push(...groupUncategorised(uncategorised))
+  for (const i of invites) items.push({ kind: 'party-invite', id: i.partyId, party: i.party, from: i.from, members: i.members, at: i.at })
 
   const names = used.flatMap((u) => (u.category ? [u.category] : []))
   return { items: rankNeedsYou(items, now), categories: [...new Set([...names, ...SPEND_CATEGORIES.filter((c) => c !== 'Uncategorized')])] }

@@ -38,11 +38,11 @@ export function ApproveCard({ device, onResult, className }: { device: WaitingDe
   const answer = (approve: boolean) => start(async () => {
     setError(null)
     if (approve) {
-      const r = await approveDevice(device.id)
+      const r = await approveDevice(device.id, device.code) // a member's answer is checked against the code
       if (!r.ok) { setError(r.error); setState('error'); return }
       setState('approved'); onResult?.({ status: 'approved', name: device.name })
     } else {
-      await denyDevice(device.id)
+      await denyDevice(device.id, device.code)
       setState('denied'); onResult?.({ status: 'denied', name: device.name })
     }
   })

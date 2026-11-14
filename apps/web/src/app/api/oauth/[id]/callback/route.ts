@@ -4,7 +4,8 @@ import { connectors } from '@/connectors'
 import { authenticate, denied } from '@/core/auth/request'
 import { requestOrigin } from '@/core/auth/trust'
 import { exchangeCode } from '@/core/oauth'
-import { getUser } from '@/core/user'
+import { runAs } from '@/core/context'
+import { jobIdFor } from '@/core/jobs'
 
 // Step 2: the service sends the browser back with a code. Check the state, trade the code for tokens,
 // start the first sync and go back to You › Connections, which shows how it went.
@@ -33,15 +34,15 @@ export async function GET(req: Request, ctx: RouteContext<'/api/oauth/[id]/callb
   if (refused) return done(refused === 'access_denied' ? 'You didn’t allow access.' : `${c.name} said: ${(url.searchParams.get('error_description') ?? refused).slice(0, 200)}`)
   const code = url.searchParams.get('code')
   if (!code) return done('The sign-in expired or came from somewhere else. Try again.')
-  const user = await getUser()
+  const user = a.user
   try {
-    await exchangeCode(user, c, code, saved.redirectUri)
+    await runAs(user, () => exchangeCode(user, c, code, saved.redirectUri!))
   } catch (e) {
     return done((e as Error).message)
   }
   await db.update(schema.connections).set({ status: 'never', lastError: null, failures: 0 })
     .where(and(eq(schema.connections.userId, user.id), eq(schema.connections.connectorId, id)))
   const { requestJob } = await import('@/core/jobs')
-  await requestJob(`sync:${id}`)
+  await requestJob(jobIdFor({ id: `sync:${id}` }, user.id))
   return done()
 }

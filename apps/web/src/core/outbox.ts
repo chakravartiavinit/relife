@@ -2,7 +2,7 @@ import { and, asc, eq, gte, inArray, isNotNull, lte, or, sql } from 'drizzle-orm
 import { db, schema } from '@/db'
 import { CHANNELS as CHANNEL_ORDER, delivery, minutesLeftInQuiet, quietHours, repeatStep, targets, type Channel, type NotifyCategory } from '@/domain/notify'
 import { toPush } from '@/domain/push'
-import { deleteMessage, sendMessage, telegramConfigured, type Button } from './notify'
+import { chatIdOf, deleteMessage, sendMessage, telegramConfigured, type Button } from './notify'
 import { optionsFor, pushDeviceCount, sendPush, type PushPayload } from './push'
 import { localDate, localDayRange, utcToWall } from './time'
 import type { User } from './user'
@@ -21,21 +21,25 @@ export const senders = { sendMessage, deleteMessage, sendPush }
 
 /** The channels that are set up: Telegram connected, and push when at least one device has it on. */
 async function availableChannels(user: User): Promise<Channel[]> {
-  return [...(telegramConfigured() ? ['telegram' as const] : []), ...((await pushDeviceCount(user.id)) > 0 ? ['push' as const] : [])]
+  return [...(telegramConfigured(user) ? ['telegram' as const] : []), ...((await pushDeviceCount(user.id)) > 0 ? ['push' as const] : [])]
 }
 
 const pushPayload = (row: Row, text: string, buttons: Button[][] | undefined, renotify: boolean): PushPayload =>
   ({ ...toPush({ text, ref: row.ref }, buttons), id: row.id, tag: row.id, renotify })
 
-/** Queue a message and try to send it right away. `once` turns repeats off for this one (summaries). */
-export async function notify(user: User, category: NotifyCategory, msg: { text: string; buttons?: Button[][]; ref?: string; once?: boolean }) {
+/**
+ * Queue a message and try to send it right away. `once` turns repeats off for this one (summaries). Returns whether it was
+ * queued: false when the person has no channel at all.
+ */
+export async function notify(user: User, category: NotifyCategory, msg: { text: string; buttons?: Button[][]; ref?: string; once?: boolean }): Promise<boolean> {
   // With no channel at all there's nowhere to send it; queuing would only flood the chat once one is connected.
-  if (!(await availableChannels(user)).length) return
+  if (!(await availableChannels(user)).length) return false
   await db.insert(schema.notifications).values({
     userId: user.id, category, text: msg.text, buttons: msg.buttons ?? null,
     ref: msg.once ? `once:${msg.ref ?? ''}` : msg.ref ?? null,
   })
   await flushOutbox(user)
+  return true
 }
 
 /** The last 7 days of the outbox for You › Notifications: reached a channel, still waiting (quiet hours, daily cap), dropped (category off or the cap). */
@@ -73,9 +77,10 @@ export async function delivered(userId: string, ref: string) {
 }
 
 /** A button on this message was tapped: stop repeating it. */
-export async function markAnswered(messageId: number) {
+export async function markAnswered(userId: string, messageId: number) {
+  // Telegram numbers messages per chat, so two people's messages can share an id: only this person's row is theirs.
   await db.update(schema.notifications).set({ status: 'answered' })
-    .where(and(eq(schema.notifications.messageId, messageId), eq(schema.notifications.status, 'sent')))
+    .where(and(eq(schema.notifications.userId, userId), eq(schema.notifications.messageId, messageId), eq(schema.notifications.status, 'sent')))
 }
 
 /** A button on this message was tapped on another channel (a push action): stop repeating it, on every channel. */
@@ -145,7 +150,7 @@ export async function flushOutbox(user: User, now = new Date()) {
     const [claimed] = await db.update(N).set({ sends: 1, lastSentAt: now }).where(and(eq(N.id, row.id), eq(N.sends, row.sends), lte(N.sends, 0))).returning()
     if (!claimed) continue
     const { text, buttons } = await render(user, row)
-    const mid = t.includes('telegram') ? await senders.sendMessage(text, { buttons }) : null
+    const mid = t.includes('telegram') ? await senders.sendMessage(text, { buttons, chatId: chatIdOf(user) }) : null
     const pushed = t.includes('push') ? await senders.sendPush(user.id, pushPayload(row, text, buttons, false), optionsFor(row.category)) : false
     const took: Channel[] = [...(mid != null ? ['telegram' as const] : []), ...(pushed ? ['push' as const] : [])]
     if (!took.length) {
@@ -176,8 +181,8 @@ export async function flushOutbox(user: User, now = new Date()) {
     // tag and `renotify`, so the notification is replaced and buzzes again instead of piling up.
     const { text, buttons } = await render(user, row)
     if (t.includes('telegram')) {
-      if (row.messageId) await senders.deleteMessage(row.messageId)
-      const mid = await senders.sendMessage(`${text}\n\n<i>🔁 Still waiting · nudge ${row.sends + 1} of ${d.times + 1}</i>`, { buttons })
+      if (row.messageId) await senders.deleteMessage(row.messageId, chatIdOf(user))
+      const mid = await senders.sendMessage(`${text}\n\n<i>🔁 Still waiting · nudge ${row.sends + 1} of ${d.times + 1}</i>`, { buttons, chatId: chatIdOf(user) })
       await db.update(N).set({ messageId: mid, ...(mid != null && !row.channels.includes('telegram') ? { channels: [...row.channels, 'telegram' as const] } : {}) }).where(eq(N.id, row.id))
     }
     if (t.includes('push') && await senders.sendPush(user.id, pushPayload(row, text, buttons, true), optionsFor(row.category)) && !row.channels.includes('push')) {

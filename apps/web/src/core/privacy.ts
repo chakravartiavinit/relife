@@ -1,5 +1,6 @@
 import { and, eq, gte, sql } from 'drizzle-orm'
 import { aiEnabled, modelId, type Task } from '@/ai'
+import { aiAllowed } from './multi-user'
 import { AI_USES, matchesUse } from '@/ai/uses'
 import { connectors } from '@/connectors'
 import { db, schema } from '@/db'
@@ -21,8 +22,9 @@ export async function loadPrivacy(user: User): Promise<PrivacyView> {
     db.select({ id: schema.connections.connectorId, enabled: schema.connections.enabled, lastSyncAt: schema.connections.lastSyncAt })
       .from(schema.connections).where(eq(schema.connections.userId, user.id)),
     db.select({ task: schema.llmRuns.task, n: sql<number>`count(*)::int` }).from(schema.llmRuns)
-      .where(and(gte(schema.llmRuns.createdAt, since))).groupBy(schema.llmRuns.task),
+      .where(and(eq(schema.llmRuns.userId, user.id), gte(schema.llmRuns.createdAt, since))).groupBy(schema.llmRuns.task),
   ])
+  const shared = await aiAllowed(user)
   const byId = new Map(conns.map((c) => [c.id, c]))
   const runsFor = (use: (typeof AI_USES)[number]) => runs.filter((r) => matchesUse(use, r.task)).reduce((n, r) => n + Number(r.n), 0)
 
@@ -35,7 +37,7 @@ export async function loadPrivacy(user: User): Promise<PrivacyView> {
       }
     }),
     ai: {
-      tasks: TASKS.map(({ task, label }) => ({ task, label, model: modelId(task) ?? null, where: aiWhere(modelId(task), aiEnabled(task)) })),
+      tasks: TASKS.map(({ task, label }) => ({ task, label, model: modelId(task) ?? null, where: aiWhere(modelId(task), shared && aiEnabled(task)) })),
       masking: process.env.LLM_MASK !== 'false',
       uses: AI_USES.map((u) => ({ title: u.title, task: u.task, sends: u.sends, runs30: runsFor(u) })),
       runs30: runs.reduce((n, r) => n + Number(r.n), 0),

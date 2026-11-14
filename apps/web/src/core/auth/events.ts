@@ -1,6 +1,7 @@
 import type { Event } from '@relife/contract'
 import { sql as pg } from '@/db'
 import { dataVersionFor } from '../data-version'
+import { hasMembers, ownerId } from '../multi-user'
 import { forgetDevice } from './cache'
 import { mode } from './mode'
 
@@ -10,7 +11,10 @@ import { mode } from './mode'
 
 const CHANNEL = 'relife_events'
 
-/** What travels over NOTIFY. `userId` null = a request nobody has claimed yet: self-host streams all see it. */
+/**
+ * What travels over NOTIFY. `userId` null = a request nobody has claimed yet: self-host streams all see it, except that with
+ * several people on the server only the owner's streams do (a member must not learn that someone else is connecting a device).
+ */
 export type Notice = { userId: string | null; event: Event; deviceId?: string }
 
 type Sub = { userId: string; deviceId: string; send: (e: Event) => void }
@@ -24,15 +28,16 @@ class Hub {
 
   listen() {
     this.listening ??= pg.listen(CHANNEL, (payload) => {
-      try { this.deliver(JSON.parse(payload) as Notice) } catch { /* ignore a malformed notice */ }
+      try { void this.deliver(JSON.parse(payload) as Notice).catch(() => {}) } catch { /* ignore a malformed notice */ }
     }).catch((e) => { this.listening = undefined; console.error('[events] listen failed', e instanceof Error ? e.message : e) })
     return this.listening
   }
 
-  deliver(n: Notice) {
+  async deliver(n: Notice) {
     if (n.event.type === 'device.revoked') forgetDevice(n.event.id)
+    const only = n.userId === null && (await hasMembers()) ? await ownerId() : null
     for (const s of this.subs) {
-      if (n.userId === null ? mode() !== 'cloud' : s.userId === n.userId) s.send(n.event)
+      if (n.userId === null ? mode() !== 'cloud' && (!only || s.userId === only) : s.userId === n.userId) s.send(n.event)
     }
   }
 
