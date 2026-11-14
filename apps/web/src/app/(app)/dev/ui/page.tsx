@@ -188,7 +188,7 @@ export default function UiGallery() {
       </Section>
 
       <Section title="Party and People on this server: the card in every state, the list, invites">
-        <PartyGallery />
+        <Suspense fallback={<Skeleton className="h-[480px] rounded-lg" />}><PartyGallery /></Suspense>
       </Section>
 
       <Section title="Today: header, attention, pulse, timeline, rail, first day and all done">
