@@ -41,8 +41,8 @@ export async function wipeUserData(user: User): Promise<void> {
     await tx.delete(schema.jobs).where(dsql`${schema.jobs.id} like ${'%@' + old.id}`)
     await tx.execute(dsql`delete from parties p where not exists (select 1 from party_members m where m.party_id = p.id and m.status <> 'left')`)
     for (const name of wipeGlobalTables()) {
-      if (name === 'idempotency') await tx.execute(dsql`delete from idempotency where device_id in (select id from devices where user_id = ${fresh.id})`)
-      else if (n === 1) await tx.execute(dsql`delete from ${dsql.identifier(name)}`)
+      if (n === 1) await tx.execute(dsql`delete from ${dsql.identifier(name)}`)
+      else if (name === 'idempotency') await tx.execute(dsql`delete from idempotency where device_id in (select id from devices where user_id = ${fresh.id})`)
     }
   })
   for (const id of moved) forgetDevice(id) // the cached device row still names the old person
