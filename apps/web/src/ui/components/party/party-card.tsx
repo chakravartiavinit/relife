@@ -113,7 +113,7 @@ function MemberRow({ m, target }: { m: PartyMemberView; target: number }) {
     m.level ? `Level ${m.level.level} · ${m.level.title}` : null,
     m.streak !== null ? `${m.streak}-day streak` : null,
     m.today ? `${m.today.done} of ${m.today.total} today` : null,
-    m.achievements?.length ? `Unlocked ${m.achievements.join(', ')}` : null,
+    m.achievements?.length ? `Unlocked ${m.achievements.slice(0, 2).join(', ')}${m.achievements.length > 2 ? ` and ${m.achievements.length - 2} more` : ''}` : null,
   ].filter(Boolean)
   const nothing = m.status === 'active' && !shown.length && !m.quests
   async function cheer() {
@@ -141,7 +141,7 @@ function MemberRow({ m, target }: { m: PartyMemberView; target: number }) {
       {m.status === 'active' ? (
         <span className="flex items-center gap-2 text-small text-ink-2 tabular-nums">
           <span aria-hidden className={`size-[7px] rounded-full ${m.week.onTrack ? 'bg-good' : 'bg-ink-3'}`} />
-          {m.week.onTrack ? 'On track' : 'Not yet'}{m.week.days !== null ? ` · ${m.week.days}/${target}` : ''}
+          {m.week.onTrack ? 'On track' : 'Not yet'}{m.week.days !== null ? ` · ${Math.min(m.week.days, target)}/${target}` : ''}
         </span>
       ) : null}
       {!m.you && m.status === 'active' ? (
