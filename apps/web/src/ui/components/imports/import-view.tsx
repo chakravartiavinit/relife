@@ -44,7 +44,7 @@ export function KindChip({ kind, className }: { kind: ImportKind; className?: st
 }
 
 // ── The three steps ──────────────────────────────────────────────────────────────────────────────────
-export const IMPORT_STEPS = ['Pick a file', 'Check columns', 'Done'] as const
+export const IMPORT_STEPS = ['Pick a file', 'Columns', 'Done'] as const
 
 /** Three capsules, as in setup: finished ones tick, the one you are on is bold. */
 export function ImportRail({ current, labels = IMPORT_STEPS }: { current: 0 | 1 | 2; labels?: readonly string[] }) {
@@ -290,8 +290,8 @@ export function TrackerColumns({ preview, onChange, idBase = 'imp' }: { preview:
 /** Five rows as they will be read, with what each would do: new, or linked to an app order. */
 /** What the import will do with a previewed row: skip it (already in), link it to an order, or add it. */
 function RowState({ row }: { row: StatementPreview['sample'][number] }) {
-  if (row.already) return <span className="inline-flex h-6 items-center rounded-full bg-surface-2 px-2 text-caption font-medium whitespace-nowrap text-ink-3">Already imported</span>
-  if (row.match) return <span className="inline-flex h-6 items-center gap-1 rounded-full bg-pill-wash px-2 text-caption font-medium whitespace-nowrap text-pill-ink"><Link2 aria-hidden className="size-3" strokeWidth={2} />Linked · {row.match}</span>
+  if (row.already) return <span className="inline-flex h-6 max-w-full items-center rounded-full bg-surface-2 px-2 text-caption font-medium whitespace-nowrap text-ink-3">Already imported</span>
+  if (row.match) return <span title={`Linked · ${row.match}`} className="inline-flex h-6 max-w-full items-center gap-1 rounded-full bg-pill-wash px-2 text-caption font-medium text-pill-ink"><Link2 aria-hidden className="size-3 shrink-0" strokeWidth={2} /><span className="truncate">Linked · {row.match}</span></span>
   return <span className="inline-flex h-6 items-center rounded-full bg-surface-2 px-2 text-caption font-medium text-ink-2">New</span>
 }
 
@@ -304,25 +304,25 @@ export function StatementTable({ preview }: { preview: StatementPreview }) {
       </div>
       {preview.sample.length ? (
         <>
-        <div className="hidden overflow-x-auto rounded-[16px] bg-surface shadow-1 sm:block">
-          <table className="w-full text-start">
+        <div className="hidden rounded-[16px] bg-surface shadow-1 md:block">
+          <table className="w-full table-fixed text-start">
             <thead>
               <tr className="font-mono text-label text-ink-3 uppercase">
-                <th scope="col" className="px-3 pt-3 pb-1.5 text-start font-normal">Date</th>
-                <th scope="col" className="px-3 pt-3 pb-1.5 text-start font-normal">Description</th>
-                <th scope="col" className="px-3 pt-3 pb-1.5 text-end font-normal">Amount</th>
-                <th scope="col" className="px-3 pt-3 pb-1.5 text-start font-normal">Category</th>
-                <th scope="col" className="px-3 pt-3 pb-1.5 text-start font-normal">Match</th>
+                <th scope="col" className="w-[5.75rem] px-2.5 pt-3 pb-1.5 text-start font-normal">Date</th>
+                <th scope="col" className="px-2.5 pt-3 pb-1.5 text-start font-normal">Description</th>
+                <th scope="col" className="w-24 px-2.5 pt-3 pb-1.5 text-end font-normal">Amount</th>
+                <th scope="col" className="w-28 px-2.5 pt-3 pb-1.5 text-start font-normal">Category</th>
+                <th scope="col" className="w-40 px-2.5 pt-3 pb-1.5 text-start font-normal">Match</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-divider">
               {preview.sample.map((r, k) => (
                 <tr key={k} className="h-11 text-small">
-                  <td className="px-3 whitespace-nowrap text-ink-2">{fmtDay(r.date)}</td>
-                  <td title={r.merchant} className="max-w-[9rem] truncate px-3 text-ink">{r.merchant}</td>
-                  <td className={cn('px-3 text-end font-semibold whitespace-nowrap tabular-nums', r.amount > 0 ? 'text-good' : 'text-ink')}>{formatMoney(r.amount, preview.mapping.currency, { sign: true })}</td>
-                  <td className="px-3 whitespace-nowrap"><span className="inline-flex h-6 items-center rounded-full bg-surface-2 px-2 text-caption text-ink-2">{r.category}</span></td>
-                  <td className="px-3 whitespace-nowrap">
+                  <td className="px-2.5 whitespace-nowrap text-ink-2">{fmtDay(r.date)}</td>
+                  <td title={r.merchant} className="truncate px-2.5 text-ink">{r.merchant}</td>
+                  <td className={cn('px-2.5 text-end font-semibold whitespace-nowrap tabular-nums', r.amount > 0 ? 'text-good' : 'text-ink')}>{formatMoney(r.amount, preview.mapping.currency, { sign: true })}</td>
+                  <td className="px-2.5 whitespace-nowrap"><span title={r.category} className="inline-flex h-6 max-w-full items-center rounded-full bg-surface-2 px-2 text-caption text-ink-2"><span className="truncate">{r.category}</span></span></td>
+                  <td className="px-2.5 whitespace-nowrap">
                     <RowState row={r} />
                   </td>
                 </tr>
@@ -330,7 +330,7 @@ export function StatementTable({ preview }: { preview: StatementPreview }) {
             </tbody>
           </table>
         </div>
-        <ul className="divide-y divide-divider rounded-[16px] bg-surface shadow-1 sm:hidden">
+        <ul className="divide-y divide-divider rounded-[16px] bg-surface shadow-1 md:hidden">
           {preview.sample.map((r, k) => (
             <li key={k} className="px-3 py-2.5 text-small">
               <div className="flex items-baseline justify-between gap-3">
