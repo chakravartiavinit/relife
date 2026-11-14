@@ -31,6 +31,19 @@ export const STATEMENT_NEW: StatementPreview = {
   dateChoices: [{ format: 'DD/MM/YYYY', example: '2026-03-04' }, { format: 'MM/DD/YYYY', example: '2026-04-03' }],
 }
 
+/** An unsigned amount with a Dr / Cr column, for a file already imported once. */
+export const STATEMENT_DRCR: StatementPreview = {
+  ...STATEMENT_PREVIEW, savedFrom: undefined, rows: 120, invalid: 0, invalidSamples: [], linkable: 0,
+  header: ['Tran Date', 'Particulars', 'Amount', 'Dr / Cr', 'Balance'],
+  mapping: { ...STATEMENT_MAPPING, dateFormat: 'DD/MM/YYYY', columns: { date: 0, description: 1, amount: 2, sign: 3, balance: 4 }, account: { name: 'Sample Bank', kind: 'bank' } },
+  repeat: { fileName: 'sample-statement-oct-2026.csv', at: '2026-11-10T09:30:00.000Z' },
+  sample: [
+    { date: '2026-10-03', amount: -412, merchant: 'Swiggy', category: 'Food' },
+    { date: '2026-10-03', amount: 82000, merchant: 'NEFT CR-ACME TECH SALARY', category: 'Income' },
+    { date: '2026-10-05', amount: -236, merchant: 'Uber', category: 'Transport' },
+  ],
+}
+
 const TRACKER_MAPPING: TrackerCsvMapping = {
   kind: 'tracker-csv', headerRow: 0, delimiter: ',', decimal: '.', dateFormat: 'YYYY-MM-DD', shape: 'long', columns: { date: 0, metric: 1, value: 2 },
   metrics: { Weight: { slug: 'weight' }, 'Pages read': { slug: 'pages-read' }, Mood: { slug: 'mood' } },

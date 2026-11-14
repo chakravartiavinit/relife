@@ -5,13 +5,13 @@ import { FileUp } from 'lucide-react'
 import type { ImportKind } from '@/domain/imports'
 import { summaryLine } from '@/domain/imports'
 import {
-  FAIL_MESSAGE, HEALTH_PREVIEW, HEALTH_SUMMARY, NOTHING_NEW, PAST_IMPORTS, STATEMENT_NEW, STATEMENT_PREVIEW, STATEMENT_SUMMARY, TRACKER_PREVIEW,
+  FAIL_MESSAGE, HEALTH_PREVIEW, HEALTH_SUMMARY, NOTHING_NEW, PAST_IMPORTS, STATEMENT_DRCR, STATEMENT_NEW, STATEMENT_PREVIEW, STATEMENT_SUMMARY, TRACKER_PREVIEW,
 } from '../../fixtures/import'
 import { Button } from '../button'
 import { FormError } from '../forms/dialog'
 import { PastImports } from './import-history'
 import {
-  FileRow, ImportProgress, ImportRail, ImportResult, KindPicker, Note, PRIVACY, ResultBar, SavedChip, StatementColumns, StatementTable,
+  FileRow, ImportProgress, ImportRail, ImportResult, KindPicker, Note, PRIVACY, RepeatWarning, ResultBar, SavedChip, StatementColumns, StatementTable,
   TrackerColumns, TrackerTable, ZipFound,
 } from './import-view'
 
@@ -46,6 +46,7 @@ export function ImportGallery() {
   const [kind, setKind] = useState<ImportKind>('statement')
   const [mapping, setMapping] = useState(STATEMENT_PREVIEW.mapping)
   const [fresh, setFresh] = useState(STATEMENT_NEW.mapping)
+  const [drcr, setDrcr] = useState(STATEMENT_DRCR.mapping)
   return (
     <div className="flex flex-wrap items-start gap-6">
       <Panel title="1 · Pick a file: nothing chosen" footer={<Foot note="CSV up to 25 MB"><Button variant="ghost">Cancel</Button><Button variant="primary" disabled aria-disabled>Continue</Button></Foot>}>
@@ -96,6 +97,15 @@ export function ImportGallery() {
         <FileRow name="card-statement.csv" size={20_480} detail="new columns" />
         <section aria-label="Columns"><h3 className="mb-2 text-small font-semibold text-ink">Columns</h3><StatementColumns idBase="g2" preview={{ ...STATEMENT_NEW, mapping: fresh }} onChange={setFresh} /></section>
         <StatementTable preview={{ ...STATEMENT_NEW, mapping: fresh }} />
+      </Panel>
+
+      <Panel title="2 · Check columns: Dr / Cr column, file imported before"
+        footer={<Foot note="120 to add · rows already there are skipped"><Button variant="secondary">Back</Button><Button variant="primary">Import 120 rows</Button></Foot>}>
+        <ImportRail current={1} />
+        <FileRow name="statement-oct-copy.csv" size={30_720} detail="120 rows · 1 Oct 2026 to 31 Oct 2026" />
+        <RepeatWarning repeat={STATEMENT_DRCR.repeat!} />
+        <section aria-label="Columns"><h3 className="mb-2 text-small font-semibold text-ink">Columns</h3><StatementColumns idBase="g4" preview={{ ...STATEMENT_DRCR, mapping: drcr }} onChange={setDrcr} /></section>
+        <StatementTable preview={{ ...STATEMENT_DRCR, mapping: drcr }} />
       </Panel>
 
       <Panel title="2 · Check columns: tracker CSV" footer={<Foot note="96 values to add"><Button variant="secondary">Back</Button><Button variant="primary">Import 96 values</Button></Foot>}>

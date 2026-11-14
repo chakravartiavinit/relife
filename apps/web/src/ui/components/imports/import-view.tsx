@@ -296,8 +296,9 @@ export function StatementTable({ preview }: { preview: StatementPreview }) {
         <p className="text-caption text-ink-3 tabular-nums">{Math.min(5, preview.sample.length)} of {nf.format(preview.rows)} rows</p>
       </div>
       {preview.sample.length ? (
-        <div className="overflow-x-auto rounded-[16px] bg-surface shadow-1">
-          <table className="w-full min-w-[34rem] text-start">
+        <>
+        <div className="hidden overflow-x-auto rounded-[16px] bg-surface shadow-1 sm:block">
+          <table className="w-full text-start">
             <thead>
               <tr className="font-mono text-label text-ink-3 uppercase">
                 <th scope="col" className="px-3 pt-3 pb-1.5 text-start font-normal">Date</th>
@@ -324,6 +325,24 @@ export function StatementTable({ preview }: { preview: StatementPreview }) {
             </tbody>
           </table>
         </div>
+        <ul className="divide-y divide-divider rounded-[16px] bg-surface shadow-1 sm:hidden">
+          {preview.sample.map((r, k) => (
+            <li key={k} className="px-3 py-2.5 text-small">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="min-w-0 truncate text-ink" title={r.merchant}>{r.merchant}</span>
+                <span className={cn('shrink-0 font-semibold whitespace-nowrap tabular-nums', r.amount > 0 ? 'text-good' : 'text-ink')}>{formatMoney(r.amount, preview.mapping.currency, { sign: true })}</span>
+              </div>
+              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="text-caption text-ink-3">{fmtDay(r.date)}</span>
+                <span className="inline-flex h-6 items-center rounded-full bg-surface-2 px-2 text-caption text-ink-2">{r.category}</span>
+                {r.match
+                      ? <span className="inline-flex h-6 items-center gap-1 rounded-full bg-pill-wash px-2 text-caption font-medium text-pill-ink"><Link2 aria-hidden className="size-3" strokeWidth={2} />Linked · {r.match}</span>
+                      : <span className="inline-flex h-6 items-center rounded-full bg-surface-2 px-2 text-caption font-medium text-ink-2">New</span>}
+              </div>
+            </li>
+          ))}
+        </ul>
+        </>
       ) : <p className="rounded-md bg-surface-2 p-3 text-small text-ink-2">No rows can be read with these columns yet. Check the date and amount.</p>}
       {preview.invalid ? (
         <p className="mt-2 flex items-start gap-2 text-caption text-pretty text-ink-3">
