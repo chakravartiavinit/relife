@@ -145,6 +145,11 @@ export type Connector = {
   login?: { url: string }
   /** Connects by signing in with the service (OAuth). */
   oauth?: OAuthSpec
+  /**
+   * Where the data comes from, for the privacy page: `local` (this machine only), `lan` (a service on your network) or
+   * `public` (an open service that is sent nothing about you). Missing means a third-party service, the cautious claim.
+   */
+  reach?: 'local' | 'lan' | 'public'
   everyMinutes: number
   sync(ctx: ConnectorCtx): Promise<void>
   /**

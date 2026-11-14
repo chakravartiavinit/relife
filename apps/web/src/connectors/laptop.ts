@@ -18,6 +18,7 @@ export const laptop: Connector = {
   ],
   env: [],
   everyMinutes: 1440,
+  reach: 'local',
   async sync(ctx) {
     await purgeActivity(ctx.user)
     ctx.log('Cleared stretches older than 90 days')
