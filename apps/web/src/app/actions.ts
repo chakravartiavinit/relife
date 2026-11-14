@@ -773,9 +773,9 @@ export async function suggestOnboardingRoutines(input: { prompt: string; areas: 
     goals: z.string().max(2000).optional(),
   }).safeParse(input)
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Check your answers' }
-  const { aiEnabled } = await import('@/ai')
-  if (!aiEnabled('plan')) return { ok: false, error: 'Connect an AI model first.', noModel: true }
+  const { aiEnabledFor } = await import('@/ai')
   const user = await getUser()
+  if (!(await aiEnabledFor(user, 'plan'))) return { ok: false, error: 'Connect an AI model first.', noModel: true }
   const existing = (await db.select({ name: schema.schedules.name }).from(schema.schedules).where(eq(schema.schedules.userId, user.id))).map((r) => r.name)
   try {
     const { suggestRoutines } = await import('@/ai/routines')
@@ -788,12 +788,12 @@ export async function suggestOnboardingRoutines(input: { prompt: string; areas: 
 
 /** Whether a model is connected, for the routines step (it can connect one inline). `local`: how the free local AI answers, when it is the chosen model. */
 export async function aiReady() {
-  await getUser() // loads saved keys
-  const { aiEnabled, modelId } = await import('@/ai')
+  const user = await getUser() // loads saved keys
+  const { aiEnabledFor, modelId } = await import('@/ai')
   const { localAiStatus } = await import('@/ai/local')
   const local = await localAiStatus('plan')
   // Only the state and the fix: not the server's URL or its model list.
-  return { ready: aiEnabled('plan') && (local.state === 'not-local' || local.state === 'ok'), model: modelId('plan') ?? null, local: { state: local.state, message: local.state === 'down' || local.state === 'no-model' ? local.message : undefined } }
+  return { ready: (await aiEnabledFor(user, 'plan')) && (local.state === 'not-local' || local.state === 'ok'), model: modelId('plan') ?? null, local: { state: local.state, message: local.state === 'down' || local.state === 'no-model' ? local.message : undefined } }
 }
 
 /** What setup's AI step and Coach show about the free local AI. */

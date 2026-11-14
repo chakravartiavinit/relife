@@ -85,3 +85,20 @@ export async function adoptLegacyChat(owner: User) {
     .where(and(eq(schema.users.id, owner.id), sql`${schema.users.profile}->'telegram' is null`))
   clearUserCache()
 }
+
+const names = new Map<string, Promise<string | null>>()
+
+/** The bot's @name, asked of Telegram once per token (the link a person opens is t.me/<name>?start=<code>). */
+export function botUsername(): Promise<string | null> {
+  const token = env('TELEGRAM_BOT_TOKEN')
+  if (!token) return Promise.resolve(null)
+  let hit = names.get(token)
+  if (!hit) {
+    hit = fetch(`https://api.telegram.org/bot${token}/getMe`, { signal: AbortSignal.timeout(5000) })
+      .then(async (r) => (r.ok ? ((await r.json()) as { result?: { username?: string } }).result?.username ?? null : null))
+      .catch(() => null)
+    hit.then((v) => { if (!v) names.delete(token) })
+    names.set(token, hit)
+  }
+  return hit
+}

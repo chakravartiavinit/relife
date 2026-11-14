@@ -6,7 +6,7 @@ import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { env } from '@/core/env'
 import { isDemo } from '@/core/demo'
 import { scopedUser } from '@/core/context'
-import { aiAllowedSync } from '@/core/multi-user'
+import { aiAllowed, aiAllowedSync } from '@/core/multi-user'
 
 // Bring your own key: pick any model per task with env vars like
 //   LLM_DEFAULT=anthropic:claude-sonnet-5-5
@@ -55,6 +55,11 @@ export function aiEnabled(task: Task = 'chat'): boolean {
   if (!(provider in KEY_ENV)) return false
   const keyEnv = KEY_ENV[provider]
   return keyEnv === null || !!env(keyEnv)
+}
+
+/** `aiEnabled` for a page or action that already has the signed-in person: it also asks whether the owner shares the model. */
+export async function aiEnabledFor(user: Parameters<typeof aiAllowed>[0], task: Task = 'chat'): Promise<boolean> {
+  return aiEnabled(task) && (await aiAllowed(user))
 }
 
 export function model(task: Task): LanguageModel {

@@ -25,10 +25,10 @@ export default function GoalsPage() {
 async function Goals() {
   await connection()
   const user = await getUser()
-  const { aiEnabled } = await import('@/ai')
+  const { aiEnabledFor } = await import('@/ai')
   const data = await loadGoalsPage(user)
   const atCap = data.activeCount >= MAX_ACTIVE
-  const ai = aiEnabled('plan')
+  const ai = await aiEnabledFor(user, 'plan')
   const nothing = !data.active.length && !data.paused.length && !data.finished.length
   const drafts = data.drafts.filter((d) => d.payload.goalDraft)
   const hasAside = data.due.length > 0 || drafts.length > 0 || ai

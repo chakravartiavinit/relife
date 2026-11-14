@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
-import { aiEnabled, modelId } from '@/ai'
+import { aiEnabledFor, modelId } from '@/ai'
 import { goalFormContext } from '@/core/goals'
 import { loadThread } from '@/core/coach-messages'
 import { loadClearedToday, loadNeedsYou } from '@/core/needs-you'
@@ -42,7 +42,7 @@ async function Coach({ searchParams }: { searchParams: PageProps<'/coach'>['sear
   const goal = items.some((i) => i.kind === 'goal-draft') ? await goalFormContext(user) : null
   const down = localAiDown(local) ? local : null
   // A local model whose server isn't answering counts as off: Ask stays closed and the card says how to start it.
-  const aiOn = aiEnabled('chat') && !down
+  const aiOn = (await aiEnabledFor(user, 'chat')) && !down
   const model = modelId('chat')
 
   return (
