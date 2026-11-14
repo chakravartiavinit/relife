@@ -328,7 +328,7 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
 - Keep per-event `kind` and `verified`: a future ranked view will count only standard, verified XP.
   Sharing is opt-in. The share card (above) is made on this server and never uploaded; nothing is posted anywhere by the app.
   Party mode shows people on the same server only what each of them ticked (level, streak, quest progress), never values or
-  money. There are no leaderboards or ranked views. The party quest pays a `rare` chest (`ref party:<partyId>:<isoWeek>`) of kind `bonus`.
+  money. There are no leaderboards or ranked views. The party quest pays a `rare` chest (`ref party:<isoWeek>`, one per person per week however many parties) of kind `bonus`.
 
 ## UI bar (non-negotiable)
 
