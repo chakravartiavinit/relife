@@ -36,7 +36,7 @@ done)
 [ -n "$big" ] && err "$big"
 
 # 3. Secret-looking strings in added lines.
-patterns='sk-ant-[A-Za-z0-9_-]{20,}|sk-(proj-)?[A-Za-z0-9_-]{32,}|sk-or-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|xox[abprs]-[A-Za-z0-9-]{10,}|[0-9]{8,10}:AA[0-9A-Za-z_-]{30,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|rlf_[a-z]_[A-Za-z0-9_-]{40,}|re_[A-Za-z0-9]{8,}_[A-Za-z0-9]{16,}|postgres(ql)?://[^:@/]+:[^@/$]{8,}@'
+patterns='sk-ant-[A-Za-z0-9_-]{20,}|sk-(proj-)?[A-Za-z0-9_-]{32,}|sk-or-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|xox[abprs]-[A-Za-z0-9-]{10,}|[0-9]{8,10}:AA[0-9A-Za-z_-]{30,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|rlf_[a-z]_[A-Za-z0-9_-]{40,}|re_[A-Za-z0-9]{8,}_[A-Za-z0-9]{16,}|postgres(ql)?://[^:@/]+:[^@/$][^@/]{7,}@'
 hits=$(git diff "$range" -U0 --no-color -- . ':(exclude).githooks/*' | grep -E '^\+[^+]' | grep -En "$patterns")
 if [ -n "$hits" ]; then
   err "possible secret in staged changes:"

@@ -10,10 +10,15 @@ echo "pre-push: migrations" >&2
 # A schema.ts change needs its generated migration (apps/web/drizzle). Generate under a time limit with no terminal: a
 # rename question can't be answered here, so it times out (or errors) and fails with the same message.
 if command -v timeout >/dev/null 2>&1; then limit="timeout 60"; else limit=""; fi
-before=$(git status --porcelain apps/web/drizzle)
+# Migration files that exist but are not committed would pass the check below and never reach the push.
+if [ -n "$(git status --porcelain apps/web/drizzle)" ]; then
+  git status --short apps/web/drizzle >&2
+  echo "Uncommitted files in apps/web/drizzle: commit (or remove) them first. Push blocked." >&2
+  exit 1
+fi
 rc=0
 (cd apps/web && $limit npx drizzle-kit generate </dev/null >/tmp/relife-prepush-drizzle.log 2>&1) || rc=$?
-if [ "$rc" -ne 0 ] || [ "$(git status --porcelain apps/web/drizzle)" != "$before" ]; then
+if [ "$rc" -ne 0 ] || [ -n "$(git status --porcelain apps/web/drizzle)" ]; then
   tail -5 /tmp/relife-prepush-drizzle.log >&2
   echo "Schema changed: run \`npm run db:generate\` and commit apps/web/drizzle. Push blocked." >&2
   [ "$rc" -eq 0 ] && echo "(The migration just generated is in apps/web/drizzle: review it, then commit.)" >&2
