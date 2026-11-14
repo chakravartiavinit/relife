@@ -54,3 +54,22 @@ export const PairPoll = z.discriminatedUnion('status', [
   z.object({ status: z.literal('approved'), token: z.string().optional(), device: DeviceInfo }),
 ])
 export type PairPoll = z.infer<typeof PairPoll>
+
+/**
+ * POST /api/v1/pair/join: someone opens an invite link (`/join#s=<secret>`) and picks a name. One use: it makes a new
+ * person on this server (a member), signs this browser in as them and answers with where to go next.
+ */
+export const PairJoin = z.object({
+  secret: z.string().min(16).max(200),
+  name: z.string().trim().min(1).max(60),
+  /** IANA name from the browser (`Intl.DateTimeFormat().resolvedOptions().timeZone`). Wrong or missing: the server's. */
+  timezone: z.string().max(80).optional(),
+})
+export type PairJoin = z.infer<typeof PairJoin>
+
+export const PairJoinResult = z.object({
+  ok: z.literal(true),
+  device: DeviceInfo,
+  next: z.string(),
+})
+export type PairJoinResult = z.infer<typeof PairJoinResult>

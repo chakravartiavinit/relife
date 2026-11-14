@@ -1,0 +1,12 @@
+{
+  "id": "5c0b7e0e-2f6a-4a41-9d5a-0d6f2a9a1b10",
+  "you": false,
+  "status": "active",
+  "name": "Maya",
+  "level": { "level": 12, "title": "Steady" },
+  "streak": 9,
+  "today": { "done": 3, "total": 5 },
+  "quests": [100, 60],
+  "achievements": ["Week One"],
+  "week": { "onTrack": true, "days": 5 }
+}

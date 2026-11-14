@@ -14,6 +14,7 @@ const schemas: Record<string, ZodType> = {
   PairRequestStart: contract.PairRequestStart, PairRequestStarted: contract.PairRequestStarted, PairPoll: contract.PairPoll,
   PairRedeem: contract.PairRedeem, DeviceList: contract.DeviceList, DeviceRename: contract.DeviceRename, PairRedeemResult: contract.PairRedeemResult, Event: contract.Event, ApiError: contract.ApiError, Pack: contract.Pack,
   HealthBatch: contract.HealthBatch, HealthIngestResult: contract.HealthIngestResult, PushAction: contract.PushAction, PushActionResult: contract.PushActionResult,
+  PairJoin: contract.PairJoin, PairJoinResult: contract.PairJoinResult, PartyMemberView: contract.PartyMemberView, PartyView: contract.PartyView,
 }
 const files = readdirSync(dir).filter((f) => f.endsWith('.json'))
 
@@ -69,4 +70,16 @@ test('a pack refuses a newer version, a money tracker, an http link and too many
   assert.equal(contract.Pack.safeParse({ ...base, goals: [{ ...goal, weeks: 2 }] }).success, false)
   assert.equal(contract.parsePack('nope').ok, false)
   assert.equal(contract.parsePack(' '.repeat(70_000)).ok, false)
+})
+
+test('a party view lists only what a member ticked, and rejects extra shapes', () => {
+  const none = { id: 'm1', you: false, status: 'active', name: null, level: null, streak: null, today: null, quests: null, achievements: null, week: { onTrack: false, days: null } }
+  assert.equal(contract.PartyMemberView.safeParse(none).success, true, 'a member who shares nothing')
+  assert.equal(contract.PartyMemberView.safeParse({ ...none, quests: [120] }).success, false, 'a quest is a percentage')
+  assert.equal(contract.PartyMemberView.safeParse({ ...none, today: { done: -1, total: 2 } }).success, false)
+  // Unknown keys are stripped, so a loader that adds a private field never lets it through the schema.
+  assert.deepEqual(Object.keys(contract.PartyMemberView.parse({ ...none, notes: 'private', email: 'a@b.c' })).sort(), Object.keys(none).sort())
+  assert.equal(contract.PartyShare.safeParse({ name: true }).success, false, 'every tick is explicit')
+  assert.equal(contract.PairJoin.safeParse({ secret: 'short', name: 'A' }).success, false)
+  assert.equal(contract.PairJoin.safeParse({ secret: 'x'.repeat(43), name: '  ' }).success, false, 'a name is needed')
 })
