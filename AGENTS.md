@@ -214,7 +214,7 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
   not appear on push.
 - **New device kind or scope:** `core/auth/trust.ts` (`scopesFor`, `narrowScopes`) and `core/auth/pairing.ts`. A route that
   must accept a narrow device (the Android app's `ingest`) uses `authenticate(req, scope)` with its own scope;
-  `authenticateAny` is only for `me` and sign-out. `POST /api/v1/health` (`core/v1/health.ts`) turns Health Connect days
+  `authenticateAny` is only for sign-out (`devices/me/revoke`); `me` stays at `companion`. `POST /api/v1/health` (`core/v1/health.ts`) turns Health Connect days
   into raw events `day:<date>` and then entries through `parsers/daily.ts` (source `health-connect`).
 - **New achievement:** append to `apps/web/src/achievements/index.ts`. `check` reads the shared stats and returns
   progress, so locked ones show how close you are.

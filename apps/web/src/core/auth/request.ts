@@ -34,7 +34,7 @@ export async function authenticate(req: Request, scope: Scope): Promise<Authed |
   return { ok: true, device: found.device, user, via: t.via }
 }
 
-/** For routes any signed-in device may call (`me`, signing itself out): a `companion` check, else `ingest`. `full` passes the first. */
+/** For routes any signed-in device may call (signing itself out): a `companion` check, else `ingest`. `full` passes the first. */
 export async function authenticateAny(req: Request): Promise<Authed | Denied> {
   const a = await authenticate(req, 'companion')
   return !a.ok && a.reason === 'scope' ? authenticate(req, 'ingest') : a
