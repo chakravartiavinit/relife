@@ -183,7 +183,7 @@ export function GoalDraftCard({ insightId, draft, picker, today, activeCount }: 
         <dt className="text-ink-3">Baseline</dt><dd className="text-ink-2">You set it when you review the draft</dd>
       </dl>
       <div className="mt-4 flex flex-wrap gap-2">
-        <GoalFormButton variant="primary" mode={{ kind: 'draft', activeCount, insightId, pack: draft.origin?.pack }} initial={initialFromDraft(draft, picker, today)} picker={picker} today={today} disabled={atCap} describedBy={atCap ? 'goal-cap-note' : undefined}>Review draft</GoalFormButton>
+        <GoalFormButton variant="primary" mode={{ kind: 'draft', activeCount, insightId, packName: draft.origin ? draft.origin.name ?? 'starter' : undefined }} initial={initialFromDraft(draft, picker, today)} picker={picker} today={today} disabled={atCap} describedBy={atCap ? 'goal-cap-note' : undefined}>Review draft</GoalFormButton>
         <Button variant="ghost" disabled={pending} onClick={() => start(async () => { await dismissGoalDraftAction(insightId) })}>Dismiss</Button>
       </div>
     </Card>

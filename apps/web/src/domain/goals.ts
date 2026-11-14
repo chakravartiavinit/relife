@@ -82,8 +82,8 @@ export type GoalDraft = {
   measure: { tracker: string } | { checkIn: string; unit?: string; how?: string }
   direction: GoalDirection; target?: number; rangeLow?: number; rangeHigh?: number
   targetDate: string; cadence: GoalCadence; actions: GoalActionLink[]
-  /** Set when a starter pack made the draft: the form says so. */
-  origin?: { pack: string }
+  /** Set when a starter pack made the draft: the form says so, by `name` (drafts from before it was stored say "starter"). */
+  origin?: { pack: string; name?: string }
 }
 
 /** One goal inside a weekly review insight. Lines are deterministic; the coach note is separate. */

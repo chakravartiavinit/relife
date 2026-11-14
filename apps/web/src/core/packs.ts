@@ -37,7 +37,7 @@ export async function insertPackGoalDraft(
     tx.select({ active: sql<number>`count(*)::int` }).from(schema.goals).where(and(eq(schema.goals.userId, user.id), eq(schema.goals.status, 'active'))),
   ])
   if (dup || pending >= MAX_PENDING_DRAFTS || active >= MAX_ACTIVE) return false
-  const draft = { ...checked.draft, origin: { pack: pack.id } }
+  const draft = { ...checked.draft, origin: { pack: pack.id, name: pack.name } }
   await tx.insert(I).values({
     userId: user.id, kind: 'plan', status: 'pending', title: `Goal draft: ${draft.title}`.slice(0, 140), body: draft.reason,
     payload: { goalDraft: draft, dedupeKey },

@@ -192,7 +192,7 @@ test('setup with the Fitness pack adds exactly one pending goal draft, linked to
     assert.equal(first.length, 1)
     assert.equal(first[0].status, 'pending')
     const draft = first[0].payload.goalDraft!
-    assert.deepEqual(draft.origin, { pack: 'fitness' })
+    assert.deepEqual(draft.origin, { pack: 'fitness', name: 'Fitness' })
     assert.deepEqual('checkIn' in draft.measure, true)
     assert.deepEqual(draft.actions, [{ kind: 'schedule', id: workout.id }], 'only the routine that was created is linked')
     assert.equal(draft.targetDate, '2027-01-08')
