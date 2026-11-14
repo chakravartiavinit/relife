@@ -31,7 +31,7 @@ export function pgDumpInstalled(): boolean {
   return cache.found
 }
 
-export const INSTALL_HINT = 'Install the PostgreSQL 16 client tools: `brew install libpq` on a Mac, `apt install postgresql-client-16` on Linux (the Docker image has them). Set RELIFE_PG_BIN if they are somewhere else.'
+export const INSTALL_HINT = 'Install the PostgreSQL 16 client tools: `brew install libpq` on a Mac, `apt install postgresql-client-16` on Linux. Docker works out of the box. Set RELIFE_PG_BIN if they are somewhere else.'
 
 /** The connection as PG* variables, from the same URL the app uses (the `_mock` database in mock mode). */
 export function pgEnv(url = databaseUrl): Record<string, string> {

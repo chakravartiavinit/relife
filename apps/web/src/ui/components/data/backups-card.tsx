@@ -9,7 +9,7 @@ import { BackupNowButton } from './backup-now-button'
 // Settings → Data & privacy → Backups: when the last one ran, where they go, the schedule, whether they are encrypted.
 // Presentational: the page loads `status` (core/data/backup-status.ts) and /dev/ui draws every state from fixtures.
 
-const INSTALL = 'Install the PostgreSQL 16 client tools: brew install libpq on a Mac. The Docker image already has them.'
+const INSTALL = 'Install the PostgreSQL 16 client tools: brew install libpq on a Mac, apt install postgresql-client-16 on Linux. Docker works out of the box.'
 
 function Dot({ color }: { color: string }) {
   return <span aria-hidden className="inline-block size-2 shrink-0 rounded-full" style={{ background: color }} />
