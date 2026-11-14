@@ -9,8 +9,16 @@ import java.net.URL
 
 /** An answer the server gave with a non-2xx status. `code` is the contract's ApiError code (`revoked`, `expired`, ...). */
 class ApiException(val status: Int, val code: String, message: String) : IOException(message) {
-    /** The token is no good any more: the device was revoked, expired or never existed. */
-    val signedOut: Boolean get() = status == 401
+    /**
+     * The token is no good any more: the device was revoked, expired or never existed. A 401 with any other code
+     * (a proxy's own login page, a bare 401 from something in front of the server) is not the server forgetting this
+     * phone, so it must not wipe the token.
+     */
+    val signedOut: Boolean get() = status == 401 && code in SIGNED_OUT_CODES
+
+    private companion object {
+        val SIGNED_OUT_CODES = setOf("revoked", "expired", "unauthorized")
+    }
 }
 
 /** Everything the app asks of a ReLife server. A fake in tests; [HttpApi] on the phone. */
@@ -63,15 +71,16 @@ class HttpApi(private val userAgent: String) : ReLifeApi {
                 }
                 val status = conn.responseCode
                 val text = (if (status in 200..299) conn.inputStream else conn.errorStream)?.bufferedReader()?.use { it.readText() }.orEmpty()
-                if (status !in 200..299) throw errorFor(status, text)
+                if (status !in 200..299) throw apiErrorFor(status, text)
                 text
             } finally {
                 conn.disconnect()
             }
         }
+}
 
-    private fun errorFor(status: Int, text: String): ApiException {
-        val parsed = runCatching { ContractJson.decodeFromString<ApiError>(text).error }.getOrNull()
-        return ApiException(status, parsed?.code ?: "http_$status", parsed?.message ?: "The server answered $status.")
-    }
+/** Turns a non-2xx answer into an [ApiException]; the body is the contract's ApiError when the server wrote it, anything else when not. */
+internal fun apiErrorFor(status: Int, text: String): ApiException {
+    val parsed = runCatching { ContractJson.decodeFromString<ApiError>(text).error }.getOrNull()
+    return ApiException(status, parsed?.code ?: "http_$status", parsed?.message ?: "The server answered $status.")
 }
