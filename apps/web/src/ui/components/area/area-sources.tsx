@@ -25,7 +25,7 @@ const sourceLabel = (s: string) => SOURCE_LABEL[s] ?? s.replace(/[-.]/g, ' ').re
 export async function AreaSources({ user, def, today }: { user: User; def: AreaDef; today: string }) {
   const from = addDays(today, -89)
   const [{ items }, typed] = await Promise.all([
-    loadConnectorItems(user, requestOrigin(await headers())),
+    loadConnectorItems(user, requestOrigin(await headers()), { probeLocal: false }),
     def.category
       ? db.select({ source: schema.entries.source, trackers: sql<number>`count(distinct ${schema.entries.trackerId})::int`, last: sql<string>`max(${schema.entries.localDate})::text` })
         .from(schema.entries).innerJoin(schema.trackers, eq(schema.trackers.id, schema.entries.trackerId))

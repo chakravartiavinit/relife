@@ -48,7 +48,7 @@ const AI: { id: string; name: string; description: string; provides: string[] }[
 ]
 
 /** `origin` is the address the page was opened on (OAuth sends you back to it). `getUser()` has already applied connected keys. */
-export async function loadConnectorItems(user: User, origin: string) {
+export async function loadConnectorItems(user: User, origin: string, o: { probeLocal?: boolean } = {}) {
   const [sources, [heartbeat], runs, saved, rows, jobs] = await Promise.all([
     connectorStatus(),
     db.select().from(schema.heartbeats).where(eq(schema.heartbeats.name, 'worker')),
@@ -100,8 +100,9 @@ export async function loadConnectorItems(user: User, origin: string) {
   })
 
   const tasks: Task[] = ['parse', 'plan', 'chat']
-  // The local server is probed only when it is connected and in use (cached 30 s; never throws).
-  const local = isConnected('local') ? await localAiStatus('chat') : null
+  // The local server is probed only when it is connected and in use (cached 30 s; never throws), and only for pages that
+  // show its row: area pages and most peeks pass `probeLocal: false`.
+  const local = isConnected('local') && o.probeLocal !== false ? await localAiStatus('chat') : null
   for (const p of AI) {
     const spec = integration(p.id)!
     const connected = isConnected(p.id)

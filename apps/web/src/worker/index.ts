@@ -35,9 +35,11 @@ async function main() {
   }
   if (!aiEnabled('plan')) console.log('[worker] AI jobs off: connect an AI provider with a default model')
   else {
-    const local = await localAiStatus('plan')
-    if (local.state === 'ok') console.log(`[worker] local AI ready (${local.model})`)
-    else if (local.state !== 'not-local') console.log(`[worker] local AI not running: ${local.message}`)
+    // Said when the probe answers (up to a few seconds); the bot and the jobs don't wait for it.
+    void localAiStatus('plan').then((local) => {
+      if (local.state === 'ok') console.log(`[worker] local AI ready (${local.model})`)
+      else if (local.state !== 'not-local') console.log(`[worker] local AI not running: ${local.message}`)
+    })
   }
   else {
     const local = await localAiStatus('plan')

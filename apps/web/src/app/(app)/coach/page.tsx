@@ -36,11 +36,10 @@ async function Coach({ searchParams }: { searchParams: PageProps<'/coach'>['sear
   // `?filter=data` is the old Inbox (messages the app couldn't read, payments to sort); `?filter=decisions` is everything else.
   const filter = sp.filter === 'data' || sp.filter === 'decisions' ? sp.filter : null
   const user = await getUser()
-  const [{ items, categories }, cleared, thread, patterns] = await Promise.all([
-    loadNeedsYou(user), loadClearedToday(user), loadThread(user), loadPatterns(user),
+  const [{ items, categories }, cleared, thread, patterns, local] = await Promise.all([
+    loadNeedsYou(user), loadClearedToday(user), loadThread(user), loadPatterns(user), localAiStatus('chat'),
   ])
   const goal = items.some((i) => i.kind === 'goal-draft') ? await goalFormContext(user) : null
-  const local = await localAiStatus('chat')
   const down = localAiDown(local) ? local : null
   // A local model whose server isn't answering counts as off: Ask stays closed and the card says how to start it.
   const aiOn = aiEnabled('chat') && !down
