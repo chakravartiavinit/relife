@@ -43,14 +43,16 @@ function Row({ i, onUndo }: { i: PastImport; onUndo: (id: string) => Promise<str
         {err ? <p role="alert" className="text-caption text-bad">{err}</p> : null}
       </div>
       {i.status === 'running' ? <LoaderCircle aria-label="Running" className="size-4 animate-spin text-ink-3 [animation-duration:0.9s]" /> : null}
-      {i.status === 'done' && i.summary.added > 0 ? (
+      {(i.status === 'done' && i.summary.added > 0) || i.status === 'failed' ? (
         ask ? (
-          <span className="flex items-center gap-2">
-            <span className="text-caption text-ink-2">Remove {i.summary.added.toLocaleString('en-US')} {i.kind === 'statement' ? 'rows' : 'days'}?</span>
+          <span className="flex flex-wrap items-center gap-2">
+            <span className="text-caption text-ink-2">
+              {i.status === 'failed' ? 'Remove this import and any rows it already wrote?' : `Remove ${i.summary.added.toLocaleString('en-US')} ${i.kind === 'statement' ? 'rows' : 'days'}? Rows a later import repeated go too.`}
+            </span>
             <Button variant="danger" size="sm" disabled={pending} onClick={() => start(async () => { setErr(await onUndo(i.id)); setAsk(false) })}>{pending ? 'Removing…' : 'Remove'}</Button>
             <Button variant="ghost" size="sm" disabled={pending} onClick={() => setAsk(false)}>Keep</Button>
           </span>
-        ) : <Button variant="ghost" size="sm" onClick={() => setAsk(true)}>Undo</Button>
+        ) : <Button variant="ghost" size="sm" onClick={() => setAsk(true)}>{i.status === 'failed' ? 'Remove' : 'Undo'}</Button>
       ) : null}
     </li>
   )

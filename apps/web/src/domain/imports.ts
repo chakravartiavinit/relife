@@ -66,7 +66,8 @@ export function summaryLine(kind: ImportKind, s: ImportSummary): string {
 
 export type DateChoice = { format: string; example: string }
 
-type PreviewBase = { ok: true; rows: number; from?: string; to?: string; invalid: number; invalidSamples: string[] }
+/** `repeat`: an earlier import of the same kind and dates (same header, or same zip size): the user is warned, not stopped. */
+type PreviewBase = { ok: true; rows: number; from?: string; to?: string; invalid: number; invalidSamples: string[]; repeat?: { fileName: string; at: string } }
 
 export type StatementPreview = PreviewBase & {
   kind: 'statement'
@@ -100,6 +101,7 @@ export type TrackerCsvPreview = PreviewBase & {
 
 export type ZipPreview = {
   ok: true
+  repeat?: { fileName: string; at: string }
   kind: 'apple-health' | 'takeout'
   /** One line per thing found: "export.xml (1.8 GB)", "Fit: daily activity metrics (2019–2024)". */
   found: string[]

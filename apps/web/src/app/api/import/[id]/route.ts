@@ -6,7 +6,7 @@ import { CHUNK_BYTES } from '@/domain/imports'
 // Chunked upload for file imports. The edge proxy buffers a request body in memory and cuts it at 10 MB, and server
 // actions stop at 1 MB, so the browser sends the file as raw chunks of at most 8 MiB, in order. `?offset=` must equal
 // the bytes received so far; a mismatch answers 409 `{ expected }` so the client resumes from there.
-const UUID = /^[0-9a-f-]{36}$/i
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export async function PUT(req: Request, ctx: RouteContext<'/api/import/[id]'>) {
   await connection()

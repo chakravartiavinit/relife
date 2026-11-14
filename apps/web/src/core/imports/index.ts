@@ -1,6 +1,6 @@
 import brand from '@relife/brand/brand.json'
 import { mkdir, open, rm, stat, statfs, appendFile } from 'node:fs/promises'
-import { and, desc, eq, inArray, isNull, lt, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull, lt, ne, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { db, schema } from '@/db'
 import { env } from '@/core/env'
@@ -69,28 +69,42 @@ export type ChunkResult = { ok: true; received: number } | { ok: false; status: 
 
 /** Appends one chunk. `offset` must equal what was received so far; a mismatch tells the client where to resume. */
 export async function appendChunk(user: User, id: string, offset: number, body: Buffer): Promise<ChunkResult> {
-  const [row] = await db.select().from(I).where(and(eq(I.id, id), eq(I.userId, user.id)))
-  if (!row) return { ok: false, status: 404, error: 'Import not found' }
-  if (row.status !== 'uploading') return { ok: false, status: 409, error: 'This upload is already finished', expected: row.receivedBytes }
+  const [seen] = await db.select({ id: I.id }).from(I).where(and(eq(I.id, id), eq(I.userId, user.id)))
+  if (!seen) return { ok: false, status: 404, error: 'Import not found' }
   if (body.length > CHUNK_BYTES) return { ok: false, status: 413, error: 'Chunk too large' }
-  if (offset !== row.receivedBytes) return { ok: false, status: 409, error: 'Out of order', expected: row.receivedBytes }
-  if (offset + body.length > row.sizeBytes) return { ok: false, status: 400, error: 'More data than the file size announced' }
-  const file = uploadPath(id)
-  await appendFile(file, '') // creates it
-  const fh = await open(file, 'r+')
-  try {
-    await fh.truncate(offset) // a crash between write and the row update leaves a longer file: rewrite from the offset
-    await fh.write(body, 0, body.length, offset)
-  } finally { await fh.close() }
-  const received = offset + body.length
-  await db.update(I).set({ receivedBytes: received, progress: { phase: 'upload', done: received, total: row.sizeBytes } }).where(and(eq(I.id, id), eq(I.receivedBytes, offset)))
-  return { ok: true, received }
+  // The row stays locked from the check to the update, so two requests for the same offset can't both write.
+  return db.transaction(async (tx): Promise<ChunkResult> => {
+    const [row] = await tx.select().from(I).where(and(eq(I.id, id), eq(I.userId, user.id))).for('update')
+    if (!row) return { ok: false, status: 404, error: 'Import not found' }
+    if (row.status !== 'uploading') return { ok: false, status: 409, error: 'This upload is already finished', expected: row.receivedBytes }
+    if (offset !== row.receivedBytes) return { ok: false, status: 409, error: 'Out of order', expected: row.receivedBytes }
+    if (offset + body.length > row.sizeBytes) return { ok: false, status: 400, error: 'More data than the file size announced' }
+    const file = uploadPath(id)
+    await appendFile(file, '') // creates it
+    const fh = await open(file, 'r+')
+    try {
+      await fh.truncate(offset) // a crash between write and the row update leaves a longer file: rewrite from the offset
+      await fh.write(body, 0, body.length, offset)
+    } finally { await fh.close() }
+    const received = offset + body.length
+    const done = await tx.update(I).set({ receivedBytes: received, progress: { phase: 'upload', done: received, total: row.sizeBytes } }).where(and(eq(I.id, id), eq(I.receivedBytes, offset)))
+    if (!done.count) return { ok: false, status: 409, error: 'Out of order', expected: row.receivedBytes }
+    return { ok: true, received }
+  })
 }
 
-/** Cancels an upload (or throws away an upload that was never started) and deletes what arrived. */
+/** A run the process died in: still `running` long after its last write. */
+const STALE_RUN_MIN = 70
+const isStale = (row: ImportRow, now = Date.now()) => row.status === 'running' && row.updatedAt.getTime() < now - STALE_RUN_MIN * 60_000
+
+/**
+ * Cancels an upload (or throws away an upload that was never started) and deletes what arrived. A failed or stale
+ * import may already have written rows, so those are undone too: nothing is left behind.
+ */
 export async function cancelImport(user: User, id: string) {
   const row = await owned(user, id)
-  if (!['uploading', 'uploaded', 'failed'].includes(row.status)) return
+  if (row.status === 'failed' || isStale(row)) { await undoImport(user, id); return }
+  if (!['uploading', 'uploaded'].includes(row.status)) return
   await rm(importDir(id), { recursive: true, force: true })
   await db.update(I).set({ status: 'cancelled' }).where(eq(I.id, id))
 }
@@ -102,11 +116,23 @@ export async function previewImport(user: User, id: string, mapping?: ImportMapp
   try { await stat(uploadPath(id)) } catch { return { ok: false, error: 'The uploaded file is gone. Pick the file again.' } }
   try {
     const p = await KINDS[row.kind].preview(uploadPath(id), { user, fileName: row.fileName, mapping })
-    if (p.ok && 'signature' in p) await db.update(I).set({ signature: p.signature }).where(eq(I.id, id))
-    return p
+    if (!p.ok) return p
+    // A CSV is known by its header, a zip by its size; the same one over the same dates was probably imported before.
+    const signature = 'signature' in p ? p.signature : `size:${row.sizeBytes}`
+    await db.update(I).set({ signature }).where(eq(I.id, id))
+    const repeat = await findRepeat(user, row, signature, p)
+    return repeat ? { ...p, repeat } : p
   } catch (e) {
     return { ok: false, error: `This file could not be read: ${e instanceof Error ? e.message : String(e)}` }
   }
+}
+
+/** An earlier finished import of the same kind and signature that covered the same dates. */
+async function findRepeat(user: User, row: ImportRow, signature: string, p: { from?: string; to?: string }) {
+  const earlier = await db.select({ fileName: I.fileName, summary: I.summary, at: I.finishedAt }).from(I)
+    .where(and(eq(I.userId, user.id), eq(I.kind, row.kind), eq(I.signature, signature), eq(I.status, 'done'), ne(I.id, row.id))).orderBy(desc(I.createdAt)).limit(10)
+  const hit = isCsvKind(row.kind) ? earlier.find((e) => e.summary.from === p.from && e.summary.to === p.to) : earlier[0] // a zip's size says enough
+  return hit ? { fileName: hit.fileName, at: (hit.at ?? new Date()).toISOString() } : undefined
 }
 
 /** All bytes arrived: marks it uploaded and returns the preview. */
@@ -138,15 +164,16 @@ export async function importStatus(user: User, id: string) {
 
 export async function listImports(user: User, limit = 10) {
   return db.select({
-    id: I.id, kind: I.kind, fileName: I.fileName, status: I.status, summary: I.summary, error: I.error, createdAt: I.createdAt, finishedAt: I.finishedAt,
+    id: I.id, kind: I.kind, fileName: I.fileName, status: I.status, summary: I.summary, error: I.error, createdAt: I.createdAt, finishedAt: I.finishedAt, updatedAt: I.updatedAt,
   }).from(I).where(and(eq(I.userId, user.id), inArray(I.status, ['queued', 'running', 'done', 'failed', 'undone']))).orderBy(desc(I.createdAt)).limit(limit)
+    // A run nobody has touched for over an hour is shown as failed, so it can be removed.
+    .then((rows) => rows.map(({ updatedAt, ...r }) => (r.status === 'running' && updatedAt.getTime() < Date.now() - STALE_RUN_MIN * 60_000
+      ? { ...r, status: 'failed' as const, error: `${brand.name} stopped while this import was running.` } : r)))
 }
 
 // ---- Running ----
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
-const STALE_RUN_MIN = 70
-
 /** Queued imports, oldest first, one at a time. A run the process died in is marked failed so it can be retried. */
 export async function runQueuedImports(): Promise<string | undefined> {
   await db.update(I).set({ status: 'failed', error: `${brand.name} stopped while this import was running. Try again.` })
@@ -247,11 +274,12 @@ async function summarize(kind: ImportKind, id: string, r: { rows: number; invali
 
 /**
  * Removes what an import added or refreshed: its transactions and entries (by `meta.importId`) and its raw events
- * (`body.importId`). Bank rows linked to app orders go with it; the orders keep counting. One transaction.
+ * (`body.importId`). Bank rows linked to app orders go with it; the orders keep counting. One transaction. Works for
+ * a failed or stale import too (it may have written part of its rows).
  */
 export async function undoImport(user: User, id: string): Promise<{ removed: number }> {
   const row = await owned(user, id)
-  if (row.status !== 'done') throw new Error('Only a finished import can be removed')
+  if (!(row.status === 'done' || row.status === 'failed' || isStale(row))) throw new Error('Only a finished or failed import can be removed')
   const removed = await db.transaction(async (tx) => {
     await lockUser(tx, user.id)
     const T = schema.transactions, E = schema.entries, R = schema.rawEvents
@@ -266,6 +294,7 @@ export async function undoImport(user: User, id: string): Promise<{ removed: num
     await tx.update(I).set({ status: 'undone', undoneAt: new Date() }).where(eq(I.id, id))
     return t.count + e.count
   })
+  await rm(importDir(id), { recursive: true, force: true })
   const { emit } = await import('@/jobs')
   await emit('data.changed')
   return { removed }
