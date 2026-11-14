@@ -18,8 +18,10 @@ export function DemoGuard() {
       const form = e.target
       if (!(form instanceof HTMLFormElement) || form.hasAttribute('data-demo-allow')) return
       const method = (e.submitter?.getAttribute('formmethod') ?? form.getAttribute('method') ?? 'get').toLowerCase()
-      // A React form with a function `action` (useActionState) has no method; React gives it a `javascript:` action.
-      if (method === 'get' && !form.getAttribute('action')?.startsWith('javascript:')) return
+      // A React form with a function `action` (useActionState) has no method; React gives it a `javascript:` action,
+      // and a submit button can carry its own (`formaction`), which wins over the form's.
+      const action = e.submitter?.getAttribute('formaction') ?? form.getAttribute('action')
+      if (method === 'get' && !action?.startsWith('javascript:')) return
       e.preventDefault(); e.stopPropagation()
       toast.error()
     }
