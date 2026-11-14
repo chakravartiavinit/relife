@@ -38,7 +38,7 @@
     "@relife/contract": "*",
     "@relife/tokens": "*",
     "@resvg/resvg-js": "^2.6.2",
-    "ai": "^6.0.323",
+    "ai": "^7.0.169",
     "ccxt": "^4.5.92",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
