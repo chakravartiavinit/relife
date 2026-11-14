@@ -5,6 +5,7 @@ import brand from '@relife/brand/brand.json'
 import { and, eq, inArray, sql } from 'drizzle-orm'
 import { refresh } from 'next/cache'
 import { after } from 'next/server'
+import { PACK_LIMITS } from '@relife/contract'
 import { z } from 'zod'
 import { db, schema } from '@/db'
 import { CATEGORIES } from '@/db/schema'
@@ -1096,9 +1097,9 @@ export async function undoImportAction(id: string) {
 
 const packText = z.string().max(80_000)
 const packChoices = z.object({
-  routineKeys: z.array(z.string().max(60)).max(30),
-  trackerSlugs: z.array(z.string().max(60)).max(30),
-  goals: z.array(z.object({ key: z.string().max(60), baselineValue: z.number().finite().min(-1_000_000).max(1_000_000).optional() })).max(3),
+  routineKeys: z.array(z.string().max(PACK_LIMITS.slug)).max(PACK_LIMITS.routines),
+  trackerSlugs: z.array(z.string().max(PACK_LIMITS.slug)).max(PACK_LIMITS.trackers),
+  goals: z.array(z.object({ key: z.string().max(PACK_LIMITS.slug), baselineValue: z.number().finite().min(-1_000_000).max(1_000_000).optional() })).max(PACK_LIMITS.goals),
   addAreas: z.boolean(),
 })
 
@@ -1144,7 +1145,7 @@ export async function packExportChoicesAction() {
 
 export async function exportPackAction(input: unknown) {
   const p = z.object({
-    scheduleIds: z.array(idArg).max(40), trackerIds: z.array(idArg).max(40), goalIds: z.array(idArg).max(3), includeNotes: z.boolean(),
+    scheduleIds: z.array(idArg).max(PACK_LIMITS.routines, `A pack holds up to ${PACK_LIMITS.routines} routines`), trackerIds: z.array(idArg).max(PACK_LIMITS.trackers, `A pack holds up to ${PACK_LIMITS.trackers} trackers`), goalIds: z.array(idArg).max(PACK_LIMITS.goals, `A pack holds up to ${PACK_LIMITS.goals} goals`), includeNotes: z.boolean(),
     name: z.string().trim().min(1, 'Give your pack a name').max(60), description: z.string().trim().min(1, 'Say what it is for').max(280), author: z.string().trim().max(60).optional(),
   }).safeParse(input)
   if (!p.success) return { ok: false as const, error: p.error.issues[0]?.message ?? 'Check the form.' }
