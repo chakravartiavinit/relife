@@ -16,7 +16,7 @@ import { currentKey, keyFilePath } from './key'
 import { databaseName, pgEnv, requirePgTool, spawnTo } from './pg'
 import { schemaHash, TABLES } from './tables'
 
-// A backup is one .tar.gz: a pg_dump of the database plus the files it needs (secret.key, library covers). It is exact,
+// A backup is one .tar.gz: a pg_dump of the database plus the files it needs (secret.key, vapid.json, library covers). It is exact,
 // so it includes the key: that is why it is never offered as a browser download, and why a passphrase
 // (RELIFE_BACKUP_PASSPHRASE) turns the whole archive into AES-256-GCM. browser/ (cookies, large) is left out.
 
@@ -81,6 +81,8 @@ async function write(reason: BackupReason, now: Date): Promise<BackupResult> {
 
     const key = currentKey()
     if (key.source === 'file') await cp(keyFilePath(), join(work, 'data', 'secret.key'))
+    // The push keys: every saved browser subscription is tied to them, so a restore without them silences all of them.
+    if (existsSync(dataDir('vapid.json'))) await cp(dataDir('vapid.json'), join(work, 'data', 'vapid.json'))
     if (existsSync(dataDir('library'))) await cp(dataDir('library'), join(work, 'data', 'library'), { recursive: true })
 
     const [{ n }] = await sql`select count(*)::int as n from connections where secrets_encrypted is not null`

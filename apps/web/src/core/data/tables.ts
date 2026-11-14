@@ -64,6 +64,7 @@ export const TABLES: Rule[] = [
   // Global (no user_id): task, model, tokens and time only. Prompts are never stored (ai/runtime-policy.ts); the two payload columns are left out anyway.
   { name: 'llm_runs', export: { where: 'all', drop: ['request', 'response'] }, wipe: 'all' },
   { name: 'devices', export: false, wipe: 'keep', why: 'Token hashes: pair each device again instead.' },
+  { name: 'push_subscriptions', export: false, wipe: 'cascade', why: 'Push addresses of each browser, tied to its device: turn notifications on again on each one.' },
   { name: 'pairings', export: false, wipe: 'cascade', why: 'Short-lived pairing codes.' },
   { name: 'idempotency', export: false, wipe: 'all', why: 'Operational: replay keys for retried writes.' },
   { name: 'sync_runs', export: false, wipe: 'all', why: 'Operational: each source’s recent sync attempts.' },

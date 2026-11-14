@@ -40,6 +40,9 @@ test('export, wipe and import round trip on the mock database', { skip: !enabled
   // Something to protect: a device, a connection with one secret and one plain setting, and the folders a wipe clears.
   const [{ id: deviceId }] = await sql`insert into devices (user_id, kind, name, scopes, token_hash, expires_at)
     values (${user.id}, 'browser', 'integration test', ${['full']}, ${randomBytes(32)}, now() + interval '1 day') returning id`
+  // A push subscription of that device: tied to the browser, so it is neither exported nor kept through a wipe or an import.
+  await sql`insert into push_subscriptions (user_id, device_id, endpoint, p256dh, auth) values (${user.id}, ${deviceId}, ${`https://push.example.test/${deviceId}`}, 'p', 'a')`
+  const pushRows = async () => Number((await sql`select count(*)::int as n from push_subscriptions where device_id = ${deviceId}`)[0].n)
   const [before] = await sql`select secrets_encrypted from connections where connector_id = 'github' and user_id = ${user.id}`
   const originalSignIn = user.profile.requireSignIn
   await sql`update connections set secrets_encrypted = ${encrypt({ GITHUB_TOKEN: 'tok-secret-1', GITHUB_USER: 'octo-test' })} where user_id = ${user.id} and connector_id = 'github'`
@@ -90,6 +93,9 @@ test('export, wipe and import round trip on the mock database', { skip: !enabled
   const github = strFromU8(files['tables/connections.jsonl']).split('\n').filter(Boolean).map((l) => JSON.parse(l)).find((c) => c.connector_id === 'github')
   assert.deepEqual(github.settings, { GITHUB_USER: 'octo-test' })
   assert.ok(manifest.excluded.some((e: { table: string }) => e.table === 'devices'))
+  assert.ok(manifest.excluded.some((e: { table: string }) => e.table === 'push_subscriptions'))
+  assert.equal(await pushRows(), 1)
+  assert.ok(!Object.keys(files).some((f) => f.includes('push_subscriptions')) && !Object.values(files).some((b) => strFromU8(b).includes('push.example.test')), 'push addresses are not in the export')
 
   // 2. Wipe.
   await wipeUserData(user)
@@ -104,6 +110,7 @@ test('export, wipe and import round trip on the mock database', { skip: !enabled
   for (const g of wipeGlobalTables()) assert.equal(Number((await sql.unsafe(`select count(*)::int as n from "${g}"`))[0].n), 0, g)
   const [device] = await sql`select user_id from devices where id = ${deviceId}`
   assert.equal(device.user_id, fresh.id, 'the device moved to the fresh user')
+  assert.equal(await pushRows(), 0, 'a wipe removes the push subscriptions')
   assert.equal(fresh.profile.requireSignIn, true, 'the sign-in rule survives a wipe')
   assert.equal(fresh.profile.onboardedAt, undefined)
   assert.equal(existsSync(join(dataDir, 'browser')), false)
@@ -123,6 +130,7 @@ test('export, wipe and import round trip on the mock database', { skip: !enabled
   assert.deepEqual(await digest(back.id), hashes, 'every row comes back exactly')
   const [moved] = await sql`select user_id from devices where id = ${deviceId}`
   assert.equal(moved.user_id, user.id, 'the paired device follows the imported user')
+  assert.equal(await pushRows(), 0, 'an import brings no push subscriptions back')
   const { savedFields } = await import('./secrets')
   assert.deepEqual((await savedFields(user.id)).get('github'), { GITHUB_USER: 'octo-test' }, 'the plain setting is readable, the token is gone')
 

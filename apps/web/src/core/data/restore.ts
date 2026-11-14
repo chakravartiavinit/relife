@@ -54,9 +54,10 @@ async function databaseIsEmpty(): Promise<boolean> {
 
 /** The unpacked files are copied into data/ later: refuse anything that is not a plain file or folder (a symlink could point outside). */
 export async function checkUnpacked(dir: string): Promise<void> {
-  const key = join(dir, 'data', 'secret.key')
-  const k = await lstat(key).catch(() => null)
-  if (k && !k.isFile()) throw new Error("This backup is not safe to restore: data/secret.key is not a plain file.")
+  for (const name of ['secret.key', 'vapid.json']) {
+    const f = await lstat(join(dir, 'data', name)).catch(() => null)
+    if (f && !f.isFile()) throw new Error(`This backup is not safe to restore: data/${name} is not a plain file.`)
+  }
   const walk = async (d: string): Promise<void> => {
     for (const e of await readdir(d, { withFileTypes: true })) {
       if (e.isDirectory()) await walk(join(d, e.name))
@@ -134,6 +135,20 @@ export async function restoreBackup(file: string, o: RestoreOptions = {}): Promi
       }
       await mkdir(dataDir(), { recursive: true })
       await cp(backupKey, mine, { force: true })
+      await chmod(mine, 0o600)
+    }
+    // The push keys go with the subscriptions in the database (the old file is kept aside, like the key file). Keys set in
+    // RELIFE_VAPID_PRIVATE_KEY win over the file either way.
+    const backupVapid = join(dir, 'data', 'vapid.json')
+    if (existsSync(backupVapid)) {
+      const mine = dataDir('vapid.json')
+      if (existsSync(mine) && readFileSync(mine, 'utf8').trim() !== readFileSync(backupVapid, 'utf8').trim()) {
+        const kept = `${mine}.replaced-${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}`
+        await rename(mine, kept)
+        log(`Your previous push keys were kept as ${kept}`)
+      }
+      await mkdir(dataDir(), { recursive: true })
+      await cp(backupVapid, mine, { force: true })
       await chmod(mine, 0o600)
     }
     if (existsSync(join(dir, 'data', 'library'))) await cp(join(dir, 'data', 'library'), dataDir('library'), { recursive: true, force: true })
