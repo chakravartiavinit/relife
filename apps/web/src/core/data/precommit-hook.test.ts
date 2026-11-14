@@ -8,14 +8,17 @@ import { dirname, join, resolve } from 'node:path'
 // .githooks/pre-commit run in a scratch repo with one staged file: which paths does it block?
 const hook = resolve(process.cwd(), '../../.githooks/pre-commit')
 
+// Run from a git hook (pre-push), the environment carries GIT_DIR and friends: without this the scratch repo would be the real one.
+const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')))
+
 function blocked(path: string): boolean {
   const dir = mkdtempSync(join(tmpdir(), 'relife-hook-'))
   try {
-    execFileSync('git', ['init', '-q'], { cwd: dir })
+    execFileSync('git', ['init', '-q'], { cwd: dir, env })
     mkdirSync(dirname(join(dir, path)), { recursive: true })
     writeFileSync(join(dir, path), 'x\n')
-    execFileSync('git', ['add', '-f', path], { cwd: dir })
-    return spawnSync('sh', [hook], { cwd: dir, encoding: 'utf8' }).status !== 0
+    execFileSync('git', ['add', '-f', path], { cwd: dir, env })
+    return spawnSync('sh', [hook], { cwd: dir, env, encoding: 'utf8' }).status !== 0
   } finally { rmSync(dir, { recursive: true, force: true }) }
 }
 
