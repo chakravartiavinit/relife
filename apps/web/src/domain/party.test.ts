@@ -58,6 +58,10 @@ describe('what a member shares', () => {
     assert.deepEqual([v.level, v.streak, v.today, v.quests, v.achievements, v.week.days, v.week.onTrack], [null, null, null, null, null, null, false])
   })
 
+  test('another person’s name is cut to 60 characters', () => {
+    assert.equal(view(everything, { facts: { ...facts, name: 'x'.repeat(200) } }).name?.length, 60)
+  })
+
   test('the default share is name and level only', () => {
     assert.deepEqual(DEFAULT_PARTY_SHARE, { ...nothing, name: true, level: true })
   })
@@ -112,10 +116,9 @@ describe('the weekly party quest', () => {
     assert.equal(isoWeek('2020-12-28'), '2020-W53')
   })
 
-  test('the chest ref is per party and week', () => {
-    assert.equal(partyChestRef('p1', '2026-11-09'), 'party:p1:2026-W46')
-    assert.notEqual(partyChestRef('p1', '2026-11-09'), partyChestRef('p2', '2026-11-09'))
-    assert.notEqual(partyChestRef('p1', '2026-11-09'), partyChestRef('p1', '2026-11-16'))
+  test('the chest ref is per week, not per party: one chest a week however many parties', () => {
+    assert.equal(partyChestRef('2026-11-09'), 'party:2026-W46')
+    assert.notEqual(partyChestRef('2026-11-09'), partyChestRef('2026-11-16'))
   })
 
   test('days before today, Monday first', () => {

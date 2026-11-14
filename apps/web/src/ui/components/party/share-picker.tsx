@@ -10,7 +10,7 @@ const ROWS: Record<(typeof PARTY_SHARE_KEYS)[number], { label: string; hint: str
   streak: { label: 'My show-up streak', hint: 'Days in a row you did something on purpose.' },
   today: { label: 'How today is going', hint: 'Routines done out of routines due, as a count. Never their names.' },
   quests: { label: 'Weekly quest progress', hint: 'One percentage per quest.' },
-  achievements: { label: 'Achievements this week', hint: 'Just the names of what you unlocked.' },
+  achievements: { label: 'Achievements this week', hint: 'Just the names of what you unlocked. Names can hint at what you track.' },
 }
 
 /**

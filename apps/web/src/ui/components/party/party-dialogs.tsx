@@ -6,6 +6,7 @@ import { DEFAULT_PARTY_SHARE, PARTY_MAX_MEMBERS, type PartyShare } from '@relife
 import { answerPartyInvite, changePartyShare, inviteToPartyAction, leavePartyAction, startParty } from '@/app/party-actions'
 import type { PartyPerson } from '@/core/party'
 import { Checkbox } from '@/ui/beui/motion/checkbox'
+import { RadioGroup, RadioGroupItem } from '@/ui/beui/motion/radio'
 import { Button } from '../button'
 import { Input } from '../form'
 import { Dialog, FormError } from '../forms/dialog'
@@ -136,10 +137,9 @@ export function InviteToPartyDialog({ party, people, onClose }: { party: { id: s
     <Dialog open={!!party} onClose={() => { if (!pending) onClose() }} icon={UserPlus} color="var(--cat-relationships)" width="max-w-[420px]" title={`Ask someone into ${party?.name ?? 'the party'}`} description="They get an invitation in Coach › Needs you and choose what they share.">
       <div className="flex flex-col gap-4">
         {people.length ? (
-          <fieldset className="flex flex-col gap-3">
-            <legend className="sr-only">People on this server</legend>
-            {people.map((p) => <Checkbox key={p.id} checked={picked === p.id} onCheckedChange={(on) => setPicked(on ? p.id : null)} label={p.name} />)}
-          </fieldset>
+          <RadioGroup aria-label="People on this server" value={picked ?? ''} onValueChange={setPicked} className="flex flex-col gap-3">
+            {people.map((p) => <RadioGroupItem key={p.id} value={p.id} label={p.name} />)}
+          </RadioGroup>
         ) : <p className="text-small text-ink-3">Everyone on this server is already in, or already asked.</p>}
         <FormError message={error ?? undefined} />
         <div className="flex justify-end gap-2">

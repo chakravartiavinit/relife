@@ -47,9 +47,9 @@ async function Progress() {
   const now = new Date()
   const today = localDate(now, user.timezone)
   const from30 = addDays(today, -29)
-  const [s, board, daily, mix, feed, streak, freezes, party] = await Promise.all([
+  const [s, board, daily, mix, feed, streak, freezes] = await Promise.all([
     xpSummary(user, now), achievementBoard(user, now), xpByDay(user, from30, today), xpBreakdown(user, from30, today),
-    recentXp(user, 60), showUpStreak(user, today), freezesHeld(user), partyCard(user, now),
+    recentXp(user, 60), showUpStreak(user, today), freezesHeld(user),
   ])
 
   // Activity feed: last five days that earned XP, biggest awards first.
@@ -68,7 +68,10 @@ async function Progress() {
         </div>
       </CharacterBanner>
 
-      <div className="max-lg:order-1"><PartyCard card={party} /></div>
+      {/* Its own read, so a slow or failing party never holds up the rest of the page. No wrapper when nothing shows. */}
+      <Suspense fallback={<Skeleton className="h-[200px] rounded-lg max-lg:order-1" />}>
+        <PartySlot />
+      </Suspense>
 
       <section id="streak" aria-label="This week" className="scroll-mt-6 max-lg:order-1">
         <LifeKpis user={user} now={now} />
@@ -178,6 +181,15 @@ function Rule({ color, title, children }: { color: string; title: string; childr
       <span><span className="font-medium text-ink">{title}.</span> {children}</span>
     </li>
   )
+}
+
+async function PartySlot() {
+  await connection()
+  const user = await getUser()
+  const card = await partyCard(user, new Date())
+  // A server with one person and no party has nothing to show: no card, and no gap where it would be.
+  if (!card.parties.length && !card.invites.length && !card.people.length) return null
+  return <div className="max-lg:order-1"><PartyCard card={card} /></div>
 }
 
 function ProgressSkeleton() {

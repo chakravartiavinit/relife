@@ -27,15 +27,19 @@ async function availableChannels(user: User): Promise<Channel[]> {
 const pushPayload = (row: Row, text: string, buttons: Button[][] | undefined, renotify: boolean): PushPayload =>
   ({ ...toPush({ text, ref: row.ref }, buttons), id: row.id, tag: row.id, renotify })
 
-/** Queue a message and try to send it right away. `once` turns repeats off for this one (summaries). */
-export async function notify(user: User, category: NotifyCategory, msg: { text: string; buttons?: Button[][]; ref?: string; once?: boolean }) {
+/**
+ * Queue a message and try to send it right away. `once` turns repeats off for this one (summaries). Returns whether it was
+ * queued: false when the person has no channel at all.
+ */
+export async function notify(user: User, category: NotifyCategory, msg: { text: string; buttons?: Button[][]; ref?: string; once?: boolean }): Promise<boolean> {
   // With no channel at all there's nowhere to send it; queuing would only flood the chat once one is connected.
-  if (!(await availableChannels(user)).length) return
+  if (!(await availableChannels(user)).length) return false
   await db.insert(schema.notifications).values({
     userId: user.id, category, text: msg.text, buttons: msg.buttons ?? null,
     ref: msg.once ? `once:${msg.ref ?? ''}` : msg.ref ?? null,
   })
   await flushOutbox(user)
+  return true
 }
 
 /** The last 7 days of the outbox for You › Notifications: reached a channel, still waiting (quiet hours, daily cap), dropped (category off or the cap). */

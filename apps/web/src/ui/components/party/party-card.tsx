@@ -54,7 +54,14 @@ export function PartyCard({ card }: { card: PartyCardData }) {
 function InviteLine({ invite, onAccept }: { invite: PartyInvite; onAccept: () => void }) {
   const toast = useToast()
   const [gone, setGone] = useState(false)
+  const [declining, setDeclining] = useState(false)
   if (gone) return null
+  async function decline() {
+    setDeclining(true)
+    const r = await declinePartyInvite(invite.partyId).catch(() => ({ ok: false as const, error: 'Couldn’t decline that. Try again.' }))
+    setDeclining(false)
+    if (r.ok) setGone(true); else toast.error(r.error)
+  }
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-md bg-pill-wash px-4 py-3">
       <div className="min-w-0 flex-1 basis-56">
@@ -62,8 +69,8 @@ function InviteLine({ invite, onAccept }: { invite: PartyInvite; onAccept: () =>
         <p className="text-caption text-ink-3">{invite.members} {invite.members === 1 ? 'person is' : 'people are'} in. You choose what you share.</p>
       </div>
       <div className="flex gap-2">
-        <Button size="sm" variant="secondary" onClick={async () => { const r = await declinePartyInvite(invite.partyId); if (r.ok) setGone(true); else toast.error(r.error) }}>Decline</Button>
-        <Button size="sm" variant="primary" onClick={onAccept}>Join</Button>
+        <Button size="sm" variant="secondary" onClick={decline} disabled={declining}>{declining ? 'Declining…' : 'Decline'}</Button>
+        <Button size="sm" variant="primary" onClick={onAccept} disabled={declining}>Join</Button>
       </div>
     </div>
   )
@@ -120,7 +127,10 @@ function MemberRow({ m, target }: { m: PartyMemberView; target: number }) {
     setPending(true)
     const r = await cheerAction(m.id).catch(() => ({ ok: false as const, error: 'Couldn’t send that. Try again.' }))
     setPending(false)
-    if (r.ok) { setCheered(true); toast('Cheer sent', 'good') } else toast.error(r.error)
+    if (!r.ok) return toast.error(r.error)
+    setCheered(true)
+    // Nothing is saved when they have no Telegram or phone connected; say so rather than claim it went.
+    if (r.queued) toast('Cheer sent', 'good'); else toast('They have no notifications set up, so this one can’t reach them.')
   }
   return (
     <li className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3.5">

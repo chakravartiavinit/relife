@@ -5,6 +5,9 @@ import { addDays } from '@/core/time'
 // code that reads another person's data is core/party.ts, and it builds every view through `memberView` below, so a field that
 // was not ticked is `null` however it got loaded.
 
+/** A name as the others see it: another person's name is never allowed to stretch the card. */
+const NAME_MAX = 60
+
 export const PARTY_QUEST = { title: 'Everyone shows up on 5 of 7 days', target: 5 } as const
 
 /** What the picker starts at, and what an invitee who has not chosen yet shows. */
@@ -25,8 +28,8 @@ export function isoWeek(monday: string) {
   return `${year}-W${String(Math.floor(dayOfYear / 7) + 1).padStart(2, '0')}`
 }
 
-/** The chest's ref: unique per party and week, so paying it twice is impossible. */
-export const partyChestRef = (partyId: string, monday: string) => `party:${partyId}:${isoWeek(monday)}`
+/** The chest's ref: one per person per week whatever the number of parties (the ref is unique per person), so paying it twice is impossible. */
+export const partyChestRef = (monday: string) => `party:${isoWeek(monday)}`
 
 /** Days of the week already over when today starts (Monday is 0, Sunday 6). */
 export const daysBefore = (today: string) => (new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7
@@ -83,7 +86,7 @@ export function memberView(o: {
   const active = o.status === 'active'
   return {
     id: o.id, you: o.you, status: o.status,
-    name: !active || share.name ? facts.name : null,
+    name: !active || share.name ? facts.name.slice(0, NAME_MAX) : null,
     level: active && share.level ? facts.level ?? null : null,
     streak: active && share.streak ? facts.streak ?? null : null,
     today: active && share.today ? facts.today ?? null : null,

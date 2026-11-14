@@ -2,11 +2,14 @@
 // by hand. Run after `npm run mock:seed`; `mock:seed` resets it. Never touches a real database (mock only).
 //
 //   RELIFE_MOCK=1 tsx --env-file=../../.env scripts/mock-people.ts          prints a session token per person
-import { writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { dirname, join } from 'node:path'
 import { eq, sql as dsql } from 'drizzle-orm'
 import { db, isMock, schema, sql } from '@/db'
 import { createDevice } from '@/core/auth/devices'
 import { createInvite } from '@/core/auth/pairing'
+import { hashToken, newSecret } from '@/core/auth/tokens'
 import { addDays, localDate } from '@/core/time'
 import { ensureOwner } from '@/core/user'
 
@@ -31,7 +34,7 @@ async function main() {
   const jo = await member('Jo', 0)
   const owned = await createDevice({ userId: owner.id, kind: 'browser', name: 'Mac · Safari', scopes: ['full'] })
   await createInvite({ ownerId: owner.id, deviceId: owned.device.id, baseUrl: 'http://192.168.1.20:3030' })
-  const [expired] = await db.insert(schema.pairings).values({ userId: null, method: 'invite', secretHash: Buffer.from('mock-expired'), scopes: ['full'], meta: { invitedBy: owner.id }, expiresAt: new Date(Date.now() - 86_400_000) }).returning()
+  const [expired] = await db.insert(schema.pairings).values({ userId: null, method: 'invite', secretHash: hashToken(newSecret()), scopes: ['full'], meta: { invitedBy: owner.id }, expiresAt: new Date(Date.now() - 86_400_000) }).returning()
   void expired
 
   const share = (o: Partial<Record<'name' | 'level' | 'streak' | 'today' | 'quests' | 'achievements', boolean>>) => ({ name: false, level: false, streak: false, today: false, quests: false, achievements: false, ...o })
@@ -50,8 +53,11 @@ async function main() {
     { partyId: walkers.id, userId: owner.id, status: 'invited', invitedBy: priya.user.id },
   ])
   await db.update(schema.users).set({ profile: dsql`${schema.users.profile} || '{"instance":{"shareAi":true}}'::jsonb` }).where(eq(schema.users.id, owner.id))
-  writeFileSync('/tmp/p5b/tokens.json', JSON.stringify({ owner: owned.token, priya: priya.token, sam: sam.token }))
-  console.log('mock people ready: Priya, Sam, Jo, a party and an invitation (tokens in /tmp/p5b/tokens.json)')
+  // Where the tokens go: MOCK_TOKENS_FILE, else the system temp folder. Made if it is not there yet.
+  const file = process.env.MOCK_TOKENS_FILE ?? join(tmpdir(), 'relife', 'mock-tokens.json')
+  mkdirSync(dirname(file), { recursive: true })
+  writeFileSync(file, JSON.stringify({ owner: owned.token, priya: priya.token, sam: sam.token }), { mode: 0o600 })
+  console.log(`mock people ready: Priya, Sam, Jo, a party and an invitation (tokens in ${file})`)
   await sql.end()
 }
 
