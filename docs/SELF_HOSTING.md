@@ -81,6 +81,11 @@ It prints a single-use link (valid 7 days) and a QR. Set `RELIFE_PUBLIC_URL` (or
 them. With a second person, "this computer" is no longer trusted without a code. Members use the owner's AI model unless the
 owner turns that off. Backups cover the whole server. See [Privacy](PRIVACY.md#sharing-a-server).
 
+Some connectors read the computer that runs the server (Anki, the iCloud inbox folder, the shopping apps' login window), so
+only the owner can connect them: a member would be reading the owner's files. A few keys also take a web address that the
+server then calls (the Anki address, `*_ORDERS_URL`, `LOCAL_LLM_URL`). A member can type an address, and the server will
+open it from its own network, so give the server only to people you would let on that network.
+
 In Docker ReLife never trusts "this computer" without a code: requests reach the container through Docker, so every
 browser pairs once.
 
