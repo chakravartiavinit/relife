@@ -203,7 +203,7 @@ server's or the browser's clock.
 http://127.0.0.1:3001, so you can check every page with something on it. Your real data is never touched. Stop
 `npm run dev` first; the two share a build folder. `npm run mock:seed -- 42` reseeds with a fixed seed.
 
-**Read-only demo.** `docker compose --profile demo up -d --build` serves the same sample data on http://127.0.0.1:3001
+**Read-only demo.** `docker compose --profile demo up -d --build demo` serves the same sample data on http://127.0.0.1:3001
 with every write turned off: a tap on anything that would save shows "Demo: changes are off". It runs on its own
 throwaway database and has no access to your keys. See [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md#the-read-only-demo).
 
