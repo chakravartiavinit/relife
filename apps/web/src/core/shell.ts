@@ -26,7 +26,8 @@ export const loadShellStatus = cache(async (user: User): Promise<ShellStatus> =>
   const [[r], level, plan] = await Promise.all([
     db.execute<{ decisions: number; unread: number; merchants: number; heartbeat: string | null; failing: string[]; last_sync: string | null }>(sql`
       select
-        (select count(*)::int from insights where ${pendingInsight(user.id)}) as decisions,
+        (select count(*)::int from insights where ${pendingInsight(user.id)})
+          + (select count(*)::int from party_members where user_id = ${user.id} and status = 'invited') as decisions,
         (select count(*)::int from raw_events where user_id = ${user.id} and status = 'failed'
            and ${UNREAD_FILTER}) as unread,
         (select count(distinct coalesce(upi_id, merchant, id::text))::int from transactions

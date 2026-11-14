@@ -24,6 +24,7 @@ import { reviewedWeekStart } from '@/domain/share-card'
 import { Checkbox } from '@/ui/beui/motion/checkbox'
 import { Select } from '../select'
 import { useToast } from '../toast'
+import { AcceptPartyDialog, declinePartyInvite } from '../party/party-dialogs'
 import { QueueItem } from './queue-item'
 import { RECOVERY_DONE, RecoveryChoices } from './recovery-choices'
 
@@ -75,6 +76,7 @@ export function NeedsYouRow({ item, ctx }: { item: NeedsYouItem; ctx: RowCtx }) 
   switch (item.kind) {
     case 'recovery': return <RecoveryRow item={item} ctx={ctx} />
     case 'goal-draft': return <GoalDraftRow item={item} ctx={ctx} />
+    case 'party-invite': return <PartyInviteRow item={item} ctx={ctx} />
     case 'unread': return <UnreadRow item={item} ctx={ctx} />
     case 'categorise': return <CategoriseRow item={item} ctx={ctx} />
     default: return <InsightRow item={item} ctx={ctx} />
@@ -157,6 +159,26 @@ function GoalDraftRow({ item, ctx }: { item: Extract<NeedsYouItem, { kind: 'goal
         {targetText({ direction: d.direction, target: d.target ?? null, rangeLow: d.rangeLow ?? null, rangeHigh: d.rangeHigh ?? null, unit })} by {formatDay(d.targetDate, { day: 'numeric', month: 'short' })}. You set the baseline when you start it.
       </p>
       {atCap ? <p className="mt-1 text-small text-ink-3">You have 3 active goals. Pause or finish one to start this.</p> : null}
+    </QueueItem>
+  )
+}
+
+/** Someone on this server asked you into a party. Join opens the share picker (name and level only to start); nothing of theirs is shown here. */
+function PartyInviteRow({ item, ctx }: { item: Extract<NeedsYouItem, { kind: 'party-invite' }>; ctx: RowCtx }) {
+  const [joining, setJoining] = useState(false)
+  return (
+    <QueueItem
+      kind="party-invite" label={when(item.at, ctx)} title={`${item.from ?? 'Someone'} asked you to join ${item.party}`}
+      actions={
+        <>
+          <Button size="sm" variant="primary" onClick={() => setJoining(true)}>Join</Button>
+          <Button size="sm" variant="ghost" onClick={() => ctx.act(item.id, `Declined ${item.party}`, async () => { const r = await declinePartyInvite(item.id); if (!r.ok) throw new Error(r.error) })}>Decline</Button>
+        </>
+      }
+    >
+      <p className="text-body text-ink-2 text-pretty">A party is a few people on this server who show up together. You choose what they can see, and you can leave at any time.</p>
+      <p className="mt-1 text-small text-ink-3 tabular-nums">{item.members} {item.members === 1 ? 'person is' : 'people are'} in so far.</p>
+      <AcceptPartyDialog invite={joining ? { partyId: item.id, party: item.party, from: item.from } : null} onClose={() => setJoining(false)} onAnswered={() => ctx.done(item.id, `Joined ${item.party}`)} />
     </QueueItem>
   )
 }

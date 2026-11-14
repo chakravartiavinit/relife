@@ -19,6 +19,7 @@ import { DemoGallery } from '@/ui/components/demo-gallery'
 import { CaptureGallery } from '@/ui/components/capture/capture-gallery'
 import { PeekGallery } from '@/ui/components/peek/peek-gallery'
 import { CoachGallery } from '@/ui/components/coach/coach-gallery'
+import { PartyGallery } from '@/ui/components/party/party-gallery'
 import { AreaGallery } from '@/ui/components/area/area-gallery'
 import { TodayGallery } from '@/ui/components/today/today-gallery'
 import { PlanYouGallery } from '@/ui/components/plan-you-gallery'
@@ -184,6 +185,10 @@ export default function UiGallery() {
       <Section title="Coach: Needs you, Ask and no model">
         {/* The rows format a routine's rhythm with the current date, so this streams in. */}
         <Suspense fallback={<Skeleton className="h-[480px] rounded-lg" />}><CoachGallery /></Suspense>
+      </Section>
+
+      <Section title="Party and People on this server: the card in every state, the list, invites">
+        <PartyGallery />
       </Section>
 
       <Section title="Today: header, attention, pulse, timeline, rail, first day and all done">

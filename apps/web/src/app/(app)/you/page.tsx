@@ -21,6 +21,8 @@ import { LifeKpis } from '@/ui/components/life-kpis'
 import { freezesHeld } from '@/core/quests'
 import { ACHIEVEMENT_ICON, TIER_COLOR } from '@/ui/achievement-icons'
 import { showUpStreak } from '@/ui/components/life-kpis'
+import { PartyCard } from '@/ui/components/party/party-card'
+import { partyCard } from '@/core/party'
 
 export const metadata: Metadata = { title: 'Progress' }
 
@@ -45,9 +47,9 @@ async function Progress() {
   const now = new Date()
   const today = localDate(now, user.timezone)
   const from30 = addDays(today, -29)
-  const [s, board, daily, mix, feed, streak, freezes] = await Promise.all([
+  const [s, board, daily, mix, feed, streak, freezes, party] = await Promise.all([
     xpSummary(user, now), achievementBoard(user, now), xpByDay(user, from30, today), xpBreakdown(user, from30, today),
-    recentXp(user, 60), showUpStreak(user, today), freezesHeld(user),
+    recentXp(user, 60), showUpStreak(user, today), freezesHeld(user), partyCard(user, now),
   ])
 
   // Activity feed: last five days that earned XP, biggest awards first.
@@ -65,6 +67,8 @@ async function Progress() {
           <TitleTrack level={s.level} titles={TITLES} />
         </div>
       </CharacterBanner>
+
+      <div className="max-lg:order-1"><PartyCard card={party} /></div>
 
       <section id="streak" aria-label="This week" className="scroll-mt-6 max-lg:order-1">
         <LifeKpis user={user} now={now} />
