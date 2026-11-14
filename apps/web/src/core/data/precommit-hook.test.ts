@@ -9,7 +9,7 @@ import { dirname, join, resolve } from 'node:path'
 const hook = resolve(process.cwd(), '../../.githooks/pre-commit')
 
 // Run from a git hook (pre-push), the environment carries GIT_DIR and friends: without this the scratch repo would be the real one.
-const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')))
+const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_'))) as NodeJS.ProcessEnv
 
 function blocked(path: string): boolean {
   const dir = mkdtempSync(join(tmpdir(), 'relife-hook-'))
