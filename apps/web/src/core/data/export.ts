@@ -105,7 +105,22 @@ ${m.excluded.map((e) => `  ${e.table}: ${e.why}`).join('\n')}
 To import into a fresh install (an empty database):  npm run import -- <this file>
 `
 
-/** The export as ZIP chunks. Reads one consistent snapshot of the database. */
+/** Another export is already running (here or in another process). */
+export class ExportBusy extends Error {
+  constructor() { super('An export is already running. Wait for it to finish, then try again.') }
+}
+
+/** Is an export running right now? Asked by the page before it starts the download, so the answer can be a toast. */
+export async function exportBusy(): Promise<boolean> {
+  const c = await sql.reserve()
+  try {
+    const [{ got }] = await c`select pg_try_advisory_lock(hashtext('relife:export')) as got`
+    if (got) await c`select pg_advisory_unlock(hashtext('relife:export'))`
+    return !got
+  } finally { c.release() }
+}
+
+/** The export as ZIP chunks. Reads one consistent snapshot of the database. One at a time: throws `ExportBusy` from the first `next()` when another is running. */
 export async function* exportZip(user: User): AsyncGenerator<Uint8Array> {
   const out: Uint8Array[] = []
   let failure: unknown
@@ -147,8 +162,13 @@ export async function* exportZip(user: User): AsyncGenerator<Uint8Array> {
 
   const conn = await sql.reserve()
   let committed = false
+  let locked = false
   try {
+    ;[{ got: locked }] = await conn`select pg_try_advisory_lock(hashtext('relife:export')) as got`
+    if (!locked) throw new ExportBusy()
     await conn`begin isolation level repeatable read read only`
+    // A browser that stops reading must not hold the snapshot (and the vacuum behind it) for ever.
+    await conn`set local idle_in_transaction_session_timeout = '10min'`
     whole(FORMAT_FILE, JSON.stringify({ format: EXPORT_FORMAT, version: EXPORT_VERSION, appVersion: manifest.appVersion, schemaHash: manifest.schemaHash }, null, 2))
     yield* take()
 
@@ -190,7 +210,10 @@ export async function* exportZip(user: User): AsyncGenerator<Uint8Array> {
     await conn`commit`
     committed = true
   } finally {
-    if (!committed) await conn`rollback`.catch(() => {})
+    if (locked) {
+      if (!committed) await conn`rollback`.catch(() => {})
+      await conn`select pg_advisory_unlock(hashtext('relife:export'))`.catch(() => {})
+    }
     conn.release()
   }
 
@@ -204,11 +227,12 @@ export async function* exportZip(user: User): AsyncGenerator<Uint8Array> {
 /** `relife-export-2026-11-13.zip`, dated in the user's own time zone. */
 export const exportFileName = (user: Pick<User, 'timezone'>, now = new Date()) => `relife-export-${localDate(now, user.timezone)}.zip`
 
-/** An async generator as a web stream (cancelling it, when the browser stops downloading, stops the queries). */
-export function streamOf(it: AsyncGenerator<Uint8Array>): ReadableStream<Uint8Array> {
+/** An async generator as a web stream, `first` being a step already taken (cancelling it, when the browser stops downloading, stops the queries). */
+export function streamOf(it: AsyncGenerator<Uint8Array>, first?: IteratorResult<Uint8Array>): ReadableStream<Uint8Array> {
   return new ReadableStream<Uint8Array>({
     async pull(controller) {
-      const { value, done } = await it.next()
+      const { value, done } = first ?? await it.next()
+      first = undefined
       if (done) controller.close()
       else controller.enqueue(value)
     },

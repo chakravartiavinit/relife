@@ -26,7 +26,7 @@ test('export, wipe and import round trip on the mock database', { skip: !enabled
   assert.ok(new URL(databaseUrl).pathname.endsWith('_mock'), 'must run on the _mock database')
   const { getUser, clearUserCache } = await import('./user')
   const { encrypt } = await import('./secrets')
-  const { exportZip } = await import('./data/export')
+  const { ExportBusy, exportBusy, exportZip } = await import('./data/export')
   const { importExport } = await import('./data/import')
   const { wipeUserData } = await import('./data/wipe')
   const { exportTables, wipeGlobalTables } = await import('./data/tables')
@@ -62,6 +62,14 @@ test('export, wipe and import round trip on the mock database', { skip: !enabled
   const digest = async (uid: string) => Object.fromEntries(await Promise.all(['entries', 'transactions', 'trades', 'raw_events', 'goals', 'xp_events', 'schedules', 'checks'].map(async (n) => [n,
     (await sql.unsafe(`select md5(coalesce(string_agg(to_jsonb(t)::text, '' order by id), '')) as h from "${n}" t ${n === 'checks' ? whereOf['via-schedule'] : whereOf.user}`, [uid]))[0].h])))
   const hashes = await digest(user.id)
+
+  // 0. One export at a time: while one is open a second is refused, and the lock is free again once it is closed.
+  const running = exportZip(user)
+  await running.next()
+  assert.equal(await exportBusy(), true)
+  await assert.rejects(exportZip(user).next(), ExportBusy)
+  await running.return(undefined)
+  assert.equal(await exportBusy(), false)
 
   // 1. Export: counts match the database, and nothing secret is in any file.
   const zip = await manifestOf()

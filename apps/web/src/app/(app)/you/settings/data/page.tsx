@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
 import { and, eq, isNotNull, sql } from 'drizzle-orm'
-import { Database, Download, FolderOpen, KeyRound, type LucideIcon } from 'lucide-react'
+import { Database, FolderOpen, KeyRound, type LucideIcon } from 'lucide-react'
 import { databaseUrl, db, isMock, schema } from '@/db'
 import { loadBackupStatus } from '@/core/data/backup-status'
 import { exportTables } from '@/core/data/tables'
@@ -11,8 +11,8 @@ import { dataDir } from '@/core/paths'
 import { loadPrivacy } from '@/core/privacy'
 import { getUser } from '@/core/user'
 import { Badge, PageHeader, Skeleton } from '@/ui/components/card'
-import { buttonClass } from '@/ui/components/button'
 import { BackupsCard } from '@/ui/components/data/backups-card'
+import { ExportButton } from '@/ui/components/data/export-button'
 import { PrivacyList } from '@/ui/components/data/privacy-list'
 import { WipeData } from '@/ui/components/data/wipe-data'
 import { SettingsRow, SettingsSection } from '@/ui/components/settings-layout'
@@ -84,7 +84,7 @@ async function DataSections() {
       <SettingsSection id="export" title="Export" description="A ZIP you can open anywhere: a JSON file per table, CSVs of entries, payments, trades and routine checks, and a manifest. Saved keys and device tokens are never included.">
         <SettingsRow label="Export everything" hint="Import it into a fresh install with npm run import.">
           <div className="flex flex-col items-start gap-2">
-            <a href="/api/export" download className={buttonClass({ variant: 'secondary' })}><Download className="size-4" strokeWidth={1.5} aria-hidden />Export all data (ZIP)</a>
+            <ExportButton />
             <p className="text-caption text-ink-3">{exportTables().length} tables, one file each. The download starts at once and streams, so a large history is fine.</p>
           </div>
         </SettingsRow>
