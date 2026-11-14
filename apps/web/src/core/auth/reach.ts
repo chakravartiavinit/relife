@@ -1,3 +1,4 @@
+import brand from '@relife/brand/brand.json'
 import { allowedHost, hostName } from '../hosts'
 import { env } from '../env'
 import { tailscaleName, tailscaleServing } from './base-url'
@@ -7,6 +8,8 @@ import { bindIsLoopback, isLoopbackHost, requestOrigin } from './trust'
 // Which address can a phone open? "Use on your phone" (plan Phase 4 §A) lists every way this server can be reached, says which
 // work now and what to change for the rest, and builds the pairing QR from the one the user picks. The rules are pure
 // (`reachOptions`, tested in reach.test.ts); `loadReach` gathers the facts.
+
+const RESTART = `Restart ${brand.name} after you edit .env.`
 
 export type ReachId = 'origin' | 'tailscale' | 'lan' | 'public'
 export type ReachState = 'ready' | 'needs-setup' | 'unavailable'
@@ -94,7 +97,7 @@ export function reachOptions(i: ReachInput): ReachOption[] {
         label: 'Let this server listen on your local network',
         envLines: ['RELIFE_BIND=0.0.0.0', `RELIFE_ALLOWED_HOSTS=${ips.reduce((acc, a) => withHost(acc, a), i.allowedHosts)}`],
         notes: [
-          'Restart ReLife after you edit .env.',
+          RESTART,
           'After the restart, “trust this Mac” turns off: a new browser on this Mac signs in with npm run signin.',
           'It is plain http, so there is no web app install and no notifications on this address.',
           'Running the dev server? Add the address to NEXT_ALLOWED_DEV_ORIGINS too.',
@@ -111,12 +114,12 @@ export function reachOptions(i: ReachInput): ReachOption[] {
     const ready = allowedHost(pubHost, i.allowedHosts ?? '')
     out.push({
       id: 'public', url: pub, state: ready ? 'ready' : 'needs-setup', https: pub.startsWith('https://'),
-      fixes: ready ? [] : [{ label: 'Allow this address to reach the server', envLines: [`RELIFE_ALLOWED_HOSTS=${withHost(i.allowedHosts, hostName(pubHost))}`], notes: ['Restart ReLife after you edit .env.'] }],
+      fixes: ready ? [] : [{ label: 'Allow this address to reach the server', envLines: [`RELIFE_ALLOWED_HOSTS=${withHost(i.allowedHosts, hostName(pubHost))}`], notes: [RESTART] }],
     })
   } else {
     out.push({
       id: 'public', url: null, state: 'unavailable', https: true,
-      fixes: [{ label: 'Set the address you reach this server on from outside (a domain, a Cloudflare Tunnel, a reverse proxy)', envLines: ['RELIFE_PUBLIC_URL=https://relife.example.com', 'RELIFE_ALLOWED_HOSTS=relife.example.com'], notes: ['Restart ReLife after you edit .env.'] }],
+      fixes: [{ label: 'Set the address you reach this server on from outside (a domain, a Cloudflare Tunnel, a reverse proxy)', envLines: ['RELIFE_PUBLIC_URL=https://relife.example.com', 'RELIFE_ALLOWED_HOSTS=relife.example.com'], notes: [RESTART] }],
     })
   }
 
