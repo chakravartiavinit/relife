@@ -14,7 +14,7 @@ import { PeekFooter, PeekIcon, PeekNote, PeekOpen, PeekRow, PeekSection } from '
 const TONE = { good: 'var(--good)', warn: 'var(--warn)', bad: 'var(--bad)' } as const
 
 export function syncHeading(d: SyncPeek) {
-  return { title: 'Sync status', description: d.label, icon: <PeekIcon icon={d.tone === 'good' ? CircleCheck : d.tone === 'warn' ? CircleAlert : RefreshCw} color={TONE[d.tone]} /> }
+  return { title: 'Sync status', description: d.label, icon: <PeekIcon icon={d.worker.demo ? RefreshCw : d.tone === 'good' ? CircleCheck : d.tone === 'warn' ? CircleAlert : RefreshCw} color={d.worker.demo ? 'var(--ink-3)' : TONE[d.tone]} /> }
 }
 
 /** Is data flowing? The worker's heartbeat and every connected source, failing ones first. */
@@ -22,7 +22,9 @@ export function SyncPeekView({ data: d }: { data: SyncPeek }) {
   const failing = d.connections.filter((c) => c.status === 'error').length
   return (
     <div>
-      {!d.worker.alive ? (
+      {d.worker.demo ? (
+        <PeekNote label="Demo">This demo has no worker, so nothing syncs. Everything you see is sample data.</PeekNote>
+      ) : !d.worker.alive ? (
         <PeekNote tone="bad" label="Worker offline">
           Nothing syncs while the worker is stopped. Numbers keep their last values; check-offs and Capture still save. Start it with <code className="font-mono">npm run dev</code>.
         </PeekNote>
@@ -32,9 +34,11 @@ export function SyncPeekView({ data: d }: { data: SyncPeek }) {
         <PeekNote label="All good">The worker is running and every connected source is syncing.</PeekNote>
       )}
 
-      <PeekSection label="Worker" className="mt-5">
-        <PeekRow label="Heartbeat"><span className={d.worker.alive ? 'text-good' : 'text-bad'}>{d.worker.alive ? 'Running' : 'Stopped'}</span> · {d.worker.ago}</PeekRow>
-      </PeekSection>
+      {d.worker.demo ? null : (
+        <PeekSection label="Worker" className="mt-5">
+          <PeekRow label="Heartbeat"><span className={d.worker.alive ? 'text-good' : 'text-bad'}>{d.worker.alive ? 'Running' : 'Stopped'}</span> · {d.worker.ago}</PeekRow>
+        </PeekSection>
+      )}
 
       <PeekSection label="Sources" aside={`${d.connections.length} connected`}>
         {d.connections.length ? (

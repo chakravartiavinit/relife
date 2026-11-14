@@ -1,5 +1,6 @@
 import { connection } from 'next/server'
 import { getUser } from '@/core/user'
+import { isDemo } from '@/core/demo'
 import { loadShellStatus } from '@/core/shell'
 import { formatDay, localDate } from '@/core/time'
 import { syncLabel } from '@/domain/shell'
@@ -36,6 +37,8 @@ export async function CoachBellStatus() {
 
 export async function SyncStatus({ className }: { className?: string }) {
   const { status } = await shell()
+  // The demo has no worker: a neutral dot, not "Sync paused".
+  if (isDemo()) return <SyncDot tone="loading" label="Demo data" className={className} />
   const { tone, failing, lastSyncAt } = status.sync
   return <SyncDot tone={tone} label={syncLabel(tone, failing.length, lastSyncAt)} className={className} />
 }

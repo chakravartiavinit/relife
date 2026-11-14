@@ -135,7 +135,8 @@ export type InsightPeek = {
 export type ConnectorPeek = {
   type: 'connector'
   item: ConnectorItem
-  worker: { alive: boolean; ago: string }
+  /** `demo`: the read-only demo has no worker, which is not a fault. */
+  worker: { alive: boolean; ago: string; demo?: boolean }
 }
 
 export type PersonPeek = {
@@ -183,7 +184,7 @@ export type SyncPeek = {
   type: 'sync'
   tone: SyncTone
   label: string
-  worker: { alive: boolean; heartbeat: string | null; ago: string }
+  worker: { alive: boolean; heartbeat: string | null; ago: string; demo?: boolean }
   /** Failing first, then by name. */
   connections: { id: string; name: string; category: Category | null; status: 'ok' | 'error' | 'waiting'; ago: string; error: string | null; failures: number }[]
 }

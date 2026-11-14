@@ -1,4 +1,5 @@
 import { eq } from 'drizzle-orm'
+import { isDemo } from '@/core/demo'
 import { db, isMock, schema } from '@/db'
 import type { User } from '@/core/user'
 import { formatDay, formatTime, localDate } from '@/core/time'
@@ -117,6 +118,6 @@ export async function loadConnectorItems(user: User, origin: string) {
       at: `${formatDay(localDate(r.startedAt, user.timezone))}, ${formatTime(r.startedAt, user.timezone)}`, ok: r.ok, events: r.eventsCount,
     }))
   }
-  return { items, worker: { alive: !!workerAlive, ago: ago(heartbeat?.at) } }
+  return { items, worker: { alive: !!workerAlive, ago: ago(heartbeat?.at), demo: isDemo() } }
 }
 

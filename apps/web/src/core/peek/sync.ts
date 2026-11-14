@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
+import { isDemo } from '../demo'
 import { agoShort, syncLabel, syncTone, workerAlive } from '@/domain/shell'
 import { connectorStatus } from '@/worker/sync'
 import type { User } from '../user'
@@ -31,8 +32,8 @@ export async function loadSyncPeek(_user: User): Promise<SyncPeek> {
   return {
     type: 'sync',
     tone,
-    label: syncLabel(tone, failing, last, now),
-    worker: { alive, heartbeat: beat?.at.toISOString() ?? null, ago: beat ? ago(now - beat.at.getTime()) : 'never' },
+    label: isDemo() ? 'Demo data' : syncLabel(tone, failing, last, now),
+    worker: { alive, heartbeat: beat?.at.toISOString() ?? null, ago: beat ? ago(now - beat.at.getTime()) : 'never', demo: isDemo() },
     connections,
   }
 }

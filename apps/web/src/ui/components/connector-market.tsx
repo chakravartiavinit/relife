@@ -96,7 +96,7 @@ type Show = 'all' | 'on' | 'off'
  * Every service as a card in a catalog, grouped by what it tracks, with a category rail (a chip row on phones),
  * search and a connected filter. Cards open one dialog for connecting and managing.
  */
-export function ConnectorMarket({ items, worker, areas }: { items: ConnectorItem[]; worker: { alive: boolean; ago: string }; /** The areas the user picked, for the suggestions. */ areas?: string[] }) {
+export function ConnectorMarket({ items, worker, areas }: { items: ConnectorItem[]; worker: { alive: boolean; ago: string; demo?: boolean }; /** The areas the user picked, for the suggestions. */ areas?: string[] }) {
   useSignInResult(items)
   const [query, setQuery] = useState('')
   const [show, setShow] = useState<Show>('all')
@@ -123,9 +123,13 @@ export function ConnectorMarket({ items, worker, areas }: { items: ConnectorItem
       <ConnectExtension />
       <div className="rise flex flex-wrap items-center gap-2" style={{ '--i': 0 } as React.CSSProperties}>
         <Pill>{connected.length} of {items.length} connected</Pill>
-        <Pill color={worker.alive ? 'var(--good)' : 'var(--warn)'} title={worker.alive ? `Heartbeat ${worker.ago}` : 'Start it with npm run dev'}>
-          {worker.alive ? 'Syncing in the background' : 'Worker stopped · run npm run dev'}
-        </Pill>
+        {worker.demo ? (
+          <Pill title="The demo has no worker: its data is sample data.">Demo data · nothing syncs</Pill>
+        ) : (
+          <Pill color={worker.alive ? 'var(--good)' : 'var(--warn)'} title={worker.alive ? `Heartbeat ${worker.ago}` : 'Start it with npm run dev'}>
+            {worker.alive ? 'Syncing in the background' : 'Worker stopped · run npm run dev'}
+          </Pill>
+        )}
         {attention.length ? <Pill color="var(--bad)">{attention.length} need{attention.length === 1 ? 's' : ''} a fix</Pill> : null}
       </div>
 
