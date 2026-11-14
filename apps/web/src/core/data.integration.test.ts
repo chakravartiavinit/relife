@@ -40,7 +40,8 @@ test('export, wipe and import round trip on the mock database', { skip: !enabled
   // Something to protect: a device, a connection with one secret and one plain setting, and the folders a wipe clears.
   const [{ id: deviceId }] = await sql`insert into devices (user_id, kind, name, scopes, token_hash, expires_at)
     values (${user.id}, 'browser', 'integration test', ${['full']}, ${randomBytes(32)}, now() + interval '1 day') returning id`
-  const [before] = await sql`select secrets_encrypted, profile from connections c join users u on u.id = c.user_id where c.connector_id = 'github' and u.id = ${user.id}`
+  const [before] = await sql`select secrets_encrypted from connections where connector_id = 'github' and user_id = ${user.id}`
+  const originalSignIn = user.profile.requireSignIn
   await sql`update connections set secrets_encrypted = ${encrypt({ GITHUB_TOKEN: 'tok-secret-1', GITHUB_USER: 'octo-test' })} where user_id = ${user.id} and connector_id = 'github'`
   await sql`update users set profile = profile || '{"requireSignIn": true}'::jsonb where id = ${user.id}`
   for (const d of ['browser/shop', 'library', 'coins']) { mkdirSync(join(dataDir, d), { recursive: true }); writeFileSync(join(dataDir, d, 'x'), 'x') }
@@ -53,6 +54,7 @@ test('export, wipe and import round trip on the mock database', { skip: !enabled
   t.after(async () => {
     await sql`delete from devices where id = ${deviceId}`
     if (before) await sql`update connections set secrets_encrypted = ${before.secrets_encrypted} where connector_id = 'github'`
+    await sql`update users set profile = case when ${originalSignIn === undefined} then profile - 'requireSignIn' else profile || ${JSON.stringify({ requireSignIn: originalSignIn })}::jsonb end`
     rmSync(dataDir, { recursive: true, force: true })
     await sql.end()
   })
