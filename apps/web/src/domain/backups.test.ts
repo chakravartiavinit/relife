@@ -17,6 +17,17 @@ test('names round trip, and other files are not ours', () => {
   }
 })
 
+test('names carry seconds, and older minute-only names still parse', () => {
+  assert.equal(backupName('2026-11-13T033005', { reason: 'manual', encrypted: false }), 'relife-backup-2026-11-13T033005.tar.gz')
+  assert.deepEqual(parseBackupName('relife-backup-2026-11-13T033005-pre-restore.tar.gz'),
+    { name: 'relife-backup-2026-11-13T033005-pre-restore.tar.gz', at: new Date('2026-11-13T03:30:05Z'), preRestore: true, encrypted: false })
+  assert.equal(parseBackupName('relife-backup-2026-11-13T0330.tar.gz')?.at.toISOString(), '2026-11-13T03:30:00.000Z')
+  assert.equal(parseBackupName('relife-backup-2026-11-13T03305.tar.gz'), null)
+  // two backups in one minute are two files, and the later one sorts first
+  const two = ['relife-backup-2026-11-13T033001.tar.gz', 'relife-backup-2026-11-13T033042.tar.gz']
+  assert.deepEqual(pickExpired(two, { daily: 1, weekly: 0 }), [two[0]])
+})
+
 test('ISO weeks cross the year', () => {
   assert.equal(isoWeek(new Date('2026-01-01T00:00:00Z')), '2026-W01')
   assert.equal(isoWeek(new Date('2025-12-29T00:00:00Z')), '2026-W01')

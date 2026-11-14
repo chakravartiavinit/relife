@@ -10,6 +10,7 @@ import { backupDir, dataDir } from '../paths'
 import { utcToWall } from '../time'
 import { getUser } from '../user'
 import { encryptStream } from './crypto'
+import { removeOldRestoreDirs, removeStale } from './backup-tmp'
 import { DEMO_OFF, isDemo } from './demo'
 import { currentKey, keyFilePath } from './key'
 import { databaseName, pgEnv, requirePgTool, spawnTo } from './pg'
@@ -44,8 +45,8 @@ export function keepDaily(): number {
 }
 export const keepWeekly = () => 4
 
-/** `2026-11-13T0330` in the user's time zone. */
-export const stamp = (now: Date, tz: string) => utcToWall(now, tz).toISOString().slice(0, 16).replace(':', '')
+/** `2026-11-13T033005` in the user's time zone. */
+export const stamp = (now: Date, tz: string) => utcToWall(now, tz).toISOString().slice(0, 19).replaceAll(':', '')
 
 export type BackupResult = { file: string; bytes: number; kept: number; message: string }
 
@@ -67,9 +68,14 @@ async function write(reason: BackupReason, now: Date): Promise<BackupResult> {
   const user = await getUser()
   const dir = backupDir()
   await mkdir(dir, { recursive: true, mode: 0o700 })
+  await removeStale(dir) // we hold the lock, so nothing else is writing: leftovers are from a run that was cut off
   const work = await mkdtemp(join(dir, '.tmp-'))
   const passphrase = process.env.RELIFE_BACKUP_PASSPHRASE || undefined
-  const final = join(dir, backupName(stamp(now, user.timezone), { reason, encrypted: !!passphrase }))
+  // Never overwrite: a second backup in the same second moves on to the next free second.
+  let at = now
+  const nameAt = () => join(dir, backupName(stamp(at, user.timezone), { reason, encrypted: !!passphrase }))
+  while (existsSync(nameAt())) at = new Date(at.getTime() + 1000)
+  const final = nameAt()
   const partial = `${final}.partial`
   try {
     await mkdir(join(work, 'data'), { recursive: true })
@@ -111,6 +117,7 @@ async function write(reason: BackupReason, now: Date): Promise<BackupResult> {
 /** Delete expired backups. Returns how many backup files are left. */
 export async function prune(): Promise<number> {
   const names = await readdir(backupDir())
+  await removeOldRestoreDirs(backupDir())
   const expired = pickExpired(names, { daily: keepDaily(), weekly: keepWeekly() })
   for (const name of expired) await rm(backupDir(name), { force: true })
   return names.filter((n) => /^relife-backup-.*\.tar\.gz(\.enc)?$/.test(n)).length - expired.length

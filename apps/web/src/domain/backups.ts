@@ -11,9 +11,9 @@ export type BackupFile = {
   encrypted: boolean
 }
 
-const NAME = /^relife-backup-(\d{4})-(\d{2})-(\d{2})T(\d{2})(\d{2})(-pre-restore)?\.tar\.gz(\.enc)?$/
+const NAME = /^relife-backup-(\d{4})-(\d{2})-(\d{2})T(\d{2})(\d{2})(\d{2})?(-pre-restore)?\.tar\.gz(\.enc)?$/
 
-/** `relife-backup-2026-11-13T0330.tar.gz`. `stamp` is a local date and time, `YYYY-MM-DDTHHmm`. */
+/** `relife-backup-2026-11-13T033005.tar.gz`. `stamp` is a local date and time, `YYYY-MM-DDTHHmmss`. Names without seconds (`T0330`) are older ones and still parse. */
 export function backupName(stamp: string, o: { reason: BackupReason; encrypted: boolean }) {
   return `relife-backup-${stamp}${o.reason === 'pre-restore' ? '-pre-restore' : ''}.tar.gz${o.encrypted ? '.enc' : ''}`
 }
@@ -22,11 +22,11 @@ export function backupName(stamp: string, o: { reason: BackupReason; encrypted: 
 export function parseBackupName(name: string): BackupFile | null {
   const m = NAME.exec(name)
   if (!m) return null
-  const [y, mo, d, h, mi] = m.slice(1, 6).map(Number)
-  const at = new Date(Date.UTC(y, mo - 1, d, h, mi))
+  const [y, mo, d, h, mi, sec] = m.slice(1, 7).map((x) => Number(x ?? 0))
+  const at = new Date(Date.UTC(y, mo - 1, d, h, mi, sec))
   // 2026-02-31 rolls over to March: not a name we wrote.
   if (at.getUTCMonth() !== mo - 1 || at.getUTCDate() !== d) return null
-  return { name, at, preRestore: !!m[6], encrypted: !!m[7] }
+  return { name, at, preRestore: !!m[7], encrypted: !!m[8] }
 }
 
 /** ISO year and week number, as `2026-W46`. */

@@ -65,10 +65,17 @@ test('backup and restore round trip, key checks and safety backup', { skip: !ena
   }
 
   // 1. A plain backup.
-  const plain = await backupNow({ reason: 'manual' })
-  assert.match(plain.file, /relife-backup-\d{4}-\d{2}-\d{2}T\d{4}\.tar\.gz$/)
+  const now = new Date()
+  const plain = await backupNow({ reason: 'manual', now })
+  assert.match(plain.file, /relife-backup-\d{4}-\d{2}-\d{2}T\d{6}\.tar\.gz$/)
   assert.match(plain.message, /MB · 1 kept$/)
   assert.deepEqual(readdirSync(process.env.RELIFE_BACKUP_DIR!).filter((n) => n.startsWith('.')), [], 'no temp folders are left')
+
+  // A second backup in the same second is a second file, not an overwrite.
+  const twin = await backupNow({ reason: 'manual', now })
+  assert.notEqual(twin.file, plain.file)
+  assert.ok(existsSync(plain.file) && existsSync(twin.file))
+  rmSync(twin.file)
 
   // 2. Restore it into an empty scratch database: counts match, the key is readable, the key file and covers arrive.
   await reset()
