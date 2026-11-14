@@ -66,6 +66,7 @@ export const ROUTES: RouteInfo[] = [
   { path: '/you/notifications', label: 'Notifications', parent: '/you' },
   { path: '/you/settings', label: 'Settings', parent: '/you' },
   { path: '/you/settings/devices', label: 'Devices', parent: '/you/settings' },
+  { path: '/you/settings/data', label: 'Data & privacy', parent: '/you/settings' },
   { path: '/welcome', label: 'Welcome' },
   { path: '/dev/ui', label: 'UI gallery' },
 ]

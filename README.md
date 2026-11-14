@@ -222,6 +222,8 @@ throwaway database and has no access to your keys. See [docs/SELF_HOSTING.md](do
 | `npm run db:generate` | Write the migration for a schema change (commit `apps/web/drizzle/`) |
 | `npm run db:migrate` | Apply the migrations to your database (Docker does this on start) |
 | `docker compose exec web relife signin` | A new sign-in code, in Docker |
+| `npm run backup` · `npm run restore -- <file>` | Back up the database, `secret.key` and library covers to `RELIFE_BACKUP_DIR` (a nightly job does it at 03:30); restore one with ReLife stopped |
+| `npm run import -- <relife-export.zip>` | Restore an export (Settings → Data & privacy → Export) into an empty install |
 | `cd apps/web && npx tsx --env-file=../../.env scripts/binance-import.ts <csv...>` | Import Binance trade exports or Transaction History statements |
 
 ## Contributing
@@ -255,6 +257,9 @@ screenshots use fake data (`npm run dev:mock`).
   the tab in front.
 - Prompts mask account numbers and UPI handles unless you set `LLM_MASK=false`. Parsing can run on a local model
   so order pages never leave your Mac. Every AI call is logged with its cost in `llm_runs`.
+- Settings → Data & privacy exports everything as a ZIP (no keys in it), makes backups, deletes everything and lists
+  what each source and AI call sends. The same list is in [docs/PRIVACY.md](docs/PRIVACY.md). There is no analytics or
+  telemetry in the app.
 
 ## Phone access
 

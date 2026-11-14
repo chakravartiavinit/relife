@@ -10,10 +10,16 @@ staged=$(git diff "$range" --name-only --diff-filter=ACMR)
 
 # 1. Files that must never be committed.
 echo "$staged" | while IFS= read -r f; do
+  # Its own case: a match here must not stop the rules below (first match wins in one case).
+  # `*` crosses slashes in a pattern, so strip apps/<name>/ and test data/ itself (not apps/web/src/core/data/, the code).
+  case "$f" in
+    apps/*/data/*) case "${f#apps/*/}" in data/*) echo "$f: data/ holds the encryption key for saved connector keys" ;; esac ;;
+  esac
   case "$f" in
     .env.example) ;;
     .env|.env.*|*/.env|*/.env.*) echo "$f: env files hold secrets" ;;
-    data/*|apps/*/data/*) echo "$f: data/ holds the encryption key for saved connector keys" ;;
+    data/*) echo "$f: data/ holds the encryption key for saved connector keys" ;;
+    backups/*|*relife-backup-*|*relife-export-*) echo "$f: a backup or export holds your data and keys" ;;
     *.pem|*.key|*.p12|*.dump|*.sql.gz|service-account*.json) echo "$f: key or database dump" ;;
     node_modules/*|*/node_modules/*|.next/*|.next-mock/*|apps/*/.next/*|apps/*/.next-mock/*|apps/mac/.build/*|coverage/*) echo "$f: build output" ;;
     *.DS_Store|*.log) echo "$f: OS or log file" ;;

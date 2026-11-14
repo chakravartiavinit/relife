@@ -120,6 +120,7 @@ export const icloudInbox: Connector = {
   ],
   env: [],
   everyMinutes: 1,
+  reach: 'local',
   check: async (get) => checkInbox(get('ICLOUD_INBOX_PATH')),
   async sync(ctx) {
     const path = inboxPath()

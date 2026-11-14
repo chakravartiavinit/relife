@@ -25,3 +25,13 @@ export function dataDir(...parts: string[]) {
   const custom = process.env.RELIFE_DATA_DIR
   return join(custom ? resolve(root(), custom) : join(root(), 'data'), ...parts)
 }
+
+/**
+ * Where backups are written (`npm run backup`, the nightly job): `RELIFE_BACKUP_DIR`, else `backups/` at the repo root.
+ * A relative path is read from the repo root, like RELIFE_DATA_DIR. Not inside `data/`: a backup holds `secret.key`, and
+ * a folder of its own can be put on another disk or synced without the rest.
+ */
+export function backupDir(...parts: string[]) {
+  const custom = process.env.RELIFE_BACKUP_DIR
+  return join(custom ? resolve(root(), custom) : join(root(), 'backups'), ...parts)
+}

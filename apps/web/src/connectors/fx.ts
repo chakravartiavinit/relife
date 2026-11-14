@@ -12,6 +12,7 @@ export const fx: Connector = {
   fields: [],
   env: [],
   everyMinutes: 720,
+  reach: 'public',
   async sync(ctx) {
     const res = await fetch('https://open.er-api.com/v6/latest/USD', { signal: AbortSignal.timeout(30_000) })
     if (res.status === 429) throw new Error('The exchange-rate service is rate limiting this computer. It tries again in 12 hours.')

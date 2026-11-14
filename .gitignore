@@ -19,6 +19,9 @@ next-env.d.ts
 !.env.example
 /data/
 apps/*/data/
+/backups/
+relife-export-*.zip
+relife-backup-*
 *.pem
 *.key
 *.p12

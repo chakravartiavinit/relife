@@ -18,3 +18,4 @@ apps/extension/*
 !apps/extension/package.json
 apps/site/*
 !apps/site/package.json
+/backups/

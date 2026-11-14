@@ -199,13 +199,43 @@ Old databases are safe: `migrate` applies only the migrations that are missing. 
   takes a while. `docker compose logs ollama-pull` shows progress.
 - **Port in use.** Set `RELIFE_PORT` (and `RELIFE_PG_PORT` for Postgres) in `.env`.
 
-## What to back up
+## Backups
 
-Two volumes: `relife-pg` (all your data) and `relife-data` (`secret.key`, which decrypts the connector keys saved in
-the database). Without the key, saved keys can't be read. In-app export and backup arrive in a later release; until
-then, stop the stack and copy the volumes, or run `docker compose exec postgres pg_dump -U relife relife > relife.sql`
-and copy `/data/secret.key` out with `docker compose cp worker:/data/secret.key .`. The image includes the PostgreSQL 16
-client tools and a `relife-backups` volume (`/backups`, `RELIFE_BACKUP_DIR`) for that feature.
+ReLife writes a backup every night at 03:30 (the worker does it) and keeps the last 7, plus the newest of each of the 4
+weeks before them. Each backup is one `.tar.gz` in the `relife-backups` volume (`/backups`, `RELIFE_BACKUP_DIR`): the
+database (`pg_dump`, PostgreSQL 16 client tools are in the image) plus `secret.key` and the library pictures. It is
+exact, so it holds the key that opens your saved connector keys. Set `RELIFE_BACKUP_PASSPHRASE` in `.env` to encrypt
+every backup (AES-256-GCM; a lost passphrase is a lost backup). `RELIFE_BACKUP_KEEP` changes how many are kept (`0`
+turns backups off).
+
+```bash
+docker compose exec worker relife backup            # a backup now (or Settings → Data & privacy → Back up now)
+docker compose cp worker:/backups/. ./my-backups/   # copy them off this machine: a volume on the same disk is not a backup
+docker compose run --rm worker relife restore       # lists the backups
+```
+
+**The volume is not off-site.** If the disk dies, the backups die with it. Copy the folder somewhere else now and then, or
+bind-mount a folder you already back up: in a `docker-compose.override.yml` add `volumes: ["/path/to/backups:/backups"]`
+under `migrate`, `web` and `worker` (it replaces the `/backups` mount and keeps `/data`).
+
+**Restore** replaces the database with the backup. Stop the app first; the worker counts as running for 3 minutes after
+its last check-in, so wait that long after stopping it:
+
+```bash
+docker compose stop web worker
+docker compose run --rm --no-deps web relife restore /backups/relife-backup-2026-11-13T033005.tar.gz
+docker compose up -d
+```
+
+It asks you to type `RESTORE relife`, takes a `pre-restore` safety backup of what is there first, restores in one
+transaction (a failure leaves the old data), and puts the backup's `secret.key` in `/data` (a different existing key is kept as
+`secret.key.replaced-<time>`). `--yes` skips the question; `--force` restores even though the saved keys in the backup
+would not open with the key in effect (they then read as not saved). To move to a new install, start it first
+(the migrations run by themselves), stop `web` and `worker`, then restore into it. `relife import <relife-export.zip>` loads an export (Settings → Data &
+privacy → Export) into an **empty** install instead; an export has no keys, so connect your sources again.
+
+The in-app **Export** is a ZIP of readable JSON and CSV for you to keep or move to other tools. It never contains saved
+keys. A backup is for restoring ReLife; an export is for leaving it or looking inside.
 
 ## Coolify and Unraid
 
