@@ -88,6 +88,13 @@ export async function transactionsBetween(user: User, from: string, to: string, 
   return out
 }
 
+/** How many bank rows in [from, to] are the same payment as an app order and so are left out of every total. */
+export async function linkedRowCount(user: User, from: string, to: string) {
+  const T = schema.transactions
+  const [r] = await db.select({ n: sql<number>`count(*)::int` }).from(T).where(and(eq(T.userId, user.id), gte(T.localDate, from), lte(T.localDate, to), sql`${T.linkedTo} is not null`))
+  return r?.n ?? 0
+}
+
 const NOT_SPEND = new Set(['Transfers', 'Investments', 'Income'])
 
 /** Money out, excluding transfers between own accounts and investments. */

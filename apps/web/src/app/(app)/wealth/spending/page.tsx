@@ -7,7 +7,7 @@ import { Suspense } from 'react'
 import { ChartColumn, ChartPie, ChevronLeft, ChevronRight, HandCoins, ReceiptText } from 'lucide-react'
 import { getUser } from '@/core/user'
 import { SPEND_CATEGORIES } from '@/core/categorize'
-import { transactionsBetween, isSpend } from '@/core/metrics'
+import { transactionsBetween, isSpend, linkedRowCount } from '@/core/metrics'
 import { formatDay, formatTime, localDate, localHour } from '@/core/time'
 import { formatMoney } from '@/domain/money'
 import { fillDays } from '@/domain/series'
@@ -42,7 +42,7 @@ async function Spending({ searchParams }: { searchParams: PageProps<'/wealth/spe
   const [from, monthEnd] = monthRange(m)
   const to = m === current ? today : monthEnd
 
-  const [txns, basket] = await Promise.all([transactionsBetween(user, from, to), loadBasket(user, m)])
+  const [txns, basket, linked] = await Promise.all([transactionsBetween(user, from, to), loadBasket(user, m), linkedRowCount(user, from, to)])
   const spend = txns.filter(isSpend)
   const spent = spend.reduce((s, t) => s - t.base, 0)
   const income = txns.filter((t) => t.base > 0 && t.category !== 'Transfers').reduce((s, t) => s + t.base, 0)
@@ -109,6 +109,7 @@ async function Spending({ searchParams }: { searchParams: PageProps<'/wealth/spe
               <Stat label="Daily average" value={<Ticker value={days ? spent / days : 0} currency={base} />} sub={`over ${days} days`} />
               <Stat label="Quick commerce" value={`${spent ? Math.round((quickTotal / spent) * 100) : 0}%`} sub={formatMoney(quickTotal, base)} />
             </div>
+            {linked ? <p className="mt-4 text-caption text-ink-3">{linked} bank row{linked === 1 ? '' : 's'} matched app orders and {linked === 1 ? 'is' : 'are'} counted once.</p> : null}
             {lateNight.length || small.length ? (
               <div className="mt-5 flex flex-wrap gap-2 border-t border-divider pt-4">
                 {lateNight.length ? (

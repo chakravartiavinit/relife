@@ -1,11 +1,17 @@
 'use client'
 
 import brand from '@relife/brand/brand.json'
+import { Link2Off } from 'lucide-react'
+import { useTransition } from 'react'
+import { setTransactionLink } from '@/app/actions'
 import type { MerchantPeek, TxnPeek } from '@/core/peek/types'
 import { formatMoney } from '@/domain/money'
 import { CATEGORY } from '@/ui/tokens'
 import { cn } from '../../../cn'
 import { Badge } from '../../card'
+import { Button } from '../../button'
+import { useToast } from '../../toast'
+import { usePeekChanged } from '../peek-context'
 import { BrandLogo } from '../../brand-logo'
 import { CategorySelect } from '../../wealth/category-select'
 import { PeekFooter, PeekNote, PeekOpen, PeekRow, PeekSection } from '../peek-parts'
@@ -35,6 +41,31 @@ function CategoryBlock({ id, category, categories, merchant, rule }: { id: strin
   )
 }
 
+/** A bank row that matched an app order: counted once, as the order. One button says the match is wrong, for good. */
+function SamePayment({ id, order }: { id: string; order: { id: string; label: string } }) {
+  const [pending, start] = useTransition()
+  const toast = useToast()
+  const changed = usePeekChanged()
+  const unlink = () => start(async () => {
+    try {
+      await setTransactionLink(id, null)
+      changed()
+      toast('Counted on its own now', 'neutral', {
+        description: `Not the same payment as ${order.label}`,
+        action: { label: 'Undo', onClick: () => { void setTransactionLink(id, order.id).then(changed, () => toast.error()) } },
+      })
+    } catch {
+      toast.error()
+    }
+  })
+  return (
+    <PeekNote label="Same payment">
+      <p>Same payment as {order.label} · not counted twice.</p>
+      <Button size="sm" variant="secondary" className="mt-2" disabled={pending} onClick={unlink}><Link2Off className="size-3.5" strokeWidth={1.5} aria-hidden />Not the same payment</Button>
+    </PeekNote>
+  )
+}
+
 const spent = (d: Pick<TxnPeek, 'base' | 'baseCurrency'>) => formatMoney(Math.abs(d.base), d.baseCurrency, { decimals: Math.abs(d.base) >= 1000 ? 0 : 2 })
 
 /** One payment: the amount, its category picker, the order's items and where it came from. */
@@ -45,6 +76,9 @@ export function TxnPeekView({ data: d }: { data: TxnPeek }) {
       <p className="num text-display text-ink tabular-nums">{out ? '−' : ''}{spent(d)}</p>
       {d.currency !== d.baseCurrency ? <p className="text-small text-ink-3 tabular-nums">{formatMoney(Math.abs(d.amount), d.currency)}</p> : null}
       {d.category === 'Uncategorized' ? <div className="mt-2"><Badge color="var(--warn)">Needs a category</Badge></div> : null}
+
+      {d.sameAs ? <SamePayment id={d.id} order={d.sameAs} /> : null}
+      {d.paidFrom ? <PeekNote label="Paid from">Paid from {d.paidFrom.account ?? 'your bank statement'} on {d.paidFrom.when}.</PeekNote> : null}
 
       <CategoryBlock id={d.id} category={d.category} categories={d.categories} merchant={name(d)} rule={d.rule} />
 

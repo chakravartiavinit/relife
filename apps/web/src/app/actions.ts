@@ -8,6 +8,7 @@ import { z } from 'zod'
 import { db, schema } from '@/db'
 import { CATEGORIES } from '@/db/schema'
 import { getUser, mergeProfile, profileMerge } from '@/core/user'
+import { setTransactionLink as setLink } from '@/core/statement-link'
 import { recategorizeTxns, undoRecategorizeTxns, type RecategorizeUndo } from '@/core/recategorize'
 import { addGoalProgress, setCheck, undoLastGoalStep } from '@/core/schedules'
 import { applyQuickLogWithUndo, parseQuickLog, slugify, undoQuickLogWrite } from '@/core/quicklog'
@@ -332,6 +333,18 @@ const recategorizeUndo = z.object({
 export async function undoRecategorize(undo: RecategorizeUndo) {
   await undoRecategorizeTxns(await getUser(), recategorizeUndo.parse(undo))
   refresh()
+}
+
+/**
+ * Links a bank row to an app order by hand, or with `null` unlinks it for good ("Not the same payment").
+ * Returns the order it was linked to, so the caller can offer Undo with it.
+ */
+export async function setTransactionLink(id: string, orderId: string | null): Promise<{ before: string | null }> {
+  idArg.parse(id)
+  idArg.nullable().parse(orderId)
+  const out = await setLink(await getUser(), id, orderId)
+  refresh()
+  return out
 }
 
 /** Re-read raw messages. Returns how they came out, so the Inbox can say "Saved" or "Still waiting". */

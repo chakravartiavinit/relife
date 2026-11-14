@@ -33,3 +33,29 @@ export async function linkStatements(user: User, range: { from: string; to: stri
   for (const l of links) await db.update(T).set({ linkedTo: l.orderId }).where(and(eq(T.id, l.rowId), isNull(T.linkedTo)))
   return links.length
 }
+
+const rejectedOf = (meta: unknown) => (Array.isArray((meta as { linkRejected?: unknown })?.linkRejected) ? (meta as { linkRejected: string[] }).linkRejected : [])
+
+/**
+ * Sets or clears the link on one bank row by hand. `null` clears it and remembers the order in `meta.linkRejected`, so the
+ * matcher never links that pair again. Returns the order it was linked to before (what Undo passes back), or null.
+ */
+export async function setTransactionLink(user: User, id: string, orderId: string | null): Promise<{ before: string | null }> {
+  const T = schema.transactions
+  return db.transaction(async (tx) => {
+    const [row] = await tx.select().from(T).where(and(eq(T.id, id), eq(T.userId, user.id), eq(T.source, 'statement'))).for('update')
+    if (!row) throw new Error('That bank row is gone.')
+    const before = row.linkedTo
+    const rejected = rejectedOf(row.meta).filter((x) => x !== orderId)
+    if (orderId === null) {
+      if (before) rejected.push(before)
+    } else {
+      const [order] = await tx.select({ id: T.id }).from(T).where(and(eq(T.id, orderId), eq(T.userId, user.id), sql`${T.amount} < 0`))
+      if (!order) throw new Error('That order is gone.')
+      const [taken] = await tx.select({ id: T.id }).from(T).where(and(eq(T.linkedTo, orderId), sql`${T.id} <> ${id}`)).limit(1)
+      if (taken) throw new Error('Another bank row already matches that order.')
+    }
+    await tx.update(T).set({ linkedTo: orderId, meta: { ...(row.meta as object), linkRejected: [...new Set(rejected)] } }).where(eq(T.id, id))
+    return { before }
+  })
+}
