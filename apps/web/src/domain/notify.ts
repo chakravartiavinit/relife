@@ -58,9 +58,14 @@ export const CATEGORY_INFO: Record<NotifyCategory, { label: string; emoji: strin
 
 /**
  * The channels a message goes to: the category's choice, kept to the ones that are set up (Telegram connected, a push
- * subscription alive). One message stays one row however many channels take it, so caps, quiet hours and repeats are shared.
+ * subscription alive). When none of the chosen ones is set up (the last push device was removed), it goes to every channel
+ * that is, so a reminder never goes silent. One message stays one row however many channels take it, so caps, quiet hours
+ * and repeats are shared.
  */
-export const targets = (d: Pick<Delivery, 'channels'>, available: readonly Channel[]): Channel[] => CHANNELS.filter((c) => d.channels.includes(c) && available.includes(c))
+export const targets = (d: Pick<Delivery, 'channels'>, available: readonly Channel[]): Channel[] => {
+  const chosen = CHANNELS.filter((c) => d.channels.includes(c) && available.includes(c))
+  return chosen.length ? chosen : CHANNELS.filter((c) => available.includes(c))
+}
 
 export const DEFAULT_QUIET = { from: '22:30', to: '07:30' }
 

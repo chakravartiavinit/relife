@@ -106,12 +106,12 @@ test('one message fans out to Telegram and push, with the rules applied once', {
     assert.equal(push.sent.length, 1)
   })
 
-  await t.test('it goes nowhere when the chosen channel is not set up', async () => {
+  await t.test('when the chosen channel is not set up it falls back to the one that is, so nothing goes silent', async () => {
     await reset(); setTelegram(false); await setPush(true)
     await setPrefs({ events: { channels: ['telegram'] } })
-    await outbox.notify(user, 'events', { text: 'nowhere' })
-    assert.equal(push.sent.length, 0)
-    assert.equal((await rows())[0].status, 'skipped')
+    await outbox.notify(user, 'events', { text: 'falls back' })
+    assert.equal(push.sent.length, 1)
+    assert.equal((await rows())[0].status, 'done')
   })
 
   await t.test('repeats: Telegram deletes and resends, push resends with the same tag and renotify; an answer on either stops both', async () => {
@@ -159,5 +159,43 @@ test('one message fans out to Telegram and push, with the rules applied once', {
     ;[r] = await rows()
     assert.equal(r.status, 'done')
     assert.deepEqual(r.channels, ['push'])
+  })
+
+  await t.test('sendPush: only the push service\'s own trouble (429, 5xx) counts toward giving up; offline counts for nothing; gone removes', async () => {
+    const real = await import('./push')
+    const was = real.pushTransport.send
+    const err = console.error
+    console.error = () => {}
+    try {
+      await reset(); await setPush(true)
+      const row = () => db.select().from(schema.pushSubscriptions).where(eq(schema.pushSubscriptions.userId, user.id))
+      const payload = { id: 'x', tag: 'x', renotify: false, title: 't', body: 'b', actions: [], url: '/' } as never
+      const opts = { ttl: 60, urgency: 'normal' as const }
+      real.pushTransport.send = async () => { throw Object.assign(new Error('getaddrinfo ENOTFOUND'), { code: 'ENOTFOUND' }) }
+      assert.equal(await real.sendPush(user.id, payload, opts), false)
+      assert.equal((await row())[0].failures, 0, 'being offline is not the subscription\'s fault')
+      real.pushTransport.send = async () => { throw Object.assign(new Error('busy'), { statusCode: 503 }) }
+      await real.sendPush(user.id, payload, opts)
+      assert.equal((await row())[0].failures, 1)
+      real.pushTransport.send = async () => { throw Object.assign(new Error('gone'), { statusCode: 410 }) }
+      await real.sendPush(user.id, payload, opts)
+      assert.equal((await row()).length, 0, 'the push service says it is gone')
+    } finally { real.pushTransport.send = was; console.error = err }
+  })
+
+  await t.test('saveSubscription never moves another account\'s endpoint', async () => {
+    const { saveSubscription } = await import('./push')
+    await reset(); await setPush(true)
+    const [mine] = await db.select().from(schema.pushSubscriptions).where(eq(schema.pushSubscriptions.userId, user.id))
+    const [other] = await db.insert(schema.users).values({ name: `Outbox other ${crypto.randomUUID().slice(0, 8)}` }).returning()
+    try {
+      const { device: theirs } = await createDevice({ userId: other.id, kind: 'phone', name: 'Their phone', scopes: ['full'] })
+      const sub = { endpoint: mine.endpoint, keys: { p256dh: 'q'.repeat(20), auth: 'b'.repeat(12) } }
+      assert.equal(await saveSubscription({ userId: other.id, deviceId: theirs.id, sub, via: null, userAgent: null }), false)
+      const [after] = await db.select().from(schema.pushSubscriptions).where(eq(schema.pushSubscriptions.endpoint, mine.endpoint))
+      assert.equal(after.userId, user.id, 'still this account\'s')
+      assert.equal(after.p256dh, mine.p256dh, 'and untouched')
+      assert.equal(await saveSubscription({ userId: user.id, deviceId: device.id, sub, via: null, userAgent: null }), true, 'its own browser can renew it')
+    } finally { await db.delete(schema.users).where(eq(schema.users.id, other.id)) }
   })
 })

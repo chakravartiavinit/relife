@@ -38,5 +38,5 @@ test('targets: the category\'s channels, kept to the ones that are set up', () =
   assert.deepEqual(targets(both, []), [], 'nowhere to send')
   const tg = delivery({ categories: { alerts: { channels: ['telegram'] } }, quiet: null }, 'alerts')
   assert.deepEqual(targets(tg, ['telegram', 'push']), ['telegram'], 'a category can opt out of push')
-  assert.deepEqual(targets(tg, ['push']), [], 'chose Telegram, only push exists: nowhere')
+  assert.deepEqual(targets(tg, ['push']), ['push'], 'chose Telegram, only push exists: falls back so it never goes silent')
 })
