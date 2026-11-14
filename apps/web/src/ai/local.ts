@@ -1,4 +1,5 @@
 import { env } from '@/core/env'
+import { isDemo } from '@/core/demo'
 import { DEFAULT_LOCAL_URL, localUrl, modelId, type Task } from './models'
 
 // Free local AI (Ollama or LM Studio, anything OpenAI-compatible): the one module that knows its URL, model and state.
@@ -78,7 +79,7 @@ const cache = new Map<string, { at: number; value: LocalAi }>()
  */
 export async function localAiStatus(task: Task = 'chat', o: { fresh?: boolean; fetchImpl?: typeof fetch } = {}): Promise<LocalAi> {
   const id = modelId(task)
-  if (!id?.startsWith('local:')) return { state: 'not-local' }
+  if (isDemo() || !id?.startsWith('local:')) return { state: 'not-local' } // the demo has no AI, so nothing to probe
   const url = localUrl()
   const model = id.slice('local:'.length)
   const key = `${url}|${model}`
