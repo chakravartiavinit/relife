@@ -31,6 +31,8 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         val runner = SyncRunner(prefs, HealthConnectReader(applicationContext), HttpApi(Sync.userAgent))
         return when (runner.run(inBackground = !inputData.getBoolean(FOREGROUND, false))) {
             is SyncOutcome.Retry -> Result.retry()
+            // The token is gone, so the hourly work has nothing left to do until the phone is paired again.
+            is SyncOutcome.SignedOut -> { Sync.cancel(applicationContext); Result.success() }
             // Everything else is final for this run: the next hourly run (or opening the app) tries again.
             else -> Result.success()
         }
@@ -58,13 +60,17 @@ object Sync {
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(PERIODIC, ExistingPeriodicWorkPolicy.UPDATE, request)
     }
 
-    /** Runs once now, as the person asked: the app is open, so the background permission doesn't matter. */
-    fun now(context: Context) {
+    /**
+     * Runs once now: the app is open, so the background permission doesn't matter. Opening the app asks with
+     * `replace = false`, so a run that is already going (or waiting for the network) is left alone and the screen
+     * coming back to the front can't keep restarting it. Only the "Sync now" button replaces it.
+     */
+    fun now(context: Context, replace: Boolean = false) {
         val request = OneTimeWorkRequestBuilder<SyncWorker>()
             .setConstraints(needsNetwork)
             .setInputData(workDataOf(SyncWorker.FOREGROUND to true))
             .build()
-        WorkManager.getInstance(context).enqueueUniqueWork(NOW, ExistingWorkPolicy.REPLACE, request)
+        WorkManager.getInstance(context).enqueueUniqueWork(NOW, if (replace) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.KEEP, request)
     }
 
     fun cancel(context: Context) {

@@ -40,22 +40,32 @@ class SyncRunnerTest {
         override fun signOut() { token = null; timezone = null; backfilled = false }
     }
 
-    private class Reader(var all: Boolean = true, var background: Boolean = true, val data: Map<LocalDate, DayReading> = emptyMap()) : HealthReader {
+    private val everything = setOf("steps", "sleep", "weight")
+
+    private class Reader(
+        var granted: Set<String> = setOf("steps", "sleep", "weight"), var background: Boolean = true,
+        val data: Map<LocalDate, DayReading> = emptyMap(), val fail: Exception? = null,
+    ) : HealthReader {
         var asked: List<LocalDate> = emptyList()
+        var askedGranted: Set<String>? = null
+        var askedZone: ZoneId? = null
         override suspend fun canReadInBackground() = background
-        override suspend fun hasAllPermissions() = all
-        override suspend fun read(dates: List<LocalDate>, zone: ZoneId): List<DayReading> {
+        override suspend fun grantedReads() = granted
+        override suspend fun read(dates: List<LocalDate>, zone: ZoneId, granted: Set<String>): List<DayReading> {
+            fail?.let { throw it }
             asked = dates
+            askedGranted = granted
+            askedZone = zone
             return dates.map { data[it] ?: DayReading(it) }
         }
     }
 
-    private class Api(var fail: Exception? = null) : ReLifeApi {
+    private class Api(var fail: Exception? = null, var timezone: String = "Asia/Kolkata") : ReLifeApi {
         val sent = mutableListOf<HealthBatch>()
         override suspend fun postHealth(server: String, token: String, batch: HealthBatch): HealthIngestResult {
             fail?.let { throw it }
             sent += batch
-            return HealthIngestResult(true, batch.days.size, batch.days.size, "Asia/Kolkata")
+            return HealthIngestResult(true, batch.days.size, batch.days.size, timezone)
         }
         override suspend fun hello(server: String): Hello = error("unused")
         override suspend fun redeem(server: String, body: PairRedeem): PairRedeemResult = error("unused")
@@ -64,7 +74,12 @@ class SyncRunnerTest {
         override suspend fun revokeSelf(server: String, token: String) = error("unused")
     }
 
-    private val clock = Clock.fixed(Instant.parse("2026-11-13T05:00:00Z"), ZoneOffset.UTC)
+    private var now = Instant.parse("2026-11-13T05:00:00Z")
+    private val clock = object : Clock() {
+        override fun getZone(): ZoneId = ZoneOffset.UTC
+        override fun withZone(zone: ZoneId?): Clock = this
+        override fun instant(): Instant = now
+    }
     private fun runner(store: SyncStore, reader: HealthReader, api: ReLifeApi) = SyncRunner(store, reader, api, clock)
     private fun run(r: SyncRunner, background: Boolean = false) = runBlocking { r.run(background) }
 
@@ -82,8 +97,56 @@ class SyncRunnerTest {
         assertEquals(1, store.lastDays)
         assertTrue(store.backfilled)
 
+        // The next run starts the day before the last sync: yesterday and today.
         run(r)
-        assertEquals(3, reader.asked.size)
+        assertEquals(listOf("2026-11-12", "2026-11-13").map(LocalDate::parse), reader.asked)
+    }
+
+    @Test fun aPhoneThatWasOffForAWeekCatchesUpOnTheWholeWeek() {
+        val store = Store().also { it.backfilled = true; it.lastSyncAt = Instant.parse("2026-11-06T05:00:00Z") }
+        val reader = Reader()
+        run(runner(store, reader, Api()))
+        // From the day before the last sync (the 5th) through today (the 13th): 9 dates.
+        assertEquals(9, reader.asked.size)
+        assertEquals(LocalDate.parse("2026-11-05"), reader.asked.first())
+        assertEquals(LocalDate.parse("2026-11-13"), reader.asked.last())
+    }
+
+    @Test fun aLongGapNeverReachesBackMoreThanThirtyDays() {
+        val store = Store().also { it.backfilled = true; it.lastSyncAt = Instant.parse("2026-08-01T05:00:00Z") }
+        val reader = Reader()
+        run(runner(store, reader, Api()))
+        assertEquals(30, reader.asked.size)
+    }
+
+    @Test fun oneAllowedTypeIsEnoughAndOnlyThatTypeIsRead() {
+        val store = Store()
+        val reader = Reader(granted = setOf("steps"))
+        assertEquals(SyncOutcome.Synced(0), run(runner(store, reader, Api())))
+        assertEquals(setOf("steps"), reader.askedGranted)
+        assertNull(store.note)
+    }
+
+    @Test fun anUnknownTimeZoneIsLearnedBeforeAnythingIsRead() {
+        val store = Store().also { it.timezone = null }
+        val reader = Reader()
+        val api = Api(timezone = "Pacific/Auckland")
+        run(runner(store, reader, api))
+        // An empty batch first, then the real one, and the days were cut in the server's zone.
+        assertEquals(listOf(0, 0), api.sent.map { it.days.size })
+        assertEquals("Pacific/Auckland", store.timezone)
+        assertEquals(ZoneId.of("Pacific/Auckland"), reader.askedZone)
+        assertEquals(30, reader.asked.size)
+    }
+
+    @Test fun aZoneThatChangedUnderUsMeansReadingTheWholeWindowAgain() {
+        val store = Store()
+        run(runner(store, Reader(), Api(timezone = "Pacific/Auckland")))
+        assertEquals("Pacific/Auckland", store.timezone)
+        assertFalse(store.backfilled)
+        val reader = Reader()
+        run(runner(store, reader, Api(timezone = "Pacific/Auckland")))
+        assertEquals(30, reader.asked.size)
     }
 
     @Test fun nothingToSendStillCountsAsASync() {
@@ -101,7 +164,7 @@ class SyncRunnerTest {
 
     @Test fun missingPermissionsAskTheAppToOpen() {
         val store = Store()
-        assertEquals(SyncOutcome.NeedsApp, run(runner(store, Reader(all = false), Api())))
+        assertEquals(SyncOutcome.NeedsApp, run(runner(store, Reader(granted = emptySet()), Api())))
         assertTrue(store.note!!.contains("Allow access"))
     }
 
@@ -124,9 +187,39 @@ class SyncRunnerTest {
         assertTrue(store.note!!.contains("disconnected"))
     }
 
+    @Test fun aBare401KeepsTheToken() {
+        // A proxy's own 401 isn't the server forgetting this phone.
+        val store = Store()
+        val out = run(runner(store, Reader(), Api(ApiException(401, "http_401", "The server answered 401."))))
+        assertTrue(out is SyncOutcome.Rejected)
+        assertEquals("rlf_x", store.token)
+    }
+
+    @Test fun everyContractReasonForSigningOutIsRecognised() {
+        listOf("revoked", "expired", "unauthorized").forEach { assertTrue(it, ApiException(401, it, "").signedOut) }
+        assertFalse(ApiException(403, "forbidden", "").signedOut)
+        assertFalse(ApiException(401, "http_401", "").signedOut)
+    }
+
+    @Test fun anythingUnexpectedRetriesInsteadOfCrashing() {
+        val store = Store()
+        val out = run(runner(store, Reader(fail = IllegalStateException("boom")), Api()))
+        assertTrue(out is SyncOutcome.Retry)
+        assertEquals("Something went wrong while syncing. Will try again.", store.note)
+    }
+
+    @Test fun aRefusedReadDoesNotAskForAccessThatIsAlreadyGiven() {
+        val store = Store()
+        val reader = Reader(fail = SecurityException("no background"))
+        assertEquals(SyncOutcome.NeedsApp, run(runner(store, reader, Api()), background = true))
+        assertEquals("Open the app to sync.", store.note)
+        assertEquals(SyncOutcome.NeedsApp, run(runner(store, reader, Api()), background = false))
+        assertFalse(store.note!!.contains("Allow access"))
+    }
+
     @Test fun serverTroubleAndNoNetworkRetry() {
         assertTrue(run(runner(Store(), Reader(), Api(ApiException(503, "http_503", "down")))) is SyncOutcome.Retry)
-        assertTrue(run(runner(Store(), Reader(), Api(ApiException(429, "rate-limited", "slow down")))) is SyncOutcome.Retry)
+        assertTrue(run(runner(Store(), Reader(), Api(ApiException(429, "rate_limited", "slow down")))) is SyncOutcome.Retry)
         val store = Store()
         assertTrue(run(runner(store, Reader(), Api(IOException("offline")))) is SyncOutcome.Retry)
         assertFalse(store.backfilled)
@@ -143,10 +236,13 @@ class SyncRunnerTest {
     }
 
     @Test fun theServersTimeZoneDecidesWhichDayIsToday() {
-        val store = Store().also { it.timezone = "Pacific/Auckland" }
-        val reader = Reader()
-        run(runner(store, reader, Api()))
-        // 05:00 UTC on the 13th is 18:00 on the 13th in Auckland: the same date, but the window is cut on Auckland's midnight.
-        assertEquals(LocalDate.parse("2026-11-13"), reader.asked.last())
+        // 12:00 UTC on the 13th is already 01:00 on the 14th in Auckland, but still the 13th in Kolkata.
+        now = Instant.parse("2026-11-13T12:00:00Z")
+        val auckland = Reader()
+        run(runner(Store().also { it.timezone = "Pacific/Auckland" }, auckland, Api(timezone = "Pacific/Auckland")))
+        assertEquals(LocalDate.parse("2026-11-14"), auckland.asked.last())
+        val kolkata = Reader()
+        run(runner(Store(), kolkata, Api()))
+        assertEquals(LocalDate.parse("2026-11-13"), kolkata.asked.last())
     }
 }

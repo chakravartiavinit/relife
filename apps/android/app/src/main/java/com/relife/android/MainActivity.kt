@@ -19,6 +19,7 @@ import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.relife.android.health.HealthAccess
+import com.relife.android.store.Prefs
 import com.relife.android.ui.Actions
 import com.relife.android.ui.App
 import com.relife.android.ui.ReLifeTheme
@@ -40,7 +41,8 @@ class MainActivity : ComponentActivity() {
         // Coming back from the permission sheet, Settings or the pairing page: look at everything again.
         LifecycleResumeEffect(Unit) {
             vm.refresh()
-            if (vm.ui.value.paired) com.relife.android.sync.Sync.now(applicationContext)
+            // Read from the store, not from `vm.ui`: on a cold start the first refresh hasn't landed yet and `paired` is still false.
+            if (Prefs(applicationContext).paired) com.relife.android.sync.Sync.now(applicationContext)
             onPauseOrDispose { }
         }
 

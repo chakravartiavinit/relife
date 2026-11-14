@@ -25,8 +25,10 @@ import kotlin.reflect.KClass
 interface HealthReader {
     /** False when the read-in-background permission is needed and missing: the worker must wait for the app to open. */
     suspend fun canReadInBackground(): Boolean
-    suspend fun hasAllPermissions(): Boolean
-    suspend fun read(dates: List<LocalDate>, zone: ZoneId): List<DayReading>
+    /** The read permissions allowed so far, one per data type. Empty means there is nothing to read yet. */
+    suspend fun grantedReads(): Set<String>
+    /** Reads only the types in `granted`: the person may have allowed some and not others, and each type stands alone. */
+    suspend fun read(dates: List<LocalDate>, zone: ZoneId, granted: Set<String>): List<DayReading>
 }
 
 /** What is allowed so far. */
@@ -86,49 +88,55 @@ class HealthConnectReader(context: Context) : HealthReader {
         return !HealthAccess.backgroundAvailable(client) || HealthAccess.BACKGROUND in granted()
     }
 
-    override suspend fun hasAllPermissions(): Boolean = granted().containsAll(HealthAccess.permissions)
+    override suspend fun grantedReads(): Set<String> = granted().intersect(HealthAccess.permissions)
 
-    override suspend fun read(dates: List<LocalDate>, zone: ZoneId): List<DayReading> {
+    override suspend fun read(dates: List<LocalDate>, zone: ZoneId, granted: Set<String>): List<DayReading> {
         if (dates.isEmpty()) return emptyList()
+        fun allowed(type: KClass<out androidx.health.connect.client.records.Record>) = HealthPermission.getReadPermission(type) in granted
         val wideStart = dayBounds(dates.first().minusDays(1), zone).first
         val wideEnd = dayBounds(dates.last(), zone).second
         val wide = TimeRangeFilter.between(wideStart, wideEnd)
 
         // Sleep and exercise are sessions, so they are read once for the whole window and then sorted into days.
-        val sleep = assignSleep(
+        val sleep = if (!allowed(SleepSessionRecord::class)) emptyMap() else assignSleep(
             readAll(SleepSessionRecord::class, wide).map { r ->
                 SleepSpan(r.startTime, r.endTime, r.stages.map { SleepStage(it.startTime, it.endTime, it.stage in AWAKE_STAGES) })
             },
             zone,
         )
-        val exercise = readAll(ExerciseSessionRecord::class, wide)
+        val exercise = (if (allowed(ExerciseSessionRecord::class)) readAll(ExerciseSessionRecord::class, wide) else emptyList())
             .groupBy { it.startTime.atZone(zone).toLocalDate() }
             .mapValues { (_, list) ->
                 mergeExercise(list.map { (EXERCISE_NAMES[it.exerciseType] ?: "other") to Duration.between(it.startTime, it.endTime).toMillis() / 60_000.0 })
             }
 
+        // Weight is read once for the window too (one request, not one per day); the day's last weigh-in wins.
+        val weights = (if (allowed(WeightRecord::class)) readAll(WeightRecord::class, wide) else emptyList())
+            .groupBy { it.time.atZone(zone).toLocalDate() }
+            .mapValues { (_, list) -> list.maxBy { it.time }.weight.inKilograms }
+
+        // An aggregate that asks for a metric whose permission is missing throws, so it asks only for what is allowed.
+        val metrics = buildSet {
+            if (allowed(StepsRecord::class)) add(StepsRecord.COUNT_TOTAL)
+            if (allowed(ActiveCaloriesBurnedRecord::class)) add(ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL)
+            if (allowed(HeartRateRecord::class)) addAll(listOf(HeartRateRecord.BPM_AVG, HeartRateRecord.BPM_MIN, HeartRateRecord.BPM_MAX))
+            if (allowed(RestingHeartRateRecord::class)) add(RestingHeartRateRecord.BPM_AVG)
+        }
+
         return dates.map { date ->
-            val (start, end) = dayBounds(date, zone)
-            val range = TimeRangeFilter.between(start, end)
-            val totals = client.aggregate(
-                AggregateRequest(
-                    metrics = setOf(
-                        StepsRecord.COUNT_TOTAL, ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL,
-                        HeartRateRecord.BPM_AVG, HeartRateRecord.BPM_MIN, HeartRateRecord.BPM_MAX, RestingHeartRateRecord.BPM_AVG,
-                    ),
-                    timeRangeFilter = range,
-                ),
-            )
-            val weight = readAll(WeightRecord::class, range).maxByOrNull { it.time }
+            val totals = if (metrics.isEmpty()) null else {
+                val (start, end) = dayBounds(date, zone)
+                client.aggregate(AggregateRequest(metrics = metrics, timeRangeFilter = TimeRangeFilter.between(start, end)))
+            }
             DayReading(
                 date = date,
-                steps = totals[StepsRecord.COUNT_TOTAL],
-                activeKcal = totals[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories,
-                heartRateAvg = totals[HeartRateRecord.BPM_AVG]?.toDouble(),
-                heartRateMin = totals[HeartRateRecord.BPM_MIN]?.toDouble(),
-                heartRateMax = totals[HeartRateRecord.BPM_MAX]?.toDouble(),
-                restingHr = totals[RestingHeartRateRecord.BPM_AVG]?.toDouble(),
-                weightKg = weight?.weight?.inKilograms,
+                steps = totals?.get(StepsRecord.COUNT_TOTAL),
+                activeKcal = totals?.get(ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL)?.inKilocalories,
+                heartRateAvg = totals?.get(HeartRateRecord.BPM_AVG)?.toDouble(),
+                heartRateMin = totals?.get(HeartRateRecord.BPM_MIN)?.toDouble(),
+                heartRateMax = totals?.get(HeartRateRecord.BPM_MAX)?.toDouble(),
+                restingHr = totals?.get(RestingHeartRateRecord.BPM_AVG)?.toDouble(),
+                weightKg = weights[date],
                 sleep = sleep[date],
                 exercise = exercise[date].orEmpty(),
             )

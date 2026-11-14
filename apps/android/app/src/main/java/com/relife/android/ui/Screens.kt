@@ -82,7 +82,7 @@ private fun Screen(state: UiState, actions: Actions) {
                 !state.paired && state.pending != null -> Waiting(state, actions)
                 !state.paired -> NotPaired(state, actions)
                 state.hc != HcStatus.Available -> Missing(state.hc, actions)
-                state.missing.isNotEmpty() -> Permissions(state, actions)
+                !state.canRead -> Permissions(state, actions)
                 else -> Ready(state, actions)
             }
             state.error?.let { Problem(it, actions) }
@@ -110,6 +110,7 @@ private fun Quiet(text: String) = Text(text, style = MaterialTheme.typography.bo
 @Composable
 private fun NotPaired(state: UiState, actions: Actions) {
     var address by remember { mutableStateOf("") }
+    state.note?.let { Section { Text(it, color = LocalPalette.current.warn) } }
     Section("Send your health data to your ${LocalAppName.current}") {
         Quiet("Steps, sleep, heart rate and workouts go to your own server, not to anyone else. Nothing is sent until you pair.")
         Button({ actions.scan() }, Modifier.fillMaxWidth(), enabled = !state.busy) { Text("Scan code") }
@@ -164,6 +165,7 @@ private fun Missing(status: HcStatus, actions: Actions) {
 @Composable
 private fun Permissions(state: UiState, actions: Actions) {
     Section("Choose what ${LocalAppName.current} can read") {
+        Quiet("Allow any of these. Each one you allow starts syncing; the rest can wait.")
         Quiet("Paired with ${state.serverHost}. ${LocalAppName.current} only reads; it never writes to Health Connect.")
         HealthAccess.labels.forEach { (permission, label) ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -190,6 +192,10 @@ private fun Ready(state: UiState, actions: Actions) {
         state.note?.let { Text(it, color = LocalPalette.current.warn) }
         Quiet("Syncs about once an hour.")
         Button({ actions.syncNow() }, Modifier.fillMaxWidth()) { Text("Sync now") }
+    }
+    if (state.missing.isNotEmpty()) Section("Not sent yet") {
+        Quiet("These aren't allowed, so ${LocalAppName.current} doesn't read them: ${state.missing.mapNotNull { HealthAccess.labels[it] }.joinToString(", ")}. They're optional.")
+        OutlinedButton({ actions.allow() }, Modifier.fillMaxWidth()) { Text("Choose more") }
     }
     if (state.backgroundAvailable && !state.backgroundGranted) Section("Sync without opening the app") {
         Quiet("Background reading is off, so ${LocalAppName.current} only syncs when you open it.")

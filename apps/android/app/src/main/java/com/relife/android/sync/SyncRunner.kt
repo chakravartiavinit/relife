@@ -10,6 +10,7 @@ import com.relife.android.store.SyncStore
 import java.io.IOException
 import java.time.Clock
 import java.time.ZoneId
+import kotlin.coroutines.cancellation.CancellationException
 
 sealed interface SyncOutcome {
     data class Synced(val days: Int) : SyncOutcome
@@ -36,7 +37,8 @@ class SyncRunner(
         val server = store.server
         val token = store.token
         if (server == null || token == null) return SyncOutcome.NotPaired
-        if (!reader.hasAllPermissions()) {
+        val granted = reader.grantedReads()
+        if (granted.isEmpty()) {
             store.recordNote("Allow access to your health data in the app to sync.")
             return SyncOutcome.NeedsApp
         }
@@ -45,12 +47,17 @@ class SyncRunner(
             return SyncOutcome.NeedsApp
         }
         return try {
-            val zone = runCatching { ZoneId.of(store.timezone) }.getOrDefault(ZoneId.systemDefault())
-            val dates = syncWindow(clock.instant(), zone, first = !store.backfilled)
-            val days = reader.read(dates, zone).filter { it.hasData }.map { it.toHealthDay() }
+            // Days are cut in the server's time zone, so a phone that doesn't know it yet asks before it reads anything.
+            val tz = store.timezone ?: api.postHealth(server, token, HealthBatch(days = emptyList())).timezone.also { store.timezone = it }
+            val zone = runCatching { ZoneId.of(tz) }.getOrDefault(ZoneId.systemDefault())
+            val lastSync = if (store.backfilled) store.lastSyncAt else null
+            val dates = syncWindow(clock.instant(), zone, lastSync)
+            val days = reader.read(dates, zone, granted).filter { it.hasData }.map { it.toHealthDay() }
             val result = api.postHealth(server, token, HealthBatch(days = days))
             store.timezone = result.timezone
             store.recordSuccess(clock.instant(), days.size)
+            // The server cut the days somewhere else than we did: what was sent may be a day off, so read the whole window again next time.
+            if (result.timezone != tz) store.backfilled = false
             SyncOutcome.Synced(days.size)
         } catch (e: ApiException) {
             when {
@@ -62,8 +69,16 @@ class SyncRunner(
             store.recordNote("Can't reach the server. Will try again.")
             SyncOutcome.Retry(e.message.orEmpty())
         } catch (e: SecurityException) {
-            store.recordNote("Open the app to allow access to your health data.")
+            // Access is granted (checked above), so asking the person to "allow access" would be wrong. In the background
+            // the missing piece is the background permission; with the app open, something was switched off just now.
+            store.recordNote(if (inBackground) "Open the app to sync." else "Health Connect refused a read. Check what is allowed in the app.")
             SyncOutcome.NeedsApp
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // Anything else (a Health Connect hiccup, an answer that isn't JSON) must not kill the worker with a crash.
+            store.recordNote("Something went wrong while syncing. Will try again.")
+            SyncOutcome.Retry(e.message.orEmpty())
         }
     }
 }
