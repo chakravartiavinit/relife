@@ -297,7 +297,7 @@ function AiLine({ ai }: { ai: { choice: V['aiChoice']; connected: string | null;
   const [title, sub] = ai.connected ? [ai.connected, 'Connected. Change it in You › Connections.']
     : ai.choice === 'skip' ? ['None for now', 'Rules run nudges and quests.']
     : ai.choice === 'cloud' ? ['Your own key', 'Paste it on this step or later in You › Connections.']
-    : down ? ['Local AI · not answering', 'Rules run until it’s back.']
+    : down ? ['Local AI not running', 'Rules run until it’s back.']
     : [`Local AI${ai.local?.ok ? ` · ${ai.local.model}` : ''}`, 'On this machine. Nothing leaves it.']
   return (
     <p className="flex items-center gap-2.5 rounded-[8px] bg-surface-2 p-2">

@@ -787,7 +787,8 @@ export async function aiReady() {
   const { aiEnabled, modelId } = await import('@/ai')
   const { localAiStatus } = await import('@/core/local-ai')
   const local = await localAiStatus('plan')
-  return { ready: aiEnabled('plan') && (local.state === 'not-local' || local.state === 'ok'), model: modelId('plan') ?? null, local }
+  // Only the state and the fix: not the server's URL or its model list.
+  return { ready: aiEnabled('plan') && (local.state === 'not-local' || local.state === 'ok'), model: modelId('plan') ?? null, local: { state: local.state, message: local.state === 'down' || local.state === 'no-model' ? local.message : undefined } }
 }
 
 /** What setup's AI step and Coach show about the free local AI. */
@@ -802,8 +803,12 @@ export async function chooseLocalAi(): Promise<LocalAiResult> {
   const user = await getUser()
   const { DEFAULT_LOCAL_URL, localAiStatus, planLocalAi } = await import('@/core/local-ai')
   const plan = await planLocalAi()
+  // A local model that is already chosen stays: this only runs again to point at the server, never to swap the model.
+  const { modelId } = await import('@/ai')
+  const current = modelId('chat')
+  const model = current?.startsWith('local:') ? current.slice('local:'.length) : plan.model
   const { connect } = await import('@/core/secrets')
-  const r = await connect(user.id, 'local', { LOCAL_LLM_URL: plan.url === DEFAULT_LOCAL_URL ? '' : plan.url, LLM_DEFAULT: `local:${plan.model}` })
+  const r = await connect(user.id, 'local', { LOCAL_LLM_URL: plan.url === DEFAULT_LOCAL_URL ? '' : plan.url, LLM_DEFAULT: `local:${model}` })
   if (!r.ok) return { ok: false, error: r.error }
   const { clearUserCache } = await import('@/core/user')
   clearUserCache()

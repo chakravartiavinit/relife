@@ -88,6 +88,7 @@ export function OnboardingGallery({ templates, packs }: { templates: Template[];
         <Frame title="5 · AI: running without the model"><StepAi v={v} set={set} ai={NO_AI} providers={PROVIDERS} local={NO_MODEL} checking={false} onCheck={() => {}} /></Frame>
         <Frame title="5 · AI: cloud key"><StepAi v={{ ...v, aiChoice: 'cloud' }} set={set} ai={NO_AI} providers={PROVIDERS} local={OK} checking={false} onCheck={() => {}} /></Frame>
         <Frame title="5 · AI: skip"><StepAi v={{ ...v, aiChoice: 'skip' }} set={set} ai={NO_AI} providers={PROVIDERS} local={OK} checking={false} onCheck={() => {}} /></Frame>
+        <Frame title="5 · AI: a local model chosen earlier, not running"><StepAi v={v} set={set} ai={{ ready: false, model: 'local:qwen3:4b-instruct', local: { state: 'down', message: DOWN.ok ? DOWN.message : undefined } }} providers={PROVIDERS} local={null} checking={false} onCheck={() => {}} /></Frame>
         <Frame title="5 · AI: a model is already connected"><StepAi v={v} set={set} ai={{ ready: true, model: 'anthropic:claude-sonnet-5-5' }} providers={PROVIDERS} local={null} checking={false} onCheck={() => {}} /></Frame>
         <Frame title="6 · Routines: starter list (no model)"><StepRoutines {...none} v={v} mode="starter" kind="starter" ai={{ ready: false, model: null }} /></Frame>
         <Frame title="6 · Routines: model suggestions"><StepRoutines {...none} v={aiV} mode="ai" kind="ai" ai={{ ready: true, model: 'local:fake' }} /></Frame>

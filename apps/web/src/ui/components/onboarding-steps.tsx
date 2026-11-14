@@ -15,7 +15,7 @@ import { Button } from './button'
 import { Select } from './form'
 import { CurrencyPicker, TimezonePicker } from './region-picker'
 import { AREA_ICON, CapsuleIcon } from './capsule-icon'
-import { Cmd } from './local-ai-check'
+import { Cmd, LOCAL_AI_DOWN, RecheckLocalAi } from './local-ai-check'
 import { ImportDialog } from './imports/import-dialog'
 import type { LocalAiResult } from '@/app/actions'
 import { AppLogo } from './app-logo'
@@ -28,14 +28,15 @@ import { AdaptiveStepper, AdaptiveStepperDecrement, AdaptiveStepperIncrement, Ad
 import {
   AREA_BLURB, AT, CUSTOM_BLURB, IMPROVE, MAX_IMPROVE, PACK_BLURB, canonTz, clamp, currencySign, fitSleep, nfIN, nightHours, type V,
 } from './onboarding-data'
-import { Group, IDLE, LINK, PICKED, PICKER, PILL_HIT, SWAP, Tick, Title, choice, item } from './onboarding-ui'
+import { Group, IDLE, LINK, PICKED, PICKER, PILL_HIT, SWAP, Tick, Title, choice, item, radioKeys } from './onboarding-ui'
 import { RoutineArt } from './routine-art'
 import { cn } from '../cn'
 
 // The six questions of setup. Every step comes filled in, so Enter walks straight through; each answer shows up in
 // the save-file preview (onboarding-preview.tsx).
 
-export type Ai = { ready: boolean; model: string | null }
+/** What `aiReady()` says: `local` is the free local server's state, with the fix in words when it is not answering. */
+export type Ai = { ready: boolean; model: string | null; local?: { state: 'not-local' | 'ok' | 'down' | 'no-model'; message?: string } }
 export type Set = <K extends keyof V>(k: K, val: V[K]) => void
 const AREAS = Object.keys(CATEGORY) as Category[]
 
@@ -110,9 +111,9 @@ function PackCard({ on, onPick, icon, color, name, blurb, rows }: {
   on: boolean; onPick: () => void; icon: LucideIcon; color: string; name: string; blurb: string; rows: { k: string; v: string }[]
 }) {
   return (
-    <li>
+    <li role="none">
       {/* Concentric: radius 16 card, 12px padding. */}
-      <button type="button" role="radio" aria-checked={on} onClick={onPick}
+      <button type="button" role="radio" aria-checked={on} tabIndex={on ? 0 : -1} onClick={onPick}
         className={cn('relative flex w-full items-start gap-3 rounded-[16px] p-3 text-start', choice, on ? PICKED : IDLE)}>
         <CapsuleIcon color={color} icon={icon} size="sm" className="mt-0.5 ms-1" />
         <span className="min-w-0 flex-1 pe-7">
@@ -142,7 +143,7 @@ export function StepPack({ v, packs, sourceName, onPick }: { v: V; packs: Pack[]
   return (
     <>
       <Title step={AT.pack} title="Pick a starting pack" body="Each pack adds areas, routines, targets and a first goal to approve. You can change all of it." />
-      <motion.ul variants={item} role="radiogroup" aria-label="Starting pack" className="flex flex-col gap-2">
+      <motion.ul variants={item} role="radiogroup" aria-label="Starting pack" onKeyDown={radioKeys} className="flex flex-col gap-2">
         {packs.map((p) => (
           <PackCard key={p.id} on={v.pack === p.id} onPick={() => onPick(p.id)} icon={AREA_ICON[p.areas?.[0] ?? 'health']} color={CATEGORY[p.areas?.[0] ?? 'health'].color}
             name={p.name} blurb={PACK_BLURB[p.id] ?? ''} rows={packRows(p, sourceName)} />
@@ -305,13 +306,13 @@ function LocalStatus({ local, checking, onCheck, onCloud }: { local: LocalAiResu
   return (
     <div role="alert" className="rounded-md bg-surface-2 p-3">
       <p className="flex items-start gap-2 text-small font-semibold text-ink">
-        <CircleAlert aria-hidden className="mt-px size-4 shrink-0 text-bad" strokeWidth={1.5} />
-        {local.state === 'no-model' ? 'Ollama is running without the model' : 'Can’t reach Ollama'}
+        <CircleAlert aria-hidden className="mt-px size-4 shrink-0 text-warn" strokeWidth={1.5} />
+        {local.state === 'no-model' ? 'Ollama is running without the model' : LOCAL_AI_DOWN}
       </p>
       <p className="mt-1 ps-6 text-caption text-ink-2"><Cmd text={local.message ?? ''} /></p>
       <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 ps-6">
-        <Button variant="secondary" size="sm" onClick={onCheck}><RefreshCw aria-hidden className="size-3.5" strokeWidth={2} />Try again</Button>
-        <button type="button" onClick={onCloud} className={LINK}>Use a cloud key instead</button>
+        <Button variant="secondary" size="sm" onClick={onCheck}><RefreshCw aria-hidden className="size-3.5" strokeWidth={2} />Check again</Button>
+        <Button variant="ghost" size="sm" onClick={onCloud}>Use a cloud key instead</Button>
       </p>
     </div>
   )
@@ -320,8 +321,8 @@ function LocalStatus({ local, checking, onCheck, onCloud }: { local: LocalAiResu
 /** One radio of the AI step: its header is the radio, what opens under it (when picked) is its own content. */
 function AiOption({ on, onPick, title, sub, chip, children }: { on: boolean; onPick: () => void; title: string; sub: string; chip?: string; children?: React.ReactNode }) {
   return (
-    <li className={cn('rounded-[16px] transition-[background-color,box-shadow] duration-150 ease-out-quint', on ? PICKED : 'bg-surface shadow-1')}>
-      <button type="button" role="radio" aria-checked={on} onClick={onPick} className={cn('flex w-full items-start gap-3 rounded-[16px] p-3.5 text-start', choice)}>
+    <li role="none" className={cn('rounded-[16px] transition-[background-color,box-shadow] duration-150 ease-out-quint', on ? PICKED : 'bg-surface shadow-1')}>
+      <button type="button" role="radio" aria-checked={on} tabIndex={on ? 0 : -1} onClick={onPick} className={cn('flex w-full items-start gap-3 rounded-[16px] p-3.5 text-start', choice)}>
         <span aria-hidden className={cn('mt-0.5 grid size-5 shrink-0 place-items-center rounded-full', on ? 'bg-pill' : 'shadow-[inset_0_0_0_1.5px_var(--hairline)]')}>
           {on ? <span className="size-2 rounded-full bg-white" /> : null}
         </span>
@@ -343,9 +344,11 @@ function AiOption({ on, onPick, title, sub, chip, children }: { on: boolean; onP
  * is picked, saved when Continue is pressed), a cloud key (each provider opens its own connect dialog), or none.
  * Without a model, everything but Ask, nudges and goal drafts runs on rules.
  */
-export function StepAi({ v, set, ai, providers, local, checking, onCheck }: {
+export function StepAi({ v, set, ai, providers, local, checking, onCheck, onRecheck }: {
   v: V; set: Set; ai: Ai | null; providers: ConnectorItem[]
   local: LocalAiResult | null; checking: boolean; onCheck: () => void
+  /** After "Check again" on a local model that was already chosen: ask `aiReady()` again. */
+  onRecheck?: () => void
 }) {
   const cloud = providers.filter((p) => p.id !== 'local')
   const pick = (c: NonNullable<V['aiChoice']>) => { set('aiChoice', c); if (c === 'local' && !local && !checking) onCheck() }
@@ -353,13 +356,23 @@ export function StepAi({ v, set, ai, providers, local, checking, onCheck }: {
   return (
     <>
       <Title step={AT.ai} title="Pick an AI for your coach" body="It suggests routines, writes weekly reviews and answers Ask. Optional: everything else runs without one." />
-      {ai?.ready ? (
+      {ai && !ai.ready && ai.model?.startsWith('local:') ? (
+        // A local model is already chosen and its server isn't answering: setup leaves the choice alone.
+        <motion.div variants={item} role="status" className="rounded-lg bg-surface p-4 shadow-1">
+          <p className="flex items-start gap-2 text-small font-semibold text-ink">
+            <CircleAlert aria-hidden className="mt-px size-4 shrink-0 text-warn" strokeWidth={1.5} />{LOCAL_AI_DOWN}
+          </p>
+          <p className="mt-1 ps-6 text-caption text-ink-2"><Cmd text={ai.local?.message ?? `${ai.model.slice('local:'.length)} isn’t answering yet.`} /></p>
+          <p className="mt-1 ps-6 text-caption text-ink-3">{ai.model.slice('local:'.length)} stays your model. Continue and it stays off until it answers, or change it any time in You › Connections.</p>
+          <div className="mt-3 ps-6"><RecheckLocalAi size="sm" onResult={() => onRecheck?.()} /></div>
+        </motion.div>
+      ) : ai?.ready ? (
         <motion.div variants={item} className="flex items-center gap-3 rounded-lg bg-surface p-4 shadow-1">
           <span role="img" aria-label="Connected" className="grid size-6 shrink-0 place-items-center rounded-full bg-good text-white"><Check className="size-3.5" strokeWidth={3} /></span>
           <p className="min-w-0 text-small text-ink-2"><span className="block font-semibold text-ink">A model is connected{ai.model ? `: ${ai.model}` : ''}</span>Change it any time in You › Connections.</p>
         </motion.div>
       ) : (
-        <motion.ul variants={item} role="radiogroup" aria-label="AI for your coach" className="flex flex-col gap-2">
+        <motion.ul variants={item} role="radiogroup" aria-label="AI for your coach" onKeyDown={radioKeys} className="flex flex-col gap-2">
           <AiOption on={picked === 'local'} onPick={() => pick('local')} title="Use free local AI" chip="Recommended"
             sub="Ollama on this machine. Free and private: prompts never leave it.">
             <LocalStatus local={local} checking={checking} onCheck={onCheck} onCloud={() => pick('cloud')} />
@@ -369,7 +382,7 @@ export function StepAi({ v, set, ai, providers, local, checking, onCheck }: {
             <div className="flex flex-wrap items-center gap-2">
               {cloud.map((p) => (
                 <ConnectorDialog key={p.id} c={p} trigger={
-                  <button type="button" aria-label={`Connect ${p.name}`} title={p.name} className={cn("relative rounded-[10px] after:absolute after:-inset-1 after:content-['']", choice, 'hover:opacity-80')}>
+                  <button type="button" aria-label={`Connect ${p.name}`} title={p.name} className={cn('grid size-10 place-items-center rounded-[10px]', choice, 'hover:opacity-80')}>
                     <AppLogo id={p.id} size="xs" />
                   </button>
                 } />

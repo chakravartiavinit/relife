@@ -63,10 +63,14 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
   const [ai, setAi] = useState<Ai | null>(null)
   // Asked again when a provider connects (the cloud key dialog on the AI step refreshes `providers`).
   const connectedKey = providers.map((p) => `${p.id}:${p.connected}`).join()
-  useEffect(() => { aiReady().then(setAi) }, [connectedKey])
+  // Until it answers (`ai === null`) Continue on the AI step waits; a failed call counts as no model.
+  const askAi = () => aiReady().then(setAi).catch(() => setAi({ ready: false, model: null }))
+  useEffect(() => { void askAi() }, [connectedKey]) // eslint-disable-line react-hooks/exhaustive-deps -- askAi only sets state
   // The free local AI: checked when its card is showing, saved on Continue.
   const [local, setLocal] = useState<LocalAiResult | null>(null)
   const [checking, setChecking] = useState(false)
+  // A local model chosen before (an earlier setup, Connections or .env) whose server isn't answering: setup never swaps it.
+  const keptLocal = !!ai && !ai.ready && !!ai.model?.startsWith('local:')
   const runCheck = () => {
     setChecking(true)
     checkLocalAi().catch(() => ({ ok: false as const, error: 'Couldn’t check for Ollama. Try again.' })).then(setLocal).finally(() => setChecking(false))
@@ -160,13 +164,16 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
   const next = () => {
     const e = check()
     if (e) return setError(e)
-    // Free local AI: saving it on the way out of the AI step. It saves even when the server isn't answering yet.
-    if (i === AT.ai && !ai?.ready && (v.aiChoice ?? 'local') === 'local') {
+    if (i === AT.ai && !ai) return // still asking whether a model is connected
+    // Free local AI is saved on the way out of the AI step when it was clicked, or when the check found Ollama. Walking
+    // through with Enter while nothing answers saves nothing, and a model that is already chosen is never replaced.
+    const saveLocal = !ai?.ready && !keptLocal && !ai?.model && (v.aiChoice === 'local' || (v.aiChoice === null && !!local?.ok && local.state !== 'down'))
+    if (i === AT.ai && saveLocal) {
       return start(async () => {
         const r = await chooseLocalAi().catch(() => ({ ok: false as const, error: 'Couldn’t save that. Try again.' }))
         if (!r.ok) return setError(r.error)
         setLocal(r)
-        setAi(await aiReady())
+        await askAi()
         to(i + 1)
       })
     }
@@ -175,7 +182,7 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
   }
   // First sight of the AI step with free local AI showing: look for the server.
   useEffect(() => {
-    if (i === AT.ai && ready && ai && !ai.ready && (v.aiChoice ?? 'local') === 'local' && !local && !checking) runCheck()
+    if (i === AT.ai && ready && ai && !ai.ready && !keptLocal && (v.aiChoice ?? 'local') === 'local' && !local && !checking) runCheck()
   }) // eslint-disable-line react-hooks/exhaustive-deps -- runs while the AI step shows and no answer is in yet
   // Skip saves what is filled in so far (a name and region), then lands on Today with the checklist. Without a name
   // there is nothing to save. Running setup again from Settings just goes back.
@@ -202,12 +209,12 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
   // One line beside the action: what's missing, a count, or a note.
   const refused = i === AT.areas && nudge > 0
   const aiChoice = v.aiChoice ?? 'local'
-  const aiDown = i === AT.ai && !ai?.ready && aiChoice === 'local' && !checking && !!local?.ok && local.state !== 'ok'
+  const aiDown = i === AT.ai && (keptLocal || (!ai?.ready && aiChoice === 'local' && !checking && !!local?.ok && local.state !== 'ok'))
   const line = error
     ?? (i === AT.you ? 'You can change all of this later in Settings.'
       : i === AT.pack ? (pack ? `${pack.name} · ${pack.routines.length} routines, ${pack.goals.length} goal${pack.goals.length === 1 ? '' : 's'}` : 'Custom · you choose everything')
-      : i === AT.ai ? (ai?.ready ? 'A model is connected' : aiChoice === 'skip' ? 'No model. Add one any time in You › Connections.' : aiChoice === 'cloud' ? 'Paste a key above, or continue and add one later.'
-        : checking || !local ? 'Looking for Ollama…' : aiDown ? 'Local AI isn’t answering. Continue and it stays off until it does.' : 'Local AI is ready · nothing leaves this machine')
+      : i === AT.ai ? (keptLocal ? 'Local AI not running. It stays your model; nothing changes if you continue.' : ai?.ready ? 'A model is connected' : aiChoice === 'skip' ? 'No model. Add one any time in You › Connections.' : aiChoice === 'cloud' ? 'Paste a key above, or continue and add one later.'
+        : checking || !local ? 'Looking for Ollama…' : aiDown ? 'Local AI not running. Continue and it stays off until it does.' : 'Local AI is ready · nothing leaves this machine')
       : i === AT.areas ? (refused ? 'Up to three. Drop one to swap.' : `${v.areas.length} area${v.areas.length === 1 ? '' : 's'} · ${picks.length} of ${MAX_IMPROVE} to train`)
       : i === AT.connect ? `${connected} connected. More any time in You › Connections.`
       : routines.length ? `${routines.length} routine${routines.length === 1 ? '' : 's'} on` : 'None on. Add routines anytime in Plan.')
@@ -241,7 +248,7 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
                     : i === AT.pack ? <StepPack v={v} packs={packs} sourceName={(id) => sources.find((c) => c.id === id)?.name} onPick={(id) => { if (id === v.pack) return; setV((s) => applyPack(s, packs.find((p) => p.id === id) ?? null, fresh ? [] : initial.areas)); setError(null) }} />
                     : i === AT.areas ? <StepAreas v={v} set={set} picks={picks} options={options} onRefuse={() => setNudge((n) => n + 1)} />
                     : i === AT.connect ? <StepConnect rows={rows} />
-                    : i === AT.ai ? <StepAi v={v} set={set} ai={ai} providers={providers} local={local} checking={checking} onCheck={runCheck} />
+                    : i === AT.ai ? <StepAi v={v} set={set} ai={ai} providers={providers} local={local} checking={checking} onCheck={runCheck} onRecheck={() => void askAi()} />
                     : <StepRoutines v={v} set={set} mode={mode} kind={kind} building={building} setBuilding={setBuilding} starters={starters} existing={existing} today={today} ai={ai} picksSig={picksSig} />}
                 </motion.section>
               ) : null}
@@ -268,7 +275,7 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
               {/* On a phone only what's missing shows, so the bar stays one row. */}
               <span className={cn(!(error || refused || aiDown) && 'max-sm:sr-only')}>{line}</span>
             </motion.p>
-            <Button variant="primary" size="lg" onClick={next} disabled={busy} aria-disabled={!valid} aria-busy={busy}
+            <Button variant="primary" size="lg" onClick={next} disabled={busy || (i === AT.ai && !ai)} aria-disabled={!valid} aria-busy={busy}
               className={cn('h-10 min-w-[132px] text-body aria-disabled:opacity-50', !(error || refused || aiDown) && 'max-sm:flex-1')}>
               {busy ? <><LoaderCircle className="size-4 animate-spin [animation-duration:0.7s]" aria-hidden />{leaving ? 'Opening Today…' : 'Saving…'}</>
                 : i < LAST ? <>Continue<kbd aria-hidden className="ms-0.5 grid h-5 place-items-center rounded-[5px] bg-white/15 px-1 font-sans text-label max-sm:hidden dark:bg-black/10"><CornerDownLeft className="size-3" strokeWidth={2} /></kbd></>
@@ -284,7 +291,7 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
           <Backdrop progress={i / LAST} areas={v.areas} />
           <div className="relative flex h-full flex-col items-center overflow-y-auto px-8 py-10 [scrollbar-width:none]">
             <div className="my-auto flex w-full justify-center">
-              <SaveFile v={v} step={i} picks={picks} routines={routines} starters={starters} sources={rows} pack={pack} ai={{ choice: v.aiChoice ?? (ai?.ready ? null : 'local'), connected: ai?.ready ? ai.model : null, local }} />
+              <SaveFile v={v} step={i} picks={picks} routines={routines} starters={starters} sources={rows} pack={pack} ai={{ choice: keptLocal ? 'local' : v.aiChoice ?? (ai?.ready ? null : 'local'), connected: ai?.ready ? ai.model : null, local: keptLocal ? { ok: true, state: ai?.local?.state === 'no-model' ? 'no-model' : 'down', model: ai!.model!.slice('local:'.length), url: '', ms: 0 } : local }} />
             </div>
           </div>
         </div>
@@ -300,11 +307,11 @@ export function Rail({ current, onJump }: { current: number; onJump: (k: number)
       {STEPS.map((s, k) => {
         const state = k < current ? 'done' : k === current ? 'now' : 'next'
         return (
-          <li key={s.key}>
+          <li key={s.key} className="min-w-0">
             <button type="button" disabled={state !== 'done'} onClick={() => onJump(k)}
               aria-current={state === 'now' ? 'step' : undefined}
               aria-label={`Step ${k + 1} of ${STEPS.length}: ${s.label}${state === 'done' ? ' (done, go back)' : state === 'now' ? ' (current)' : ''}`}
-              className="group flex w-full flex-col gap-2 rounded-md pt-2 pb-1 text-start disabled:cursor-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">
+              className="group flex w-full min-w-0 flex-col gap-2 rounded-md pt-2 pb-1 text-start disabled:cursor-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">
               <span className="relative block h-1.5 w-full overflow-hidden rounded-full bg-ink/[0.08] dark:bg-white/[0.1]">
                 {/* Slides instead of scaling, so the round end stays round. */}
                 <span className={cn(
@@ -313,10 +320,10 @@ export function Rail({ current, onJump }: { current: number; onJump: (k: number)
                   state === 'next' ? '-translate-x-[101%]' : 'translate-x-0', 'bg-pill',
                 )} />
               </span>
-              <span className={cn('flex items-center gap-1 truncate text-caption transition-[color] duration-150',
+              <span className={cn('flex min-w-0 items-center gap-1 text-caption transition-[color] duration-150',
                 state === 'now' ? 'font-semibold text-ink' : state === 'done' ? 'text-ink-2 group-hover:text-ink' : 'text-ink-3')}>
                 {state === 'done' ? <Check aria-hidden className="size-3 shrink-0" strokeWidth={2.5} /> : null}
-                {s.label}
+                <span className="truncate">{s.label}</span>
               </span>
             </button>
           </li>

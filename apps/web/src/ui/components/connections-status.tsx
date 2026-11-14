@@ -13,7 +13,7 @@ import { PeekLink } from './peek/peek-link'
 import { isInline, needsFix } from '@/domain/connections'
 import { STATUS } from './connector-status'
 import { SyncButton, type ConnectorItem } from './connector-market'
-import { Cmd, RecheckLocalAi } from './local-ai-check'
+import { Cmd, LOCAL_AI_DOWN, RecheckLocalAi } from './local-ai-check'
 import { cn } from '../cn'
 
 // The top of Connections, status first: what needs a fix (with the fix as the button), then every connected source
@@ -83,7 +83,7 @@ function FixRow({ c, manage }: { c: ConnectorItem; manage: Manage }) {
       <Logo id={c.id} category={c.category} size="sm" />
       <div className="min-w-0 flex-1 basis-56">
         <PeekLink to={{ type: 'connector', id: c.id }} className="rounded-xs text-body font-semibold text-ink hover:underline focus-visible:outline-2 focus-visible:outline-pill">{c.name}</PeekLink>
-        <p className="text-small text-ink-2"><span className="font-medium text-bad">{local ? 'Local AI not running.' : `${STATUS[c.status].label}.`}</span> {local ? <Cmd text={problem ?? ''} /> : problem}{last}</p>
+        <p className="text-small text-ink-2"><span className={cn('font-medium', local ? 'text-warn' : 'text-bad')}>{local ? `${LOCAL_AI_DOWN}.` : `${STATUS[c.status].label}.`}</span> {local ? <Cmd text={problem ?? ''} /> : problem}{last}</p>
       </div>
       {local ? <RecheckLocalAi variant="primary" /> : c.oauth && c.status !== 'setup' ? (
         <a href={`/api/oauth/${c.id}/start`} className={buttonClass({ variant: 'primary', size: 'md' })}><LogIn className="size-4" strokeWidth={2} aria-hidden />{fixLabel(c)}</a>
