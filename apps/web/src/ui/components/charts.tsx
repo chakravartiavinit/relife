@@ -93,7 +93,7 @@ export function DailyBars({ data, color = CHART.accent, unit, target, height = 1
           <EvilBarChart.YAxis tickFormatter={tick} tick={axisTick} />
           <EvilBarChart.Tooltip />
           {target ? <EvilBarChart.Legend variant="circle" /> : null}
-          {target ? [<EvilBarChart.Bar key="met" dataKey="met" />, <EvilBarChart.Bar key="below" dataKey="below" />] : <EvilBarChart.Bar dataKey="value" variant="gradient" />}
+          {target ? [<EvilBarChart.Bar key="met" dataKey="met" />, <EvilBarChart.Bar key="below" dataKey="below" />] : <EvilBarChart.Bar dataKey="value" />}
         </EvilBarChart></div>
       </figure>
   )
