@@ -10,12 +10,12 @@ const areaColor = (area: string) => CATEGORY[area as Category]?.color ?? 'var(--
 const TONE = { good: 'var(--good)', bad: 'var(--bad)', neutral: 'var(--ink-3)' }
 
 /** What changed this week and what moves together, across every area. Statistics only; the coach explains them. */
-/** "Ask why": Coach with the question already in the composer (the same hand-off as Capture's ⌘↵). */
+/** "Ask why": Coach with the question already in the composer (the same hand-off as Capture’s ⌘↵). Its 32px hit area overhangs by -my-1.5, so the label lines up with the first line of the sentence beside it. */
 function AskWhy({ about }: { about: string }) {
   return (
     <Link
       href={`/coach?ask=${encodeURIComponent(`Why might this be? ${about}`)}`}
-      className="inline-flex h-8 shrink-0 items-center rounded-sm px-1.5 text-small font-medium text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill"
+      className="-my-1.5 inline-flex h-8 shrink-0 items-center rounded-sm px-1.5 text-small font-medium text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill"
     >Ask why</Link>
   )
 }
