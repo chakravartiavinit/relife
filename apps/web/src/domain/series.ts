@@ -28,3 +28,23 @@ export function interpolateGaps(values: (number | null)[]): (number | null)[] {
     return values[before]! + t * (values[after]! - values[before]!)
   })
 }
+
+/**
+ * A y-axis that fits [lo, hi] on round numbers: about `count` ticks on a 1, 2 or 5 × 10ⁿ step, the bounds snapped
+ * outward to the step (never below zero for data that is not). "6, 7, 8, 9" rather than "5.6, 7.4, 9.1".
+ */
+export function niceAxis(lo: number, hi: number, count = 4): { domain: [number, number]; ticks: number[] } {
+  const span = hi - lo || Math.abs(hi) * 0.2 || 1
+  const raw = span / (count - 1)
+  const mag = 10 ** Math.floor(Math.log10(raw))
+  const step = [1, 2, 5, 10].map((f) => f * mag).find((s) => s >= raw)!
+  const digits = Math.max(0, -Math.floor(Math.log10(step)))
+  const round = (v: number) => Number(v.toFixed(digits))
+  let min = round(Math.floor(lo / step) * step)
+  let max = round(Math.ceil(hi / step) * step)
+  if (lo >= 0) min = Math.max(0, min)
+  if (min === max) { min = lo >= 0 ? Math.max(0, round(min - step)) : round(min - step); max = round(max + step) }
+  const ticks: number[] = []
+  for (let v = min; v <= max + step / 2; v = round(v + step)) ticks.push(v)
+  return { domain: [min, max], ticks }
+}

@@ -67,6 +67,15 @@ test('interpolateGaps bridges interior gaps and holds the edges', async () => {
   assert.deepEqual(interpolateGaps([null, null]), [null, null])
 })
 
+test('niceAxis snaps the y-axis to round steps', async () => {
+  const { niceAxis } = await import('./series')
+  assert.deepEqual(niceAxis(6.2, 8.7), { domain: [6, 9], ticks: [6, 7, 8, 9] })
+  assert.deepEqual(niceAxis(59, 97), { domain: [40, 100], ticks: [40, 60, 80, 100] })
+  assert.deepEqual(niceAxis(19.6, 20), { domain: [19.6, 20], ticks: [19.6, 19.8, 20] })
+  assert.deepEqual(niceAxis(5, 5), { domain: [4.5, 5.5], ticks: [4.5, 5, 5.5] })
+  assert.deepEqual(niceAxis(0.1, 3).domain[0], 0)
+})
+
 test('allTimePnl is value now plus money out minus money in', () => {
   const r = allTimePnl(1200, [{ kind: 'in', usd: 1000 }, { kind: 'in', usd: 500 }, { kind: 'out', usd: 400 }, { kind: 'in', usd: null }])
   assert.equal(r.pnl, 1200 + 400 - 1500)
