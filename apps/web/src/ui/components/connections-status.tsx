@@ -166,6 +166,9 @@ export function InlineUsernameConnect({ c }: { c: ConnectorItem }) {
   const id = useId()
   const failed = !!state && !state.ok
   const ok = !!state?.ok
+  // The card already names the app, so the field says only what to type ("Chess.com username" → "Username"); it must fit a narrow card.
+  const rest = f.label.toLowerCase().startsWith(c.name.toLowerCase() + ' ') ? f.label.slice(c.name.length + 1) : f.label
+  const hint = rest.charAt(0).toUpperCase() + rest.slice(1)
   useEffect(() => {
     if (ok) toast(`${c.name} connected`, 'good', { icon: <Logo id={c.id} category={c.category} size="xs" />, description: 'Its first sync starts within a minute' })
   }, [ok]) // eslint-disable-line react-hooks/exhaustive-deps -- once per success
@@ -177,7 +180,7 @@ export function InlineUsernameConnect({ c }: { c: ConnectorItem }) {
       <div className="flex gap-2">
         <label htmlFor={id} className="sr-only">{f.label}</label>
         <Input
-          id={id} name={f.env} required autoComplete="off" spellCheck={false} maxLength={200} placeholder={f.label} aria-invalid={failed || undefined}
+          id={id} name={f.env} required autoComplete="off" spellCheck={false} maxLength={200} placeholder={hint} aria-invalid={failed || undefined}
           className={cn('h-10 min-w-0 flex-1 font-mono text-small', failed && 'shadow-[0_0_0_1.5px_var(--bad)]')}
         />
         <Button type="submit" variant="primary" disabled={pending}>{pending ? 'Checking…' : failed ? 'Check again' : 'Connect'}</Button>
