@@ -28,10 +28,12 @@ async function Review() {
   // Reviews decided today stay on the page in their saved state, so a decision never makes its card vanish.
   const cards = [...data.due, ...data.decidedToday]
   const from = cards.map((d) => d.review.snapshot.window.from).sort()[0]
+  // The same period the cards show, not up to today: a review covers the window it closed.
+  const to = cards.map((d) => d.review.snapshot.window.to).sort().at(-1) ?? data.today
   return (
     <div>
       <div className="mb-6 max-w-[60ch]">
-        <h2 className="text-heading font-semibold text-ink">{from ? `Weekly review · ${day(from)} – ${day(data.today)}` : 'Weekly review'}</h2>
+        <h2 className="text-heading font-semibold text-ink">{from ? `Weekly review · ${day(from)} – ${day(to)}` : 'Weekly review'}</h2>
         <p className="mt-1 text-body text-ink-2">For each goal, compare what you did with how the outcome moved. Then choose what happens next. Goals you don’t decide stay as they are.</p>
       </div>
       {cards.length ? (
