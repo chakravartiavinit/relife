@@ -5,6 +5,7 @@ import { needsYou, type NeedsYou } from '@/domain/needs-you'
 import { areaToday, syncTone, workerAlive, type AreaToday, type SyncTone } from '@/domain/shell'
 import type { Category } from '@/db/schema'
 import { loadDayPlan } from './day-plan'
+import { integration } from './integrations'
 import { UNREAD_FILTER, pendingInsight } from './needs-you'
 import { xpLevel } from './xp'
 import type { User } from './user'
@@ -42,9 +43,11 @@ export const loadShellStatus = cache(async (user: User): Promise<ShellStatus> =>
   // Raw statements return timestamps as strings.
   const date = (v: string | null) => (v ? new Date(v) : null)
   const alive = workerAlive(date(r.heartbeat))
+  // A connection to a source this version no longer ships cannot be fixed on Connections, so it never counts as failing.
+  const failing = r.failing.filter((id) => integration(id))
   return {
     needsYou: needsYou(r.decisions, r.unread, r.merchants),
-    sync: { tone: syncTone(alive, r.failing.length), workerAlive: alive, failing: r.failing, lastSyncAt: date(r.last_sync) },
+    sync: { tone: syncTone(alive, failing.length), workerAlive: alive, failing, lastSyncAt: date(r.last_sync) },
     level,
     areaToday: areaToday(plan.byCat),
   }
