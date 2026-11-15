@@ -6,7 +6,7 @@ import { EvilLineChart } from '@/components/evilcharts/charts/recharts-line-char
 import { EvilBarChart } from '@/components/evilcharts/charts/recharts-bar-chart'
 import { EvilPieChart } from '@/components/evilcharts/charts/recharts-pie-chart'
 import type { ChartConfig } from '@/components/evilcharts/ui/recharts-chart'
-import { interpolateGaps } from '@/domain/series'
+import { interpolateGaps, niceAxis } from '@/domain/series'
 import { CHART } from '../tokens'
 
 // ReLife's charts: EvilCharts (evilcharts.com), installed unmodified with `npx shadcn add @evilcharts/…` into
@@ -73,7 +73,7 @@ const hasData = (data: Point[]) => data.some((d) => d.value != null && d.value !
 export function DailyBars({ data, color = CHART.accent, unit, target, height = 180, label }: {
   data: Point[]; color?: string; unit?: string; target?: number | null; height?: number; label: string
 }) {
-  const { rows, config } = useMemo(() => {
+  const { rows, axis, config } = useMemo(() => {
     const rows: Row[] = data.map((p) => {
       const v = p.value ?? 0
       const row: Row = target ? { day: shortDate(p.date), met: v >= target ? v : null, below: v < target ? v : null } : { day: shortDate(p.date), value: v }
@@ -82,7 +82,7 @@ export function DailyBars({ data, color = CHART.accent, unit, target, height = 1
     const config: ChartConfig = target
       ? { met: tone(`Met goal (${fmt(target, unit)})`, color), below: tone('Below goal', faded(color)) }
       : { value: tone(named(seriesName(label), unit), color) }
-    return { rows, config }
+    return { rows, axis: niceAxis(Math.min(0, ...data.map((p) => p.value ?? 0)), Math.max(0, ...data.map((p) => p.value ?? 0))), config }
   }, [data, target, color, unit, label])
   if (!hasData(data)) return <ChartEmpty height={height} label={label} />
   return (
@@ -90,7 +90,7 @@ export function DailyBars({ data, color = CHART.accent, unit, target, height = 1
         <div style={{ height }}><EvilBarChart data={rows} config={config} stackType="stacked" barRadius={4} className="aspect-auto h-full w-full">
           <EvilBarChart.Grid />
           <EvilBarChart.XAxis dataKey="day" interval="preserveStartEnd" minTickGap={24} tick={axisTick} />
-          <EvilBarChart.YAxis tickFormatter={tick} tick={axisTick} />
+          <EvilBarChart.YAxis domain={axis.domain} ticks={axis.ticks} tickFormatter={tick} tick={axisTick} />
           <EvilBarChart.Tooltip />
           {target ? <EvilBarChart.Legend variant="circle" /> : null}
           {target ? [<EvilBarChart.Bar key="met" dataKey="met" />, <EvilBarChart.Bar key="below" dataKey="below" />] : <EvilBarChart.Bar dataKey="value" />}
@@ -108,15 +108,14 @@ export function TrendArea({ data, color = CHART.accent, unit, target, height = 1
   /** 'linear' for 1–5 scales (mood, energy): smoothing would invent values between whole steps. */
   curve?: 'monotone' | 'linear'
 }) {
-  const { rows, bounds, config } = useMemo(() => {
+  const { rows, axis, config } = useMemo(() => {
     const values = interpolateGaps(data.map((p) => p.value))
     const rows: Row[] = data.flatMap((p, i) => (values[i] == null ? [] : [{ day: shortDate(p.date), value: values[i]!, ...(target ? { goal: target } : {}) }]))
-    // Fit the data (and the goal) instead of starting at zero, so a 6.8h vs 7.4h night is visible.
+    // Fit the data (and the goal) on round numbers instead of starting at zero, so a 6.8h vs 7.4h night is visible.
     const vs = [...rows.map((r) => r.value as number), ...(target ? [target] : [])]
-    const lo = Math.min(...vs), hi = Math.max(...vs)
-    const pad = (hi - lo) * 0.25 || Math.abs(hi) * 0.1 || 1
     const config: ChartConfig = { value: tone(named(seriesName(label), unit), color), ...(target ? { goal: tone(`Goal (${fmt(target, unit)})`, goalColor) } : {}) }
-    return { rows, bounds: domain ?? ([Math.max(0, lo - pad), hi + pad] as [number, number]), config }
+    const axis = domain ? { domain, ticks: undefined } : vs.length ? niceAxis(Math.min(...vs), Math.max(...vs)) : { domain: undefined, ticks: undefined }
+    return { rows, axis, config }
   }, [data, color, target, unit, label, domain])
   if (!hasData(data)) return <ChartEmpty height={height} label={label} />
   if (target) {
@@ -125,7 +124,7 @@ export function TrendArea({ data, color = CHART.accent, unit, target, height = 1
         <div style={{ height }}><EvilLineChart data={rows} config={config} curveType={curve} className="aspect-auto h-full w-full">
           <EvilLineChart.Grid />
           <EvilLineChart.XAxis dataKey="day" interval="preserveStartEnd" minTickGap={24} tick={axisTick} />
-          <EvilLineChart.YAxis domain={bounds} tickFormatter={tick} tick={axisTick} />
+          <EvilLineChart.YAxis domain={axis.domain} ticks={axis.ticks} tickFormatter={tick} tick={axisTick} />
           <EvilLineChart.Tooltip />
           <EvilLineChart.Legend variant="circle" />
           <EvilLineChart.Line dataKey="value" connectNulls />
@@ -140,7 +139,7 @@ export function TrendArea({ data, color = CHART.accent, unit, target, height = 1
       <div style={{ height }}><EvilAreaChart data={rows} config={config} curveType={curve} className="aspect-auto h-full w-full">
         <EvilAreaChart.Grid />
         <EvilAreaChart.XAxis dataKey="day" interval="preserveStartEnd" minTickGap={24} tick={axisTick} />
-        <EvilAreaChart.YAxis domain={bounds} tickFormatter={tick} tick={axisTick} />
+        <EvilAreaChart.YAxis domain={axis.domain} ticks={axis.ticks} tickFormatter={tick} tick={axisTick} />
         <EvilAreaChart.Tooltip />
         <EvilAreaChart.Area dataKey="value" variant="gradient" strokeVariant="solid" connectNulls />
       </EvilAreaChart></div>
@@ -220,19 +219,23 @@ export function ShareDonut({ segments, unit, totalLabel, label }: {
 export function StackedBars({ categories, series, unit, height = 220, label }: {
   categories: string[]; series: { id: string; name: string; color: string; values: (number | null)[] }[]; unit?: string; height?: number; label: string
 }) {
-  const { rows, config } = useMemo(() => {
+  const { rows, config, axis } = useMemo(() => {
     const keys = series.map((_, i) => `s${i}`)
     const rows: Row[] = categories.map((c, j) => ({ category: c, ...Object.fromEntries(series.map((s, i) => [keys[i], s.values[j]])) }))
     const config: ChartConfig = Object.fromEntries(series.map((s, i) => [keys[i], tone(s.name, s.color)]))
-    return { rows, config }
-  }, [categories, series])
+    // Minutes read better on an hours axis: 0, 2h, 4h rather than 0, 200, 400.
+    const top = Math.max(0, ...categories.map((_, j) => series.reduce((a, s) => a + (s.values[j] ?? 0), 0)))
+    const hours = unit === 'min' ? niceAxis(0, top / 60) : null
+    const axis = hours ? { domain: [0, hours.domain[1] * 60] as [number, number], ticks: hours.ticks.map((h) => h * 60) } : { domain: undefined, ticks: undefined }
+    return { rows, config, axis }
+  }, [categories, series, unit])
   if (!series.some((s) => s.values.some((v) => v))) return <ChartEmpty height={height} label={label} />
   return (
     <figure aria-label={label} className="m-0">
         <div style={{ height: height + 28 }}><EvilBarChart data={rows} config={config} stackType="stacked" barRadius={3} className="aspect-auto h-full w-full">
           <EvilBarChart.Grid />
           <EvilBarChart.XAxis dataKey="category" interval="preserveStartEnd" minTickGap={16} tick={axisTick} />
-          <EvilBarChart.YAxis tickFormatter={tick} tick={axisTick} />
+          <EvilBarChart.YAxis domain={axis.domain} ticks={axis.ticks} tickFormatter={unit === 'min' ? (v: number) => (v ? `${tick(v / 60)}h` : '0') : tick} tick={axisTick} />
           <EvilBarChart.Tooltip />
           <EvilBarChart.Legend variant="circle" />
           {series.map((_, i) => <EvilBarChart.Bar key={i} dataKey={`s${i}`} />)}
