@@ -191,24 +191,41 @@ function Apps({ o, money }: Props) {
       <CardHeader title="Where you order from" icon={<ShoppingBag strokeWidth={2} />} color={ACCENT} description="Last 12 months" />
       {o.apps.length ? (
         <ul className="flex flex-col gap-4">
-          {o.apps.map((a, i) => (
-            <li key={a.name} className="flex items-center gap-3">
-              <BrandLogo name={a.name} size="md" />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="truncate text-[14px] font-medium text-ink">{a.name}</span>
-                  <span className="text-[14px] font-semibold text-ink tabular-nums">{money(a.total)}</span>
-                </div>
-                <span aria-hidden className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-surface-2">
-                  <span className="reveal-fill block h-full w-full rounded-full" style={{ '--fill': `${(a.total / max) * 100}%`, background: ACCENT, '--i': i } as React.CSSProperties} />
-                </span>
-                <p className="mt-1 text-[12px] text-ink-3 tabular-nums">{a.orders} order{a.orders === 1 ? '' : 's'} · {money(a.avg)} each{a.last30 ? ` · ${a.last30} in the last 30 days` : ''}</p>
-              </div>
-            </li>
-          ))}
+          {o.apps.slice(0, SHOWN_APPS).map((a, i) => <AppRow key={a.name} a={a} i={i} max={max} money={money} />)}
         </ul>
       ) : <p className="text-[13px] text-ink-3">No orders in the last 12 months.</p>}
+      {o.apps.length > SHOWN_APPS ? (
+        <details className="group mt-4">
+          <summary className="flex min-h-10 cursor-pointer list-none items-center rounded-md text-small font-medium text-pill-ink select-none hover:underline focus-visible:outline-2 focus-visible:outline-pill [&::-webkit-details-marker]:hidden">
+            <span className="group-open:hidden">Show {o.apps.length - SHOWN_APPS} more</span><span className="hidden group-open:inline">Show fewer</span>
+          </summary>
+          <ul className="mt-2 flex flex-col gap-4">
+            {o.apps.slice(SHOWN_APPS).map((a, i) => <AppRow key={a.name} a={a} i={i} max={max} money={money} />)}
+          </ul>
+        </details>
+      ) : null}
     </Card>
+  )
+}
+
+/** The rest fold away: a long tail of places would stretch the row it shares with Bought again and again. */
+const SHOWN_APPS = 8
+
+function AppRow({ a, i, max, money }: { a: Props['o']['apps'][number]; i: number; max: number; money: Props['money'] }) {
+  return (
+    <li className="flex items-center gap-3">
+      <BrandLogo name={a.name} size="md" />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="truncate text-[14px] font-medium text-ink">{a.name}</span>
+          <span className="text-[14px] font-semibold text-ink tabular-nums">{money(a.total)}</span>
+        </div>
+        <span aria-hidden className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-surface-2">
+          <span className="reveal-fill block h-full w-full rounded-full" style={{ '--fill': `${(a.total / max) * 100}%`, background: ACCENT, '--i': i } as React.CSSProperties} />
+        </span>
+        <p className="mt-1 text-[12px] text-ink-3 tabular-nums">{a.orders} order{a.orders === 1 ? '' : 's'} · {money(a.avg)} each{a.last30 ? ` · ${a.last30} in the last 30 days` : ''}</p>
+      </div>
+    </li>
   )
 }
 
