@@ -130,7 +130,7 @@ async function Progress() {
           </Card>
         </div>
 
-        <aside className="flex min-w-0 flex-col gap-6 [&>*:last-child]:flex-1" aria-label="Scoring">
+        <aside className="flex min-w-0 flex-col gap-6" aria-label="Scoring">
           <Card>
             <CardHeader title="Where XP comes from" icon={<ChartPie strokeWidth={2} />} color="var(--pill)" description="Last 30 days" />
             {mix.total ? (

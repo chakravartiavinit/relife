@@ -91,7 +91,7 @@ async function Time() {
         </ul>
       </Card>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader title="Top sites and apps" icon={<Monitor strokeWidth={2} />} color="var(--pill)" description="Last 7 days · change what a site counts as and its past time is re-sorted" />
           <ul className="flex flex-col divide-y divide-divider">
