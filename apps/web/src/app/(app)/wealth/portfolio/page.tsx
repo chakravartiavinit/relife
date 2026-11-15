@@ -239,7 +239,7 @@ async function Portfolio({ searchParams }: { searchParams: PageProps<'/wealth/po
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className={cn('grid grid-cols-1 gap-6', p.futures && 'lg:grid-cols-2')}>
         <Card>
           <CardHeader title="Spot, coins sold" icon={<Trophy strokeWidth={2} />} color="var(--cat-wealth)" description="What each coin made or lost when sold" />
           {p.closed.length ? (
@@ -250,7 +250,7 @@ async function Portfolio({ searchParams }: { searchParams: PageProps<'/wealth/po
                   <span className="block text-[13px] font-medium text-ink">{c.asset}</span>
                   <span className="block text-[11.5px] text-ink-3 tabular-nums">{c.sells} sale{c.sells === 1 ? '' : 's'}</span>
                 </span>
-                <span className={cn('text-[13px] font-semibold tabular-nums', signCls(c.gain))}>{money(c.gain, { sign: true })}</span>
+                <span className={cn('text-[13px] font-semibold tabular-nums', signCls(c.gain))}>{money(c.gain, { sign: true, decimals: 0 })}</span>
               </li>
             ))} />
           ) : <p className="text-[13px] text-ink-3">Nothing sold yet.</p>}
