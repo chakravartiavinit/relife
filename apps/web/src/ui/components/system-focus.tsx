@@ -44,7 +44,7 @@ export function SystemFocus({ stats, initial }: { stats: FocusStat[]; initial: s
                   )}
                 >
                   <span aria-hidden className="size-2 rounded-full" style={{ background: color }} />
-                  {s.better === 'less' ? 'Less ' : 'More '}{s.name.toLowerCase()}
+                  {s.better === 'less' ? 'Less ' : 'More '}{s.name}
                   {on ? <Check className="size-3.5 text-pill-ink" strokeWidth={2} aria-hidden /> : null}
                 </button>
               )

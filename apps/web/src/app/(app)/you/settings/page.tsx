@@ -1,3 +1,4 @@
+import { connectors } from '@/connectors'
 import brand from '@relife/brand/brand.json'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -101,7 +102,7 @@ async function Settings() {
 
       <SystemFocus
         initial={user.profile.improve ?? []}
-        stats={signals.filter((s) => s.direction !== 'none').map((s) => ({ id: s.id, name: s.name, area: s.area, better: s.direction === 'down' ? 'less' as const : 'more' as const }))}
+        stats={signals.filter((s) => s.direction !== 'none').map((s) => ({ id: s.id, name: inSentence(s.name), area: s.area, better: s.direction === 'down' ? 'less' as const : 'more' as const }))}
       />
 
             <SettingsSection id="appearance" title="Appearance" description={`Saved to your ${brand.name}, so every device shows the same. The sun and moon button in the sidebar switches too.`}>
@@ -199,4 +200,14 @@ function SettingsSkeleton() {
       <Skeleton className="h-[140px] rounded-lg" />
     </div>
   )
+}
+
+/**
+ * A tracker name as it reads after "More " or "Less ": "Screen time" → "screen time", but a source's own name keeps its
+ * capitals ("Oura readiness", "WHOOP recovery", "Duolingo XP") and so does an acronym ("HRV").
+ */
+function inSentence(name: string) {
+  const brand = connectors.some((c) => name.toLowerCase().startsWith(`${c.name.toLowerCase()} `))
+  const acronym = /^[A-Z]{2}/.test(name)
+  return brand || acronym ? name : name.charAt(0).toLowerCase() + name.slice(1)
 }
