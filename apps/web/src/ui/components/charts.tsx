@@ -176,10 +176,11 @@ export function RankedBars({ data, color = CHART.accent, unit, label }: {
   return (
     <figure aria-label={label} className="m-0">
         <div style={{ height: rows.length * 34 + 16 }}><EvilBarChart data={rows} config={{ value: tone(named(seriesName(label), unit), color) }} layout="horizontal" barRadius={4} className="aspect-auto h-full w-full">
-          <EvilBarChart.XAxis type="number" hide />
+          {/* Headroom on the right for each bar's value label. */}
+          <EvilBarChart.XAxis type="number" hide domain={[0, (max: number) => max * 1.2]} />
           <EvilBarChart.YAxis type="category" dataKey="label" width={120} tick={{ fontSize: 12 }} />
           <EvilBarChart.Tooltip />
-          <EvilBarChart.Bar dataKey="value" />
+          <EvilBarChart.Bar dataKey="value" barProps={{ dataKey: 'value', label: { position: 'right', fontSize: 12, fill: 'var(--ink-2)', formatter: (v: unknown) => (typeof v === 'number' ? fmt(Math.round(v), unit) : '') } }} />
         </EvilBarChart></div>
       </figure>
   )
