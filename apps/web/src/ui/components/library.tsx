@@ -52,11 +52,13 @@ function LibraryCard({ item: i, episodes, timeZone }: { item: Item; episodes: Ep
   const Icon = LIBRARY_ICON[kind]
   const current = (i.meta as { current?: string }).current
   const last = ago(i.lastActiveAt)
+  const photo = !!i.image && !(i.meta as { iconOnly?: boolean }).iconOnly
   return (
     <li className={cn('flex flex-col overflow-hidden rounded-[18px] bg-surface shadow-[0_0_0_1px_var(--hairline)]', i.status === 'done' && 'opacity-70')}>
       {/* Cover: the saved picture, or the site's logo on a tint of what the time counts as. */}
-      <div className="relative aspect-[16/7] overflow-hidden" style={{ background: `color-mix(in oklch, ${color} 12%, var(--surface-2))` }}>
-        {i.image && !(i.meta as { iconOnly?: boolean }).iconOnly ? (
+      {/* A real picture gets the wide cover; a logo on a tint needs far less room. */}
+      <div className={cn('relative overflow-hidden', photo ? 'aspect-[16/7]' : 'h-28')} style={{ background: `color-mix(in oklch, ${color} 12%, var(--surface-2))` }}>
+        {photo ? (
           // eslint-disable-next-line @next/next/no-img-element -- local file from /api/library
           <img src={`/api/library/${i.id}/image`} alt="" className="size-full object-cover" />
         ) : i.image ? (
