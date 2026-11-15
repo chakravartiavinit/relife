@@ -41,7 +41,8 @@ export function MetricTile({ t, color, className }: { t: TileSummary; color: str
     >
       <span className="flex items-baseline justify-between gap-2">
         <span className="truncate text-small font-semibold text-ink">{t.name}</span>
-        {tag ? <span className="shrink-0 font-mono text-label uppercase text-ink-3">{tag}</span> : null}
+        {/* The name wins the room: a long source tag ("RESCUETIME") gives way first. */}
+        {tag ? <span className="min-w-0 shrink-[4] truncate font-mono text-label uppercase text-ink-3">{tag}</span> : null}
       </span>
       <span className="num mt-1 flex items-baseline gap-1 text-title whitespace-nowrap text-ink">
         {v ? <>{v.text}{v.unit ? <span className="font-sans text-small font-medium text-ink-3">{v.unit}</span> : null}</> : <span className="text-ink-3">–</span>}
