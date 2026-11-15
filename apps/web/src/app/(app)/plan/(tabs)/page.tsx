@@ -31,12 +31,11 @@ async function Goals() {
   const ai = await aiEnabledFor(user, 'plan')
   const nothing = !data.active.length && !data.paused.length && !data.finished.length
   const drafts = data.drafts.filter((d) => d.payload.goalDraft)
+  // One New goal button at a time (the empty state, or the free-slot row under the goals); it also opens on /plan?new=1.
+  const offers = drafts.map((d) => ({ insightId: d.id, draft: d.payload.goalDraft! }))
   const hasAside = data.due.length > 0 || drafts.length > 0 || ai
   return (
     <div>
-      <div className="mb-4 flex justify-end">
-        <NewGoalButton today={data.today} picker={data.picker} activeCount={data.activeCount} listenToUrl drafts={drafts.map((d) => ({ insightId: d.id, draft: d.payload.goalDraft! }))} />
-      </div>
       {/* DOM order: Review due → Active → Drafts → Paused and finished. On wide screens review and drafts sit in the right column. */}
       <div className={cn('grid gap-6', hasAside && 'lg:grid-cols-[minmax(0,1fr)_340px] lg:grid-rows-[auto_1fr_auto]')}>
         {data.due.length ? (
@@ -56,7 +55,7 @@ async function Goals() {
               <EmptyState icon={Target}
                 title={nothing ? 'No goals yet' : 'No active goals'}
                 description={nothing ? `Pick one outcome you want to change, like sleep or savings. ${brand.name} records where you start and checks in every week.` : 'Resume a paused goal or create a new one.'}
-                action={<NewGoalButton today={data.today} picker={data.picker} activeCount={data.activeCount} />} />
+                action={<NewGoalButton today={data.today} picker={data.picker} activeCount={data.activeCount} listenToUrl drafts={offers} />} />
             </Card>
           )}
           {data.active.length && !atCap ? (
@@ -65,7 +64,7 @@ async function Goals() {
                 <p className="text-body font-semibold text-ink">{MAX_ACTIVE - data.activeCount} {MAX_ACTIVE - data.activeCount === 1 ? 'slot' : 'slots'} free</p>
                 <p className="text-small text-ink-3">Start from the coach draft or any tracker {brand.name} already fills.</p>
               </div>
-              <NewGoalButton today={data.today} picker={data.picker} activeCount={data.activeCount} />
+              <NewGoalButton today={data.today} picker={data.picker} activeCount={data.activeCount} listenToUrl drafts={offers} />
             </div>
           ) : null}
         </section>
