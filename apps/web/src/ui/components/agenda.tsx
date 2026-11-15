@@ -249,7 +249,7 @@ function Row({ r, onToggle, onSkip }: { r: AgendaRow; onToggle: () => void; onSk
     <motion.div
       animate={won ? { backgroundColor: [`color-mix(in oklch, ${r.color} 18%, transparent)`, 'color-mix(in oklch, var(--ink) 2.5%, transparent)'] } : undefined}
       transition={{ duration: 0.3, ease: EASE_OUT_STRONG }}
-      className="group/row relative flex min-h-[64px] items-center gap-3.5 rounded-[14px] bg-ink/[0.025] px-3 py-2 transition-[background-color] duration-150 hover:bg-ink/[0.045] dark:bg-white/[0.035] dark:hover:bg-white/[0.06]"
+      className="group/row @container relative flex min-h-[64px] items-center gap-3.5 rounded-[14px] bg-ink/[0.025] px-3 py-2 transition-[background-color] duration-150 hover:bg-ink/[0.045] dark:bg-white/[0.035] dark:hover:bg-white/[0.06]"
     >
       <span className={cn('w-11 shrink-0 text-[13px] font-semibold tabular-nums', missed ? 'text-bad' : 'text-ink-2')}>{r.time}</span>
       <motion.span
@@ -267,15 +267,15 @@ function Row({ r, onToggle, onSkip }: { r: AgendaRow; onToggle: () => void; onSk
           <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 text-[12.5px] text-ink-3 tabular-nums">
             {missed ? <span className="inline-flex h-5 items-center rounded-full bg-bad/10 px-2 text-[11.5px] font-semibold text-bad">Overdue</span> : null}
             {r.chips?.map((c) => (
-              <span key={c.text} className={cn('inline-flex h-5 items-center rounded-full px-2 text-[11.5px] font-medium', c.warn ? 'bg-warn/12 text-warn' : 'bg-ink/[0.05] text-ink-2 dark:bg-white/[0.07]')}>{c.text}</span>
+              <span key={c.text} className={cn('inline-flex h-5 items-center rounded-full px-2 text-[11.5px] font-medium whitespace-nowrap', c.warn ? 'bg-warn/12 text-warn' : 'bg-ink/[0.05] text-ink-2 dark:bg-white/[0.07]')}>{c.text}</span>
             ))}
             {r.detail ? <span className="min-w-0 truncate">{r.detail}</span> : null}
           </div>
         ) : null}
       </div>
-      <Button variant="ghost" size="sm" onClick={onSkip} className="text-ink-3 opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 max-lg:hidden">Skip</Button>
+      <Button variant="ghost" size="sm" onClick={onSkip} className="text-ink-3 opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 max-lg:hidden @max-md:hidden">Skip</Button>
       {r.xp ? (
-        <span className="relative inline-flex h-6 shrink-0 items-center rounded-full px-2 text-[11.5px] font-semibold tabular-nums max-sm:hidden" style={{ color: 'color-mix(in oklch, var(--medal-gold) 80%, var(--ink))', background: 'color-mix(in oklch, var(--medal-gold) 12%, transparent)' }}>
+        <span className="relative inline-flex h-6 shrink-0 items-center rounded-full px-2 text-[11.5px] font-semibold tabular-nums max-sm:hidden @max-sm:hidden" style={{ color: 'color-mix(in oklch, var(--medal-gold) 80%, var(--ink))', background: 'color-mix(in oklch, var(--medal-gold) 12%, transparent)' }}>
           +{r.xp} XP
           <AnimatePresence>
             {won ? (
