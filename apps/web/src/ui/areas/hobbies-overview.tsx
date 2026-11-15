@@ -101,15 +101,18 @@ export async function HobbiesOverview({ user, today }: { user: User; today: stri
                 Play online? <Link href="/you/connections" className="font-medium text-pill-ink hover:underline">Connect Lichess or Chess.com</Link> and your games, time and rating sync on their own.
               </p>
             ) : null}
-            {c.spark.some((p) => (p.value ?? 0) > 0) ? <Sparkline data={c.spark} color={color} height={40} label={`${c.t.name}, minutes per day for 4 weeks`} /> : null}
-            <PracticeButtons slug={c.t.slug} name={c.t.name} color={color} />
+            {/* Pinned to the bottom, so the buttons line up across a row of cards of different heights. */}
+            <div className="mt-auto flex flex-col gap-4">
+              {c.spark.some((p) => (p.value ?? 0) > 0) ? <Sparkline data={c.spark} color={color} height={40} label={`${c.t.name}, minutes per day for 4 weeks`} /> : null}
+              <PracticeButtons slug={c.t.slug} name={c.t.name} color={color} />
+            </div>
           </Card>
         ))}
       </section>
 
       {watching}
       {metrics}
-      <p className="px-1 text-small text-ink-3">Tip: type “{cards[0].t.slug.replace(/-/g, ' ')} 30” in ⌘K or Telegram to log 30 minutes. Since {formatDay(from)}.</p>
+      <p className="px-1 text-small text-ink-3">Tip: type “{cards[0].t.slug.replace(/-/g, ' ')} 30” in ⌘K or Telegram to log 30 minutes. Totals since {formatDay(from, { day: 'numeric', month: 'short', year: 'numeric' })}.</p>
     </>
   )
 }
