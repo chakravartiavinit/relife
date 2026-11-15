@@ -197,7 +197,7 @@ function UnreadRow({ item, ctx }: { item: Extract<NeedsYouItem, { kind: 'unread'
   return (
     <QueueItem
       kind="unread" label={<>{s.title}{' '}<span aria-hidden>·</span> {when(item.at, ctx)}</>} busy={pending}
-      title={s.amount ? <>A payment message {brand.name} couldn’t read <span className="font-normal text-ink-3 tabular-nums">· {formatMoney(s.amount.value, s.amount.currency)}</span></> : 'A message {brand.name} couldn’t read'}
+      title={s.amount ? <>A payment message {brand.name} couldn’t read <span className="font-normal text-ink-3 tabular-nums">· {formatMoney(s.amount.value, s.amount.currency)}</span></> : `A message ${brand.name} couldn’t read`}
       actions={
         <>
           <Button size="sm" disabled={pending} onClick={retry}><RefreshCw className={cn('size-3.5', pending && 'animate-spin motion-reduce:animate-none')} strokeWidth={1.5} aria-hidden />{pending ? 'Trying…' : 'Retry'}</Button>
@@ -205,16 +205,17 @@ function UnreadRow({ item, ctx }: { item: Extract<NeedsYouItem, { kind: 'unread'
         </>
       }
     >
-      <div className="flex items-center gap-2.5">
-        <AppLogo id={s.app} size="xs" />
-        {s.items?.length ? (
+      {/* The app's logo goes with the items it sold; alone it only repeats the label above. */}
+      {s.items?.length ? (
+        <div className="mb-2 flex items-center gap-2.5">
+          <AppLogo id={s.app} size="xs" />
           <ul className="flex min-w-0 flex-wrap gap-1.5" aria-label="Items">
             {s.items.map((it, n) => <li key={n} className="h-6 max-w-full truncate rounded-full bg-surface-2 px-2.5 text-caption leading-6 text-ink-2" title={it}>{it}</li>)}
             {s.more ? <li className="flex h-6 items-center px-1 text-caption text-ink-3">+{s.more} more</li> : null}
           </ul>
-        ) : null}
-      </div>
-      {s.text ? <p className="mt-2 line-clamp-3 rounded-md bg-surface-2 px-3 py-2 font-mono text-caption leading-relaxed break-words text-ink-2">{s.text}</p> : null}
+        </div>
+      ) : null}
+      {s.text ? <p className="line-clamp-3 rounded-md bg-surface-2 px-3 py-2 font-mono text-caption leading-relaxed break-words text-ink-2">{s.text}</p> : null}
       <p className="mt-2.5 flex items-start gap-1.5 text-small leading-snug text-bad"><CircleAlert className="mt-px size-3.5 shrink-0" strokeWidth={1.5} aria-hidden />{item.reason}</p>
       <details className="group/raw mt-1">
         <summary className="inline-flex h-8 cursor-pointer list-none items-center gap-1 rounded-sm text-small text-ink-3 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill [&::-webkit-details-marker]:hidden">
