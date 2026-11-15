@@ -201,8 +201,13 @@ export function ShareDonut({ segments, unit, totalLabel, label }: {
       <EvilPieChart data={rows} dataKey="value" nameKey="key" config={config} className="mx-auto aspect-square w-full max-w-[16rem]">
         <EvilPieChart.Pie innerRadius="62%" paddingAngle={2} cornerRadius={4} />
         <EvilPieChart.Tooltip />
-        <EvilPieChart.Legend variant="circle" />
       </EvilPieChart>
+      {/* Our own legend, outside the square chart, so many or long names wrap instead of running past the card. */}
+      <ul className="mt-3 flex flex-wrap justify-center gap-x-3 gap-y-1.5 text-caption text-ink-2">
+        {segments.filter((s) => s.value > 0).map((s) => (
+          <li key={s.id} className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: s.color }} />{s.name}</li>
+        ))}
+      </ul>
       <figcaption className="mt-2 text-center text-[12.5px] text-ink-3 tabular-nums">
         <span className="font-medium text-ink">{fmt(Math.round(total), unit)}</span> {totalLabel}
       </figcaption>
