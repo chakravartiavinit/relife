@@ -6,6 +6,7 @@ import { trackerDays, transactionsBetween, isSpend } from './metrics'
 import { upcomingPayments, type DueItem, type ScheduleMeta } from './schedules'
 import { loadPortfolio, contractCoin } from './portfolio'
 import { addDays, localDate } from './time'
+import { integration } from './integrations'
 import { formatMoney } from '@/domain/money'
 import { dueLabel, oneOffs } from '@/domain/wealth'
 import { toLiquidation } from '@/domain/watch'
@@ -27,13 +28,16 @@ export async function loadBriefing(user: User, payments: DueItem[], now = new Da
   const today = localDate(now, user.timezone)
   const from = addDays(today, -29)
 
-  const [txns, tracks, p, schedules, failing] = await Promise.all([
+  const [txns, tracks, p, schedules, failingRows] = await Promise.all([
     transactionsBetween(user, from, today),
     trackerDays(user, today, today, { slugs: ['mood'] }),
     loadPortfolio(user),
     db.select().from(schema.schedules).where(and(eq(schema.schedules.userId, user.id), eq(schema.schedules.active, true), eq(schema.schedules.kind, 'medicine'))),
     db.select({ id: schema.connections.connectorId }).from(schema.connections).where(and(eq(schema.connections.userId, user.id), eq(schema.connections.enabled, true), eq(schema.connections.status, 'error'))),
   ])
+
+  // Only sources this version still ships: a retired one cannot be fixed on Connections.
+  const failing = failingRows.filter((f) => integration(f.id))
 
   // Spending: today and a usual day (the 4 weeks before, one-off big orders left out).
   const spend = txns.filter(isSpend)
