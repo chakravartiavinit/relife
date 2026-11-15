@@ -59,11 +59,15 @@ export function AppLogo({ id, category, size = 'md' }: { id: string; category?: 
       </span>
     )
   }
-  const Icon = FALLBACK_ICON[id] ?? Cable
+  // No logo file: a built-in source keeps its icon; a named service gets its initial, so a row of them stays tellable apart.
+  const initial = /^[a-z]/i.test(id) ? id[0].toUpperCase() : null
+  const Icon = FALLBACK_ICON[id] ?? (initial ? null : Cable)
   const cat = category ? CATEGORY[category] : undefined
   return (
     <span aria-hidden className={cn('grid shrink-0 place-items-center', box)} style={{ background: cat?.wash ?? 'var(--surface-2)', color: cat?.color ?? 'var(--ink-2)' }}>
-      <Icon className={size === 'sm' ? 'size-5' : 'size-6'} strokeWidth={1.75} />
+      {Icon
+        ? <Icon className={size === 'sm' ? 'size-5' : 'size-6'} strokeWidth={1.75} />
+        : <span className={cn('font-semibold leading-none', size === 'xs' || size === 'sm' ? 'text-body' : 'text-heading')}>{initial}</span>}
     </span>
   )
 }
