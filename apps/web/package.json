@@ -28,7 +28,7 @@
     "restore": "tsx --env-file=../../.env scripts/restore.ts"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.138",
+    "@ai-sdk/anthropic": "^4.0.102",
     "@ai-sdk/google": "^3.0.141",
     "@ai-sdk/openai": "^3.0.137",
     "@ai-sdk/openai-compatible": "^2.0.90",
