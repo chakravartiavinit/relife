@@ -29,7 +29,8 @@ export function AchievementsBoard({ items }: { items: BoardItem[] }) {
   const [all, setAll] = useState(false)
   const unlocked = items.filter((a) => a.unlockedAt).sort((a, b) => b.unlockedAt!.localeCompare(a.unlockedAt!))
   const locked = items.filter((a) => !a.unlockedAt).sort((a, b) => b.progress.value / b.progress.target - a.progress.value / a.progress.target)
-  const close = locked.filter((a) => a.progress.value > 0).slice(0, 3)
+  // At target means it unlocks on the next check: not "almost there" any more.
+  const close = locked.filter((a) => a.progress.value > 0 && a.progress.value < a.progress.target).slice(0, 3)
   const shown = filter === 'unlocked' ? unlocked : filter === 'locked' ? locked : [...unlocked, ...locked]
   const xpEarned = unlocked.reduce((s, a) => s + a.xp, 0)
 
