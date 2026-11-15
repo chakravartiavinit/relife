@@ -374,8 +374,8 @@ All from the repo root (they delegate to `apps/web` with `-w apps/web`).
 
 - `npm run dev`: http://127.0.0.1:3030 plus the worker. Port 3000 is often taken by other projects,
   and two dev servers on one port make pages reload endlessly.
-- `npm run dev:mock`: random data in `relife_mock`, on port 3001. Stop `npm run dev` first; they
-  share the build folder.
+- `npm run dev:mock`: random data in `relife_mock`, on port 3001. It builds into `apps/web/.next-mock`, so it runs
+  beside `npm run dev`. `RELIFE_MOCK_ONBOARDED=1` skips setup.
 - `npm test` · `npm run typecheck`: run in every workspace that has them. `npm run build` · `npm run db:push` · `npm run db:generate` · `npm run db:migrate`
 - `npm run tokens` regenerates the token outputs (`-- --check` fails if they are stale); `npm run brand` rebuilds
   the logo files; `npm run brand:check`; `npm run contract:check` runs the contract fixtures test.

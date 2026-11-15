@@ -10,6 +10,8 @@ const repoRoot = resolve(import.meta.dirname, '..', '..')
 loadEnvConfig(repoRoot, process.env.NODE_ENV !== 'production', undefined, true)
 
 const nextConfig: NextConfig = {
+  // Mock mode builds into its own folder, so `npm run dev` and `npm run dev:mock` can run side by side.
+  distDir: process.env.RELIFE_MOCK === '1' ? '.next-mock' : '.next',
   cacheComponents: true,
   // Workspace packages ship TypeScript source; turbopack.root lets Turbopack resolve files outside apps/web.
   transpilePackages: ['@relife/contract', '@relife/tokens'],
