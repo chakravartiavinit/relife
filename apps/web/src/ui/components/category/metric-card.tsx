@@ -32,8 +32,8 @@ export function MetricCard({ data, from, to, color, title, empty, target, chart,
         <EmptyState
           title={empty.title} description={empty.description} color={color}
           art={(
-            // The routine's 3D picture on a soft halo in the area's colour.
-            <span aria-hidden className="grid size-24 place-items-center rounded-full" style={{ background: `radial-gradient(circle, color-mix(in oklch, ${color} 18%, transparent) 0%, color-mix(in oklch, ${color} 6%, transparent) 70%)` }}>
+            // The routine's 3D picture on its own.
+            <span aria-hidden className="grid size-24 place-items-center">
               <RoutineArt name={title} kind="routine" area="" className="size-14" />
             </span>
           )}

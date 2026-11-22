@@ -293,7 +293,7 @@ export function OnboardingFlow({ initial, templates, existing, timezones, curren
       {/* ── The save file, building itself ── */}
       <aside aria-label="Preview of your save file" className="relative hidden min-h-0 p-3 ps-0 lg:block">
         <div className="relative isolate h-full overflow-hidden rounded-[28px] bg-surface-2 shadow-inset">
-          <Backdrop progress={i / LAST} areas={v.areas} />
+          <Backdrop />
           <div className="relative flex h-full flex-col items-center overflow-y-auto px-8 py-10 [scrollbar-width:none]">
             <div className="my-auto flex w-full justify-center">
               <SaveFile v={v} step={i} picks={picks} routines={routines} starters={starters} sources={rows} pack={pack} ai={{ choice: keptLocal ? 'local' : v.aiChoice ?? (ai?.ready ? null : 'local'), connected: ai?.ready ? ai.model : null, local: keptLocal ? { ok: true, state: ai?.local?.state === 'no-model' ? 'no-model' : 'down', model: ai!.model!.slice('local:'.length), url: '', ms: 0 } : local }} />
@@ -330,7 +330,7 @@ export function Rail({ current, onJump }: { current: number; onJump: (k: number)
                 )} />
               </span>
               <span className={cn('flex min-w-0 items-center gap-1 text-caption transition-[color] duration-150 max-sm:hidden',
-                state === 'now' ? 'font-semibold text-ink' : state === 'done' ? 'text-ink-2 group-hover:text-ink' : 'text-ink-3')}>
+                state === 'now' ? 'font-medium text-ink' : state === 'done' ? 'text-ink-2 group-hover:text-ink' : 'text-ink-3')}>
                 {state === 'done' ? <Check aria-hidden className="size-3 shrink-0" strokeWidth={2.5} /> : null}
                 <span className="truncate">{s.label}</span>
               </span>
@@ -339,7 +339,7 @@ export function Rail({ current, onJump }: { current: number; onJump: (k: number)
         )
       })}
     </ol>
-    <p aria-hidden className="mt-1 text-caption text-ink-2 sm:hidden"><span className="font-semibold text-ink">{STEPS[current]?.label}</span> · step {current + 1} of {STEPS.length}</p>
+    <p aria-hidden className="mt-1 text-caption text-ink-2 sm:hidden"><span className="font-medium text-ink">{STEPS[current]?.label}</span> · step {current + 1} of {STEPS.length}</p>
     </>
   )
 }

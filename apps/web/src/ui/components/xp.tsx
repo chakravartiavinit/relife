@@ -48,12 +48,12 @@ export function TitleTrack({ level, titles }: { level: number; titles: { level: 
             <li key={t.level} className={cn('relative flex flex-1 flex-col items-center text-center', far && 'max-md:hidden')} aria-current={isCurrent ? 'step' : undefined}>
               {i > 0 ? <span aria-hidden className={cn('absolute top-[15px] right-1/2 left-[-50%] h-[2px] rounded-full', i === lo && 'max-md:hidden', reached ? 'bg-ink' : 'bg-ink/10 dark:bg-white/12')} /> : null}
               <span className={cn(
-                'relative z-10 grid size-8 place-items-center rounded-full text-[11px] font-semibold tabular-nums',
-                isCurrent ? 'bg-pill text-white shadow-[0_0_0_4px_color-mix(in_oklch,var(--pill)_25%,transparent)]' : reached ? 'bg-ink text-bg' : 'bg-surface text-ink-3 shadow-[inset_0_0_0_1.5px_var(--hairline)]',
+                'relative z-10 grid size-8 place-items-center rounded-full text-caption font-medium tabular-nums',
+                isCurrent ? 'bg-pill text-white shadow-[0_0_0_2px_var(--surface),0_0_0_4px_var(--pill)]' : reached ? 'bg-ink text-bg' : 'bg-surface text-ink-3 shadow-[inset_0_0_0_1.5px_var(--hairline)]',
               )}>
                 {t.level}
               </span>
-              <span className={cn('mt-2 text-[12px] leading-tight max-md:text-[11px]', isCurrent ? 'font-semibold text-ink' : reached ? 'text-ink-2' : 'text-ink-3')}>{t.title}</span>
+              <span className={cn('mt-2 text-caption leading-tight max-md:text-caption', isCurrent ? 'font-medium text-ink' : reached ? 'text-ink-2' : 'text-ink-3')}>{t.title}</span>
             </li>
           )
         })}

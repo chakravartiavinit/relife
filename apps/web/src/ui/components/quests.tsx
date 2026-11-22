@@ -74,10 +74,10 @@ export function Quests({ system, weekly, chests, freezes, frozeOn, weekLeft }: {
             <ChestArt rarity={chests[0].rarity} size={40} />
           </motion.span>
           <span className="min-w-0 flex-1">
-            <span className="block text-small font-semibold text-ink">{chests.length === 1 ? `A ${RARITY[chests[0].rarity].label.toLowerCase()} chest to open` : `${chests.length} chests to open`}</span>
+            <span className="block text-small font-medium text-ink">{chests.length === 1 ? `A ${RARITY[chests[0].rarity].label.toLowerCase()} chest to open` : `${chests.length} chests to open`}</span>
             <span className="block truncate text-caption text-ink-3">{chests[0].reason}</span>
           </span>
-          <span className="shrink-0 rounded-full bg-ink px-3 py-1.5 text-caption font-semibold text-bg">Open</span>
+          <span className="shrink-0 rounded-full bg-ink px-3 py-1.5 text-caption font-medium text-bg">Open</span>
         </button>
       ) : null}
 
@@ -98,7 +98,7 @@ export function Quests({ system, weekly, chests, freezes, frozeOn, weekLeft }: {
 function Group({ label, items }: { label: string; items: QuestItem[] }) {
   return (
     <div>
-      <h3 className="mb-1 font-mono text-label text-ink-3 uppercase">{label}</h3>
+      <h3 className="mb-1 text-small font-medium text-ink-3">{label}</h3>
       <ul className="flex flex-col gap-3">
         {items.map((q) => {
           const color = areaColor(q.area)
@@ -172,7 +172,7 @@ function Loot({ rarity }: { rarity: Rarity }) {
           key={i}
           className="absolute"
           style={b.coin
-            ? { width: 10, height: 10, borderRadius: 99, background: 'radial-gradient(circle at 35% 30%, color-mix(in oklch, var(--medal-gold) 40%, white), var(--medal-gold))', boxShadow: '0 0 0 1px color-mix(in oklch, var(--medal-gold) 60%, black)' }
+            ? { width: 10, height: 10, borderRadius: 99, background: 'var(--medal-gold)', boxShadow: '0 0 0 1px color-mix(in oklch, var(--medal-gold) 60%, black)' }
             : { width: 6, height: 6, rotate: 45, background: RARITY[rarity].color }}
           initial={{ x: 0, y: 0, opacity: 1, scale: 0.4 }}
           animate={{ x: b.x, y: [0, -b.up, -b.up + b.fall], opacity: [1, 1, 0], scale: 1, rotate: b.rot }}
@@ -229,33 +229,12 @@ export function ChestModal({ chests, onClose }: { chests: ChestItem[]; onClose: 
         {got && chest.rarity === 'epic' ? (
           <motion.span aria-hidden className="pointer-events-none absolute inset-0 z-10 rounded-[28px] bg-white" initial={{ opacity: 0.85 }} animate={{ opacity: 0 }} transition={{ duration: 0.5, ease: 'easeOut' }} />
         ) : null}
-        <p className="text-[12px] font-semibold tracking-[0.08em] uppercase" style={{ color: `color-mix(in oklch, ${RARITY[chest.rarity].color} 70%, var(--ink))` }}>
+        <p className="text-caption font-medium" style={{ color: `color-mix(in oklch, ${RARITY[chest.rarity].color} 70%, var(--ink))` }}>
           {RARITY[chest.rarity].label} chest{queue.length > 1 ? ` · ${k + 1} of ${queue.length}` : ''}
         </p>
-        <h2 id="chest-h" className="mt-1 text-[14px] text-ink-2">{chest.reason}</h2>
+        <h2 id="chest-h" className="mt-1 text-body text-ink-2">{chest.reason}</h2>
 
         <div className="relative mx-auto mt-10 grid h-[150px] place-items-center">
-          {/* Glow behind the chest grows when it opens. */}
-          <motion.span
-            aria-hidden
-            className="absolute size-[150px] rounded-full"
-            style={{ background: `radial-gradient(circle, color-mix(in oklch, ${RARITY[chest.rarity].color} 45%, transparent), transparent 70%)` }}
-            animate={{ scale: got ? 1.25 : 0.8, opacity: got ? 1 : 0.5 }}
-            transition={{ duration: 0.5, ease: EASE_OUT_STRONG }}
-          />
-          {/* Opened: rays fan out behind the chest in its rarity colour. */}
-          <AnimatePresence>
-            {got ? (
-              <motion.span
-                key="rays"
-                aria-hidden
-                className="absolute size-[320px] rounded-full [mask-image:radial-gradient(circle,black_15%,transparent_65%)]"
-                style={{ background: `repeating-conic-gradient(from 0deg, color-mix(in oklch, ${RARITY[chest.rarity].color} 40%, transparent) 0deg 8deg, transparent 8deg 24deg)` }}
-                initial={{ scale: 0.3, opacity: 0, rotate: 0 }} animate={{ scale: 1, opacity: 1, rotate: 30 }}
-                transition={{ scale: { duration: 0.6, ease: EASE_OUT_STRONG }, opacity: { duration: 0.3 }, rotate: { duration: 6, ease: 'linear' } }}
-              />
-            ) : null}
-          </AnimatePresence>
           {got ? <Loot rarity={chest.rarity} /> : null}
           {/* Idle: a wobble every so often. Opening: a fast rattle (anticipation). Open: still. */}
           <motion.span
@@ -273,9 +252,9 @@ export function ChestModal({ chests, onClose }: { chests: ChestItem[]; onClose: 
                 transition={{ duration: 0.55, ease: [0.34, 1.4, 0.64, 1], delay: 0.18 }}
                 className="absolute top-1/2 flex flex-col items-center gap-1.5"
               >
-                <span className="rounded-full bg-ink px-3.5 py-1.5 font-display text-[18px] font-medium text-bg tabular-nums shadow-2">+{got.xp} XP</span>
+                <span className="rounded-full bg-ink px-3.5 py-1.5 font-display text-heading font-medium text-bg tabular-nums shadow-2">+{got.xp} XP</span>
                 {got.freeze ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-surface px-3 py-1 text-[12.5px] font-semibold text-ink shadow-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-surface px-3 py-1 text-caption font-medium text-ink shadow-2">
                     <Snowflake className="size-3.5 text-sky" strokeWidth={2} aria-hidden />Streak freeze
                   </span>
                 ) : null}
@@ -284,7 +263,7 @@ export function ChestModal({ chests, onClose }: { chests: ChestItem[]; onClose: 
           </AnimatePresence>
         </div>
 
-        <p aria-live="polite" className="mt-3 min-h-[2lh] text-[13px] leading-relaxed text-ink-3">
+        <p aria-live="polite" className="mt-3 min-h-[2lh] text-small leading-relaxed text-ink-3">
           {got
             ? got.converted ? `You already hold 2 freezes, so this one became +50 XP.` : got.freeze ? 'The freeze saves your streak the next time you miss a day.' : 'Added to your XP.'
             : 'Tap to open. XP is added straight away.'}

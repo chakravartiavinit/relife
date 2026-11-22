@@ -194,7 +194,7 @@ function DeltaBadge({ d }: { d: Delta }) {
   const Arrow = d.up ? ArrowUpRight : ArrowDownRight
   return (
     <span
-      className={cn('inline-flex h-5 items-center gap-0.5 rounded-full pr-1.5 pl-1 text-[11px] font-semibold tabular-nums', d.good ? 'bg-good/12 text-good' : 'bg-bad/12 text-bad')}
+      className={cn('inline-flex h-5 items-center gap-0.5 rounded-full pr-1.5 pl-1 text-caption font-medium tabular-nums', d.good ? 'bg-good/12 text-good' : 'bg-bad/12 text-bad')}
       title="Compared with the period before"
     >
       <Arrow className="size-3" strokeWidth={2.5} aria-hidden />
@@ -211,16 +211,16 @@ function KpiTile({ tile: t }: { tile: Tile }) {
     <Link href={t.href} className={cn(TILE, 'group flex min-w-0 flex-col bg-surface max-md:even:last:col-span-2')}>
       <div className="flex items-center gap-2">
         <IconChip color={color} className="size-6 rounded-[7px] [&_svg]:size-3.5">{ICON[t.cat]}</IconChip>
-        <span className="truncate text-[12.5px] font-semibold text-ink">{area}</span>
+        <span className="truncate text-caption font-medium text-ink">{area}</span>
       </div>
-      <div className="mt-3 text-[12px] text-ink-3">{t.label}</div>
+      <div className="mt-3 text-caption text-ink-3">{t.label}</div>
       <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span className="font-display text-[26px] leading-none font-medium tracking-[-0.025em] text-ink tabular-nums">
+        <span className="font-display text-title leading-none font-medium text-ink tabular-nums">
           {t.value ?? <span className="text-ink-3">–</span>}
         </span>
         {t.delta ? <DeltaBadge d={t.delta} /> : null}
       </div>
-      <div className={cn('mt-1.5 text-[12px] leading-snug', t.value == null ? 'text-ink-2' : 'text-ink-3')}>{t.sub}</div>
+      <div className={cn('mt-1.5 text-caption leading-snug', t.value == null ? 'text-ink-2' : 'text-ink-3')}>{t.sub}</div>
       <div className="mt-auto pt-3">
         {t.spark ? <Sparkline data={t.spark} color={color} height={28} label={`${area} ${t.label}, last 14 days`} />
           : t.ratio ? <div className="flex h-7 items-center"><Capsule value={t.ratio[0]} max={t.ratio[1]} color={color} size="sm" label={`${t.ratio[0]} of ${t.ratio[1]} in touch`} /></div>
@@ -242,20 +242,19 @@ function StreakTile({ current, best, doneToday, days }: {
       href="/plan/routines"
       className={cn(TILE, 'relative isolate col-span-2 flex min-w-0 flex-col overflow-hidden bg-surface md:col-span-1')}
     >
-      <div aria-hidden className={cn('absolute inset-0 -z-10', lit && 'bg-[radial-gradient(220px_140px_at_100%_0%,color-mix(in_oklch,var(--sky)_40%,transparent),transparent_70%)]')} />
       <div className="flex items-center gap-2">
         <IconChip color={lit ? 'var(--pill)' : undefined} className="size-6 rounded-[7px] [&_svg]:size-3.5">
           <Flame strokeWidth={2} />
         </IconChip>
-        <span className="text-[12.5px] font-semibold text-ink">Daily streak</span>
-        <span className="ml-auto text-[11px] font-medium text-ink-3 tabular-nums">Best {best}</span>
+        <span className="text-caption font-medium text-ink">Daily streak</span>
+        <span className="ml-auto text-caption font-medium text-ink-3 tabular-nums">Best {best}</span>
       </div>
-      <div className="mt-3 text-[12px] text-ink-3">Days you showed up</div>
+      <div className="mt-3 text-caption text-ink-3">Days you showed up</div>
       <div className="mt-1 flex items-baseline gap-1.5 font-display leading-none text-ink tabular-nums">
-        <span className="text-[26px] font-medium tracking-[-0.025em]"><Ticker value={current} /></span>
-        <span className="text-[14px] font-semibold text-ink-2">{current === 1 ? 'day' : 'days'}</span>
+        <span className="text-title font-medium"><Ticker value={current} /></span>
+        <span className="text-body font-medium text-ink-2">{current === 1 ? 'day' : 'days'}</span>
       </div>
-      <div className={cn('mt-1.5 text-[12px] leading-snug', doneToday ? 'text-ink-3' : 'text-ink-2')}>
+      <div className={cn('mt-1.5 text-caption leading-snug', doneToday ? 'text-ink-3' : 'text-ink-2')}>
         {doneToday ? 'You showed up today.' : current ? `Check off one thing to make it ${current + 1}.` : 'Check off one thing to start.'}
       </div>
       <ol className="mt-auto flex justify-between gap-1 pt-3" aria-label="Last 7 days">
@@ -271,7 +270,7 @@ function StreakTile({ current, best, doneToday, days }: {
             >
               {d.done ? <Check className="size-3" strokeWidth={3} aria-hidden /> : null}
             </span>
-            <span aria-hidden className={cn('text-[10px] font-medium', d.today ? 'text-ink' : 'text-ink-3')}>{weekday(d.date)}</span>
+            <span aria-hidden className={cn('text-caption font-medium', d.today ? 'text-ink' : 'text-ink-3')}>{weekday(d.date)}</span>
           </li>
         ))}
       </ol>

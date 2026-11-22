@@ -77,22 +77,11 @@ function LevelUpScreen({ d, onDone }: { d: LevelUp; onDone: () => void }) {
       onClick={onDone}
       className="fixed inset-0 z-[80] grid cursor-pointer place-items-center overflow-hidden bg-bg/70 backdrop-blur-md"
     >
-      {/* Rays turning slowly behind everything. */}
-      {!reduce ? (
-        <motion.div
-          aria-hidden
-          className="absolute size-[900px] rounded-full [mask-image:radial-gradient(circle,black_10%,transparent_62%)]"
-          style={{ background: 'repeating-conic-gradient(from 0deg, color-mix(in oklch, var(--pill) 32%, transparent) 0deg 7deg, transparent 7deg 22deg)' }}
-          initial={{ scale: 0.4, opacity: 0, rotate: 0 }}
-          animate={{ scale: 1, opacity: 1, rotate: 40 }}
-          transition={{ scale: { duration: 0.7, ease: EASE_OUT_STRONG }, opacity: { duration: 0.4 }, rotate: { duration: 4.2, ease: 'linear' } }}
-        />
-      ) : null}
       {!reduce ? <Burst count={36} spread={340} /> : null}
 
       <div className="relative flex flex-col items-center text-center">
         <motion.p
-          className="text-[13px] font-medium tracking-[0.4em] text-pill-ink uppercase"
+          className="text-small font-medium text-pill-ink"
           initial={{ opacity: 0, y: 8, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.6, ease: EASE_OUT_STRONG, delay: 0.1 }}
         >
           Level up
@@ -113,7 +102,7 @@ function LevelUpScreen({ d, onDone }: { d: LevelUp; onDone: () => void }) {
             <AnimatePresence mode="popLayout" initial={false}>
               <motion.span
                 key={shown}
-                className="font-display text-[56px] leading-none font-medium tabular-nums"
+                className="num text-[56px] leading-none font-medium tabular-nums"
                 initial={{ y: 24, opacity: 0, filter: 'blur(4px)' }} animate={{ y: 0, opacity: 1, filter: 'blur(0px)' }} exit={{ y: -24, opacity: 0, filter: 'blur(4px)' }}
                 transition={{ duration: 0.28, ease: EASE_OUT_STRONG }}
               >
@@ -124,17 +113,17 @@ function LevelUpScreen({ d, onDone }: { d: LevelUp; onDone: () => void }) {
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE_OUT_STRONG, delay: 0.75 }}>
-          <h2 className="mt-6 font-display text-[34px] leading-tight font-medium tracking-[-0.03em] text-ink">Level {d.level}</h2>
-          <p className="mt-1 text-[15px] text-ink-2">
-            {d.newTitle ? <>New title: <span className="font-semibold text-ink">{d.title}</span></> : <>Still <span className="font-semibold text-ink">{d.title}</span>, and stronger.</>}
+          <h2 className="mt-6 font-display text-display leading-tight font-medium text-ink">Level {d.level}</h2>
+          <p className="mt-1 text-heading text-ink-2">
+            {d.newTitle ? <>New title: <span className="font-medium text-ink">{d.title}</span></> : <>Still <span className="font-medium text-ink">{d.title}</span>, and stronger.</>}
           </p>
-          <p className="mt-1 text-[13px] text-ink-3">An epic chest is waiting on Today.</p>
+          <p className="mt-1 text-small text-ink-3">An epic chest is waiting on Today.</p>
         </motion.div>
 
         <div className="mt-7 flex items-center gap-2">
           {/* Share opens the card dialog and closes this screen; a click here must not also count as "tap anywhere". */}
           <Button size="md" onClick={(e) => { e.stopPropagation(); openShareCard('level', String(d.level)); onDone() }}><Share2 className="size-4" strokeWidth={1.5} aria-hidden />Share</Button>
-          <button ref={close} type="button" onClick={onDone} className="h-10 rounded-full px-5 text-[13px] font-medium text-ink-3 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">
+          <button ref={close} type="button" onClick={onDone} className="h-10 rounded-full px-5 text-small font-medium text-ink-3 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">
             Tap anywhere to continue
           </button>
         </div>
@@ -180,29 +169,22 @@ function MedalBanner({ d, onClose }: { d: Unlocked & { id: number }; onClose: ()
       className="pointer-events-auto relative flex w-full max-w-[380px] items-center gap-3.5 overflow-hidden rounded-[20px] bg-surface py-3 ps-3 pe-4 shadow-3"
       onClick={onClose}
     >
-      {/* Shine sweeping across once the medal lands. */}
-      <motion.span
-        aria-hidden
-        className="pointer-events-none absolute inset-y-0 w-1/3 -skew-x-12"
-        style={{ background: `linear-gradient(90deg, transparent, color-mix(in oklch, ${c} 35%, transparent), transparent)` }}
-        initial={{ x: '-120%' }} animate={{ x: '360%' }} transition={{ duration: 1.1, ease: 'easeInOut', delay: 0.55 }}
-      />
       <motion.span
         aria-hidden
         className="relative grid size-12 shrink-0 place-items-center rounded-full text-white"
         style={{
-          background: `radial-gradient(circle at 32% 26%, color-mix(in oklch, ${c} 45%, white), ${c} 58%, color-mix(in oklch, ${c} 72%, black))`,
-          boxShadow: `inset 0 1px 0 oklch(1 0 0 / 0.5), 0 8px 18px -8px color-mix(in oklch, ${c} 80%, transparent)`,
+          background: c,
+          boxShadow: `inset 0 0 0 1.5px color-mix(in oklch, ${c} 72%, black)`,
         }}
         initial={{ rotateY: 180, scale: 0.6 }} animate={{ rotateY: 0, scale: 1 }} transition={{ duration: 0.7, ease: EASE_OUT_STRONG, delay: 0.12 }}
       >
-        <Icon className="size-[22px] drop-shadow-[0_1px_1px_oklch(0_0_0/0.3)]" strokeWidth={2} />
+        <Icon className="size-[22px]" strokeWidth={1.5} />
       </motion.span>
       <span className="relative min-w-0 flex-1">
-        <span className="block text-[11px] font-medium tracking-[0.12em] uppercase" style={{ color: `color-mix(in oklch, ${c} 70%, var(--ink))` }}>Achievement unlocked</span>
-        <span className="block truncate text-[15px] font-semibold text-ink">{d.name}</span>
+        <span className="block text-caption font-medium" style={{ color: `color-mix(in oklch, ${c} 70%, var(--ink))` }}>Achievement unlocked</span>
+        <span className="block truncate text-heading font-medium text-ink">{d.name}</span>
       </span>
-      {d.xp ? <span className="relative shrink-0 text-[13px] font-medium tabular-nums" style={{ color: 'color-mix(in oklch, var(--medal-gold) 80%, var(--ink))' }}>+{d.xp} XP</span> : null}
+      {d.xp ? <span className="relative shrink-0 text-small font-medium tabular-nums" style={{ color: 'color-mix(in oklch, var(--medal-gold) 80%, var(--ink))' }}>+{d.xp} XP</span> : null}
     </motion.div>
   )
 }
