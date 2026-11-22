@@ -2,18 +2,18 @@
 :root {
   color-scheme: light;
 
-  --bg: oklch(0.984 0.003 245);  /* clean white paper, barely cool */
-  --surface: oklch(1 0 0);
-  --surface-2: oklch(0.962 0.006 245);  /* inset wells, tracks */
-  --surface-3: oklch(0.93 0.009 245);  /* hover on surface-2 */
-  --ink: oklch(0.178 0 0);  /* wordmark black */
-  --ink-2: oklch(0.40 0.012 250);  /* secondary text, 9.6:1 */
-  --ink-3: oklch(0.52 0.012 250);  /* tertiary text, 5.6:1 */
-  --hairline: oklch(0.178 0 0 / 0.08);
-  --divider: oklch(0.178 0 0 / 0.07);
+  --bg: oklch(0.982 0.0025 85);  /* flat warm grey paper (hue 85, chroma under 0.006) */
+  --surface: oklch(0.997 0.0012 85);
+  --surface-2: oklch(0.963 0.003 85);  /* wells, tracks */
+  --surface-3: oklch(0.93 0.004 85);  /* hover on surface-2 */
+  --ink: oklch(0.2 0.004 85);  /* wordmark black, warm */
+  --ink-2: oklch(0.42 0.006 85);  /* secondary text, 8.0:1 on bg */
+  --ink-3: oklch(0.53 0.006 85);  /* tertiary text, 4.7:1 on surface-2, 5.0:1 on bg */
+  --hairline: oklch(0.2 0.004 85 / 0.11);
+  --divider: oklch(0.2 0.004 85 / 0.07);
   --pill: oklch(0.655 0.14 250);  /* #4A9BE8 the logo's capsule blue: fills, focus ring */
-  --pill-ink: oklch(0.52 0.13 252);  /* text-safe blue, 5.3:1 on white */
-  --pill-wash: oklch(0.655 0.14 250 / 0.10);
+  --pill-ink: oklch(0.52 0.13 252);  /* text-safe blue, 5.5:1 on surface */
+  --pill-wash: oklch(0.655 0.14 250 / 0.07);
   --line-blue: oklch(0.703 0.109 245.2);  /* #61A6DF line-art */
   --sky: oklch(0.813 0.114 231.8);  /* #6DCFFF */
   --sky-soft: oklch(0.937 0.036 233.8);  /* #D4EFFF */
@@ -34,15 +34,15 @@
   --cat-wealth: oklch(0.563 0.112 76.7);
   --cat-hobbies: oklch(0.58 0.14 145);
   --cat-relationships: oklch(0.55 0.1 200);
-  --glass: oklch(1 0 0 / 0.62);
-  --scrim: oklch(0.178 0 0 / 0.32);
+  --glass: oklch(0.997 0.0012 85 / 0.62);
+  --scrim: oklch(0.2 0.004 85 / 0.32);
   --img-outline: oklch(0 0 0 / 0.1);
 
   /* Elevation: layered transparent shadows, no borders */
-  --elev-1: inset 0 1px 0 oklch(1 0 0 / 0.9), 0 0 0 1px oklch(0.30 0.03 250 / 0.07), 0 1px 2px oklch(0.30 0.04 250 / 0.06), 0 4px 14px -6px oklch(0.30 0.05 250 / 0.10);
-  --elev-2: inset 0 1px 0 oklch(1 0 0 / 0.9), 0 0 0 1px oklch(0.30 0.03 250 / 0.07), 0 2px 4px oklch(0.30 0.04 250 / 0.05), 0 12px 32px -10px oklch(0.30 0.06 250 / 0.18);
-  --elev-3: inset 0 1px 0 oklch(1 0 0 / 0.9), 0 0 0 1px oklch(0.30 0.03 250 / 0.08), 0 4px 8px oklch(0.30 0.04 250 / 0.06), 0 28px 64px -16px oklch(0.30 0.06 250 / 0.28);
-  --elev-inset: inset 0 1px 2px oklch(0.30 0.04 250 / 0.08), inset 0 0 0 1px oklch(0.30 0.03 250 / 0.06);
+  --elev-1: 0 0 0 1px oklch(0.2 0.004 85 / 0.11), 0 1px 2px oklch(0.2 0.004 85 / 0.05);
+  --elev-2: 0 0 0 1px oklch(0.2 0.004 85 / 0.11), 0 1px 2px oklch(0.2 0.004 85 / 0.05), 0 4px 12px -4px oklch(0.2 0.004 85 / 0.08);
+  --elev-3: 0 0 0 1px oklch(0.2 0.004 85 / 0.12), 0 16px 40px -12px oklch(0.2 0.004 85 / 0.18);
+  --elev-inset: inset 0 1px 2px oklch(0.2 0.004 85 / 0.06), inset 0 0 0 1px oklch(0.2 0.004 85 / 0.06);
 
   /* Canvas and texture */
   --canvas-wash: radial-gradient(1100px 520px at 85% -14%, oklch(0.9 0.06 248 / 0.5), transparent 70%);
@@ -57,18 +57,18 @@
 [data-theme="dark"] {
   color-scheme: dark;
 
-  --bg: oklch(0.205 0.016 252);
-  --surface: oklch(0.244 0.018 252);
-  --surface-2: oklch(0.280 0.021 248.6);
-  --surface-3: oklch(0.32 0.022 248);
-  --ink: oklch(0.965 0.004 240);
-  --ink-2: oklch(0.80 0.012 245);
-  --ink-3: oklch(0.70 0.014 245);
-  --hairline: oklch(1 0 0 / 0.08);
-  --divider: oklch(1 0 0 / 0.07);
+  --bg: oklch(0.19 0.003 85);
+  --surface: oklch(0.222 0.003 85);
+  --surface-2: oklch(0.258 0.004 85);
+  --surface-3: oklch(0.30 0.004 85);
+  --ink: oklch(0.955 0.003 85);
+  --ink-2: oklch(0.80 0.005 85);
+  --ink-3: oklch(0.69 0.006 85);
+  --hairline: oklch(1 0 0 / 0.10);
+  --divider: oklch(1 0 0 / 0.065);
   --pill: oklch(0.70 0.13 250);
   --pill-ink: oklch(0.78 0.11 248);
-  --pill-wash: oklch(0.70 0.13 250 / 0.14);
+  --pill-wash: oklch(0.70 0.13 250 / 0.12);
   --sky-soft: oklch(0.32 0.04 240);
   --sakura-soft: oklch(0.34 0.05 352);
   --cardigan: oklch(0.36 0.03 85);
@@ -85,14 +85,14 @@
   --cat-wealth: oklch(0.665 0.12 75);
   --cat-hobbies: oklch(0.7 0.14 145);
   --cat-relationships: oklch(0.68 0.1 200);
-  --glass: oklch(0.26 0.02 252 / 0.62);
+  --glass: oklch(0.222 0.003 85 / 0.62);
   --scrim: oklch(0 0 0 / 0.55);
   --img-outline: oklch(1 0 0 / 0.1);
 
-  --elev-1: inset 0 1px 0 oklch(1 0 0 / 0.06), 0 0 0 1px oklch(1 0 0 / 0.06), 0 1px 2px oklch(0 0 0 / 0.3), 0 6px 16px -8px oklch(0 0 0 / 0.5);
-  --elev-2: inset 0 1px 0 oklch(1 0 0 / 0.07), 0 0 0 1px oklch(1 0 0 / 0.07), 0 12px 32px -10px oklch(0 0 0 / 0.6);
-  --elev-3: inset 0 1px 0 oklch(1 0 0 / 0.08), 0 0 0 1px oklch(1 0 0 / 0.08), 0 28px 64px -16px oklch(0 0 0 / 0.7);
-  --elev-inset: inset 0 1px 2px oklch(0 0 0 / 0.35), inset 0 0 0 1px oklch(1 0 0 / 0.05);
+  --elev-1: 0 0 0 1px oklch(1 0 0 / 0.10), 0 1px 2px oklch(0 0 0 / 0.3);
+  --elev-2: 0 0 0 1px oklch(1 0 0 / 0.10), 0 1px 2px oklch(0 0 0 / 0.3), 0 4px 12px -4px oklch(0 0 0 / 0.45);
+  --elev-3: 0 0 0 1px oklch(1 0 0 / 0.10), 0 16px 40px -12px oklch(0 0 0 / 0.6);
+  --elev-inset: inset 0 1px 2px oklch(0 0 0 / 0.3), inset 0 0 0 1px oklch(1 0 0 / 0.05);
 
   --canvas-wash: radial-gradient(1100px 560px at 85% -14%, oklch(0.34 0.08 252 / 0.6), transparent 70%);
   --grain-opacity: 0.05;
@@ -103,18 +103,18 @@
   :root:not([data-theme="light"]) {
     color-scheme: dark;
 
-    --bg: oklch(0.205 0.016 252);
-    --surface: oklch(0.244 0.018 252);
-    --surface-2: oklch(0.280 0.021 248.6);
-    --surface-3: oklch(0.32 0.022 248);
-    --ink: oklch(0.965 0.004 240);
-    --ink-2: oklch(0.80 0.012 245);
-    --ink-3: oklch(0.70 0.014 245);
-    --hairline: oklch(1 0 0 / 0.08);
-    --divider: oklch(1 0 0 / 0.07);
+    --bg: oklch(0.19 0.003 85);
+    --surface: oklch(0.222 0.003 85);
+    --surface-2: oklch(0.258 0.004 85);
+    --surface-3: oklch(0.30 0.004 85);
+    --ink: oklch(0.955 0.003 85);
+    --ink-2: oklch(0.80 0.005 85);
+    --ink-3: oklch(0.69 0.006 85);
+    --hairline: oklch(1 0 0 / 0.10);
+    --divider: oklch(1 0 0 / 0.065);
     --pill: oklch(0.70 0.13 250);
     --pill-ink: oklch(0.78 0.11 248);
-    --pill-wash: oklch(0.70 0.13 250 / 0.14);
+    --pill-wash: oklch(0.70 0.13 250 / 0.12);
     --sky-soft: oklch(0.32 0.04 240);
     --sakura-soft: oklch(0.34 0.05 352);
     --cardigan: oklch(0.36 0.03 85);
@@ -131,14 +131,14 @@
     --cat-wealth: oklch(0.665 0.12 75);
     --cat-hobbies: oklch(0.7 0.14 145);
     --cat-relationships: oklch(0.68 0.1 200);
-    --glass: oklch(0.26 0.02 252 / 0.62);
+    --glass: oklch(0.222 0.003 85 / 0.62);
     --scrim: oklch(0 0 0 / 0.55);
     --img-outline: oklch(1 0 0 / 0.1);
 
-    --elev-1: inset 0 1px 0 oklch(1 0 0 / 0.06), 0 0 0 1px oklch(1 0 0 / 0.06), 0 1px 2px oklch(0 0 0 / 0.3), 0 6px 16px -8px oklch(0 0 0 / 0.5);
-    --elev-2: inset 0 1px 0 oklch(1 0 0 / 0.07), 0 0 0 1px oklch(1 0 0 / 0.07), 0 12px 32px -10px oklch(0 0 0 / 0.6);
-    --elev-3: inset 0 1px 0 oklch(1 0 0 / 0.08), 0 0 0 1px oklch(1 0 0 / 0.08), 0 28px 64px -16px oklch(0 0 0 / 0.7);
-    --elev-inset: inset 0 1px 2px oklch(0 0 0 / 0.35), inset 0 0 0 1px oklch(1 0 0 / 0.05);
+    --elev-1: 0 0 0 1px oklch(1 0 0 / 0.10), 0 1px 2px oklch(0 0 0 / 0.3);
+    --elev-2: 0 0 0 1px oklch(1 0 0 / 0.10), 0 1px 2px oklch(0 0 0 / 0.3), 0 4px 12px -4px oklch(0 0 0 / 0.45);
+    --elev-3: 0 0 0 1px oklch(1 0 0 / 0.10), 0 16px 40px -12px oklch(0 0 0 / 0.6);
+    --elev-inset: inset 0 1px 2px oklch(0 0 0 / 0.3), inset 0 0 0 1px oklch(1 0 0 / 0.05);
 
     --canvas-wash: radial-gradient(1100px 560px at 85% -14%, oklch(0.34 0.08 252 / 0.6), transparent 70%);
     --grain-opacity: 0.05;

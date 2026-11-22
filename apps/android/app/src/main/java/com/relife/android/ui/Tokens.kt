@@ -10,18 +10,18 @@ class ThemeColor(val light: Color, val dark: Color) {
 }
 
 object Tokens {
-    val bg = ThemeColor(Color(0xFFF8FAFC), Color(0xFF12181E))  // clean white paper, barely cool
-    val surface = ThemeColor(Color(0xFFFFFFFF), Color(0xFF1A2129))
-    val surface2 = ThemeColor(Color(0xFFEFF3F6), Color(0xFF212A33))  // inset wells, tracks
-    val surface3 = ThemeColor(Color(0xFFE3E9EE), Color(0xFF2A343E))  // hover on surface-2
-    val ink = ThemeColor(Color(0xFF111111), Color(0xFFF1F4F6))  // wordmark black
-    val ink2 = ThemeColor(Color(0xFF43484E), Color(0xFFB8BFC5))  // secondary text, 9.6:1
-    val ink3 = ThemeColor(Color(0xFF646A70), Color(0xFF97A0A7))  // tertiary text, 5.6:1
-    val hairline = ThemeColor(Color(0x14111111), Color(0x14FFFFFF))
-    val divider = ThemeColor(Color(0x12111111), Color(0x12FFFFFF))
+    val bg = ThemeColor(Color(0xFFFAF9F7), Color(0xFF141412))  // flat warm grey paper (hue 85, chroma under 0.006)
+    val surface = ThemeColor(Color(0xFFFEFEFD), Color(0xFF1C1B19))
+    val surface2 = ThemeColor(Color(0xFFF4F3F0), Color(0xFF242321))  // wells, tracks
+    val surface3 = ThemeColor(Color(0xFFE9E8E5), Color(0xFF2F2E2C))  // hover on surface-2
+    val ink = ThemeColor(Color(0xFF171614), Color(0xFFF1F0EE))  // wordmark black, warm
+    val ink2 = ThemeColor(Color(0xFF4E4D49), Color(0xFFBFBDBA))  // secondary text, 8.0:1 on bg
+    val ink3 = ThemeColor(Color(0xFF6D6C68), Color(0xFF9D9B97))  // tertiary text, 4.7:1 on surface-2, 5.0:1 on bg
+    val hairline = ThemeColor(Color(0x1C171614), Color(0x1AFFFFFF))
+    val divider = ThemeColor(Color(0x12171614), Color(0x11FFFFFF))
     val pill = ThemeColor(Color(0xFF4495E2), Color(0xFF5AA3EC))  // #4A9BE8 the logo's capsule blue: fills, focus ring
-    val pillInk = ThemeColor(Color(0xFF256BB1), Color(0xFF7DBDFA))  // text-safe blue, 5.3:1 on white
-    val pillWash = ThemeColor(Color(0x1A4495E2), Color(0x245AA3EC))
+    val pillInk = ThemeColor(Color(0xFF256BB1), Color(0xFF7DBDFA))  // text-safe blue, 5.5:1 on surface
+    val pillWash = ThemeColor(Color(0x124495E2), Color(0x1F5AA3EC))
     val lineBlue = ThemeColor(Color(0xFF61A6DF), Color(0xFF61A6DF))  // #61A6DF line-art
     val sky = ThemeColor(Color(0xFF6DCFFF), Color(0xFF6DCFFF))  // #6DCFFF
     val skySoft = ThemeColor(Color(0xFFD4EFFF), Color(0xFF1F3645))  // #D4EFFF
@@ -42,14 +42,14 @@ object Tokens {
     val catWealth = ThemeColor(Color(0xFF9A6B13), Color(0xFFBE8832))
     val catHobbies = ThemeColor(Color(0xFF3A8F42), Color(0xFF61B565))
     val catRelationships = ThemeColor(Color(0xFF008288), Color(0xFF38ABB1))
-    val glass = ThemeColor(Color(0x9EFFFFFF), Color(0x9E1D252E))
-    val scrim = ThemeColor(Color(0x52111111), Color(0x8C000000))
+    val glass = ThemeColor(Color(0x9EFEFEFD), Color(0x9E1C1B19))
+    val scrim = ThemeColor(Color(0x52171614), Color(0x8C000000))
     val imgOutline = ThemeColor(Color(0x1A000000), Color(0x1AFFFFFF))
 
-    val radiusXs = 6.dp
-    val radiusSm = 8.dp
-    val radiusMd = 12.dp
-    val radiusLg = 20.dp  // cards
-    val radiusXl = 24.dp  // panels, sidebar
-    val radius2xl = 28.dp  // hero
+    val radiusXs = 4.dp
+    val radiusSm = 6.dp
+    val radiusMd = 8.dp
+    val radiusLg = 12.dp  // cards
+    val radiusXl = 16.dp  // banners, sheet, sidebar
+    val radius2xl = 20.dp
 }

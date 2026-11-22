@@ -10,7 +10,7 @@ export default function manifest(): MetadataRoute.Manifest {
     description: brand.tagline,
     start_url: '/',
     display: 'standalone',
-    background_color: '#f7fafc',
+    background_color: '#faf9f7',
     theme_color: '#3B8BCC',
     icons: [
       { src: BRAND['icon-192'], sizes: '192x192', type: 'image/png' },

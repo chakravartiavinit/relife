@@ -21,18 +21,18 @@ enum Tokens {
         })
     }
 
-    static let bg = dynamic(light: P3(0.9742, 0.9799, 0.9861), dark: P3(0.0747, 0.0924, 0.1167))  // clean white paper, barely cool
-    static let surface = dynamic(light: P3(1, 1, 1), dark: P3(0.1073, 0.1281, 0.1567))
-    static let surface2 = dynamic(light: P3(0.9406, 0.9521, 0.9643), dark: P3(0.1359, 0.1633, 0.1964))  // inset wells, tracks
-    static let surface3 = dynamic(light: P3(0.8943, 0.9114, 0.9295), dark: P3(0.1727, 0.2028, 0.2384))  // hover on surface-2
-    static let ink = dynamic(light: P3(0.067, 0.067, 0.067), dark: P3(0.9472, 0.9556, 0.9631))  // wordmark black
-    static let ink2 = dynamic(light: P3(0.2664, 0.2829, 0.3039), dark: P3(0.7249, 0.7469, 0.7702))  // secondary text, 9.6:1
-    static let ink3 = dynamic(light: P3(0.3957, 0.4134, 0.4358), dark: P3(0.5998, 0.6246, 0.6509))  // tertiary text, 5.6:1
-    static let hairline = dynamic(light: P3(0.067, 0.067, 0.067, 0.08), dark: P3(1, 1, 1, 0.08))
-    static let divider = dynamic(light: P3(0.067, 0.067, 0.067, 0.07), dark: P3(1, 1, 1, 0.07))
+    static let bg = dynamic(light: P3(0.9789, 0.9762, 0.9699), dark: P3(0.0794, 0.0772, 0.0722))  // flat warm grey paper (hue 85, chroma under 0.006)
+    static let surface = dynamic(light: P3(0.9973, 0.996, 0.993), dark: P3(0.1079, 0.1057, 0.1004))
+    static let surface2 = dynamic(light: P3(0.9545, 0.9513, 0.9438), dark: P3(0.1419, 0.1388, 0.1316))  // wells, tracks
+    static let surface3 = dynamic(light: P3(0.9125, 0.9083, 0.8984), dark: P3(0.1823, 0.1791, 0.1716))  // hover on surface-2
+    static let ink = dynamic(light: P3(0.0888, 0.086, 0.0791), dark: P3(0.944, 0.9409, 0.9333))  // wordmark black, warm
+    static let ink2 = dynamic(light: P3(0.3066, 0.3015, 0.2892), dark: P3(0.748, 0.743, 0.731))  // secondary text, 8.0:1 on bg
+    static let ink3 = dynamic(light: P3(0.4273, 0.4218, 0.4088), dark: P3(0.6141, 0.6082, 0.5943))  // tertiary text, 4.7:1 on surface-2, 5.0:1 on bg
+    static let hairline = dynamic(light: P3(0.0888, 0.086, 0.0791, 0.11), dark: P3(1, 1, 1, 0.1))
+    static let divider = dynamic(light: P3(0.0888, 0.086, 0.0791, 0.07), dark: P3(1, 1, 1, 0.065))
     static let pill = dynamic(light: P3(0.3513, 0.577, 0.8634), dark: P3(0.4228, 0.6331, 0.9016))  // #4A9BE8 the logo's capsule blue: fills, focus ring
-    static let pillInk = dynamic(light: P3(0.2251, 0.413, 0.6726), dark: P3(0.5456, 0.7363, 0.9616))  // text-safe blue, 5.3:1 on white
-    static let pillWash = dynamic(light: P3(0.3513, 0.577, 0.8634, 0.1), dark: P3(0.4228, 0.6331, 0.9016, 0.14))
+    static let pillInk = dynamic(light: P3(0.2251, 0.413, 0.6726), dark: P3(0.5456, 0.7363, 0.9616))  // text-safe blue, 5.5:1 on surface
+    static let pillWash = dynamic(light: P3(0.3513, 0.577, 0.8634, 0.07), dark: P3(0.4228, 0.6331, 0.9016, 0.12))
     static let lineBlue = Color(P3(0.4454, 0.6443, 0.8543))  // #61A6DF line-art
     static let sky = Color(P3(0.5243, 0.8022, 0.9803))  // #6DCFFF
     static let skySoft = dynamic(light: P3(0.8505, 0.9336, 0.993), dark: P3(0.1417, 0.2079, 0.2659))  // #D4EFFF
@@ -53,16 +53,16 @@ enum Tokens {
     static let catWealth = dynamic(light: P3(0.5765, 0.4277, 0.1601), dark: P3(0.7143, 0.5417, 0.2605))
     static let catHobbies = dynamic(light: P3(0.3211, 0.5541, 0.2925), dark: P3(0.4613, 0.7014, 0.4301))
     static let catRelationships = dynamic(light: P3(0.1936, 0.5035, 0.5292), dark: P3(0.3572, 0.6603, 0.6858))
-    static let glass = dynamic(light: P3(1, 1, 1, 0.62), dark: P3(0.1199, 0.1433, 0.1756, 0.62))
-    static let scrim = dynamic(light: P3(0.067, 0.067, 0.067, 0.32), dark: P3(0, 0, 0, 0.55))
+    static let glass = dynamic(light: P3(0.9973, 0.996, 0.993, 0.62), dark: P3(0.1079, 0.1057, 0.1004, 0.62))
+    static let scrim = dynamic(light: P3(0.0888, 0.086, 0.0791, 0.32), dark: P3(0, 0, 0, 0.55))
     static let imgOutline = dynamic(light: P3(0, 0, 0, 0.1), dark: P3(1, 1, 1, 0.1))
 
-    static let radiusXs: CGFloat = 6
-    static let radiusSm: CGFloat = 8
-    static let radiusMd: CGFloat = 12
-    static let radiusLg: CGFloat = 20  // cards
-    static let radiusXl: CGFloat = 24  // panels, sidebar
-    static let radius2xl: CGFloat = 28  // hero
+    static let radiusXs: CGFloat = 4
+    static let radiusSm: CGFloat = 6
+    static let radiusMd: CGFloat = 8
+    static let radiusLg: CGFloat = 12  // cards
+    static let radiusXl: CGFloat = 16  // banners, sheet, sidebar
+    static let radius2xl: CGFloat = 20
 
     static func outQuint(_ duration: Double = 0.2) -> Animation { .timingCurve(0.2, 0, 0, 1, duration: duration) }  // UI state changes: hover, press, toggles
     static func outStrong(_ duration: Double = 0.2) -> Animation { .timingCurve(0.23, 1, 0.32, 1, duration: duration) }  // entrances and chart reveals
