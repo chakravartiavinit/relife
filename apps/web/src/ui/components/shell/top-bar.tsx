@@ -123,9 +123,9 @@ function CaptureField() {
       onPointerEnter={prefetchCapture}
       onFocus={prefetchCapture}
       onKeyDown={(e) => { if (e.key.length === 1 && !e.metaKey && !e.ctrlKey && !e.altKey && e.key !== ' ') { e.preventDefault(); openCapture(e.key) } }}
-      className="flex h-11 w-full max-w-[520px] items-center gap-2.5 rounded-full bg-surface pr-2 pl-4 text-left text-body text-ink-3 shadow-1 transition-[box-shadow,color] duration-150 ease-out-quint hover:text-ink-2 hover:shadow-2 focus-visible:outline-2 focus-visible:outline-pill"
+      className="flex h-11 w-full max-w-[520px] items-center gap-2.5 rounded-full bg-surface pr-2 pl-4 text-left text-body text-ink-3 shadow-1 transition-[color] duration-150 ease-out-quint hover:text-ink-2 focus-visible:outline-2 focus-visible:outline-pill"
     >
-      <span aria-hidden className="grid size-6 shrink-0 place-items-center rounded-full bg-ink text-bg"><Plus className="size-4" strokeWidth={2} /></span>
+      <span aria-hidden className="grid size-6 shrink-0 place-items-center rounded-full bg-ink text-bg"><Plus className="size-4" strokeWidth={1.5} /></span>
       <span className="flex-1 truncate">Log, check off or ask…</span>
       <kbd className="rounded-xs bg-surface-2 px-1.5 text-caption leading-5 font-medium text-ink-3 shadow-[inset_0_0_0_1px_var(--hairline)]">⌘K</kbd>
     </button>

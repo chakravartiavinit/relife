@@ -1,12 +1,13 @@
 import type { Metadata } from 'next'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
-import { Plus } from 'lucide-react'
+import { Brain, Droplets, HeartPulse, Plus, Wallet } from 'lucide-react'
 import { CATEGORIES } from '@/db/schema'
 import { CATEGORY } from '@/ui/tokens'
 import { Button } from '@/ui/components/button'
-import { Badge, Card, CardHeader, PageHeader, Skeleton, Stat } from '@/ui/components/card'
-import { Capsule, CapsuleGauge } from '@/ui/components/capsule'
+import { Badge, Card, CardHeader, IconChip, PageHeader, SectionLabel, Skeleton, Stat, SystemLabel } from '@/ui/components/card'
+import { Capsule, CapsuleGauge, LevelBar } from '@/ui/components/capsule'
+import { CapsuleIcon } from '@/ui/components/capsule-icon'
 import { Field, Input, Segmented, Select } from '@/ui/components/form'
 import { EmptyState } from '@/ui/components/empty'
 import { CapsuleMark, Wordmark } from '@/ui/components/logo'
@@ -76,7 +77,7 @@ export default function UiGallery() {
           {['ink', 'pill', 'pill-ink', 'line-blue', 'sky', 'sakura', 'cardigan', 'night'].map((c) => (
             <div key={c} className="flex flex-col gap-1.5">
               <div className="h-12 rounded-md shadow-1" style={{ background: `var(--${c})` }} />
-              <code className="text-[11px] text-ink-3">--{c}</code>
+              <code className="text-caption text-ink-3">--{c}</code>
             </div>
           ))}
         </div>
@@ -101,19 +102,40 @@ export default function UiGallery() {
         <div className="grid gap-5 sm:grid-cols-2">
           {CATEGORIES.map((c, i) => (
             <div key={c}>
-              <div className="mb-2 flex justify-between text-[13px]"><span className="text-ink">{CATEGORY[c].label}</span><span className="text-ink-3 tabular-nums">{(i + 1) * 20}%</span></div>
+              <div className="mb-2 flex justify-between text-small"><span className="text-ink">{CATEGORY[c].label}</span><span className="text-ink-3 tabular-nums">{(i + 1) * 20}%</span></div>
               <Capsule value={(i + 1) * 20} max={100} color={CATEGORY[c].color} label={CATEGORY[c].label} />
             </div>
           ))}
-          <div><div className="mb-2 text-[13px] text-ink">Empty</div><Capsule value={0} label="Empty" /></div>
-          <div><div className="mb-2 text-[13px] text-ink">Sizes</div><div className="flex flex-col gap-2"><Capsule value={3} max={5} size="sm" label="sm" /><Capsule value={3} max={5} size="lg" label="lg" /></div></div>
+          <div><div className="mb-2 text-small text-ink">Empty</div><Capsule value={0} label="Empty" /></div>
+          <div><div className="mb-2 text-small text-ink">Sizes</div><div className="flex flex-col gap-2"><Capsule value={3} max={5} size="sm" label="sm" /><Capsule value={3} max={5} size="lg" label="lg" /></div></div>
         </div>
-        <div className="mt-6 flex items-end gap-4 rounded-lg p-4" style={{ background: 'linear-gradient(180deg, var(--sky-soft), var(--surface-2))' }}>
+        <div className="mt-6 flex items-end gap-4 rounded-lg bg-surface-2 p-4">
           {CATEGORIES.map((c, i) => <CapsuleGauge key={c} value={i} max={4} color={CATEGORY[c].color} label={CATEGORY[c].label} />)}
+        </div>
+        <div className="mt-8 mb-3 text-small text-ink-3">LevelBar: the segmented stat bar for XP, level and goal progress (10 segments, the last one by its fraction)</div>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div><div className="mb-2 flex justify-between text-small"><span className="text-ink">XP to Lv 26</span><span className="text-ink-3 tabular-nums">64%</span></div><LevelBar value={64} max={100} size="lg" label="XP to Lv 26" /></div>
+          {CATEGORIES.slice(0, 3).map((c, i) => (
+            <div key={c}><div className="mb-2 flex justify-between text-small"><span className="text-ink">{CATEGORY[c].label}</span><span className="text-ink-3 tabular-nums">{[12, 55, 100][i]}%</span></div><LevelBar value={[12, 55, 100][i]} max={100} color={CATEGORY[c].color} label={CATEGORY[c].label} /></div>
+          ))}
+          <div><div className="mb-2 text-small text-ink">Empty, and sm with 12 segments</div><div className="flex flex-col gap-2"><LevelBar value={0} label="Empty" /><LevelBar value={7} max={12} size="sm" segments={12} label="sm" /></div></div>
+        </div>
+        <div className="mt-8 mb-3 text-small text-ink-3">CapsuleIcon: flat top, ink outline</div>
+        <div className="flex items-end gap-5">
+          <CapsuleIcon size="sm" letter="A" /><CapsuleIcon size="md" letter="A" /><CapsuleIcon size="lg" letter="A" />
+          <CapsuleIcon size="lg" icon={HeartPulse} color={CATEGORY.health.color} /><CapsuleIcon size="lg" icon={Brain} color={CATEGORY.mind.color} /><CapsuleIcon size="lg" icon={Wallet} color={CATEGORY.wealth.color} />
         </div>
       </Section>
 
       <Section title="Stats & badges">
+        <div className="mb-6 flex flex-col gap-4">
+          <div className="flex flex-wrap items-center gap-6"><SystemLabel>Monday · 23 November</SystemLabel><SystemLabel color={CATEGORY.health.color}>Health</SystemLabel><span className="text-small text-ink-3">SystemLabel: banners only</span></div>
+          <SectionLabel rule action={<a href="#" className="text-small font-medium text-ink-2 hover:text-ink">Open Life</a>}>Life pulse (SectionLabel with rule and action)</SectionLabel>
+          <SectionLabel as="div">Renews this week (SectionLabel inside a card)</SectionLabel>
+          <div className="flex items-center gap-3 text-small text-ink-2">
+            <IconChip color={CATEGORY.health.color}><HeartPulse /></IconChip><IconChip color={CATEGORY.wealth.color}><Wallet /></IconChip><IconChip><Droplets /></IconChip>IconChip: a neutral well, the icon in the area colour
+          </div>
+        </div>
         <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
           <Stat label="Sleep" value="7.2h" sub="+0.4h vs last week" tone="good" />
           <Stat label="Spent" value="₹12,480" sub="+18% vs last month" tone="bad" />
@@ -283,6 +305,7 @@ export default function UiGallery() {
       <Section title="Empty & loading">
         <div className="grid gap-6 sm:grid-cols-2">
           <div className="rounded-md bg-surface-2 p-4"><EmptyState title="Nothing here yet" description="Empty states use the line-art style." action={<Button variant="primary">Add one</Button>} /></div>
+          <div className="rounded-md bg-surface-2 p-4"><EmptyState icon={HeartPulse} color={CATEGORY.health.color} title="No sleep logged" description="Connect a source or log it by hand." action={<Button>Log sleep</Button>} /></div>
           <div className="flex flex-col gap-3 rounded-md bg-surface-2 p-4"><Skeleton className="h-5 w-40" /><Skeleton className="h-24" /><Skeleton className="h-5 w-24" /></div>
         </div>
       </Section>

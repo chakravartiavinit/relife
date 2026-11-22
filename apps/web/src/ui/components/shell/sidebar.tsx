@@ -63,8 +63,8 @@ export function Sidebar(slots: Slots) {
     // `lg:flex` so the aside stretches to the page's height and its sticky panel can stay in view while the page scrolls.
     <div className="hidden shrink-0 lg:flex">
       <AnimatedSidebar mobile={false} collapsible="icon" ariaLabel="Main" panelClassName="bg-transparent p-3">
-        {/* Floating glass panel: radius 24 with 12px padding, so rows inside use 12. */}
-        <div className="flex h-full min-h-0 flex-col gap-4 rounded-xl bg-glass px-3 py-4 shadow-1 backdrop-blur-xl rail:px-1">
+        {/* Flat panel: radius 16 with 12px padding, so rows inside use 8. */}
+        <div className="flex h-full min-h-0 flex-col gap-4 rounded-xl bg-surface px-3 py-4 shadow-1 rail:px-1">
           <div className="flex h-10 shrink-0 items-center px-2 rail:justify-center rail:px-0">
             <Link href="/" aria-label={`${brand.name}, Today`} className="relative rounded-sm after:absolute after:inset-[-4px] after:content-[''] focus-visible:outline-2 focus-visible:outline-pill">
               <Wordmark className="h-[30px] rail:hidden" />
@@ -88,7 +88,7 @@ function SidebarNavLive(slots: Slots) {
 }
 
 const rowClass = (active: boolean, here = false) =>
-  cn('min-h-10 gap-3 px-2.5 text-body', active ? 'font-semibold text-ink' : here ? 'text-ink' : 'text-ink-2 hover:text-ink')
+  cn('min-h-10 gap-3 px-2.5 text-body', active ? 'font-medium text-ink' : here ? 'text-ink' : 'text-ink-2 hover:text-ink')
 
 function SidebarNav({ coachBadge, coachDot, areas, path }: Slots & { path: string }) {
   const item = (href: string) => NAV.flatMap((g) => g.items).find((i) => i.href === href)!
@@ -100,7 +100,7 @@ function SidebarNav({ coachBadge, coachDot, areas, path }: Slots & { path: strin
       <AnimatedSidebarMenuButton
         href={i.href}
         isActive={active}
-        icon={<i.icon className={cn('size-5', active && 'text-pill-ink')} strokeWidth={active ? 2 : 1.5} />}
+        icon={<i.icon className={cn('size-5', active && 'text-pill-ink')} strokeWidth={1.5} />}
         badge={badge}
         className={rowClass(active)}
       >
@@ -136,7 +136,7 @@ function LifeRow({ path, here }: { path: string; here: boolean }) {
       <AnimatedSidebarMenuButton
         href={LIFE_HUB.href}
         isActive={active}
-        icon={<LIFE_HUB.icon className={cn('size-5', active && 'text-pill-ink')} strokeWidth={active ? 2 : 1.5} />}
+        icon={<LIFE_HUB.icon className={cn('size-5', active && 'text-pill-ink')} strokeWidth={1.5} />}
         className={cn(rowClass(active, here), 'pr-11')}
       >
         Life
@@ -200,8 +200,8 @@ function AreaLinksView({ areas, today, path }: { areas?: string[]; today?: Recor
                     href={k.href}
                     aria-current={path === k.href ? 'page' : undefined}
                     className={cn(
-                      'relative flex h-8 items-center gap-2.5 rounded-sm px-2.5 text-small transition-[background-color,color,box-shadow] duration-150 ease-out-quint after:absolute after:inset-x-0 after:-inset-y-1 after:content-[""] focus-visible:outline-2 focus-visible:outline-pill',
-                      active ? 'bg-surface font-medium text-ink shadow-1' : 'text-ink-2 hover:bg-surface-2 hover:text-ink',
+                      'relative flex h-8 items-center gap-2.5 rounded-sm px-2.5 text-small transition-[background-color,color] duration-150 ease-out-quint after:absolute after:inset-x-0 after:-inset-y-1 after:content-[""] focus-visible:outline-2 focus-visible:outline-pill',
+                      active ? 'bg-surface-2 font-medium text-ink' : 'text-ink-2 hover:bg-surface-2 hover:text-ink',
                     )}
                   >
                     <AreaDot color={k.color} status={status(k.href)} />
@@ -223,7 +223,7 @@ function AreaLinksView({ areas, today, path }: { areas?: string[]; today?: Recor
             aria-current={path === k.href ? 'page' : undefined}
             className={cn(
               'grid size-10 place-items-center rounded-md transition-[background-color] duration-150 ease-out-quint focus-visible:outline-2 focus-visible:outline-pill',
-              isActive(path, k.href) ? 'bg-surface shadow-1' : 'hover:bg-surface-2',
+              isActive(path, k.href) ? 'bg-surface-2' : 'hover:bg-surface-2',
             )}
           >
             <AreaDot color={k.color} status={status(k.href)} />

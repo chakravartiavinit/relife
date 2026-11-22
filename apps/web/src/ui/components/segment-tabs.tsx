@@ -34,7 +34,7 @@ export function SegmentTabs({ tabs, label, className, pathname: given, onNavigat
       <Tabs variant="pill" value={active?.href ?? ''} onValueChange={(href) => (onNavigate ? onNavigate(href) : router.push(href))} className="max-w-full">
         <TabsList
           wrapperClassName="max-w-full"
-          className="gap-0 bg-surface-2 shadow-[inset_0_0_0_1px_var(--hairline)]"
+          className="gap-0 bg-surface-2"
         >
           {tabs.map((t) => (
             <TabsTrigger
@@ -46,7 +46,7 @@ export function SegmentTabs({ tabs, label, className, pathname: given, onNavigat
               onFocus={() => { if (!onNavigate) router.prefetch(t.href) }}
               indicatorClassName="bg-surface shadow-1"
               // The selected label is drawn twice (see tabs.tsx): the copy on top of the pill takes ink, not the default white.
-              className="h-10 px-4 text-body font-medium text-ink-3 transition-colors duration-150 hover:text-ink [&_[data-tabs-label]]:text-ink"
+              className="h-10 px-4 text-small font-medium text-ink-3 transition-colors duration-150 ease-out-quint hover:text-ink [&_[data-tabs-label]]:text-ink"
             >
               {t.label}
             </TabsTrigger>

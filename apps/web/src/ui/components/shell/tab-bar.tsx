@@ -33,9 +33,9 @@ function TabBarView({ path, coachBadge }: { path: string; coachBadge: ReactNode 
         key={t.href}
         href={t.href}
         aria-current={active ? 'page' : undefined}
-        className={cn('relative flex h-14 flex-col items-center justify-center gap-0.5 rounded-md text-caption transition-colors duration-150 ease-out-quint focus-visible:outline-2 focus-visible:outline-pill', active ? 'font-semibold text-ink' : 'font-medium text-ink-3')}
+        className={cn('relative flex h-14 flex-col items-center justify-center gap-0.5 rounded-md text-caption font-medium transition-colors duration-150 ease-out-quint focus-visible:outline-2 focus-visible:outline-pill', active ? 'text-ink' : 'text-ink-3')}
       >
-        <t.icon className={cn('size-6', active && 'text-pill-ink')} strokeWidth={active ? 2 : 1.5} aria-hidden />
+        <t.icon className={cn('size-6', active && 'text-pill-ink')} strokeWidth={1.5} aria-hidden />
         {t.label}
         {t.href === '/coach' ? <span className="absolute top-0.5 left-[calc(50%+6px)]">{coachBadge}</span> : null}
       </Link>
@@ -58,7 +58,7 @@ function TabBarView({ path, coachBadge }: { path: string; coachBadge: ReactNode 
         className="group relative flex h-14 -translate-y-3.5 items-center justify-center focus-visible:outline-none"
       >
         <span className="grid size-[60px] place-items-center rounded-full bg-ink text-bg shadow-[0_0_0_4px_var(--bg),var(--elev-2)] transition-[scale] duration-150 ease-out-quint group-active:scale-96 group-focus-visible:outline-2 group-focus-visible:outline-offset-4 group-focus-visible:outline-pill">
-          <Plus className="size-7" strokeWidth={2} aria-hidden />
+          <Plus className="size-7" strokeWidth={1.5} aria-hidden />
         </span>
       </button>
       {RIGHT.map(item)}

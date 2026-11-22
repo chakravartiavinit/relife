@@ -43,13 +43,14 @@ const Grid = ({ children }: { children: React.ReactNode }) => <div className="gr
 /** The type scale, one row per token. Each line is the real class, so it follows the tokens. */
 export function TypeScale() {
   const rows: [string, string, string][] = [
-    ['text-display font-display', 'display 34/40', 'Good morning, Avinit'],
-    ['text-title font-display', 'title 24/30', 'Today’s plan'],
-    ['text-heading', 'heading 17/24', 'Sleep this week'],
+    ['text-hero font-display', 'hero 56/60 serif', 'Still up, Aarav.'],
+    ['text-display font-display', 'display 44/48 serif', 'Health'],
+    ['text-title', 'title 24/32', 'Today’s plan'],
+    ['text-heading', 'heading 16/22', 'Sleep this week'],
     ['text-body', 'body 14/20', 'Six of sixteen routines done.'],
     ['text-small', 'small 13/18', 'Water is 500 ml behind pace.'],
     ['text-caption', 'caption 12/16', 'Updated 2 minutes ago'],
-    ['text-label font-mono uppercase', 'label 11/14 mono', 'Health · Today'],
+    ['text-label font-mono uppercase', 'label 12/16 mono', 'Health · Today'],
   ]
   return (
     <div className="flex flex-col divide-y divide-divider">
@@ -188,7 +189,7 @@ function SidebarDemoNav() {
                   {['Health', 'Mind', 'Wealth'].map((a) => <AnimatedSidebarMenuSubItem key={a}><AnimatedSidebarMenuSubButton href="#">{a}</AnimatedSidebarMenuSubButton></AnimatedSidebarMenuSubItem>)}
                 </AnimatedSidebarMenuSub>
               </AnimatedSidebarMenuItem>
-              <AnimatedSidebarMenuItem><AnimatedSidebarMenuButton icon={<Activity className="size-4" strokeWidth={1.5} />} href="#" badge={<span className="rounded-full bg-pill px-1.5 text-caption text-white tabular-nums">4</span>}>Coach</AnimatedSidebarMenuButton></AnimatedSidebarMenuItem>
+              <AnimatedSidebarMenuItem><AnimatedSidebarMenuButton icon={<Activity className="size-4" strokeWidth={1.5} />} href="#" badge={<span className="rounded-full bg-ink px-1.5 text-caption text-bg tabular-nums">4</span>}>Coach</AnimatedSidebarMenuButton></AnimatedSidebarMenuItem>
             </AnimatedSidebarMenu>
           </AnimatedSidebarGroupContent>
         </AnimatedSidebarGroup>

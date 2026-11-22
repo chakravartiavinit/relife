@@ -103,6 +103,7 @@ async function Header({ user }: { user: User }) {
       greeting: greeting(hour), name: user.name.split(' ')[0],
       line: complete ? recapLine({ total: plan.total, tomorrow }) : stored ?? (firstDay ? `Day one. Check things off as you go and ${brand.name} learns your rhythm; connect a source or two to fill in the rest.` : planLine({ total: plan.total, done: plan.done, next: plan.next })),
       why: !complete && !!stored,
+      level: { level: xp.level, title: xp.title, total: xp.total, toNext: xp.next - xp.total, progress: xp.progress },
       streak, freezes: quests.freezes, xpToday: xp.today, firstDay, complete,
     }} />
   )
@@ -225,10 +226,13 @@ async function SetupCompact({ user }: { user: User }) {
 
 function HeaderSkeleton() {
   return (
-    <div aria-busy className="grid gap-1">
-      <Skeleton className="h-4 w-44" />
-      <Skeleton className="mt-1 h-8 w-72 sm:h-10 sm:w-96" />
-      <Skeleton className="mt-1 h-10 w-full max-w-[64ch]" />
+    <div aria-busy className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
+      <div className="grid min-w-0 flex-1 gap-1">
+        <Skeleton className="h-4 w-44" />
+        <Skeleton className="mt-1 h-10 w-72 sm:h-[60px] sm:w-[480px]" />
+        <Skeleton className="mt-1 h-10 w-full max-w-[64ch]" />
+      </div>
+      <Skeleton className="h-[138px] w-full rounded-lg sm:w-[340px]" />
     </div>
   )
 }

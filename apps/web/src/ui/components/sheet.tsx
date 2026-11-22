@@ -108,8 +108,8 @@ function Panel({ onOpenChange, title, description, icon, modal, className, child
       tabIndex={-1}
       onCancel={(e) => { e.preventDefault(); close() }}
       initial={reduce ? { opacity: 0 } : { opacity: 0, x: 32 }}
-      animate={reduce ? { opacity: 1 } : { opacity: 1, x: 0, transition: { duration: 0.32, ease: EASE_OUT_STRONG } }}
-      exit={reduce ? { opacity: 0 } : { opacity: 0, x: 32, transition: { duration: 0.2, ease: EASE_IN_OUT } }}
+      animate={reduce ? { opacity: 1 } : { opacity: 1, x: 0, transition: { duration: 0.25, ease: EASE_OUT_STRONG } }}
+      exit={reduce ? { opacity: 0 } : { opacity: 0, x: 32, transition: { duration: 0.18, ease: EASE_IN_OUT } }}
       className={cn(
         'fixed top-[var(--sheet-top)] right-3 left-auto m-0 flex h-[calc(100dvh-var(--sheet-top)-12px)] max-h-none w-[440px] max-w-[calc(100vw-24px)] flex-col overflow-hidden rounded-xl border-0 bg-surface p-0 text-ink shadow-3 outline-none z-40',
         'backdrop:bg-scrim',

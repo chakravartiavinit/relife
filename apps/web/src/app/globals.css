@@ -75,6 +75,16 @@
   --font-figure: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), ui-monospace, monospace;
 
+  --shadow-1: var(--elev-1);
+  --shadow-2: var(--elev-2);
+  --shadow-3: var(--elev-3);
+  --shadow-inset: var(--elev-inset);
+  --color-glass: var(--glass);
+  --color-scrim: var(--scrim);
+}
+
+/* The type scale is a plain @theme (not inline) so utilities read var(--text-*) and a media query can resize a step. */
+@theme {
   /* Type scale. Use these instead of text-[Npx]: `font-display text-display`, `text-label font-mono uppercase`.
      Weights are 400 and 500 only. Sizes and tracking come from the Character sheet mockups. */
   --text-hero: 56px;
@@ -103,13 +113,6 @@
   --text-label--line-height: 16px;
   --text-label--font-weight: 500;
   --text-label--letter-spacing: 0.08em;
-
-  --shadow-1: var(--elev-1);
-  --shadow-2: var(--elev-2);
-  --shadow-3: var(--elev-3);
-  --shadow-inset: var(--elev-inset);
-  --color-glass: var(--glass);
-  --color-scrim: var(--scrim);
 }
 
 @layer base {
@@ -287,13 +290,11 @@ details[open]::details-content { opacity: 1; }
   font-variant-numeric: tabular-nums;
 }
 
-/* Phone: the page title and the greeting share one size. */
+/* Phone: the Today greeting steps down from 56px to 40px (the Character sheet phone mockup). */
 @media (max-width: 639px) {
   :root {
     --text-hero: 40px;
     --text-hero--line-height: 44px;
-    --text-display: 40px;
-    --text-display--line-height: 44px;
   }
 }
 
