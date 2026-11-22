@@ -281,7 +281,7 @@ function Row({ r, onToggle, onSkip }: { r: AgendaRow; onToggle: () => void; onSk
             {won ? (
               <motion.span
                 aria-hidden
-                className="absolute inset-x-0 top-0 text-center font-bold"
+                className="absolute inset-x-0 top-0 text-center font-medium"
                 initial={{ y: 0, opacity: 1, scale: 1 }} animate={{ y: -26, opacity: 0, scale: 1.25 }}
                 transition={{ duration: 0.4, ease: EASE_OUT_STRONG }}
               >
@@ -418,7 +418,7 @@ export function Goals({ rows, compact }: { rows: GoalRow[]; /** Today's "All day
                 </p>
               </div>
               <p className="shrink-0 text-right tabular-nums">
-                <span className="text-[20px] leading-none font-bold tracking-[-0.02em] text-ink">{fmtAmount(g.value, g.unit)}</span>
+                <span className="text-[20px] leading-none font-medium tracking-[-0.02em] text-ink">{fmtAmount(g.value, g.unit)}</span>
                 <span className="block text-[12px] text-ink-3">of {fmtAmount(g.target, g.unit)}</span>
               </p>
             </div>

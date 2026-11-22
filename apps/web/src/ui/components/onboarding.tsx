@@ -88,7 +88,7 @@ export function OnboardingCompact({ steps }: { steps: Step[] }) {
               // Concentric: radius 16 block, 12px padding, radius 8 button.
               <li key={s.id} aria-current="step" className="rounded-[16px] bg-pill-wash p-3 shadow-[0_0_0_1.5px_var(--pill)]">
                 <p className="flex items-start gap-2.5">
-                  <span aria-hidden className="mt-px grid size-5 shrink-0 place-items-center rounded-full bg-pill text-[11px] font-bold text-white tabular-nums">{k + 1}</span>
+                  <span aria-hidden className="mt-px grid size-5 shrink-0 place-items-center rounded-full bg-pill text-[11px] font-medium text-white tabular-nums">{k + 1}</span>
                   <span className="min-w-0">
                     <span className="block text-[14px] leading-5 font-semibold text-ink">{s.title}</span>
                     <span className="mt-0.5 block text-[12.5px] leading-snug text-ink-2">{s.body}</span>

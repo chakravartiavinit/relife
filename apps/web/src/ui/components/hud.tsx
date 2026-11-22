@@ -57,7 +57,7 @@ export function CharacterBanner({ s, name, heading, eyebrow, streak, freezes, ar
         >
           <Flame className={cn('size-6', streak.current ? 'text-[var(--medal-gold)]' : 'text-ink-3')} strokeWidth={2} aria-hidden />
           <span>
-            <span className="block font-display text-[26px] leading-none font-extrabold text-ink tabular-nums">{streak.current}</span>
+            <span className="block font-display text-[26px] leading-none font-medium text-ink tabular-nums">{streak.current}</span>
             <span className="mt-1 block text-[11.5px] text-ink-3">
               {streak.current === 1 ? 'day streak' : 'day streak'}
               {freezes ? <> · <Snowflake className="inline size-3 -translate-y-px text-sky" strokeWidth={2} aria-hidden />{freezes}<span className="sr-only"> streak freezes</span></> : null}
@@ -86,7 +86,7 @@ export function CharacterBanner({ s, name, heading, eyebrow, streak, freezes, ar
                 <span className="w-full min-w-0 flex-1">
                   <span className="block truncate text-[12px] leading-4 text-ink-3 max-sm:hidden">{CATEGORY[a.area].label}</span>
                   <span className="mt-0.5 flex items-center justify-center gap-1.5 sm:justify-start">
-                    <span className="text-[13.5px] leading-5 font-bold whitespace-nowrap text-ink tabular-nums">Lv {a.level}</span>
+                    <span className="text-[13.5px] leading-5 font-medium whitespace-nowrap text-ink tabular-nums">Lv {a.level}</span>
                     {a.medal ? <span className="max-sm:hidden"><MedalDisc medal={a.medal.medal} size={18} label={`${a.medal.label} medal`} /></span> : null}
                   </span>
                   <Capsule value={a.progress} max={1} size="sm" color={c} label={`${CATEGORY[a.area].label} level ${a.level} progress`} className="mt-1.5" />
@@ -105,9 +105,9 @@ function Heading({ heading, eyebrow, s }: { heading: string; eyebrow?: React.Rea
   return (
     <>
       {eyebrow ? <div className="mb-1 text-[12.5px] text-ink-3">{eyebrow}</div> : null}
-      <h1 className="font-display text-[26px] leading-[1.05] font-extrabold tracking-[-0.03em] text-ink sm:text-[32px]">{heading}</h1>
+      <h1 className="font-display text-[26px] leading-[1.05] font-medium tracking-[-0.03em] text-ink sm:text-[32px]">{heading}</h1>
       <p className="mt-1 text-[13.5px] text-ink-2">
-        <span className="inline-flex h-6 items-center rounded-full bg-ink px-2 text-[12px] font-bold text-bg tabular-nums">Lv {s.level}</span>
+        <span className="inline-flex h-6 items-center rounded-full bg-ink px-2 text-[12px] font-medium text-bg tabular-nums">Lv {s.level}</span>
         <span className="ms-2 font-semibold text-ink">{s.title}</span>
         <span className="text-ink-3"> · {formatNumber(s.total)} XP</span>
         <ShareButton kind="level" label="Share your level" className="ms-1 align-middle" />

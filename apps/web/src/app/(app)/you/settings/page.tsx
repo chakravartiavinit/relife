@@ -183,7 +183,7 @@ function Usage({ label, value, bad }: { label: string; value: string; bad?: bool
   return (
     <div className="rounded-md bg-surface-2/70 px-3 py-2.5 shadow-[inset_0_0_0_1px_var(--hairline)]">
       <dt className="text-[11.5px] text-ink-3">{label}</dt>
-      <dd className={`mt-0.5 font-display text-[18px] font-bold tabular-nums ${bad ? 'text-bad' : 'text-ink'}`}>{value}</dd>
+      <dd className={`mt-0.5 font-display text-[18px] font-medium tabular-nums ${bad ? 'text-bad' : 'text-ink'}`}>{value}</dd>
     </div>
   )
 }

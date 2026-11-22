@@ -201,7 +201,7 @@ function Habit({ icon: Icon, label, value, sub, up }: { icon: typeof Moon; label
   return (
     <div className={cn('rounded-[14px] p-3', up ? 'bg-warn/[0.09]' : 'bg-ink/[0.03] dark:bg-white/[0.04]')}>
       <dt className="flex items-center gap-1.5 text-[12px] text-ink-3"><Icon className={cn('size-3.5', up ? 'text-warn' : '')} strokeWidth={2} aria-hidden />{label}</dt>
-      <dd className="mt-1 font-display text-[20px] leading-none font-bold text-ink tabular-nums">{value}</dd>
+      <dd className="mt-1 font-display text-[20px] leading-none font-medium text-ink tabular-nums">{value}</dd>
       {sub ? <dd className="mt-1 text-[11.5px] text-ink-3 tabular-nums">{sub}</dd> : null}
     </div>
   )

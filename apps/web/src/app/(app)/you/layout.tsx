@@ -14,7 +14,7 @@ export default function YouLayout({ children }: LayoutProps<'/you'>) {
     <>
       <header className="mb-4">
         <SystemLabel>You</SystemLabel>
-        <h1 className="mt-0.5 font-display text-title font-extrabold tracking-[-0.03em] text-ink">Progress, sources and settings</h1>
+        <h1 className="mt-0.5 font-display text-title font-medium tracking-[-0.03em] text-ink">Progress, sources and settings</h1>
       </header>
       <RouteTabs tabs={TABS} label="You" className="mb-6" />
       {children}

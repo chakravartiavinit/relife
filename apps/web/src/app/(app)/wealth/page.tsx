@@ -112,7 +112,7 @@ function MonthPace({ o, money }: Props) {
       />
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
         <div>
-          <p className="font-display text-[34px] leading-none font-extrabold tracking-[-0.03em] text-ink tabular-nums"><Ticker value={pace.spent} currency={o.base} /></p>
+          <p className="font-display text-[34px] leading-none font-medium tracking-[-0.03em] text-ink tabular-nums"><Ticker value={pace.spent} currency={o.base} /></p>
           <p className="mt-2 text-[13px] text-ink-3">spent this month</p>
         </div>
         <div className="text-right">
@@ -264,7 +264,7 @@ async function Investments({ o, money }: Props) {
       {invest.empty ? <p className="text-[13px] text-ink-3">Connect Binance in You › Connections to see holdings and profit.</p> : (
         <div className="flex flex-col gap-4">
           <div>
-            <p className="font-display text-[26px] leading-none font-extrabold tracking-[-0.02em] text-ink tabular-nums"><Ticker value={invest.worth} currency={o.base} /></p>
+            <p className="font-display text-[26px] leading-none font-medium tracking-[-0.02em] text-ink tabular-nums"><Ticker value={invest.worth} currency={o.base} /></p>
             <p className={cn('mt-1.5 text-[13px] font-medium tabular-nums', invest.pnl >= 0 ? 'text-good' : 'text-bad')}>{money(invest.pnl, { sign: true })} all time <span className="font-normal text-ink-3">· {money(invest.open, { sign: true })} open</span></p>
           </div>
           {invest.positions.length ? (
@@ -303,7 +303,7 @@ function Subscriptions({ o, money }: Props) {
   return (
     <Card>
       <CardHeader title="Subscriptions" icon={<CalendarClock strokeWidth={2} />} color={ACCENT} description={`${subs.count} active`} action={more('/wealth/subscriptions', 'All')} />
-      <p className="font-display text-[26px] leading-none font-extrabold tracking-[-0.02em] text-ink tabular-nums">{money(subs.monthly)}<span className="ml-1 font-sans text-[13px] font-normal tracking-normal text-ink-3">/ month</span></p>
+      <p className="font-display text-[26px] leading-none font-medium tracking-[-0.02em] text-ink tabular-nums">{money(subs.monthly)}<span className="ml-1 font-sans text-[13px] font-normal tracking-normal text-ink-3">/ month</span></p>
       <p className="mt-1.5 text-[13px] text-ink-3 tabular-nums">{money(subs.monthly * 12)} a year</p>
       {subs.next.length ? (
         <ul className="mt-4 flex flex-col gap-3 border-t border-divider pt-4">

@@ -52,7 +52,7 @@ export function CodeInput({ value, onChange, onComplete, disabled, invalid, auto
             if (e.key === 'ArrowRight' && i < 7) refs.current[i + 1]?.focus()
           }}
           className={cn(
-            'h-11 w-0 min-w-0 max-w-10 flex-1 rounded-[10px] bg-surface-2 text-center font-mono text-[18px] font-bold text-ink uppercase shadow-inset caret-pill',
+            'h-11 w-0 min-w-0 max-w-10 flex-1 rounded-[10px] bg-surface-2 text-center font-mono text-[18px] font-medium text-ink uppercase shadow-inset caret-pill',
             'transition-[box-shadow,opacity] duration-150 ease-out-quint focus-visible:shadow-[0_0_0_2px_var(--pill)] focus-visible:outline-none disabled:opacity-50',
             invalid && 'shadow-[0_0_0_2px_var(--bad)]',
             i === 3 && 'mr-2',

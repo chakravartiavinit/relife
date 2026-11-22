@@ -57,7 +57,7 @@ export function Stat({ label, value, sub, tone, icon, color, className }: {
       </div>
       {/* Scales with its column (container query) so ₹14,14,684 never runs into its neighbour on a phone. */}
       {/* A good or bad number is coloured itself; the line under it is an explanation and stays plain text. */}
-      <div className={cn('mt-2 font-display text-[clamp(20px,9cqi,30px)] leading-none font-bold tracking-[-0.025em] break-words tabular-nums', tone === 'good' ? 'text-good' : tone === 'bad' ? 'text-bad' : 'text-ink')}>{value}</div>
+      <div className={cn('mt-2 font-display text-[clamp(20px,9cqi,30px)] leading-none font-medium tracking-[-0.025em] break-words tabular-nums', tone === 'good' ? 'text-good' : tone === 'bad' ? 'text-bad' : 'text-ink')}>{value}</div>
       {sub ? <div className="mt-2 text-[12.5px] text-ink-3 tabular-nums">{sub}</div> : null}
     </div>
   )
@@ -93,7 +93,7 @@ export function PageHeader({ title, description, actions, eyebrow }: {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           {eyebrow ? <SystemLabel color={c}>{eyebrow}</SystemLabel> : null}
-          <h1 className="mt-0.5 font-display text-[28px] leading-[1.05] font-extrabold tracking-[-0.03em] text-ink sm:text-[34px]">{title}</h1>
+          <h1 className="mt-0.5 font-display text-[28px] leading-[1.05] font-medium tracking-[-0.03em] text-ink sm:text-[34px]">{title}</h1>
           {description ? <p className="mt-1.5 max-w-[60ch] text-[14px] leading-relaxed text-ink-2">{description}</p> : null}
         </div>
         {actions ? <div className="flex items-center gap-2">{actions}</div> : null}

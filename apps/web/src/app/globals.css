@@ -10,8 +10,8 @@
 @custom-variant rail (html[data-sidebar="rail"] &);
 
 /*
- * ReLife design tokens: the ReLIFE capsule. Ink black, clean white and capsule blue, light-first,
- * with halftone dots as the one decorative texture. Tuned for contrast.
+ * ReLife design tokens: the ReLIFE capsule. Ink black, flat warm grey and capsule blue, light-first,
+ * with halftone dots in banner corners as the one decorative texture. Tuned for contrast.
  * Text-safe colors are AA (4.5:1) on their surface; sky / sakura / cardigan are fills only.
  * The values live in packages/tokens/tokens.json; edit there and run `npm run tokens`.
  * Derived values (var() aliases) and the Tailwind color mapping stay here.
@@ -69,30 +69,39 @@
   --color-accent: var(--pill);
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-outfit), var(--font-inter), ui-sans-serif, sans-serif;
+  /* Display: the serif, for page titles and the Today greeting only. */
+  --font-display: var(--font-serif), Georgia, 'Times New Roman', serif;
+  /* Figures: Inter with tabular digits (see the num utility). */
+  --font-figure: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), ui-monospace, monospace;
 
-  /* Type scale. Use these instead of text-[Npx]: `text-title font-display`, `text-label font-mono uppercase`. */
-  --text-display: 34px;
-  --text-display--line-height: 40px;
-  --text-display--font-weight: 800;
-  --text-display--letter-spacing: -0.03em;
+  /* Type scale. Use these instead of text-[Npx]: `font-display text-display`, `text-label font-mono uppercase`.
+     Weights are 400 and 500 only. Sizes and tracking come from the Character sheet mockups. */
+  --text-hero: 56px;
+  --text-hero--line-height: 60px;
+  --text-hero--font-weight: 400;
+  --text-hero--letter-spacing: -0.01em;
+  --text-display: 44px;
+  --text-display--line-height: 48px;
+  --text-display--font-weight: 400;
+  --text-display--letter-spacing: -0.01em;
   --text-title: 24px;
-  --text-title--line-height: 30px;
-  --text-title--font-weight: 700;
-  --text-title--letter-spacing: -0.02em;
-  --text-heading: 17px;
-  --text-heading--line-height: 24px;
-  --text-heading--font-weight: 600;
+  --text-title--line-height: 32px;
+  --text-title--font-weight: 500;
+  --text-title--letter-spacing: -0.015em;
+  --text-heading: 16px;
+  --text-heading--line-height: 22px;
+  --text-heading--font-weight: 500;
+  --text-heading--letter-spacing: -0.005em;
   --text-body: 14px;
   --text-body--line-height: 20px;
   --text-small: 13px;
   --text-small--line-height: 18px;
   --text-caption: 12px;
   --text-caption--line-height: 16px;
-  --text-label: 11px;
-  --text-label--line-height: 14px;
-  --text-label--font-weight: 600;
+  --text-label: 12px;
+  --text-label--line-height: 16px;
+  --text-label--font-weight: 500;
   --text-label--letter-spacing: 0.08em;
 
   --shadow-1: var(--elev-1);
@@ -117,21 +126,9 @@
     position: relative;
     isolation: isolate;
   }
-  /* Fixed atmosphere layers behind everything (no background-attachment: fixed, cheap on mobile). */
-  body::before,
-  body::after {
-    content: '';
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-  }
-  body::before {
-    background: var(--canvas-wash);
-  }
-  body::after {
-    opacity: var(--grain-opacity);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  /* The serif has a 400 only: never fake a bold. */
+  .font-display {
+    font-synthesis-weight: none;
   }
   h1, h2, h3 {
     text-wrap: balance;
@@ -163,10 +160,6 @@
 @media (prefers-reduced-motion: reduce) {
   .rise { animation-name: relife-fade; }
   .animate-pulse { animation: none; }
-}
-
-[data-theme="dark"] body::after {
-  filter: invert(1);
 }
 
 /* One-time staged entrance for hero content (Today). Interactive states use transitions instead. */
@@ -240,59 +233,6 @@
 }
 [data-theme="dark"] .halftone { opacity: 0.22; }
 
-/* Setup's backdrop (/welcome): a halftone skyline of XP bars along the bottom edge that grows with
-   each step, and small logo capsules drifting up from it. Bars share one dot grid (36px apart, a
-   multiple of the 9px pitch), with the dots growing toward the ground like a printed screentone.
-   Bars rise once on load (keyframe) and glide to each new height after that (transition), from the
-   centre outward. Decorative: aria-hidden, pointer-events off, still under reduced motion. */
-.skyline {
-  -webkit-mask-image: linear-gradient(to top, #000 12%, transparent 96%);
-  mask-image: linear-gradient(to top, #000 12%, transparent 96%);
-}
-@keyframes skyline-rise {
-  from { clip-path: inset(100% 0 0 0 round 12px 12px 0 0); }
-}
-.skyline-bar {
-  --dot: var(--pill);
-  position: absolute;
-  inset-block: 0;
-  width: 27px;
-  background: radial-gradient(circle, var(--dot) 1px, transparent 1.6px) 0 0 / 9px 9px;
-  clip-path: inset(calc(100% - var(--h)) 0 0 0 round 12px 12px 0 0);
-  transition: clip-path 900ms var(--ease-out-strong) calc(var(--i) * 14ms);
-  animation: skyline-rise 1200ms var(--ease-out-strong) calc(150ms + var(--i) * 20ms) backwards;
-}
-.skyline-bar::before,
-.skyline-bar::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-}
-.skyline-bar::before {
-  background: radial-gradient(circle, var(--dot) 1.9px, transparent 2.5px) 0 0 / 9px 9px;
-  -webkit-mask-image: linear-gradient(to top, #000 15%, transparent 75%);
-  mask-image: linear-gradient(to top, #000 15%, transparent 75%);
-}
-.skyline-bar::after {
-  background: radial-gradient(circle, var(--dot) 3px, transparent 3.6px) 0 0 / 9px 9px;
-  -webkit-mask-image: linear-gradient(to top, #000, transparent 42%);
-  mask-image: linear-gradient(to top, #000, transparent 42%);
-}
-@keyframes mote-rise {
-  from { translate: 0 0; opacity: 0; }
-  12%, 72% { opacity: var(--o); }
-  to { translate: var(--dx) calc(var(--rise) * -1); opacity: 0; }
-}
-.mote {
-  position: absolute;
-  opacity: 0;
-  animation: mote-rise var(--t) linear var(--d) infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .skyline-bar { animation: none; transition: none; }
-  .mote { animation: none; }
-}
-
 /* The day-complete card: five capsule pieces fall once (1.4s) over the card. Gone under reduced motion. */
 @keyframes day-confetti {
   from { translate: 0 -14px; rotate: 0deg; opacity: 0; }
@@ -340,11 +280,21 @@ details[open]::details-content { opacity: 1; }
   mask-image: linear-gradient(to bottom, transparent 0, #000 10px, #000 calc(100% - 28px), transparent);
 }
 
-/* Big numbers (KPI values, totals): display face, bold, digits that line up. */
+/* Big numbers (KPI values, totals): the figure face (Inter), medium weight, digits that line up. */
 @utility num {
-  font-family: var(--font-display);
-  font-weight: 700;
+  font-family: var(--font-figure);
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
+}
+
+/* Phone: the page title and the greeting share one size. */
+@media (max-width: 639px) {
+  :root {
+    --text-hero: 40px;
+    --text-hero--line-height: 44px;
+    --text-display: 40px;
+    --text-display--line-height: 44px;
+  }
 }
 
 /* Where the desktop Sheet panel starts from the top of the viewport: the shell's top bar (72px) plus the 12px

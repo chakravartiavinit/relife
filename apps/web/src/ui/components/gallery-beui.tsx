@@ -17,7 +17,7 @@ export function BeuiGallery() {
     <div className="grid gap-8 lg:grid-cols-2">
       <div>
         <div className="mb-2 text-[13px] text-ink-2">Ticker (NumberTicker)</div>
-        <div className="font-display text-[30px] font-bold tracking-[-0.025em] text-ink"><Ticker value={n} currency="INR" /></div>
+        <div className="font-display text-[30px] font-medium tracking-[-0.025em] text-ink"><Ticker value={n} currency="INR" /></div>
         <Button size="sm" className="mt-3" onClick={() => setN((v) => v + Math.round(Math.random() * 9000))}>Add money</Button>
       </div>
       <div>

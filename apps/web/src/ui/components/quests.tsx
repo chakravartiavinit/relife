@@ -273,7 +273,7 @@ export function ChestModal({ chests, onClose }: { chests: ChestItem[]; onClose: 
                 transition={{ duration: 0.55, ease: [0.34, 1.4, 0.64, 1], delay: 0.18 }}
                 className="absolute top-1/2 flex flex-col items-center gap-1.5"
               >
-                <span className="rounded-full bg-ink px-3.5 py-1.5 font-display text-[18px] font-bold text-bg tabular-nums shadow-2">+{got.xp} XP</span>
+                <span className="rounded-full bg-ink px-3.5 py-1.5 font-display text-[18px] font-medium text-bg tabular-nums shadow-2">+{got.xp} XP</span>
                 {got.freeze ? (
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-surface px-3 py-1 text-[12.5px] font-semibold text-ink shadow-2">
                     <Snowflake className="size-3.5 text-sky" strokeWidth={2} aria-hidden />Streak freeze

@@ -162,7 +162,7 @@ export function SaveFile({ v, step, picks, routines, starters, sources, pack, ai
             <p className="font-mono text-label text-pill-ink uppercase">Save file</p>
             <p className={cn('truncate font-display text-title', name ? 'text-ink' : 'text-ink-3')}>{name || 'Your name'}</p>
             <p className="mt-1 flex items-center gap-2 text-caption text-ink-3">
-              <span className="inline-flex h-5 items-center rounded-full bg-ink px-1.5 text-label font-bold text-bg tabular-nums">Lv 1</span>
+              <span className="inline-flex h-5 items-center rounded-full bg-ink px-1.5 text-label font-medium text-bg tabular-nums">Lv 1</span>
               <span className="font-semibold text-ink">Awakened</span>
               <span className="truncate">· {city(v.timezone)} · {v.baseCurrency.toUpperCase()}</span>
             </p>
@@ -233,7 +233,7 @@ export function SaveFile({ v, step, picks, routines, starters, sources, pack, ai
                 const o = IMPROVE.find((x) => x.id === id)!
                 return (
                   <motion.li key={id} layout="position" transition={SPRING} className="flex h-8 items-center gap-2 text-caption">
-                    <span className="grid size-5 shrink-0 place-items-center rounded-full bg-pill text-label font-bold text-white tabular-nums">{k + 1}</span>
+                    <span className="grid size-5 shrink-0 place-items-center rounded-full bg-pill text-label font-medium text-white tabular-nums">{k + 1}</span>
                     <span className="min-w-0 flex-1 truncate font-medium text-ink">{target[id] ?? o.quest}</span>
                   </motion.li>
                 )

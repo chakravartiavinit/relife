@@ -17,7 +17,7 @@ export function CoinLogo({ symbol, logo, size = 'md', className }: { symbol: str
   return (
     <span
       aria-hidden
-      className={cn('grid shrink-0 place-items-center rounded-full font-display font-bold tracking-tight text-[oklch(0.42_0.11_var(--h))] bg-[oklch(0.93_0.045_var(--h))] dark:text-[oklch(0.85_0.08_var(--h))] dark:bg-[oklch(0.33_0.06_var(--h))]', SIZE[size], className)}
+      className={cn('grid shrink-0 place-items-center rounded-full font-display font-medium tracking-tight text-[oklch(0.42_0.11_var(--h))] bg-[oklch(0.93_0.045_var(--h))] dark:text-[oklch(0.85_0.08_var(--h))] dark:bg-[oklch(0.33_0.06_var(--h))]', SIZE[size], className)}
       style={{ '--h': h } as React.CSSProperties}
     >
       {symbol.slice(0, 3)}

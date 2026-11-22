@@ -87,7 +87,7 @@ export function SigninClient({ next, reason, container }: { next?: string; reaso
 
       {st.s === 'waiting' ? <Waiting req={st.req} onCancel={() => setSt({ s: 'idle' })} /> : st.s === 'locked' ? <Locked until={st.until} onBack={() => { setSt({ s: 'idle' }); setCode('') }} /> : (
         <>
-          <h1 className="font-display text-title leading-tight font-extrabold tracking-[-0.03em] text-ink">{st.s === 'ended' ? (st.why === 'denied' ? 'It was turned down' : 'That request expired') : `Connect to your ${brand.name}`}</h1>
+          <h1 className="font-display text-title leading-tight font-medium tracking-[-0.03em] text-ink">{st.s === 'ended' ? (st.why === 'denied' ? 'It was turned down' : 'That request expired') : `Connect to your ${brand.name}`}</h1>
           <p className="mt-2 text-body leading-relaxed text-ink-3">
             {st.s === 'ended' ? 'Start again whenever you are ready.' : `This browser shows a code. Approve it from a screen that is already signed in: ${brand.name} on your Mac or phone, in Settings → Devices.`}
           </p>
@@ -124,7 +124,7 @@ function Waiting({ req, onCancel }: { req: PairRequestStarted; onCancel: () => v
   return (
     <div role="status" aria-live="polite">
       <SystemLabel>Waiting for approval</SystemLabel>
-      <h1 className="mt-2 font-display text-title leading-tight font-extrabold tracking-[-0.03em] text-ink">Approve this code in {brand.name}</h1>
+      <h1 className="mt-2 font-display text-title leading-tight font-medium tracking-[-0.03em] text-ink">Approve this code in {brand.name}</h1>
       <p className="mt-1.5 text-body leading-relaxed text-ink-3">Open {brand.name} on a device that’s signed in, go to Settings → Devices, and check this code. Or scan it with a signed-in phone.</p>
       <div className="mt-5 flex flex-col items-center gap-4 rounded-[16px] bg-surface-2 p-4">
         <ConnectCode code={req.userCode} size="lg" />
@@ -143,7 +143,7 @@ function Locked({ until, onBack }: { until: number; onBack: () => void }) {
   return (
     <div role="alert">
       <span aria-hidden className="grid size-12 place-items-center rounded-full bg-warn/12 text-warn"><Clock className="size-6" strokeWidth={1.5} /></span>
-      <h1 className="mt-4 font-display text-title leading-tight font-extrabold tracking-[-0.03em] text-ink">Too many tries</h1>
+      <h1 className="mt-4 font-display text-title leading-tight font-medium tracking-[-0.03em] text-ink">Too many tries</h1>
       <p className="mt-1.5 text-body text-ink-3 tabular-nums">{left ? `Try again in ${mmss(left)}.` : 'You can try again now.'}</p>
       <Button className="mt-5 w-full" disabled={!!left} onClick={onBack}>Back</Button>
     </div>

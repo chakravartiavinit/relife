@@ -163,7 +163,7 @@ function Spotlight({ a }: { a: BoardItem }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2">
           <span className="truncate text-[14px] font-semibold text-ink">{a.name}</span>
-          <span className="shrink-0 font-display text-[16px] font-bold text-ink tabular-nums">{pct}%</span>
+          <span className="shrink-0 font-display text-[16px] font-medium text-ink tabular-nums">{pct}%</span>
         </div>
         <p className="truncate text-[12px] text-ink-3">{a.description}</p>
         <p className="mt-1.5 text-[11.5px] text-ink-3 tabular-nums">{fmt(a.progress.target - a.progress.value)} to go{a.xp ? ` · +${fmt(a.xp)} XP` : ''}</p>

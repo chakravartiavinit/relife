@@ -218,7 +218,7 @@ async function Portfolio({ searchParams }: { searchParams: PageProps<'/wealth/po
             })}
             <div className="flex items-baseline justify-between border-t border-divider pt-4">
               <span className="text-[14px] font-semibold text-ink">Total</span>
-              <span className={cn('font-display text-[20px] font-bold tabular-nums', signCls(p.trading.total))}>{money(p.trading.total, { sign: true })}</span>
+              <span className={cn('font-display text-[20px] font-medium tabular-nums', signCls(p.trading.total))}>{money(p.trading.total, { sign: true })}</span>
             </div>
           </div>
         </Card>
@@ -317,7 +317,7 @@ function Line({ label, value, strong, muted }: { label: string; value: string; s
   return (
     <div className="flex items-baseline justify-between gap-3">
       <dt className={muted ? 'text-ink-3' : 'text-ink-2'}>{label}</dt>
-      <dd className={cn('tabular-nums', strong ? 'font-display text-[17px] font-bold text-ink' : muted ? 'text-ink-2' : 'font-medium text-ink')}>{value}</dd>
+      <dd className={cn('tabular-nums', strong ? 'font-display text-[17px] font-medium text-ink' : muted ? 'text-ink-2' : 'font-medium text-ink')}>{value}</dd>
     </div>
   )
 }

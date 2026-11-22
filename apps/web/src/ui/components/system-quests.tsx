@@ -216,7 +216,7 @@ function QuestRow({ q }: { q: SystemQuestItem }) {
         <span
           title={`Rank ${q.rank}: ${RANK_HINT[q.rank]}`}
           aria-label={`Rank ${q.rank}, ${RANK_HINT[q.rank]}`}
-          className="absolute -right-1.5 -bottom-1.5 grid size-[18px] place-items-center rounded-full bg-surface font-display text-[10px] font-extrabold shadow-1"
+          className="absolute -right-1.5 -bottom-1.5 grid size-[18px] place-items-center rounded-full bg-surface font-display text-[10px] font-medium shadow-1"
           style={{ color: `color-mix(in oklch, ${rank} 85%, var(--ink))`, boxShadow: `0 0 0 1.5px color-mix(in oklch, ${rank} 45%, transparent)` }}
         >
           {q.rank}

@@ -72,7 +72,7 @@ export function ApproveCard({ device, onResult, className }: { device: WaitingDe
       <div className="flex items-start gap-4">
         <DeviceTile kind={device.kind} className="size-11" />
         <div className="min-w-0 flex-1">
-          <h3 className="font-display text-title font-bold tracking-[-0.02em] text-ink">Approve {title}?</h3>
+          <h3 className="font-display text-title font-medium tracking-[-0.02em] text-ink">Approve {title}?</h3>
           <p className="mt-1 text-small text-ink-3">It asked to connect to your {brand.name} {ago(device.askedAt)}.</p>
         </div>
       </div>

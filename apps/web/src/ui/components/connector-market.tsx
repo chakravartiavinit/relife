@@ -439,7 +439,7 @@ export function ConnectorDialog({ c, trigger }: { c: ConnectorItem; trigger: Rea
           <header className="flex items-center gap-4 pe-10">
             <Logo id={c.id} category={c.category} size="lg" />
             <div className="min-w-0">
-              <h2 className="font-display text-[22px] leading-tight font-bold tracking-[-0.02em] text-ink">{c.name}</h2>
+              <h2 className="font-display text-[22px] leading-tight font-medium tracking-[-0.02em] text-ink">{c.name}</h2>
               <p className="mt-1 inline-flex items-center gap-1.5 text-[12.5px] font-medium" style={{ color: c.connected ? status.color : 'var(--ink-3)' }}>
                 <span aria-hidden className="size-2 rounded-full" style={{ background: status.color }} />{c.statusLabel ?? status.label}
               </p>

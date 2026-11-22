@@ -26,7 +26,7 @@ export function EmptyState({ title, description, action, icon, color = 'var(--pi
           <NotebookArt className="relative h-16 w-auto text-line-blue" />
         </div>
       )}
-      <h3 className="font-display text-[17px] font-bold tracking-[-0.015em] text-ink">{title}</h3>
+      <h3 className="font-display text-[17px] font-medium tracking-[-0.015em] text-ink">{title}</h3>
       {description ? <p className="mt-1.5 max-w-[42ch] text-[13.5px] leading-relaxed text-ink-3">{description}</p> : null}
       {action ? <div className="mt-5">{action}</div> : null}
     </div>

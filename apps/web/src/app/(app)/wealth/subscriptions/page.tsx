@@ -128,7 +128,7 @@ async function Subscriptions() {
                 return (
                   <li key={s.id} className="flex items-center gap-4 border-t border-divider px-5 py-3 first:border-t-0">
                     <div className={cn('grid w-12 shrink-0 place-items-center rounded-[10px] py-1.5 text-center leading-none tabular-nums', soon ? 'bg-[color-mix(in_oklch,var(--warn)_14%,transparent)] text-warn' : 'bg-surface-2 text-ink-2')}>
-                      <span className="text-[17px] font-bold">{dayMonth.format(due!).split(' ')[0]}</span>
+                      <span className="text-[17px] font-medium">{dayMonth.format(due!).split(' ')[0]}</span>
                       <span className="mt-1 text-[10.5px] font-semibold uppercase">{dayMonth.format(due!).split(' ')[1]}</span>
                     </div>
                     <BrandLogo name={s.name} size="sm" />
@@ -182,7 +182,7 @@ async function Subscriptions() {
                   </div>
 
                   <div className="flex items-baseline justify-between gap-3 tabular-nums">
-                    <p className="text-[22px] font-bold tracking-[-0.02em] text-ink">
+                    <p className="text-[22px] font-medium tracking-[-0.02em] text-ink">
                       {s.amount ? formatMoney(s.amount, cur) : <span className="text-[15px] font-medium text-ink-3">No amount</span>}
                       {s.amount ? <span className="ml-1 text-[13px] font-normal text-ink-3">/ {rule.freq === 'yearly' ? 'year' : rule.freq === 'weekly' ? 'week' : 'month'}</span> : null}
                     </p>

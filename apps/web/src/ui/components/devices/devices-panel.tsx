@@ -200,7 +200,7 @@ function GetEverywhere({ onConnect }: { onConnect: () => void }) {
   ]
   return (
     <div className="py-6">
-      <h3 className="font-display text-heading font-bold tracking-[-0.015em] text-ink">Get {brand.name} everywhere</h3>
+      <h3 className="font-display text-heading font-medium tracking-[-0.015em] text-ink">Get {brand.name} everywhere</h3>
       <p className="mt-1 text-small text-ink-3">This browser is the only device so far.</p>
       <ul className="mt-4 grid gap-3 sm:grid-cols-3">
         {cards.map(({ icon: Icon, title, text, action }) => (

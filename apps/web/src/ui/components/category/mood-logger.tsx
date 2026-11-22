@@ -37,7 +37,7 @@ export function ScaleLogger({ slug, name, value }: { slug: string; name: string;
               on ? 'bg-ink text-bg shadow-1' : 'bg-surface-2 text-ink-2 hover:bg-surface-3 hover:text-ink',
             )}
           >
-            <span className="font-display text-[20px] leading-none font-bold tabular-nums">{f.v}</span>
+            <span className="font-display text-[20px] leading-none font-medium tabular-nums">{f.v}</span>
             <span className="text-[11px] font-medium">{f.label}</span>
           </button>
         )

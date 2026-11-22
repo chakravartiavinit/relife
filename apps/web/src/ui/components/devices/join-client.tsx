@@ -52,7 +52,7 @@ export function JoinClient() {
     return (
       <div>
         <span aria-hidden className="grid size-12 place-items-center rounded-[14px] bg-pill-wash text-pill-ink"><UserPlus className="size-6" strokeWidth={1.5} /></span>
-        <h1 className="mt-4 font-display text-title leading-tight font-extrabold tracking-[-0.03em] text-ink">This invite link is incomplete</h1>
+        <h1 className="mt-4 font-display text-title leading-tight font-medium tracking-[-0.03em] text-ink">This invite link is incomplete</h1>
         <p className="mt-1.5 text-body leading-relaxed text-ink-3">Open the whole link the person who runs this {brand.name} sent you. It ends with a long code after a #.</p>
         <Link href="/signin" className="mt-5 flex h-11 items-center justify-center rounded-md text-body font-medium text-ink-2 transition-colors duration-150 hover:text-ink focus-visible:outline-2 focus-visible:outline-pill">I already have an account here</Link>
       </div>
@@ -62,7 +62,7 @@ export function JoinClient() {
   return (
     <form onSubmit={(e) => { e.preventDefault(); void join() }}>
       <span aria-hidden className="grid size-12 place-items-center rounded-[14px] bg-pill-wash text-pill-ink"><UserPlus className="size-6" strokeWidth={1.5} /></span>
-      <h1 className="mt-4 font-display text-title leading-tight font-extrabold tracking-[-0.03em] text-ink">Join {brand.name} at <span className="inline-block max-w-full [overflow-wrap:anywhere]">{host}</span></h1>
+      <h1 className="mt-4 font-display text-title leading-tight font-medium tracking-[-0.03em] text-ink">Join {brand.name} at <span className="inline-block max-w-full [overflow-wrap:anywhere]">{host}</span></h1>
       <p className="mt-2 text-body leading-relaxed text-ink-3">You were invited to share this server. You get your own space: your data, your keys and your devices stay yours.</p>
 
       <div className="mt-5 rounded-[16px] bg-surface-2 p-4">

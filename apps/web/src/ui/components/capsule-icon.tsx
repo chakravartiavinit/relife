@@ -24,7 +24,7 @@ export function CapsuleIcon({ color = 'var(--pill)', icon: Icon, letter, size = 
       <span className="grid flex-[1.15] place-items-center text-white" style={{ background: `linear-gradient(160deg, color-mix(in oklch, ${color} 70%, white), ${color})` }}>
         {/* Counter-rotate the glyph so it reads upright inside the tilted capsule. */}
         <span className="rotate-[14deg]">
-          {Icon ? <Icon className={s.icon} strokeWidth={2.25} /> : <span className={cn('font-display font-extrabold leading-none', s.text)}>{letter}</span>}
+          {Icon ? <Icon className={s.icon} strokeWidth={2.25} /> : <span className={cn('font-display font-medium leading-none', s.text)}>{letter}</span>}
         </span>
       </span>
       <span className="flex-1 border-t-2 border-[oklch(0.178_0_0)]" />

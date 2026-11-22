@@ -33,7 +33,7 @@ export async function PeopleOverview({ user, today }: { user: User; today: strin
                 <PeekLink to={{ type: 'person', id: p.id }} aria-label={`${p.name}: open details`} className="flex min-w-0 flex-1 basis-48 items-center gap-4 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">
                   <span
                     aria-hidden
-                    className="grid size-10 shrink-0 place-items-center rounded-full text-body font-bold"
+                    className="grid size-10 shrink-0 place-items-center rounded-full text-body font-medium"
                     style={{ color: 'color-mix(in oklch, var(--cat-relationships) 80%, var(--ink))', background: overdue ? 'color-mix(in oklch, var(--warn) 18%, transparent)' : 'color-mix(in oklch, var(--cat-relationships) 16%, transparent)' }}
                   >
                     {p.name.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase()}

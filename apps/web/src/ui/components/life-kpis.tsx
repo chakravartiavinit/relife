@@ -215,7 +215,7 @@ function KpiTile({ tile: t }: { tile: Tile }) {
       </div>
       <div className="mt-3 text-[12px] text-ink-3">{t.label}</div>
       <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span className="font-display text-[26px] leading-none font-bold tracking-[-0.025em] text-ink tabular-nums">
+        <span className="font-display text-[26px] leading-none font-medium tracking-[-0.025em] text-ink tabular-nums">
           {t.value ?? <span className="text-ink-3">–</span>}
         </span>
         {t.delta ? <DeltaBadge d={t.delta} /> : null}
@@ -252,7 +252,7 @@ function StreakTile({ current, best, doneToday, days }: {
       </div>
       <div className="mt-3 text-[12px] text-ink-3">Days you showed up</div>
       <div className="mt-1 flex items-baseline gap-1.5 font-display leading-none text-ink tabular-nums">
-        <span className="text-[26px] font-bold tracking-[-0.025em]"><Ticker value={current} /></span>
+        <span className="text-[26px] font-medium tracking-[-0.025em]"><Ticker value={current} /></span>
         <span className="text-[14px] font-semibold text-ink-2">{current === 1 ? 'day' : 'days'}</span>
       </div>
       <div className={cn('mt-1.5 text-[12px] leading-snug', doneToday ? 'text-ink-3' : 'text-ink-2')}>

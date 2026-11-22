@@ -56,7 +56,7 @@ export function Dialog({ open, onClose, title, description, children, width = 'm
             </span>
           ) : null}
           <div className="min-w-0 flex-1">
-            <h2 className="font-display text-[20px] font-bold tracking-[-0.02em] text-ink">{title}</h2>
+            <h2 className="font-display text-[20px] font-medium tracking-[-0.02em] text-ink">{title}</h2>
             {description ? <p className="mt-1 text-[13px] text-ink-3">{description}</p> : null}
           </div>
           <Button variant="ghost" size="icon-sm" aria-label="Close" onClick={onClose} className="-mt-1 -mr-2">

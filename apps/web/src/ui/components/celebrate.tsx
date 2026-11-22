@@ -92,7 +92,7 @@ function LevelUpScreen({ d, onDone }: { d: LevelUp; onDone: () => void }) {
 
       <div className="relative flex flex-col items-center text-center">
         <motion.p
-          className="text-[13px] font-bold tracking-[0.4em] text-pill-ink uppercase"
+          className="text-[13px] font-medium tracking-[0.4em] text-pill-ink uppercase"
           initial={{ opacity: 0, y: 8, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.6, ease: EASE_OUT_STRONG, delay: 0.1 }}
         >
           Level up
@@ -113,7 +113,7 @@ function LevelUpScreen({ d, onDone }: { d: LevelUp; onDone: () => void }) {
             <AnimatePresence mode="popLayout" initial={false}>
               <motion.span
                 key={shown}
-                className="font-display text-[56px] leading-none font-extrabold tabular-nums"
+                className="font-display text-[56px] leading-none font-medium tabular-nums"
                 initial={{ y: 24, opacity: 0, filter: 'blur(4px)' }} animate={{ y: 0, opacity: 1, filter: 'blur(0px)' }} exit={{ y: -24, opacity: 0, filter: 'blur(4px)' }}
                 transition={{ duration: 0.28, ease: EASE_OUT_STRONG }}
               >
@@ -124,7 +124,7 @@ function LevelUpScreen({ d, onDone }: { d: LevelUp; onDone: () => void }) {
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE_OUT_STRONG, delay: 0.75 }}>
-          <h2 className="mt-6 font-display text-[34px] leading-tight font-extrabold tracking-[-0.03em] text-ink">Level {d.level}</h2>
+          <h2 className="mt-6 font-display text-[34px] leading-tight font-medium tracking-[-0.03em] text-ink">Level {d.level}</h2>
           <p className="mt-1 text-[15px] text-ink-2">
             {d.newTitle ? <>New title: <span className="font-semibold text-ink">{d.title}</span></> : <>Still <span className="font-semibold text-ink">{d.title}</span>, and stronger.</>}
           </p>
@@ -199,10 +199,10 @@ function MedalBanner({ d, onClose }: { d: Unlocked & { id: number }; onClose: ()
         <Icon className="size-[22px] drop-shadow-[0_1px_1px_oklch(0_0_0/0.3)]" strokeWidth={2} />
       </motion.span>
       <span className="relative min-w-0 flex-1">
-        <span className="block text-[11px] font-bold tracking-[0.12em] uppercase" style={{ color: `color-mix(in oklch, ${c} 70%, var(--ink))` }}>Achievement unlocked</span>
+        <span className="block text-[11px] font-medium tracking-[0.12em] uppercase" style={{ color: `color-mix(in oklch, ${c} 70%, var(--ink))` }}>Achievement unlocked</span>
         <span className="block truncate text-[15px] font-semibold text-ink">{d.name}</span>
       </span>
-      {d.xp ? <span className="relative shrink-0 text-[13px] font-bold tabular-nums" style={{ color: 'color-mix(in oklch, var(--medal-gold) 80%, var(--ink))' }}>+{d.xp} XP</span> : null}
+      {d.xp ? <span className="relative shrink-0 text-[13px] font-medium tabular-nums" style={{ color: 'color-mix(in oklch, var(--medal-gold) 80%, var(--ink))' }}>+{d.xp} XP</span> : null}
     </motion.div>
   )
 }
