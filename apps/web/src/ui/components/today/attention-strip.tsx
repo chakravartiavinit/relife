@@ -28,9 +28,9 @@ export function AttentionStrip({ cards, coach }: { cards: AttentionCard[]; coach
   return (
     <section aria-labelledby="check-first">
       <div className="mb-2 flex items-center justify-between gap-3 px-1">
-        <h2 id="check-first" className="font-mono text-label text-ink-3 uppercase">Check first{shown.length ? ` · ${shown.length}` : ''}</h2>
+        <h2 id="check-first" className="text-small font-medium text-ink-3">Check first{shown.length ? ` · ${shown.length}` : ''}</h2>
         {coach ? (
-          <Link href="/coach" className="inline-flex h-10 items-center gap-0.5 rounded-md px-1 text-small font-semibold text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-pill">
+          <Link href="/coach" className="inline-flex h-10 items-center gap-0.5 rounded-md px-1 text-small font-medium text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-pill">
             All in Coach · {coach}<ChevronRight className="size-4" strokeWidth={1.5} aria-hidden />
           </Link>
         ) : null}
@@ -53,10 +53,10 @@ function Card({ c }: { c: AttentionCard }) {
         <Icon className="size-5" strokeWidth={1.5} />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-body font-semibold text-ink">{c.title}</span>
+        <span className="block truncate text-body font-medium text-ink">{c.title}</span>
         <span className="block truncate text-caption text-ink-3">{c.detail}</span>
       </span>
-      <span className={cn('inline-flex h-8 shrink-0 items-center rounded-full bg-surface-2 px-3 text-caption font-semibold text-ink transition-[background-color] duration-150 group-hover:bg-surface-3')}>{ACTION[c.kind]}</span>
+      <span className={cn('inline-flex h-8 shrink-0 items-center rounded-full bg-surface-2 px-3 text-caption font-medium text-ink transition-[background-color] duration-150 group-hover:bg-surface-3')}>{ACTION[c.kind]}</span>
     </>
   )
   return c.peek ? <PeekLink to={c.peek} className={cls}>{body}</PeekLink> : <Link href={c.href} className={cls}>{body}</Link>

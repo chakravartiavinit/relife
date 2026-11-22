@@ -45,7 +45,7 @@ const exp = (over: Partial<ExportViewProps> = {}): ExportViewProps => ({
 function Panel({ name, title, children }: { name: string; title: string; children: React.ReactNode }) {
   return (
     <div data-panel={name} className="min-w-0">
-      <p className="mb-2 font-mono text-label text-ink-3 uppercase">{title}</p>
+      <p className="mb-2 text-small font-medium text-ink-3">{title}</p>
       <div className="w-[640px] max-w-full rounded-xl bg-surface px-6 pt-5 pb-6 shadow-3">
         <header className="mb-4 flex items-start gap-3">
           <span aria-hidden className="grid size-11 shrink-0 place-items-center rounded-[12px] bg-pill-wash text-pill-ink"><LayoutTemplate className="size-5" strokeWidth={2} /></span>

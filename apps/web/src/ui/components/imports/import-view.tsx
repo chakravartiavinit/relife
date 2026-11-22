@@ -57,7 +57,7 @@ export function ImportRail({ current, labels = IMPORT_STEPS }: { current: 0 | 1 
             <span className="relative block h-1.5 w-full overflow-hidden rounded-full bg-ink/[0.08] dark:bg-white/[0.1]">
               <span className={cn('absolute inset-0 rounded-full bg-pill transition-[translate] duration-300 ease-[var(--ease-out-strong)] motion-reduce:transition-none', state === 'next' ? '-translate-x-[101%]' : 'translate-x-0')} />
             </span>
-            <span className={cn('flex min-w-0 items-center gap-1 text-caption', state === 'now' ? 'font-semibold text-ink' : state === 'done' ? 'text-ink-2' : 'text-ink-3')}>
+            <span className={cn('flex min-w-0 items-center gap-1 text-caption', state === 'now' ? 'font-medium text-ink' : state === 'done' ? 'text-ink-2' : 'text-ink-3')}>
               {state === 'done' ? <Check aria-hidden className="size-3 shrink-0" strokeWidth={2.5} /> : null}
               <span className="truncate">{label}</span>
               <span className="sr-only">{state === 'done' ? ' (done)' : state === 'now' ? ' (current)' : ''}</span>
@@ -73,7 +73,7 @@ export function ImportRail({ current, labels = IMPORT_STEPS }: { current: 0 | 1 
 export function KindPicker({ kind, onPick, disabled }: { kind: ImportKind; onPick: (k: ImportKind) => void; disabled?: boolean }) {
   return (
     <fieldset disabled={disabled} className="min-w-0">
-      <legend className="mb-2 text-small font-semibold text-ink">What are you importing?</legend>
+      <legend className="mb-2 text-small font-medium text-ink">What are you importing?</legend>
       <div role="radiogroup" aria-label="What are you importing?" className="grid gap-2 sm:grid-cols-2">
         {(Object.keys(KIND) as ImportKind[]).map((k) => {
           const on = k === kind
@@ -86,7 +86,7 @@ export function KindPicker({ kind, onPick, disabled }: { kind: ImportKind; onPic
               <KindChip kind={k} />
               <span className="min-w-0 flex-1 pe-6">
                 <span className="flex flex-wrap items-center gap-x-2">
-                  <span className="text-body font-semibold text-ink">{KIND_LABEL[k]}</span>
+                  <span className="text-body font-medium text-ink">{KIND_LABEL[k]}</span>
                   <code className="rounded-xs bg-surface-2 px-1 font-mono text-label text-ink-2">{KIND[k].ext}</code>
                 </span>
                 <span className="mt-0.5 block text-caption text-pretty text-ink-3">{KIND[k].blurb}</span>
@@ -108,7 +108,7 @@ export function FileRow({ name, size, detail, action, busy }: { name: string; si
     <div className="flex items-center gap-3 rounded-[16px] bg-surface-2 p-3">
       <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-[10px] bg-surface shadow-1 text-ink-2"><FileText className="size-[18px]" strokeWidth={1.5} /></span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-small font-semibold text-ink">{name}</span>
+        <span className="block truncate text-small font-medium text-ink">{name}</span>
         <span className={cn('block truncate text-caption text-ink-3', busy && 'animate-pulse')}>{[fmtSize(size), detail].filter(Boolean).join(' · ')}</span>
       </span>
       {action}
@@ -126,7 +126,7 @@ export function RepeatWarning({ repeat }: { repeat: { fileName: string; at: stri
   return (
     <p role="status" className="flex items-start gap-2 rounded-[16px] bg-warn/10 p-3 text-small text-pretty text-ink">
       <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warn" strokeWidth={1.5} />
-      <span>Looks like you already imported this: <strong className="font-semibold">{repeat.fileName}</strong> covered the same dates on {fmtDay(repeat.at.slice(0, 10))}. Rows already there are skipped, so nothing is added twice.</span>
+      <span>Looks like you already imported this: <strong className="font-medium">{repeat.fileName}</strong> covered the same dates on {fmtDay(repeat.at.slice(0, 10))}. Rows already there are skipped, so nothing is added twice.</span>
     </p>
   )
 }
@@ -199,8 +199,8 @@ export function StatementColumns({ preview, onChange, idBase = 'imp' }: { previe
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[16px] bg-pill-wash p-3">
         <Calendar aria-hidden className="size-4 shrink-0 text-pill-ink" strokeWidth={1.5} />
         <p className="min-w-0 flex-1 basis-56 text-small text-ink">
-          {preview.dateChoices.length ? <strong className="font-semibold">Which way do dates read?</strong> : (
-            <>Dates read as <strong className="font-semibold">{m.dateFormat}</strong>{example ? <span className="text-ink-2"> · first row is {example}</span> : null}</>
+          {preview.dateChoices.length ? <strong className="font-medium">Which way do dates read?</strong> : (
+            <>Dates read as <strong className="font-medium">{m.dateFormat}</strong>{example ? <span className="text-ink-2"> · first row is {example}</span> : null}</>
           )}
         </p>
         <div className="w-40 shrink-0">
@@ -257,7 +257,7 @@ export function TrackerColumns({ preview, onChange, idBase = 'imp' }: { preview:
       <div className="flex items-center gap-3 rounded-[16px] bg-pill-wash p-3">
         <Calendar aria-hidden className="size-4 shrink-0 text-pill-ink" strokeWidth={1.5} />
         <p className="min-w-0 flex-1 text-small text-ink">
-          {preview.dateChoices.length ? <strong className="font-semibold">Which way do dates read?</strong> : <>Dates read as <strong className="font-semibold">{m.dateFormat}</strong></>}
+          {preview.dateChoices.length ? <strong className="font-medium">Which way do dates read?</strong> : <>Dates read as <strong className="font-medium">{m.dateFormat}</strong></>}
         </p>
         <div className="w-40 shrink-0">
           <Select aria-label="Date format" value={preview.dateChoices.length ? '' : m.dateFormat} onChange={(e) => onChange({ ...m, dateFormat: e.target.value })}>
@@ -268,7 +268,7 @@ export function TrackerColumns({ preview, onChange, idBase = 'imp' }: { preview:
       </div>
       {names.length ? (
         <div>
-          <h3 className="mb-2 text-small font-semibold text-ink">Feeds these trackers</h3>
+          <h3 className="mb-2 text-small font-medium text-ink">Feeds these trackers</h3>
           <ul className="divide-y divide-divider rounded-[16px] bg-surface shadow-1">
             {names.map((n) => (
               <li key={n} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] items-center gap-3 px-3 py-2">
@@ -299,7 +299,7 @@ export function StatementTable({ preview }: { preview: StatementPreview }) {
   return (
     <div>
       <div className="mb-2 flex items-baseline justify-between gap-3">
-        <h3 className="text-small font-semibold text-ink">Preview</h3>
+        <h3 className="text-small font-medium text-ink">Preview</h3>
         <p className="text-caption text-ink-3 tabular-nums">{Math.min(5, preview.sample.length)} of {nf.format(preview.rows)} rows</p>
       </div>
       {preview.sample.length ? (
@@ -307,7 +307,7 @@ export function StatementTable({ preview }: { preview: StatementPreview }) {
         <div className="hidden rounded-[16px] bg-surface shadow-1 md:block">
           <table className="w-full table-fixed text-start">
             <thead>
-              <tr className="font-mono text-label text-ink-3 uppercase">
+              <tr className="text-caption font-medium text-ink-3">
                 <th scope="col" className="w-[5.75rem] px-2.5 pt-3 pb-1.5 text-start font-normal">Date</th>
                 <th scope="col" className="px-2.5 pt-3 pb-1.5 text-start font-normal">Description</th>
                 <th scope="col" className="w-24 px-2.5 pt-3 pb-1.5 text-end font-normal">Amount</th>
@@ -320,7 +320,7 @@ export function StatementTable({ preview }: { preview: StatementPreview }) {
                 <tr key={k} className="h-11 text-small">
                   <td className="px-2.5 whitespace-nowrap text-ink-2">{fmtDay(r.date)}</td>
                   <td title={r.merchant} className="truncate px-2.5 text-ink">{r.merchant}</td>
-                  <td className={cn('px-2.5 text-end font-semibold whitespace-nowrap tabular-nums', r.amount > 0 ? 'text-good' : 'text-ink')}>{formatMoney(r.amount, preview.mapping.currency, { sign: true })}</td>
+                  <td className={cn('px-2.5 text-end font-medium whitespace-nowrap tabular-nums', r.amount > 0 ? 'text-good' : 'text-ink')}>{formatMoney(r.amount, preview.mapping.currency, { sign: true })}</td>
                   <td className="px-2.5 whitespace-nowrap"><span title={r.category} className="inline-flex h-6 max-w-full items-center rounded-full bg-surface-2 px-2 text-caption text-ink-2"><span className="truncate">{r.category}</span></span></td>
                   <td className="px-2.5 whitespace-nowrap">
                     <RowState row={r} />
@@ -335,7 +335,7 @@ export function StatementTable({ preview }: { preview: StatementPreview }) {
             <li key={k} className="px-3 py-2.5 text-small">
               <div className="flex items-baseline justify-between gap-3">
                 <span className="min-w-0 truncate text-ink" title={r.merchant}>{r.merchant}</span>
-                <span className={cn('shrink-0 font-semibold whitespace-nowrap tabular-nums', r.amount > 0 ? 'text-good' : 'text-ink')}>{formatMoney(r.amount, preview.mapping.currency, { sign: true })}</span>
+                <span className={cn('shrink-0 font-medium whitespace-nowrap tabular-nums', r.amount > 0 ? 'text-good' : 'text-ink')}>{formatMoney(r.amount, preview.mapping.currency, { sign: true })}</span>
               </div>
               <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span className="text-caption text-ink-3">{fmtDay(r.date)}</span>
@@ -362,7 +362,7 @@ export function TrackerTable({ preview }: { preview: TrackerCsvPreview }) {
   return (
     <div>
       <div className="mb-2 flex items-baseline justify-between gap-3">
-        <h3 className="text-small font-semibold text-ink">Preview</h3>
+        <h3 className="text-small font-medium text-ink">Preview</h3>
         <p className="text-caption text-ink-3 tabular-nums">{Math.min(5, preview.sample.length)} of {nf.format(preview.rows)} values</p>
       </div>
       {preview.sample.length ? (
@@ -371,7 +371,7 @@ export function TrackerTable({ preview }: { preview: TrackerCsvPreview }) {
             <li key={k} className="flex h-11 items-center gap-3 px-3 text-small">
               <span className="w-24 shrink-0 text-ink-2">{fmtDay(r.date)}</span>
               <span className="min-w-0 flex-1 truncate font-medium text-ink">{r.slug}</span>
-              <span className="font-semibold text-ink tabular-nums">{nf.format(r.value)}</span>
+              <span className="font-medium text-ink tabular-nums">{nf.format(r.value)}</span>
             </li>
           ))}
         </ul>
@@ -385,7 +385,7 @@ export function TrackerTable({ preview }: { preview: TrackerCsvPreview }) {
 export function ZipFound({ preview }: { preview: ZipPreview }) {
   return (
     <div className="flex flex-col gap-3">
-      <h3 className="text-small font-semibold text-ink">Found in this file</h3>
+      <h3 className="text-small font-medium text-ink">Found in this file</h3>
       <ul className="divide-y divide-divider rounded-[16px] bg-surface shadow-1">
         {preview.found.map((f) => (
           <li key={f} className="flex items-center gap-3 px-3 py-2.5 text-small text-ink"><Check aria-hidden className="size-4 shrink-0 text-good" strokeWidth={2.5} />{f}</li>
@@ -404,7 +404,7 @@ export function ZipFound({ preview }: { preview: ZipPreview }) {
 export function ImportProgress({ phase, done, total, sub }: { phase: string; done: number; total?: number; sub?: string }) {
   return (
     <div role="status" aria-live="polite" className="flex flex-col gap-3 py-2">
-      <p className="text-body font-semibold text-ink">{phase}…</p>
+      <p className="text-body font-medium text-ink">{phase}…</p>
       <Capsule value={total ? done : 0.35} max={total || 1} label={phase} className={cn(!total && 'animate-pulse')} />
       <p className="text-caption text-ink-3 tabular-nums">{total ? `${nf.format(done)} of ${nf.format(total)}` : sub ?? 'This can take a few minutes for a large file. You can close this window: it keeps running.'}</p>
     </div>
@@ -456,13 +456,13 @@ export function ImportResult({ kind, fileName, summary, currency, account, undon
           </div>
           {kind === 'statement' && s.spend?.length ? (
             <div>
-              <h4 className="mb-2 text-small font-semibold text-ink">Spending added by this file</h4>
+              <h4 className="mb-2 text-small font-medium text-ink">Spending added by this file</h4>
               <ul className="flex flex-col gap-2">
                 {s.spend.map((c) => (
                   <li key={c.category} className="grid grid-cols-[5.5rem_minmax(0,1fr)_6rem] items-center gap-3 text-small">
                     <span className="truncate text-ink-2">{c.category}</span>
                     <Capsule value={c.total} max={top} color="var(--cat-wealth)" size="sm" label={c.category} />
-                    <span className="text-end font-semibold text-ink tabular-nums">{formatMoney(c.total, currency)}</span>
+                    <span className="text-end font-medium text-ink tabular-nums">{formatMoney(c.total, currency)}</span>
                   </li>
                 ))}
               </ul>

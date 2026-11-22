@@ -54,14 +54,14 @@ async function Detail({ params }: { params: PageProps<'/plan/goals/[id]'>['param
               <Stat label="Target" value={target(g)} sub={directionLabel(g.direction)} />
             </div>
             <Capsule className="mt-5" value={fill(s)} color={color} label={`Progress toward ${g.title}`} />
-            <div className="mt-2 flex justify-between gap-3 text-[12.5px] text-ink-3 tabular-nums">
+            <div className="mt-2 flex justify-between gap-3 text-caption text-ink-3 tabular-nums">
               <span>{move?.since ?? 'No current value yet'}</span><span>{move?.left ?? ''}</span>
             </div>
-            <p className="mt-4 text-[12.5px] text-ink-3 tabular-nums">{coverageLine(g)} · Baseline: {g.baselineHow}</p>
-            {g.sensitive ? <p className="mt-2 text-[12.5px] text-ink-3">{brand.name} won’t set quests or suggest changes for this measure.</p> : null}
+            <p className="mt-4 text-caption text-ink-3 tabular-nums">{coverageLine(g)} · Baseline: {g.baselineHow}</p>
+            {g.sensitive ? <p className="mt-2 text-caption text-ink-3">{brand.name} won’t set quests or suggest changes for this measure.</p> : null}
             {g.measureKind === 'check_in' ? (
               <div className="mt-5">
-                <h3 className="mb-2 font-mono text-[11.5px] font-semibold tracking-[0.08em] text-ink-2 uppercase">Check-ins</h3>
+                <h3 className="mb-2 text-small font-medium text-ink-2">Check-ins</h3>
                 <CheckInList rows={data.checkIns} unit={g.unit} />
               </div>
             ) : null}
@@ -79,12 +79,12 @@ async function Detail({ params }: { params: PageProps<'/plan/goals/[id]'>['param
             <ul className="flex flex-col gap-4">
               {(s?.actions ?? []).map((a) => (
                 <li key={`${a.kind}:${a.id}`}>
-                  <div className="flex items-baseline justify-between gap-2 text-[13.5px]">
+                  <div className="flex items-baseline justify-between gap-2 text-small">
                     <span className={a.available ? 'min-w-0 truncate font-medium text-ink' : 'min-w-0 truncate text-ink-3'}>{a.name}</span>
-                    <span className="shrink-0 text-[12.5px] text-ink-3 tabular-nums">{!a.available ? 'Action no longer available' : a.kind === 'schedule' ? (a.due ? `${a.done} of ${a.due} days` : 'Nothing due') : `recorded ${a.recordedDays ?? 0} of ${a.windowDays} days`}</span>
+                    <span className="shrink-0 text-caption text-ink-3 tabular-nums">{!a.available ? 'Action no longer available' : a.kind === 'schedule' ? (a.due ? `${a.done} of ${a.due} days` : 'Nothing due') : `recorded ${a.recordedDays ?? 0} of ${a.windowDays} days`}</span>
                   </div>
                   {a.available && a.kind === 'schedule' && a.due ? <Capsule size="sm" className="mt-1.5" value={a.done ?? 0} max={a.due} color={color} label={`${a.name} adherence`} /> : null}
-                  {a.available && a.kind === 'tracker' ? <p className="mt-1 text-[12px] text-ink-3">Days without a record aren’t counted as misses.</p> : null}
+                  {a.available && a.kind === 'tracker' ? <p className="mt-1 text-caption text-ink-3">Days without a record aren’t counted as misses.</p> : null}
                 </li>
               ))}
             </ul>

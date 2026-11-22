@@ -7,7 +7,7 @@ import type { Channel } from '@/domain/notify'
 import { sendTestMessage } from '@/app/actions'
 import { linkTelegramAction, unlinkTelegramAction } from '@/app/people-actions'
 import { Button, buttonClass } from './button'
-import { Card, SystemLabel } from './card'
+import { Card, SectionLabel } from './card'
 import { cn } from '../cn'
 import { PushControl } from './push-control'
 
@@ -61,7 +61,7 @@ export function NotificationChannel({ telegram, stats, pushDevices, push, locked
   return (
     <Card as="section" aria-labelledby="channel-h" className="flex flex-col gap-4">
       <div>
-        <SystemLabel>Where they go</SystemLabel>
+        <SectionLabel as="p">Where they go</SectionLabel>
         <h2 id="channel-h" className="mt-1.5 text-heading text-ink">Telegram, push and the app</h2>
       </div>
       <div className="flex items-start gap-3">

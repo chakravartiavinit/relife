@@ -19,7 +19,7 @@ const base = (kind: ShareKind, over: Partial<ShareCardViewProps>): ShareCardView
 
 const Panel = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <div data-panel={`share-${title.split(/[ (:,]/)[0].toLowerCase()}-${title.length}`} className="min-w-0">
-    <p className="mb-2 font-mono text-label text-ink-3 uppercase">{title}</p>
+    <p className="mb-2 text-small font-medium text-ink-3">{title}</p>
     <div className="w-[440px] max-w-full rounded-xl bg-surface p-5 shadow-3">
       <header className="mb-4 flex items-start gap-3">
         <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-md bg-pill-wash text-pill-ink"><Share2 className="size-5" strokeWidth={1.5} /></span>
@@ -55,7 +55,7 @@ export function ShareGallery() {
 
       {SHARE_KINDS.map((kind) => (
         <div key={kind} data-panel={`share-cards-${kind}`}>
-          <p className="mb-2 font-mono text-label text-ink-3 uppercase">{kind} card · defaults, then every field on</p>
+          <p className="mb-2 text-small font-medium text-ink-3">{kind} card · defaults, then every field on</p>
           <div className="flex flex-wrap items-start gap-4">
             {(['light', 'dark'] as const).flatMap((t) => (['square', 'story'] as const).flatMap((s) => [defaultShow(kind), SHARE_FIELDS[kind].map((f) => f.id)].map((fields, i) => (
               // eslint-disable-next-line @next/next/no-img-element -- the route's own PNG, drawn per request

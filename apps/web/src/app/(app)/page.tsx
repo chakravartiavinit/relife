@@ -164,7 +164,7 @@ async function Plan({ user }: { user: User }) {
       {total ? <Capsule value={done} max={total} size="sm" color="var(--pill)" label="Done today" className="-mt-2 mb-5" /> : null}
       {goals.length ? (
         <div className="mb-6">
-          <h3 className="mb-2 flex items-center gap-2 px-1 font-mono text-label text-ink-3 uppercase">All day<span aria-hidden className="h-px flex-1 bg-divider" /></h3>
+          <h3 className="mb-2 flex items-center gap-2 px-1 text-small font-medium text-ink-3">All day<span aria-hidden className="h-px flex-1 bg-divider" /></h3>
           <Goals rows={goals} compact />
         </div>
       ) : null}

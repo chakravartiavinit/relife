@@ -38,8 +38,8 @@ function MockBadge({ wide = false }: { wide?: boolean }) {
     <span
       title="Random data from the relife_mock database. Your real data is untouched."
       className={cn(
-        'inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-semibold whitespace-nowrap text-warn shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--warn)_35%,transparent)]',
-        wide && '-mt-1 h-8 w-full justify-center rounded-md text-[12px]',
+        'inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-caption font-medium whitespace-nowrap text-warn shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--warn)_35%,transparent)]',
+        wide && '-mt-1 h-8 w-full justify-center rounded-md text-caption',
       )}
       style={{ background: 'color-mix(in oklch, var(--warn) 14%, transparent)' }}
     >

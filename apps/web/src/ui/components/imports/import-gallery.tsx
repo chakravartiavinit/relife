@@ -19,7 +19,7 @@ import {
 
 const Panel = ({ title, children, footer }: { title: string; children: React.ReactNode; footer?: React.ReactNode }) => (
   <div className="min-w-0">
-    <p className="mb-2 font-mono text-label text-ink-3 uppercase">{title}</p>
+    <p className="mb-2 text-small font-medium text-ink-3">{title}</p>
     <div className="w-[640px] max-w-full rounded-xl bg-surface shadow-3">
       <header className="flex items-start gap-3 px-6 pt-5 pb-3">
         <span aria-hidden className="grid size-11 shrink-0 place-items-center rounded-[12px] bg-pill-wash text-pill-ink"><FileUp className="size-5" strokeWidth={2} /></span>
@@ -53,7 +53,7 @@ export function ImportGallery() {
         <ImportRail current={0} />
         <KindPicker kind={kind} onPick={setKind} />
         <div>
-          <h3 className="mb-2 text-small font-semibold text-ink">File</h3>
+          <h3 className="mb-2 text-small font-medium text-ink">File</h3>
           <div className="flex min-h-24 flex-col items-center justify-center gap-1 rounded-[16px] border border-dashed border-hairline bg-surface-2/50 p-4 text-center">
             <span className="text-small font-medium text-ink">Choose a file or drop it here</span>
             <span className="text-caption text-ink-3">Bank or card statement</span>
@@ -65,7 +65,7 @@ export function ImportGallery() {
         <ImportRail current={0} />
         <KindPicker kind="statement" onPick={() => {}} />
         <div>
-          <h3 className="mb-2 text-small font-semibold text-ink">File</h3>
+          <h3 className="mb-2 text-small font-medium text-ink">File</h3>
           <FileRow name="sample-statement-oct-2026.csv" size={65_536} detail="418 rows" action={<Button variant="ghost" size="sm">Change file</Button>} />
         </div>
         <Note>Bank rows that match an app order (same amount, within 2 days) are linked, not counted twice.</Note>
@@ -87,7 +87,7 @@ export function ImportGallery() {
         footer={<Foot note="412 to add · 37 match app orders and will be linked"><Button variant="secondary">Back</Button><Button variant="primary">Import 412 rows</Button></Foot>}>
         <ImportRail current={1} />
         <FileRow name="sample-statement-oct-2026.csv" size={65_536} detail="418 rows · 1 Oct 2026 to 31 Oct 2026 · same columns as last Sample Bank file" action={<SavedChip />} />
-        <section aria-label="Columns"><h3 className="mb-2 text-small font-semibold text-ink">Columns</h3><StatementColumns idBase="g1" preview={{ ...STATEMENT_PREVIEW, mapping }} onChange={setMapping} /></section>
+        <section aria-label="Columns"><h3 className="mb-2 text-small font-medium text-ink">Columns</h3><StatementColumns idBase="g1" preview={{ ...STATEMENT_PREVIEW, mapping }} onChange={setMapping} /></section>
         <StatementTable preview={{ ...STATEMENT_PREVIEW, mapping }} />
       </Panel>
 
@@ -95,7 +95,7 @@ export function ImportGallery() {
         footer={<Foot note="Pick the amount column to see rows"><Button variant="secondary">Back</Button><Button variant="primary" disabled aria-disabled>Import 0 rows</Button></Foot>}>
         <ImportRail current={1} />
         <FileRow name="card-statement.csv" size={20_480} detail="new columns" />
-        <section aria-label="Columns"><h3 className="mb-2 text-small font-semibold text-ink">Columns</h3><StatementColumns idBase="g2" preview={{ ...STATEMENT_NEW, mapping: fresh }} onChange={setFresh} /></section>
+        <section aria-label="Columns"><h3 className="mb-2 text-small font-medium text-ink">Columns</h3><StatementColumns idBase="g2" preview={{ ...STATEMENT_NEW, mapping: fresh }} onChange={setFresh} /></section>
         <StatementTable preview={{ ...STATEMENT_NEW, mapping: fresh }} />
       </Panel>
 
@@ -104,14 +104,14 @@ export function ImportGallery() {
         <ImportRail current={1} />
         <FileRow name="statement-oct-copy.csv" size={30_720} detail="120 rows · 117 already imported · 1 Oct 2026 to 31 Oct 2026" />
         <RepeatWarning repeat={STATEMENT_DRCR.repeat!} />
-        <section aria-label="Columns"><h3 className="mb-2 text-small font-semibold text-ink">Columns</h3><StatementColumns idBase="g4" preview={{ ...STATEMENT_DRCR, mapping: drcr }} onChange={setDrcr} /></section>
+        <section aria-label="Columns"><h3 className="mb-2 text-small font-medium text-ink">Columns</h3><StatementColumns idBase="g4" preview={{ ...STATEMENT_DRCR, mapping: drcr }} onChange={setDrcr} /></section>
         <StatementTable preview={{ ...STATEMENT_DRCR, mapping: drcr }} />
       </Panel>
 
       <Panel title="2 · Check columns: tracker CSV" footer={<Foot note="96 values to add"><Button variant="secondary">Back</Button><Button variant="primary">Import 96 values</Button></Foot>}>
         <ImportRail current={1} />
         <FileRow name="habits.csv" size={4096} detail="96 values · 1 Aug 2026 to 31 Oct 2026" />
-        <section aria-label="Columns"><h3 className="mb-2 text-small font-semibold text-ink">Columns</h3><TrackerColumns idBase="g3" preview={TRACKER_PREVIEW} onChange={() => {}} /></section>
+        <section aria-label="Columns"><h3 className="mb-2 text-small font-medium text-ink">Columns</h3><TrackerColumns idBase="g3" preview={TRACKER_PREVIEW} onChange={() => {}} /></section>
         <TrackerTable preview={TRACKER_PREVIEW} />
       </Panel>
 
@@ -154,7 +154,7 @@ export function ImportGallery() {
         <ImportResult kind="statement" fileName="sample-statement-oct-2026.csv" summary={STATEMENT_SUMMARY} currency="INR" undone />
       </Panel>
 
-      <div className="w-full max-w-[760px]"><p className="mb-2 font-mono text-label text-ink-3 uppercase">Past imports: running, done, failed, removed</p><PastImports imports={PAST_IMPORTS} /></div>
+      <div className="w-full max-w-[760px]"><p className="mb-2 text-small font-medium text-ink-3">Past imports: running, done, failed, removed</p><PastImports imports={PAST_IMPORTS} /></div>
     </div>
   )
 }

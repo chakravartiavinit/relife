@@ -23,10 +23,10 @@ export function QueueItem({ kind, label, title, children, actions, busy, classNa
     <article aria-busy={busy} data-kind={kind} className={cn('flex gap-3.5 px-5 py-5 sm:gap-4', className)}>
       <IconChip color={k.color} className="mt-px size-9 rounded-[12px] [&_svg]:size-[18px]"><k.icon strokeWidth={1.5} /></IconChip>
       <div className="min-w-0 flex-1">
-        <p className="font-mono text-label uppercase text-ink-3">
+        <p className="text-caption font-medium text-ink-3">
           <span className="text-ink-2">{k.label}</span>{label ? <> <span aria-hidden>·</span> {label}</> : null}
         </p>
-        <h3 className="mt-1 text-heading font-semibold text-ink text-pretty">{title}</h3>
+        <h3 className="mt-1 text-heading font-medium text-ink text-pretty">{title}</h3>
         {children ? <div className="mt-1.5">{children}</div> : null}
         {actions ? <div className="mt-4 flex flex-wrap items-center gap-2">{actions}</div> : null}
       </div>

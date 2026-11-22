@@ -45,14 +45,14 @@ export function MoneyToday({ v }: { v: MoneyView }) {
       ) : <p className="text-small text-ink-3">No payments yet today.</p>}
 
       <div className="mt-4 border-t border-divider pt-4">
-        <h3 className="mb-1 font-mono text-label text-ink-3 uppercase">Renews this week</h3>
+        <h3 className="mb-1 text-small font-medium text-ink-3">Renews this week</h3>
         {v.renewals.length ? (
           <ul className="flex flex-col">
             {v.renewals.map((r) => (
               <li key={r.id}>
                 <PeekLink to={{ type: 'routine', id: r.id }} className={ROW}>
                   <span aria-hidden className={cn('grid size-10 shrink-0 place-content-center rounded-md bg-surface-2 text-center leading-none', r.soon && 'bg-warn/14 text-warn')}>
-                    <span className="font-mono text-label uppercase opacity-70">{r.weekday}</span>
+                    <span className="text-caption font-medium opacity-70">{r.weekday}</span>
                     <span className="num mt-0.5 text-small">{r.day}</span>
                   </span>
                   <span className="min-w-0 flex-1">

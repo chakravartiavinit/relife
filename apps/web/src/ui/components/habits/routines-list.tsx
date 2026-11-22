@@ -34,7 +34,7 @@ export async function PlanRoutines({ user }: { user: User }) {
         {total ? <Capsule value={done} max={total} size="sm" color="var(--pill)" label="Done today" className="-mt-2 mb-5" /> : null}
         {goals.length ? (
           <div className={rows.length ? 'mb-6' : undefined}>
-            <h3 className="mb-2 flex items-center gap-2 px-1 font-mono text-label text-ink-3 uppercase">Through the day<span aria-hidden className="h-px flex-1 bg-divider" /></h3>
+            <h3 className="mb-2 flex items-center gap-2 px-1 text-small font-medium text-ink-3">Through the day<span aria-hidden className="h-px flex-1 bg-divider" /></h3>
             <Goals rows={goals} compact />
           </div>
         ) : null}
@@ -69,8 +69,8 @@ export async function RoutinesList({ user }: { user: User }) {
       <Section title="Medicines" rows={medicines} empty="No medicines. Add one to track doses and stock." />
       <Card className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-[15px] font-semibold text-ink">Subscriptions & bills</h2>
-          <p className="mt-0.5 text-[13px] text-ink-3">Renewals, card bills and insurance live with your money.</p>
+          <h2 className="text-heading font-medium text-ink">Subscriptions & bills</h2>
+          <p className="mt-0.5 text-small text-ink-3">Renewals, card bills and insurance live with your money.</p>
         </div>
         <Link href="/wealth/subscriptions" className={buttonClass({ variant: 'secondary', size: 'sm' })}>
           Open <ArrowUpRight className="size-4" strokeWidth={1.5} />
@@ -95,7 +95,7 @@ function Section({ title, rows, empty }: { title: string; rows: ScheduleAdherenc
           ))}
         </ul>
       ) : (
-        <p className="text-[13px] text-ink-3">{empty}</p>
+        <p className="text-small text-ink-3">{empty}</p>
       )}
     </Card>
   )

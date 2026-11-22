@@ -81,7 +81,7 @@ export function Agenda({ rows, timeline }: { rows: AgendaRow[]; /** Today's layo
     <div className="flex flex-col gap-5">
       {groups.map((g) => (
         <section key={g.key} aria-label={g.label}>
-          <h3 className={cn('mb-1 flex items-center gap-2 px-1 text-[11.5px] font-semibold tracking-[0.08em] uppercase', g.alert ? 'text-bad' : 'text-ink-3')}>
+          <h3 className={cn('mb-1 flex items-center gap-2 px-1 text-small font-medium', g.alert ? 'text-bad' : 'text-ink-3')}>
             {g.label}
             <span className="font-medium tabular-nums opacity-70">{g.rows.length}</span>
             <span aria-hidden className="h-px flex-1 bg-divider" />
@@ -106,7 +106,7 @@ export function Agenda({ rows, timeline }: { rows: AgendaRow[]; /** Today's layo
       ))}
 
       {groups.length === 0 && rows.length > 0 ? (
-        <p className="rise flex items-center gap-2 px-1 text-[13.5px] text-ink-2">
+        <p className="rise flex items-center gap-2 px-1 text-small text-ink-2">
           <Check className="size-4 text-good" strokeWidth={2} aria-hidden />
           Everything for today is checked off.
         </p>
@@ -114,7 +114,7 @@ export function Agenda({ rows, timeline }: { rows: AgendaRow[]; /** Today's layo
 
       {closed.length ? (
         <details className="group" open={groups.length === 0}>
-          <summary className="flex h-9 cursor-pointer list-none items-center gap-2 rounded-md px-1 text-[13px] font-medium text-ink-3 select-none hover:text-ink-2 [&::-webkit-details-marker]:hidden">
+          <summary className="flex h-9 cursor-pointer list-none items-center gap-2 rounded-md px-1 text-small font-medium text-ink-3 select-none hover:text-ink-2 [&::-webkit-details-marker]:hidden">
             <svg aria-hidden viewBox="0 0 16 16" className="size-3.5 transition-[rotate] duration-150 group-open:rotate-90">
               <path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -148,10 +148,10 @@ function PeriodSection({ p, now, act }: { p: PeriodGroup<AgendaRow>; now: string
   const Icon = PERIOD_ICON[p.key]
   return (
     <section aria-label={p.label}>
-      <h3 className="mb-2 flex items-center gap-2 px-1 font-mono text-label text-ink-3 uppercase">
+      <h3 className="mb-2 flex items-center gap-2 px-1 text-small font-medium text-ink-3">
         <Icon aria-hidden className="size-3.5" strokeWidth={1.5} />
         {p.label}
-        <span className="font-sans tracking-normal normal-case">{p.summary}</span>
+        <span className="font-normal text-ink-3">{p.summary}</span>
         <span aria-hidden className="h-px flex-1 bg-divider" />
       </h3>
       <ul className="flex flex-col gap-2">
@@ -173,7 +173,7 @@ function PeriodSection({ p, now, act }: { p: PeriodGroup<AgendaRow>; now: string
 /** The current time, drawn between the rows that are before it and after it. */
 function NowLine({ now }: { now: string }) {
   return (
-    <li aria-label={`Now, ${now}`} className="flex items-center gap-2 px-3 text-caption font-semibold text-pill-ink tabular-nums">
+    <li aria-label={`Now, ${now}`} className="flex items-center gap-2 px-3 text-caption font-medium text-pill-ink tabular-nums">
       <span aria-hidden className="size-1.5 rounded-full bg-pill" />
       {now}
       <span aria-hidden className="h-px flex-1 bg-pill/40" />
@@ -249,9 +249,9 @@ function Row({ r, onToggle, onSkip }: { r: AgendaRow; onToggle: () => void; onSk
     <motion.div
       animate={won ? { backgroundColor: [`color-mix(in oklch, ${r.color} 18%, transparent)`, 'color-mix(in oklch, var(--ink) 2.5%, transparent)'] } : undefined}
       transition={{ duration: 0.3, ease: EASE_OUT_STRONG }}
-      className="group/row @container relative flex min-h-[64px] items-center gap-3.5 rounded-[14px] bg-ink/[0.025] px-3 py-2 transition-[background-color] duration-150 hover:bg-ink/[0.045] dark:bg-white/[0.035] dark:hover:bg-white/[0.06]"
+      className="group/row @container relative flex min-h-[64px] items-center gap-3.5 rounded-md bg-ink/[0.025] px-3 py-2 transition-[background-color] duration-150 hover:bg-ink/[0.045] dark:bg-white/[0.035] dark:hover:bg-white/[0.06]"
     >
-      <span className={cn('w-11 shrink-0 text-[13px] font-semibold tabular-nums', missed ? 'text-bad' : 'text-ink-2')}>{r.time}</span>
+      <span className={cn('w-11 shrink-0 text-small font-medium tabular-nums', missed ? 'text-bad' : 'text-ink-2')}>{r.time}</span>
       <motion.span
         aria-hidden
         animate={won ? { scale: [1, 1.12, 1], rotate: [0, -8, 0] } : undefined}
@@ -264,36 +264,32 @@ function Row({ r, onToggle, onSkip }: { r: AgendaRow; onToggle: () => void; onSk
       <div className="min-w-0 flex-1">
         <PeekLink to={{ type: 'routine', id: r.scheduleId }} className={cn('block truncate rounded-xs text-body font-medium transition-[color] duration-200 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill', won ? 'text-ink-3' : 'text-ink')}>{r.name}</PeekLink>
         {r.chips?.length || r.detail || missed ? (
-          <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 text-[12.5px] text-ink-3 tabular-nums">
-            {missed ? <span className="inline-flex h-5 items-center rounded-full bg-bad/10 px-2 text-[11.5px] font-semibold text-bad">Overdue</span> : null}
+          <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 text-caption text-ink-3 tabular-nums">
+            {missed ? <span className="inline-flex h-5 items-center rounded-full bg-bad/10 px-2 text-caption font-medium text-bad">Overdue</span> : null}
             {r.chips?.map((c) => (
-              <span key={c.text} className={cn('inline-flex h-5 items-center rounded-full px-2 text-[11.5px] font-medium whitespace-nowrap', c.warn ? 'bg-warn/12 text-warn' : 'bg-ink/[0.05] text-ink-2 dark:bg-white/[0.07]')}>{c.text}</span>
+              <span key={c.text} className={cn('inline-flex h-5 items-center rounded-full px-2 text-caption font-medium whitespace-nowrap', c.warn ? 'bg-warn/12 text-warn' : 'bg-ink/[0.05] text-ink-2 dark:bg-white/[0.07]')}>{c.text}</span>
             ))}
             {r.detail ? <span className="min-w-0 truncate">{r.detail}</span> : null}
           </div>
         ) : null}
       </div>
       <Button variant="ghost" size="sm" onClick={onSkip} className="text-ink-3 opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 max-lg:hidden @max-md:hidden">Skip</Button>
-      {r.xp ? (
-        <span className="relative inline-flex h-6 shrink-0 items-center rounded-full px-2 text-[11.5px] font-semibold tabular-nums max-sm:hidden @max-sm:hidden" style={{ color: 'color-mix(in oklch, var(--medal-gold) 80%, var(--ink))', background: 'color-mix(in oklch, var(--medal-gold) 12%, transparent)' }}>
-          +{r.xp} XP
-          <AnimatePresence>
-            {won ? (
-              <motion.span
-                aria-hidden
-                className="absolute inset-x-0 top-0 text-center font-medium"
-                initial={{ y: 0, opacity: 1, scale: 1 }} animate={{ y: -26, opacity: 0, scale: 1.25 }}
-                transition={{ duration: 0.4, ease: EASE_OUT_STRONG }}
-              >
-                +{r.xp}
-              </motion.span>
-            ) : null}
-          </AnimatePresence>
-        </span>
-      ) : null}
       <span className="relative grid place-items-center">
         {won ? <CheckBurst color={r.color} /> : null}
         <CheckButton r={r} onToggle={complete} size="lg" forceDone={won} />
+        <AnimatePresence>
+          {won && r.xp ? (
+            <motion.span
+              aria-hidden
+              className="pointer-events-none absolute -top-1 text-caption font-medium tabular-nums"
+              style={{ color: 'color-mix(in oklch, var(--medal-gold) 80%, var(--ink))' }}
+              initial={{ y: 0, opacity: 1 }} animate={{ y: -22, opacity: 0 }} exit={{ opacity: 0 }}
+              transition={{ duration: 0.4, ease: EASE_OUT_STRONG }}
+            >
+              +{r.xp}
+            </motion.span>
+          ) : null}
+        </AnimatePresence>
       </span>
     </motion.div>
   )
@@ -331,12 +327,12 @@ function DoneRow({ r, onUndo }: { r: AgendaRow; onUndo: () => void }) {
     <div className="group/row flex h-11 items-center gap-3.5 rounded-[12px] px-3 transition-[background-color] duration-150 hover:bg-ink/[0.03] dark:hover:bg-white/[0.04]">
       {/* Done: the same picture, faded and greyed, beside struck-through text. */}
       <RoutineArt name={r.name} kind={r.kind} area={r.area} className="size-5 shrink-0 opacity-70 grayscale-[0.5]" />
-      <span className="min-w-0 flex-1 truncate text-[14px] text-ink-3 line-through decoration-ink-3/40">{r.name}</span>
-      {skipped ? <span className="text-[12px] text-ink-3">Skipped</span> : null}
+      <span className="min-w-0 flex-1 truncate text-body text-ink-3 line-through decoration-ink-3/40">{r.name}</span>
+      {skipped ? <span className="text-caption text-ink-3">Skipped</span> : null}
       <Button variant="ghost" size="icon-sm" onClick={onUndo} aria-label={`Undo ${r.name}`} className="opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100">
         <RotateCcw className="size-3.5" strokeWidth={1.5} />
       </Button>
-      <span className="w-12 shrink-0 text-end text-[12.5px] text-ink-3 tabular-nums">{r.time}</span>
+      <span className="w-12 shrink-0 text-end text-caption text-ink-3 tabular-nums">{r.time}</span>
       <CheckButton r={r} onToggle={onUndo} size="sm" />
     </div>
   )
@@ -411,15 +407,15 @@ export function Goals({ rows, compact }: { rows: GoalRow[]; /** Today's "All day
                 <RoutineArt name={g.name} kind="routine" area={g.area ?? 'health'} />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[15px] font-medium text-ink">{g.name}</p>
-                <p className={cn('mt-0.5 text-[12.5px] tabular-nums', done ? 'font-medium text-good' : 'text-ink-3')}>
+                <p className="text-heading font-medium text-ink">{g.name}</p>
+                <p className={cn('mt-0.5 text-caption tabular-nums', done ? 'font-medium text-good' : 'text-ink-3')}>
                   {done ? `Goal reached · ${fmtAmount(g.value, g.unit)}` : `${fmtAmount(left, g.unit)} to go`}
                   {!done && g.next ? ` · next reminder ${g.next}` : ''}
                 </p>
               </div>
               <p className="shrink-0 text-right tabular-nums">
-                <span className="text-[20px] leading-none font-medium tracking-[-0.02em] text-ink">{fmtAmount(g.value, g.unit)}</span>
-                <span className="block text-[12px] text-ink-3">of {fmtAmount(g.target, g.unit)}</span>
+                <span className="text-title leading-none font-medium text-ink">{fmtAmount(g.value, g.unit)}</span>
+                <span className="block text-caption text-ink-3">of {fmtAmount(g.target, g.unit)}</span>
               </p>
             </div>
 
@@ -453,7 +449,7 @@ export function Goals({ rows, compact }: { rows: GoalRow[]; /** Today's "All day
                   {WATER_TARGETS.map((t) => (
                     <button
                       key={t} type="button" role="radio" aria-checked={g.target === t} onClick={() => g.target !== t && retarget(g, t)}
-                      className="h-7 rounded-full px-2.5 text-[12px] font-medium text-ink-3 tabular-nums transition-[background-color,color] duration-150 hover:text-ink aria-checked:bg-surface aria-checked:text-ink aria-checked:shadow-1 focus-visible:outline-2 focus-visible:outline-pill"
+                      className="h-7 rounded-full px-2.5 text-caption font-medium text-ink-3 tabular-nums transition-[background-color,color] duration-150 hover:text-ink aria-checked:bg-surface aria-checked:text-ink aria-checked:shadow-1 focus-visible:outline-2 focus-visible:outline-pill"
                     >
                       {t / 1000}L
                     </button>

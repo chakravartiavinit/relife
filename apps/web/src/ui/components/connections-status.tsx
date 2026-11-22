@@ -54,7 +54,7 @@ export function YourSources({ items, manage }: { items: ConnectorItem[]; manage:
       {broken.map((c) => <FixRow key={c.id} c={c} manage={manage} />)}
       {healthy.length ? (
         <div className="rounded-lg bg-surface p-2 shadow-1 sm:p-3">
-          <div aria-hidden className="hidden grid-cols-[minmax(0,1fr)_120px_120px_96px_88px] gap-3 px-3 pb-1 font-mono text-label text-ink-3 uppercase md:grid">
+          <div aria-hidden className="hidden grid-cols-[minmax(0,1fr)_120px_120px_96px_88px] gap-3 px-3 pb-1 text-caption font-medium text-ink-3 md:grid">
             <span>Source</span><span>Health</span><span>Last sync</span><span className="text-end">Synced</span><span />
           </div>
           <ul className="divide-y divide-divider">{first.map((c) => <SourceRow key={c.id} c={c} />)}</ul>
@@ -82,7 +82,7 @@ function FixRow({ c, manage }: { c: ConnectorItem; manage: Manage }) {
     <div className="flex flex-wrap items-center gap-3 rounded-lg p-3 shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--bad)_35%,transparent)]" style={{ background: 'color-mix(in oklab, var(--bad) 7%, var(--surface))' }}>
       <Logo id={c.id} category={c.category} size="sm" />
       <div className="min-w-0 flex-1 basis-56">
-        <PeekLink to={{ type: 'connector', id: c.id }} className="rounded-xs text-body font-semibold text-ink hover:underline focus-visible:outline-2 focus-visible:outline-pill">{c.name}</PeekLink>
+        <PeekLink to={{ type: 'connector', id: c.id }} className="rounded-xs text-body font-medium text-ink hover:underline focus-visible:outline-2 focus-visible:outline-pill">{c.name}</PeekLink>
         <p className="text-small text-ink-2"><span className={cn('font-medium', local ? 'text-warn' : 'text-bad')}>{local ? `${LOCAL_AI_DOWN}.` : `${STATUS[c.status].label}.`}</span> {local ? <Cmd text={problem ?? ''} /> : problem}{last}</p>
       </div>
       {local ? <RecheckLocalAi variant="primary" /> : c.oauth && c.status !== 'setup' ? (
@@ -141,7 +141,7 @@ export function SuggestedForYou({ items, areas, manage }: { items: ConnectorItem
             <div className="flex items-center gap-3">
               <Logo id={c.id} category={c.category} size="sm" />
               <div className="min-w-0">
-                <p className="truncate text-body font-semibold text-ink">{c.name}</p>
+                <p className="truncate text-body font-medium text-ink">{c.name}</p>
                 <p className="truncate text-caption text-ink-3">{c.category ? CATEGORY[c.category].label : ''}</p>
               </div>
             </div>
@@ -203,7 +203,7 @@ export function ConnectSuccess({ c, onDone }: { c: ConnectorItem; onDone: () => 
       <p className="flex items-center gap-2 text-heading text-ink"><span className="grid size-6 place-items-center rounded-full bg-good/15 text-good"><Check className="size-4" strokeWidth={2.5} aria-hidden /></span>{c.name} connected</p>
       <p className="text-small text-ink-2">The first sync runs in the background, so you can close this. {c.statusLabel ?? 'It starts within a minute.'}</p>
       <div>
-        <h3 className="mb-2 font-mono text-label text-ink-3 uppercase">What you’ll see and where</h3>
+        <h3 className="mb-2 text-small font-medium text-ink-3">What you’ll see and where</h3>
         <ul className="flex flex-col divide-y divide-divider rounded-md bg-surface-2/60 shadow-[inset_0_0_0_1px_var(--hairline)]">
           {rows.map((r) => (
             <li key={r.href}>

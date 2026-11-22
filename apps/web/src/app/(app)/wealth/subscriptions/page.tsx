@@ -128,20 +128,20 @@ async function Subscriptions() {
                 return (
                   <li key={s.id} className="flex items-center gap-4 border-t border-divider px-5 py-3 first:border-t-0">
                     <div className={cn('grid w-12 shrink-0 place-items-center rounded-[10px] py-1.5 text-center leading-none tabular-nums', soon ? 'bg-[color-mix(in_oklch,var(--warn)_14%,transparent)] text-warn' : 'bg-surface-2 text-ink-2')}>
-                      <span className="text-[17px] font-medium">{dayMonth.format(due!).split(' ')[0]}</span>
-                      <span className="mt-1 text-[10.5px] font-semibold uppercase">{dayMonth.format(due!).split(' ')[1]}</span>
+                      <span className="text-heading font-medium">{dayMonth.format(due!).split(' ')[0]}</span>
+                      <span className="mt-1 text-caption font-medium">{dayMonth.format(due!).split(' ')[1]}</span>
                     </div>
                     <BrandLogo name={s.name} size="sm" />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[14px] font-medium text-ink">{s.name}</p>
-                      <p className={cn('text-[12px]', soon ? 'font-medium text-warn' : 'text-ink-3')}>{dueLabel(daysLeft!)} · {weekday.format(due!)}</p>
+                      <p className="truncate text-body font-medium text-ink">{s.name}</p>
+                      <p className={cn('text-caption', soon ? 'font-medium text-warn' : 'text-ink-3')}>{dueLabel(daysLeft!)} · {weekday.format(due!)}</p>
                     </div>
-                    <p className="shrink-0 text-[14px] font-semibold text-ink tabular-nums">{s.amount ? formatMoney(s.amount, cur) : '–'}</p>
+                    <p className="shrink-0 text-body font-medium text-ink tabular-nums">{s.amount ? formatMoney(s.amount, cur) : '–'}</p>
                   </li>
                 )
               })}
             </ol>
-          ) : <p className="px-5 pb-4 text-[13px] text-ink-3">Nothing charges in the next {UPCOMING_DAYS} days.</p>}
+          ) : <p className="px-5 pb-4 text-small text-ink-3">Nothing charges in the next {UPCOMING_DAYS} days.</p>}
         </Card>
 
         <Card>
@@ -159,8 +159,8 @@ async function Subscriptions() {
       <section aria-labelledby="all-subs">
         <div className="mb-3 flex items-center gap-2 px-1">
           <LayoutGrid className="size-4 text-ink-3" strokeWidth={2} aria-hidden />
-          <h2 id="all-subs" className="text-[15px] font-semibold text-ink">All subscriptions</h2>
-          <span className="text-[13px] text-ink-3 tabular-nums">{items.length}</span>
+          <h2 id="all-subs" className="text-heading font-medium text-ink">All subscriptions</h2>
+          <span className="text-small text-ink-3 tabular-nums">{items.length}</span>
         </div>
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {items.map(({ s, due, daysLeft, cur, monthlyBase, rule, cycle, values }, i) => {
@@ -172,8 +172,8 @@ async function Subscriptions() {
                   <div className="flex items-start gap-3">
                     <BrandLogo name={s.name} size="md" />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[15px] font-semibold text-ink">{s.name}</p>
-                      <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[12.5px] text-ink-3">
+                      <p className="truncate text-heading font-medium text-ink">{s.name}</p>
+                      <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-caption text-ink-3">
                         {s.kind !== 'subscription' ? `${KIND_LABEL[s.kind as keyof typeof KIND_LABEL]} · ` : ''}{FREQ_LABEL[rule.freq]}
                         {!s.active ? <Badge>Paused</Badge> : null}
                       </p>
@@ -182,11 +182,11 @@ async function Subscriptions() {
                   </div>
 
                   <div className="flex items-baseline justify-between gap-3 tabular-nums">
-                    <p className="text-[22px] font-medium tracking-[-0.02em] text-ink">
-                      {s.amount ? formatMoney(s.amount, cur) : <span className="text-[15px] font-medium text-ink-3">No amount</span>}
-                      {s.amount ? <span className="ml-1 text-[13px] font-normal text-ink-3">/ {rule.freq === 'yearly' ? 'year' : rule.freq === 'weekly' ? 'week' : 'month'}</span> : null}
+                    <p className="text-title font-medium text-ink">
+                      {s.amount ? formatMoney(s.amount, cur) : <span className="text-heading font-medium text-ink-3">No amount</span>}
+                      {s.amount ? <span className="ml-1 text-small font-normal text-ink-3">/ {rule.freq === 'yearly' ? 'year' : rule.freq === 'weekly' ? 'week' : 'month'}</span> : null}
                     </p>
-                    {perMonthDiffers || (s.amount && cur !== base) ? <p className="text-[12px] text-ink-3">≈ {formatMoney(monthlyBase, base, { decimals: 0 })}/mo</p> : null}
+                    {perMonthDiffers || (s.amount && cur !== base) ? <p className="text-caption text-ink-3">≈ {formatMoney(monthlyBase, base, { decimals: 0 })}/mo</p> : null}
                   </div>
 
                   <div className="mt-auto">
@@ -195,8 +195,8 @@ async function Subscriptions() {
                         <span className={cn('reveal-hbar block h-full rounded-full', soon ? 'bg-warn' : 'bg-pill')} style={{ width: `${cycle * 100}%`, transformOrigin: 'left', '--i': i } as React.CSSProperties} />
                       </div>
                     ) : null}
-                    <div className="mt-2 flex items-center justify-between gap-3 text-[12px]">
-                      <span className={cn(soon ? 'font-semibold text-warn' : 'text-ink-2')}>
+                    <div className="mt-2 flex items-center justify-between gap-3 text-caption">
+                      <span className={cn(soon ? 'font-medium text-warn' : 'text-ink-2')}>
                         {!s.active ? 'Paused, no reminders' : due ? `Renews ${dueLabel(daysLeft!).toLowerCase()} · ${dayMonth.format(due)}` : 'No upcoming charge'}
                       </span>
                       {s.active && s.remindOffsetMin ? (

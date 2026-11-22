@@ -19,8 +19,8 @@ export function PulseRow({ tiles }: { tiles: PulseTile[] }) {
   return (
     <section aria-labelledby="life-pulse">
       <div className="mb-2 flex items-center justify-between gap-3 px-1">
-        <h2 id="life-pulse" className="font-mono text-label text-ink-3 uppercase">Life pulse</h2>
-        <Link href="/life" className="inline-flex h-10 items-center gap-0.5 rounded-md px-1 text-small font-semibold text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-pill">
+        <h2 id="life-pulse" className="text-small font-medium text-ink-3">Life pulse</h2>
+        <Link href="/life" className="inline-flex h-10 items-center gap-0.5 rounded-md px-1 text-small font-medium text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-pill">
           Open Life<ChevronRight className="size-4" strokeWidth={1.5} aria-hidden />
         </Link>
       </div>

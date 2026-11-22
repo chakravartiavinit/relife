@@ -8,7 +8,7 @@ import { PartyCard } from './party-card'
 // Buttons use the real actions, so on fixture ids they fail and the dialog shows its error.
 
 const Sub = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div className="min-w-0"><p className="mb-2 font-mono text-label text-ink-3 uppercase">{title}</p>{children}</div>
+  <div className="min-w-0"><p className="mb-2 text-small font-medium text-ink-3">{title}</p>{children}</div>
 )
 
 const ago = (ms: number) => new Date(Date.parse('2026-11-14T09:00:00Z') - ms).toISOString()

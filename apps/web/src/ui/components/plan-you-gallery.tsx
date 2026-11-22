@@ -32,7 +32,7 @@ const SUGGESTED: ConnectorItem[] = [
 ]
 
 const Sub = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div className="min-w-0"><p className="mb-2 font-mono text-label text-ink-3 uppercase">{title}</p>{children}</div>
+  <div className="min-w-0"><p className="mb-2 text-small font-medium text-ink-3">{title}</p>{children}</div>
 )
 const manage = (_c: ConnectorItem, trigger: React.ReactElement) => trigger
 

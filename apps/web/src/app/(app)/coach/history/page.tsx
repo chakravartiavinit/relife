@@ -33,7 +33,7 @@ export default function HistoryPage({ searchParams }: PageProps<'/coach/history'
   )
 }
 
-const sectionTitle = 'font-mono text-label uppercase text-ink-3'
+const sectionTitle = 'text-small font-medium text-ink-3'
 
 async function History({ searchParams }: { searchParams: PageProps<'/coach/history'>['searchParams'] }) {
   await connection()
@@ -71,8 +71,8 @@ async function History({ searchParams }: { searchParams: PageProps<'/coach/histo
                   <li key={d.id} className="flex items-start gap-3.5 px-5 py-4">
                     <IconChip color={k.color} className="mt-px size-9 rounded-[12px] [&_svg]:size-[18px]"><k.icon strokeWidth={1.5} /></IconChip>
                     <div className="min-w-0 flex-1">
-                      <p className="font-mono text-label uppercase text-ink-3"><span className="text-ink-2">{k.label}</span> <span aria-hidden>·</span> {when(d.at)}</p>
-                      <p className="mt-1 text-body font-semibold text-ink text-pretty">{sentenceCase(d.title)}</p>
+                      <p className="text-caption font-medium text-ink-3"><span className="text-ink-2">{k.label}</span> <span aria-hidden>·</span> {when(d.at)}</p>
+                      <p className="mt-1 text-body font-medium text-ink text-pretty">{sentenceCase(d.title)}</p>
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-1">
                       <Badge color={status.color}>{status.label}</Badge>

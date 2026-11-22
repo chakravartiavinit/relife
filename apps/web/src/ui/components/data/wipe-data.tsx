@@ -85,7 +85,7 @@ export function WipeData({ action = wipeAllData, onDone = () => { clearBrowserSt
 function List({ title, items }: { title: string; items: string[] }) {
   return (
     <div className="min-w-0">
-      <p className="mb-2 font-mono text-label text-ink-3 uppercase">{title}</p>
+      <p className="mb-2 text-small font-medium text-ink-3">{title}</p>
       <ul className="flex flex-col gap-1.5 text-small text-ink-2">
         {items.map((i) => <li key={i} className="flex gap-2"><span aria-hidden className="flex h-lh shrink-0 items-center"><span className="size-1 rounded-full bg-ink-3" /></span>{i}</li>)}
       </ul>

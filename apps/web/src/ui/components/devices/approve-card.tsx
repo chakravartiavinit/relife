@@ -6,7 +6,7 @@ import { Check, Clock, X } from 'lucide-react'
 import { approveDevice, denyDevice, type WaitingDevice } from '@/app/devices-actions'
 import { cn } from '@/ui/cn'
 import { Button } from '../button'
-import { Badge, SystemLabel } from '../card'
+import { Badge, SectionLabel } from '../card'
 import { ConnectCode } from './connect-code'
 import { DeviceTile, KIND } from './device-kind'
 import { ago, mmss, useCountdown } from './use-countdown'
@@ -52,7 +52,7 @@ export function ApproveCard({ device, onResult, className }: { device: WaitingDe
       <div role="status" className={cn('flex items-center gap-3 rounded-[16px] bg-pill-wash p-4', className)}>
         <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-full bg-good/15 text-good"><Check className="size-5" strokeWidth={2} /></span>
         <div className="min-w-0">
-          <p className="text-heading font-semibold text-ink">{device.name} is connected</p>
+          <p className="text-heading font-medium text-ink">{device.name} is connected</p>
           <p className="text-small text-ink-3">It stays signed in until you disconnect it in Settings → Devices.</p>
         </div>
       </div>
@@ -62,7 +62,7 @@ export function ApproveCard({ device, onResult, className }: { device: WaitingDe
     return (
       <div role="status" className={cn('flex items-center gap-3 rounded-[16px] bg-surface-2 p-4', className)}>
         <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-full bg-bad/10 text-bad"><X className="size-5" strokeWidth={2} /></span>
-        <p className="text-heading font-semibold text-ink">You turned {device.name} away</p>
+        <p className="text-heading font-medium text-ink">You turned {device.name} away</p>
       </div>
     )
   }
@@ -72,13 +72,13 @@ export function ApproveCard({ device, onResult, className }: { device: WaitingDe
       <div className="flex items-start gap-4">
         <DeviceTile kind={device.kind} className="size-11" />
         <div className="min-w-0 flex-1">
-          <h3 className="font-display text-title font-medium tracking-[-0.02em] text-ink">Approve {title}?</h3>
+          <h3 className="font-display text-title font-medium text-ink">Approve {title}?</h3>
           <p className="mt-1 text-small text-ink-3">It asked to connect to your {brand.name} {ago(device.askedAt)}.</p>
         </div>
       </div>
 
       <div className="mt-4 flex flex-col items-center gap-3 rounded-[16px] bg-surface-2 px-4 py-4 text-center">
-        <SystemLabel>Check the code</SystemLabel>
+        <SectionLabel as="p">Check the code</SectionLabel>
         <ConnectCode code={device.code} size="lg" struck={expired} />
         <p className="text-small text-ink-3">It should match the code on {kind.label === 'Browser' ? 'that browser' : `the ${kind.label}`}’s screen.</p>
       </div>

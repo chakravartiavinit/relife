@@ -72,8 +72,8 @@ export function GoalReviewCard({ g, review, picker, today, onSaved, onNext, last
         <div className="flex min-w-0 items-start gap-3">
           <IconChip color={color}><Target strokeWidth={1.5} /></IconChip>
           <div className="min-w-0">
-            <h2 id={`review-${review.id}`} className="text-[16px] leading-7 font-semibold text-ink">{g.title}</h2>
-            <p className="-mt-0.5 text-[13px] text-ink-3 tabular-nums">{g.measureKind === 'tracker' ? `${g.measureName} tracker` : `Check-in · ${g.measureName}`} · {day(s.window.from)}–{day(s.window.to)}</p>
+            <h2 id={`review-${review.id}`} className="text-heading leading-7 font-medium text-ink">{g.title}</h2>
+            <p className="-mt-0.5 text-small text-ink-3 tabular-nums">{g.measureKind === 'tracker' ? `${g.measureName} tracker` : `Check-in · ${g.measureName}`} · {day(s.window.from)}–{day(s.window.to)}</p>
           </div>
         </div>
         <GoalStatusBadge g={{ snapshot: s, sensitive: g.sensitive }} />
@@ -81,13 +81,13 @@ export function GoalReviewCard({ g, review, picker, today, onSaved, onNext, last
 
       <div className="grid gap-6 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         <section aria-label="What you did">
-          <h3 className="mb-3 font-mono text-[11.5px] font-semibold tracking-[0.08em] text-ink-2 uppercase">What you did</h3>
+          <h3 className="mb-3 text-small font-medium text-ink-2">What you did</h3>
           <ul className="flex flex-col gap-3">
             {s.actions.map((a) => (
               <li key={`${a.kind}:${a.id}`}>
-                <div className="flex items-baseline justify-between gap-2 text-[13.5px]">
+                <div className="flex items-baseline justify-between gap-2 text-small">
                   <span className={cn('min-w-0 truncate', a.available ? 'text-ink' : 'text-ink-3')}>{a.name}</span>
-                  <span className="shrink-0 text-[12.5px] text-ink-3 tabular-nums">
+                  <span className="shrink-0 text-caption text-ink-3 tabular-nums">
                     {!a.available ? 'Not available' : a.kind === 'schedule' ? (a.due ? `${a.done} of ${a.due} days` : 'Nothing due') : a.recordedDays ? `recorded ${a.recordedDays} of ${a.windowDays} days` : 'No record'}
                   </span>
                 </div>
@@ -98,7 +98,7 @@ export function GoalReviewCard({ g, review, picker, today, onSaved, onNext, last
         </section>
 
         <section aria-label="How the outcome moved">
-          <h3 className="mb-3 font-mono text-[11.5px] font-semibold tracking-[0.08em] text-ink-2 uppercase">How the outcome moved</h3>
+          <h3 className="mb-3 text-small font-medium text-ink-2">How the outcome moved</h3>
           {g.measureKind === 'check_in' && s.outcome.observations === 0 ? (
             <CheckInPanel g={g} today={today} />
           ) : (
@@ -111,10 +111,10 @@ export function GoalReviewCard({ g, review, picker, today, onSaved, onNext, last
           {s.outcome.days?.length && s.outcome.days.length <= 14 ? (
             <ol className="mt-4 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${s.outcome.days.length}, minmax(0, 1fr))` }} aria-label="Outcome by day">
               {s.outcome.days.map((d) => (
-                <li key={d.date} className={cn('flex flex-col items-center rounded-[10px] py-1.5 text-[11.5px] tabular-nums', d.value == null && 'bg-surface-3 shadow-[inset_0_0_0_1px_var(--hairline)] bg-[repeating-linear-gradient(135deg,transparent_0_4px,var(--hairline)_4px_5px)]')}
+                <li key={d.date} className={cn('flex flex-col items-center rounded-[10px] py-1.5 text-caption tabular-nums', d.value == null && 'bg-surface-3 shadow-[inset_0_0_0_1px_var(--hairline)] bg-[repeating-linear-gradient(135deg,transparent_0_4px,var(--hairline)_4px_5px)]')}
                   style={d.value != null ? { background: `color-mix(in oklch, ${color} 14%, transparent)` } : undefined}>
                   <span className="text-ink-3">{weekday(d.date).slice(0, 2)}</span>
-                  <span className="font-semibold text-ink">{d.value == null ? <><span aria-hidden>—</span><span className="sr-only">No data</span></> : value(d.value, null)}</span>
+                  <span className="font-medium text-ink">{d.value == null ? <><span aria-hidden>—</span><span className="sr-only">No data</span></> : value(d.value, null)}</span>
                 </li>
               ))}
             </ol>
@@ -132,7 +132,7 @@ export function GoalReviewCard({ g, review, picker, today, onSaved, onNext, last
 
       <div className="mt-5 border-t border-divider pt-5">
         {saved ? (
-          <div role="status" className="flex flex-wrap items-center gap-2 text-[13.5px] text-ink-2">
+          <div role="status" className="flex flex-wrap items-center gap-2 text-small text-ink-2">
             <Badge color="var(--good)">{DECISIONS.find((d) => d.id === saved)?.done ?? 'Decided'}</Badge>
             <span className="tabular-nums">
               {saved === 'pause' ? 'Paused. Resume it any time on Goals.' : saved === 'finish' ? 'Moved to finished.' : `Next review ${weekday(g.nextReviewOn)}.`}
@@ -140,21 +140,21 @@ export function GoalReviewCard({ g, review, picker, today, onSaved, onNext, last
           </div>
         ) : (
           <>
-            <p className="mb-3 text-body font-semibold text-pretty text-ink">{review.prompt}</p>
+            <p className="mb-3 text-body font-medium text-pretty text-ink">{review.prompt}</p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup" aria-label={`Decision for ${g.title}`} aria-busy={pending || undefined}>
               {DECISIONS.map((d) => (
                 <button
                   key={d.id} type="button" role="radio" aria-checked={choice === d.id} disabled={pending} onClick={() => pick(d.id)}
                   className="flex min-h-[72px] flex-col items-start gap-1 rounded-md bg-surface-2 p-3 text-start shadow-[inset_0_0_0_1px_var(--hairline)] transition-[background-color,box-shadow,transform] duration-150 ease-out-quint hover:bg-surface-3 active:scale-[0.96] aria-checked:bg-surface aria-checked:shadow-[inset_0_0_0_2px_var(--ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill disabled:opacity-60"
                 >
-                  <span className="flex items-center gap-1.5 text-body font-semibold text-ink"><d.icon className="size-4" strokeWidth={1.5} aria-hidden />{d.label}</span>
+                  <span className="flex items-center gap-1.5 text-body font-medium text-ink"><d.icon className="size-4" strokeWidth={1.5} aria-hidden />{d.label}</span>
                   <span className="text-caption text-ink-3">{d.hint}</span>
                 </button>
               ))}
             </div>
             {choice ? (
               <div role="status" className="mt-3 rounded-md bg-surface-2 p-3 text-small text-ink-2">
-                <span className="mb-1 block font-mono text-label text-ink-3 uppercase">What changes</span>
+                <span className="mb-1 block text-small font-medium text-ink-3">What changes</span>
                 {choice === 'keep' ? `Nothing changes. Next review ${weekday(g.nextReviewOn)}.` : null}
                 {choice === 'pause' ? 'Reviews and quest links stop. Your routines keep running. Resume any time on Goals.' : null}
                 {choice === 'finish' ? `Ends early${s.outcome.current != null ? ` at ${value(s.outcome.current, g.unit)} of ${target(g)}` : ''}. Frees a slot. A finished goal can’t be resumed.` : null}
@@ -203,8 +203,8 @@ export function CheckInPanel({ g, today, full = false }: { g: GoalViewData; toda
     <form action={submit} className={cn('flex flex-col gap-3', !full && 'rounded-md bg-surface-2 p-3')}>
       {!full ? (
         <div>
-          <p className="text-[13.5px] font-medium text-ink">No check-in this period yet</p>
-          <p className="text-[12.5px] text-ink-3 tabular-nums">{latest ? `Last ${value(latest.value, g.unit)} on ${day(latest.localDate)} · ` : ''}baseline {value(g.baselineValue, g.unit)} · target {target(g)}</p>
+          <p className="text-small font-medium text-ink">No check-in this period yet</p>
+          <p className="text-caption text-ink-3 tabular-nums">{latest ? `Last ${value(latest.value, g.unit)} on ${day(latest.localDate)} · ` : ''}baseline {value(g.baselineValue, g.unit)} · target {target(g)}</p>
         </div>
       ) : null}
       <div className={cn('grid gap-3', full ? 'sm:grid-cols-2' : 'grid-cols-[1fr_auto]')}>
@@ -217,8 +217,8 @@ export function CheckInPanel({ g, today, full = false }: { g: GoalViewData; toda
       </div>
       {full ? <Field label="Note" htmlFor={`cin-${g.id}`}><Textarea id={`cin-${g.id}`} name="note" maxLength={280} rows={2} placeholder="Optional" /></Field> : null}
       {full ? <div><Button type="submit" variant="primary" disabled={pending}>{pending ? 'Saving…' : 'Save check-in'}</Button></div> : null}
-      {error ? <p role="alert" className="rounded-md bg-bad/8 px-3 py-2 text-[13px] text-bad">{error}</p> : null}
-      {saved ? <p role="status" className="text-[12.5px] text-ink-2">Check-in saved.</p> : <p className="text-[12.5px] text-ink-3">Leaving it empty records this period as missing, not as zero.</p>}
+      {error ? <p role="alert" className="rounded-md bg-bad/8 px-3 py-2 text-small text-bad">{error}</p> : null}
+      {saved ? <p role="status" className="text-caption text-ink-2">Check-in saved.</p> : <p className="text-caption text-ink-3">Leaving it empty records this period as missing, not as zero.</p>}
     </form>
   )
 }

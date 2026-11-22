@@ -7,7 +7,7 @@ import { reachStatus } from '@/app/devices-actions'
 import type { ReachId, ReachOption } from '@/core/auth/reach'
 import { cn } from '@/ui/cn'
 import { Button, buttonClass } from '../button'
-import { Card, SystemLabel } from '../card'
+import { Card, SectionLabel } from '../card'
 import { OfferQr } from './offer-qr'
 import { PushControl } from '../push-control'
 import { ReachOptionRow } from './reach-option-row'
@@ -54,7 +54,7 @@ export function PhoneSetup({ reach, phone, qr, push, check = reachStatus }: {
     <section aria-labelledby="reach-h" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-end justify-between gap-2 px-1">
         <div>
-          <h2 id="reach-h" className="text-heading font-semibold text-ink">How your phone reaches {brand.name}</h2>
+          <h2 id="reach-h" className="text-heading font-medium text-ink">How your phone reaches {brand.name}</h2>
           <p className="mt-0.5 max-w-[62ch] text-small text-ink-3">Pick one that is ready. Https addresses can install the web app and send notifications.</p>
         </div>
         <Button size="sm" onClick={recheck} disabled={pending}>
@@ -73,13 +73,13 @@ export function PhoneSetup({ reach, phone, qr, push, check = reachStatus }: {
     <section aria-labelledby="scan-h">
       <Card className="flex h-full flex-col gap-3">
         <div>
-          <SystemLabel>Scan</SystemLabel>
+          <SectionLabel as="p">Scan</SectionLabel>
           <h2 id="scan-h" className="mt-1.5 text-heading text-ink">Pair this phone</h2>
         </div>
         {picked ? (
           <>
             <div className="mx-auto w-full max-w-[252px]">{qr ? qr(picked.id) : <OfferQr choice={picked.id} />}</div>
-            <p className="text-center text-small text-ink-3">Point the phone camera at it for the web app, or tap <b className="font-semibold text-ink-2">Scan code</b> in the Android app.</p>
+            <p className="text-center text-small text-ink-3">Point the phone camera at it for the web app, or tap <b className="font-medium text-ink-2">Scan code</b> in the Android app.</p>
           </>
         ) : (
           <div className="flex flex-col items-center gap-2 rounded-[16px] bg-surface-2 p-6 text-center">
@@ -127,13 +127,13 @@ function OnYourPhone({ live, push }: { live: boolean; push?: React.ReactNode }) 
     window.addEventListener('beforeinstallprompt', onPrompt)
     return () => window.removeEventListener('beforeinstallprompt', onPrompt)
   }, [live])
-  const b = (t: string) => <b className="font-semibold text-ink">{t}</b>
+  const b = (t: string) => <b className="font-medium text-ink">{t}</b>
 
   return (
     <section aria-labelledby="phone-h">
       <Card className="flex h-full flex-col gap-4">
         <div>
-          <SystemLabel>On your phone</SystemLabel>
+          <SectionLabel as="p">On your phone</SectionLabel>
           <h2 id="phone-h" className="mt-1.5 text-heading text-ink">Install it, then turn on notifications</h2>
         </div>
         <ol className="flex flex-col gap-4 text-body leading-snug text-ink-2">
@@ -150,7 +150,7 @@ function OnYourPhone({ live, push }: { live: boolean; push?: React.ReactNode }) 
             {live ? <div className="mt-3 rounded-[16px] bg-surface-2 p-4">{push ?? <PushControl devices={0} />}</div> : null}
           </Step>
           <Step n={3}>
-            <span className="block">{b('Android: Health Connect.')} Install the {brand.name} Android app, tap <b className="font-semibold text-ink">Scan code</b> and point it at the code. It sends steps, sleep and heart rate once an hour. Only health data: it cannot read anything else.</span>
+            <span className="block">{b('Android: Health Connect.')} Install the {brand.name} Android app, tap <b className="font-medium text-ink">Scan code</b> and point it at the code. It sends steps, sleep and heart rate once an hour. Only health data: it cannot read anything else.</span>
             <a href={APK_URL} target="_blank" rel="noreferrer" className={cn(buttonClass({ size: 'sm', className: 'mt-2' }))}><Download className="size-4" strokeWidth={1.5} aria-hidden />Get the Android app</a>
           </Step>
         </ol>

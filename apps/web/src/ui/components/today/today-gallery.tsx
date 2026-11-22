@@ -16,7 +16,7 @@ import * as fx from '@/ui/fixtures/today'
 // and quantity rows use the real actions, so on fixture ids a tap fails and the row comes back with the error toast.
 
 const Sub = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div className="min-w-0"><p className="mb-2 font-mono text-label text-ink-3 uppercase">{title}</p>{children}</div>
+  <div className="min-w-0"><p className="mb-2 text-small font-medium text-ink-3">{title}</p>{children}</div>
 )
 
 export function TodayGallery() {
