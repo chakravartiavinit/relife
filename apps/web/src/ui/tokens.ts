@@ -18,5 +18,10 @@ export const CHART = {
   accent: 'var(--pill)',
   good: 'var(--good)',
   bad: 'var(--bad)',
-  series: ['var(--cat-skills)', 'var(--cat-health)', 'var(--cat-wealth)', 'var(--cat-mind)', 'var(--cat-relationships)', 'var(--line-blue)'],
+  /** The ramp for everything that is not the lead of a chart: rank 2, rank 3, then Other and the rest. */
+  neutral: [
+    'color-mix(in oklch, var(--ink-3) 70%, var(--surface))',
+    'color-mix(in oklch, var(--ink-3) 45%, var(--surface))',
+    'color-mix(in oklch, var(--ink-3) 25%, var(--surface))',
+  ],
 }

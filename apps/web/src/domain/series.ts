@@ -48,3 +48,48 @@ export function niceAxis(lo: number, hi: number, count = 4): { domain: [number, 
   for (let v = min; v <= max + step / 2; v = round(v + step)) ticks.push(v)
   return { domain: [min, max], ticks }
 }
+
+/**
+ * True when a stat tile has a trend worth drawing: three or more logged points. Here and not in charts.tsx, so a
+ * server component can ask before it renders the (client) `Sparkline` slot.
+ */
+export const hasTrend = (points: { value: number | null }[]) => points.filter((p) => p.value != null).length >= 3
+
+/** One series of a multi-series chart (spend by category per month): a value per period, null where nothing was logged. */
+export type Series = { id: string; name: string; color: string; values: (number | null)[] }
+/** A series with its place in the ranking: 1 is the biggest. The folded-up rest is `other`, ranked last. */
+export type RankedSeries = Series & { rank: number; other?: boolean }
+
+const total = (s: Series) => s.values.reduce<number>((a, v) => a + (v ?? 0), 0)
+
+/**
+ * The series a chart leads with: sorted by total (ties keep their input order), the top `n` kept with rank 1..n and
+ * the rest folded into one `Other` series (rank n + 1, summed per period, null where every folded value is null).
+ * `pin` names a series that always takes rank 1 (the lead the page chose), whatever its total.
+ */
+export function leadSeries(series: Series[], n: number, pin?: string): RankedSeries[] {
+  const sorted = series
+    .map((s, i) => ({ s, i, t: total(s) }))
+    .sort((a, b) => (pin ? Number(b.s.id === pin) - Number(a.s.id === pin) : 0) || b.t - a.t || a.i - b.i)
+    .map((x) => x.s)
+  const keep = Math.max(1, Math.floor(n))
+  const top = sorted.slice(0, keep).map((s, i): RankedSeries => ({ ...s, rank: i + 1 }))
+  const rest = sorted.slice(keep)
+  if (!rest.length) return top
+  const periods = Math.max(...series.map((s) => s.values.length))
+  const values = Array.from({ length: periods }, (_, j) => {
+    const vs = rest.map((s) => s.values[j]).filter((v): v is number => v != null)
+    return vs.length ? vs.reduce((a, v) => a + v, 0) : null
+  })
+  return [...top, { id: 'other', name: 'Other', color: '', values, rank: top.length + 1, other: true }]
+}
+
+/**
+ * Drop the periods before anything happened: leading periods where every series is 0 or null. Gaps after the first
+ * active period stay (a month with no spend is a fact). `dropped` is how many periods went.
+ */
+export function trimLeadingEmpty<T extends { values: (number | null)[] }>(categories: string[], series: T[]): { categories: string[]; series: T[]; dropped: number } {
+  const first = categories.findIndex((_, j) => series.some((s) => (s.values[j] ?? 0) !== 0))
+  const dropped = first < 0 ? categories.length : first
+  return { categories: categories.slice(dropped), series: series.map((s) => ({ ...s, values: s.values.slice(dropped) })), dropped }
+}

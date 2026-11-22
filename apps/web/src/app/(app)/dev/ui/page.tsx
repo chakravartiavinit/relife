@@ -3,6 +3,7 @@ import { connection } from 'next/server'
 import { Suspense } from 'react'
 import { Brain, Droplets, HeartPulse, Plus, Wallet } from 'lucide-react'
 import { CATEGORIES } from '@/db/schema'
+import { hasTrend } from '@/domain/series'
 import { CATEGORY } from '@/ui/tokens'
 import { Button } from '@/ui/components/button'
 import { Badge, Card, CardHeader, IconChip, PageHeader, SectionLabel, Skeleton, Stat, SystemLabel } from '@/ui/components/card'
@@ -11,7 +12,7 @@ import { CapsuleIcon } from '@/ui/components/capsule-icon'
 import { Field, Input, Segmented, Select } from '@/ui/components/form'
 import { EmptyState } from '@/ui/components/empty'
 import { CapsuleMark, Wordmark } from '@/ui/components/logo'
-import { DailyBars, RankedBars, Sparkline, TrendArea } from '@/ui/components/charts'
+import { DailyBars, RankedBars, ShareDonut, Sparkline, StackedBars, TrendArea } from '@/ui/components/charts'
 import { BeuiGallery } from '@/ui/components/gallery-beui'
 import { PositionCard } from '@/ui/components/wealth/position-card'
 import { IlloGallery } from '@/ui/components/tour/illos'
@@ -51,6 +52,14 @@ const days = Array.from({ length: 21 }, (_, i) => {
   const d = new Date(Date.UTC(2026, 9, 10 + i))
   return { date: d.toISOString().slice(0, 10), value: i === 6 ? null : Math.round(5 + 3 * Math.sin(i / 2) + (i % 3)) }
 })
+
+const MONTHS = ['Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov']
+// Eleven categories whose spending starts in April: the first four months are empty.
+const SPEND_SAMPLE = ['Food delivery', 'Groceries', 'Shopping', 'Transport', 'Bills', 'Health', 'Travel', 'Fun', 'Gifts', 'Fees', 'Misc'].map((name, i) => ({
+  id: name.toLowerCase(), name, color: 'var(--sky)',
+  values: MONTHS.map((_, j) => (j < 4 ? null : Math.round((12 - i) * 900 + ((j * 7 + i * 3) % 5) * 700))),
+}))
+const SHARE_SAMPLE = ['Gold', 'Ether', 'Index fund', 'Bitcoin', 'Bonds', 'Cash', 'Silver', 'Other'].map((name, i) => ({ id: name, name, color: 'var(--pill)', value: 9000 - i * 1100 }))
 
 const recoverySample: RecoveryView = {
   id: '00000000-0000-4000-8000-000000000000', version: 1, localDate: '2026-11-11', choice: null, questId: null,
@@ -331,7 +340,11 @@ async function ChartSamples() {
       <div><div className="mb-2 text-[13px] text-ink-2">Daily bars with target</div><DailyBars data={days} target={7} unit="h" label="Daily bars sample" color={CATEGORY.skills.color} /></div>
       <div><div className="mb-2 text-[13px] text-ink-2">Trend with gap</div><TrendArea data={days} target={7} unit="h" label="Trend sample" color={CATEGORY.health.color} /></div>
       <div><div className="mb-2 text-[13px] text-ink-2">Ranked</div><RankedBars label="Ranked sample" unit="₹" data={[{ label: 'Food delivery', value: 6120 }, { label: 'Groceries', value: 4380 }, { label: 'Transport', value: 1920 }]} color={CATEGORY.wealth.color} /></div>
-      <div><div className="mb-2 text-[13px] text-ink-2">Sparkline</div><div className="w-40"><Sparkline data={days} color={CATEGORY.mind.color} /></div></div>
+      <div><div className="mb-2 text-small text-ink-2">Sparkline, drawn only when hasTrend ({String(hasTrend(days))}); two points: {String(hasTrend(days.slice(0, 2)))}</div><div className="w-40"><Sparkline data={days} color={CATEGORY.mind.color} /></div></div>
+      <div className="lg:col-span-2"><div className="mb-2 text-small text-ink-2">Stacked bars: 11 series, 4 empty leading months. The lead in the accent, two neutrals, the rest as Other; the legend stops at four</div><StackedBars label="Stacked sample" unit="₹" height={260} categories={MONTHS} series={SPEND_SAMPLE} /></div>
+      <div><div className="mb-2 text-small text-ink-2">Stacked bars with a single series</div><StackedBars label="One series" unit="₹" height={160} categories={MONTHS} series={SPEND_SAMPLE.slice(0, 1)} /></div>
+      <div><div className="mb-2 text-small text-ink-2">Share donut: 8 segments, top 3 and Other</div><ShareDonut label="Share sample" unit="₹" totalLabel="held" segments={SHARE_SAMPLE} /></div>
+      <div><div className="mb-2 text-small text-ink-2">Share donut: area colours are kept</div><ShareDonut label="XP by area" totalLabel="XP" segments={CATEGORIES.map((c, i) => ({ id: c, name: CATEGORY[c].label, color: CATEGORY[c].color, value: 120 - i * 15 }))} /></div>
     </div>
   )
 }

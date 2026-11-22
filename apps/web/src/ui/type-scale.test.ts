@@ -6,7 +6,7 @@ import { join } from 'node:path'
 // Ratchet: text sizes come from the type scale in globals.css (`text-body`, `text-title`, ...), not from
 // `text-[13px]`. The count may only go down. When you convert some, lower MAX_ARBITRARY_TEXT_SIZES to the
 // new count; never raise it. Vendored code (src/ui/beui) and EvilCharts are not counted.
-const MAX_ARBITRARY_TEXT_SIZES = 480
+const MAX_ARBITRARY_TEXT_SIZES = 476
 
 // Files fully on the scale. They must stay at zero.
 // The shell (sidebar, top bar, tab bar and their status pieces) is fully on the scale.
@@ -23,8 +23,8 @@ const TODAY = ['today-header', 'attention-strip', 'pulse-row', 'money-today', 's
 const TODAY_MORE = ['src/app/(app)/page.tsx', 'src/ui/components/goals/goals-card.tsx', 'src/ui/components/goals/goals-summary.tsx']
 // Setup (phase 10): the four steps, their shared parts, the save-file preview and its gallery.
 const SETUP = ['onboarding-flow', 'onboarding-steps', 'onboarding-ui', 'onboarding-preview', 'onboarding-gallery'].map((f) => `src/ui/components/${f}.tsx`)
-// The primitives (card, button, empty, capsule, hud, the area header, the metric and Life tiles) are on the scale too.
-const PRIMITIVES = ['card', 'button', 'empty', 'capsule', 'hud', 'area/area-header', 'area/metric-tile', 'life/area-tile'].map((f) => `src/ui/components/${f}.tsx`)
+// The primitives (card, button, empty, capsule, hud, charts, the area header, the metric and Life tiles) are on the scale too.
+const PRIMITIVES = ['card', 'button', 'empty', 'capsule', 'hud', 'area/area-header', 'area/metric-tile', 'life/area-tile', 'charts'].map((f) => `src/ui/components/${f}.tsx`)
 const CLEAN: string[] = [...PRIMITIVES, 'src/ui/components/sheet.tsx', 'src/ui/components/segment-tabs.tsx', 'src/ui/components/peek/peek-link.tsx', ...SHELL, ...CAPTURE, ...PEEK, ...COACH, ...COACH_PAGES, ...TODAY, ...TODAY_MORE, ...SETUP, 'src/app/(app)/welcome/page.tsx']
 
 const PATTERN = /text-\[\d+(?:\.\d+)?px\]/g
