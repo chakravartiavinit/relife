@@ -2,7 +2,7 @@
 
 import brand from '@relife/brand/brand.json'
 import { useId, useState } from 'react'
-import { ChartNoAxesColumn, ChevronDown, RotateCcw, Sparkles } from 'lucide-react'
+import { ChartNoAxesColumn, ChevronDown, RotateCcw } from 'lucide-react'
 import { parsePeek } from '@/domain/peek'
 import type { CoachSource } from '@/domain/coach-thread'
 import { cn } from '../../cn'
@@ -53,13 +53,13 @@ export function AnswerCard({ text, sources = [], error, onRetry, footer, classNa
   }
   return (
     <div className={cn('w-full rounded-lg bg-surface p-4 shadow-1', className)}>
-      <p className="mb-2 flex items-center gap-1.5 text-caption font-medium text-ink-3"><Sparkles className="size-3.5 text-pill-ink" strokeWidth={1.5} aria-hidden />Answer</p>
+      <p className="mb-2 text-caption font-medium text-ink-3">Answer</p>
       <div className="flex flex-col gap-2 text-body text-ink">
         {text.split(/\n{2,}/).map((p, i) => <p key={i} className="whitespace-pre-wrap text-pretty [overflow-wrap:anywhere]">{p}</p>)}
       </div>
       {why ? (
         <div id={whyId} className="mt-3 rounded-md bg-surface-2 px-3 py-2.5 text-small text-ink-2 text-pretty">
-          <span className="font-semibold text-ink">How I got this: </span>
+          <span className="font-medium text-ink">How I got this: </span>
           {sources.length
             ? `I read ${sources.map((s) => s.label).join(', ')} through ${brand.name}’s data tools, so the numbers come from your records, not from memory. Missing days count as missing, not zero.`
             : 'No data tools were needed. This comes from the summary of your week, not from a new lookup.'}

@@ -1,6 +1,6 @@
 import brand from '@relife/brand/brand.json'
 import Link from 'next/link'
-import { Check, Lock, MessageCircle, Plug, Sparkles } from 'lucide-react'
+import { Check, Cpu, Lock, MessageCircle, Plug } from 'lucide-react'
 import { buttonClass } from '../button'
 import { Card } from '../card'
 import { DEMO_LINK } from '../demo-banner'
@@ -20,10 +20,10 @@ export function ConnectCoach({ compact = false, demo = false }: { compact?: bool
       <Card className="p-5">
         {compact ? null : (
           <div aria-hidden className="mb-4 flex gap-2">
-            {[Sparkles, MessageCircle, Plug].map((Icon, i) => <span key={i} className="grid size-10 place-items-center rounded-full bg-surface-2 text-ink-2"><Icon className="size-[18px]" strokeWidth={1.5} /></span>)}
+            {[Cpu, MessageCircle, Plug].map((Icon, i) => <span key={i} className="grid size-10 place-items-center rounded-full bg-surface-2 text-ink-2"><Icon className="size-[18px]" strokeWidth={1.5} /></span>)}
           </div>
         )}
-        <h2 className="text-heading font-semibold text-ink text-pretty">{demo ? 'Coach is off in the demo' : 'Connect an AI model to ask questions'}</h2>
+        <h2 className="text-heading font-medium text-ink text-pretty">{demo ? 'Coach is off in the demo' : 'Connect an AI model to ask questions'}</h2>
         <p className="mt-1.5 text-body text-ink-2 text-pretty">{demo ? 'The demo has no AI model, and nothing typed here is sent anywhere. Run your own copy to ask about your data, get a nudge each morning and a coach note on Sunday reviews.' : 'Then ask anything about your data, get a nudge each morning and a coach note on Sunday reviews. Your data stays in your database; the model provider receives only what each question needs.'}</p>
         {demo
           ? <a href={DEMO_LINK} className={buttonClass({ variant: 'primary', className: 'mt-4 w-full' })}>Get {brand.name} →</a>
@@ -32,7 +32,7 @@ export function ConnectCoach({ compact = false, demo = false }: { compact?: bool
       </Card>
       {compact ? null : (
         <Card className="p-5">
-          <h3 className="font-mono text-label uppercase text-ink-3">Without a model</h3>
+          <h3 className="text-small font-medium text-ink-3">Without a model</h3>
           <ul className="mt-3 flex flex-col divide-y divide-divider">
             {WITHOUT_MODEL.map((w) => (
               <li key={w.title} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">

@@ -3,14 +3,14 @@
 import Link from 'next/link'
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { CalendarCheck, CalendarClock, CircleDashed, Flag, History, Pause, Pencil, Play, Repeat, Sparkles, ChartLine, Target } from 'lucide-react'
+import { CalendarCheck, CalendarClock, CircleDashed, Flag, History, Pause, Pencil, PenLine, Play, Repeat, ChartLine, Target } from 'lucide-react'
 import { dismissGoalDraftAction, draftGoalAction, reviewGoalNowAction, setGoalStatusAction } from '@/app/actions'
 import { CAP_MESSAGE, MAX_ACTIVE, type GoalDraft, type OutcomeStatus } from '@/domain/goals'
 import { goalPace, type Pace } from '@/domain/day-plan'
 import { CATEGORY } from '@/ui/tokens'
 import { cn } from '@/ui/cn'
 import { Button, buttonClass } from '../button'
-import { Badge, Card, CardHeader, IconChip, Skeleton, Stat, SystemLabel } from '../card'
+import { Badge, Card, CardHeader, IconChip, Skeleton, Stat, SectionLabel } from '../card'
 import { Capsule } from '../capsule'
 import { RowMenu } from '../row-menu'
 import { useToast } from '../toast'
@@ -60,7 +60,7 @@ export function OutcomeGoalCard({ g, picker, today }: { g: GoalViewData; picker:
             <h3 id={`goal-${g.id}`} className="text-heading text-ink">
               <PeekLink to={{ type: 'goal', id: g.id }} className="rounded-sm hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">{g.title}</PeekLink>
             </h3>
-            <p className="-mt-0.5 text-[13px] text-ink-3">{measureLine(g)}</p>
+            <p className="-mt-0.5 text-small text-ink-3">{measureLine(g)}</p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
@@ -87,12 +87,12 @@ export function OutcomeGoalCard({ g, picker, today }: { g: GoalViewData; picker:
         <Capsule value={fill(g.snapshot)} color={color} label={`Progress toward ${g.title}`} />
         {pace && pace.label !== 'Reached' && pace.label !== 'Too early' ? <span aria-hidden className="absolute -inset-y-0.5 w-0.5 -translate-x-1/2 rounded-full bg-ink" style={{ left: `${pace.elapsed * 100}%` }} /> : null}
       </div>
-      <div className="mt-2 flex justify-between gap-3 text-[12.5px] text-ink-3 tabular-nums">
+      <div className="mt-2 flex justify-between gap-3 text-caption text-ink-3 tabular-nums">
         <span>{move?.since ?? 'No current value yet'}</span>
         <span>{move?.left ?? ''}</span>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1.5 border-t border-divider pt-4 text-[12.5px] text-ink-3 tabular-nums">
+      <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1.5 border-t border-divider pt-4 text-caption text-ink-3 tabular-nums">
         {g.trackerArchived ? <span className="text-ink-2">Tracker archived. Change the measure or finish the goal.</span> : null}
         <span className="flex items-center gap-1.5">
           {o?.status === 'not_enough_data' ? <CircleDashed className="size-3.5" strokeWidth={1.5} aria-hidden /> : <CalendarCheck className="size-3.5" strokeWidth={1.5} aria-hidden />}
@@ -105,7 +105,7 @@ export function OutcomeGoalCard({ g, picker, today }: { g: GoalViewData; picker:
           const snap = g.snapshot?.actions[i]
           const gone = snap && !snap.available
           return (
-            <li key={`${a.kind}:${a.id}`} className={cn('flex h-8 items-center gap-1.5 rounded-md bg-surface-2 px-2.5 text-[12.5px] font-medium', gone ? 'text-ink-3' : 'text-ink-2')}>
+            <li key={`${a.kind}:${a.id}`} className={cn('flex h-8 items-center gap-1.5 rounded-md bg-surface-2 px-2.5 text-caption font-medium', gone ? 'text-ink-3' : 'text-ink-2')}>
               {a.kind === 'schedule' ? <Repeat className="size-3.5" strokeWidth={1.5} aria-hidden /> : <ChartLine className="size-3.5" strokeWidth={1.5} aria-hidden />}
               {gone ? <span><s>{g.actionNames[i]}</s> · Action no longer available</span> : g.actionNames[i]}
             </li>
@@ -121,7 +121,7 @@ export function ReviewDueCard({ goals, date }: { goals: { id: string; title: str
   const count = goals.length
   return (
     <Card>
-      <SystemLabel>Weekly review</SystemLabel>
+      <SectionLabel as="p">Weekly review</SectionLabel>
       <h2 className="mt-2 text-heading text-ink">{count} {count === 1 ? 'goal' : 'goals'} to review</h2>
       <p className="mt-1 text-small text-ink-3">Due {weekday(date)}</p>
       <ul className="mt-3 flex flex-col gap-2">
@@ -145,20 +145,20 @@ export function SuggestDraftCard({ profileGoals, atCap }: { profileGoals: string
   return (
     <Card aria-busy={pending || undefined} className="isolate overflow-hidden">
       <div aria-hidden className="halftone inset-y-0 right-0 -z-10 w-1/2 opacity-40" style={{ '--tone': 'var(--pill)' } as React.CSSProperties} />
-      <CardHeader icon={<Sparkles strokeWidth={1.5} />} color="var(--pill)" title="Draft from your profile" />
-      <p className="text-[13.5px] leading-relaxed text-ink-2">Your coach can turn your profile goals into a goal draft. Nothing starts until you approve it.</p>
-      {profileGoals ? <p className="mt-2 line-clamp-2 text-[12.5px] text-ink-3">From your profile: “{profileGoals}”</p>
-        : <p className="mt-2 text-[12.5px] text-ink-3">Add your goals in <Link href="/you/settings" className="underline">Settings</Link> first.</p>}
+      <CardHeader icon={<PenLine strokeWidth={1.5} />} color="var(--pill)" title="Draft from your profile" />
+      <p className="text-small leading-relaxed text-ink-2">Your coach can turn your profile goals into a goal draft. Nothing starts until you approve it.</p>
+      {profileGoals ? <p className="mt-2 line-clamp-2 text-caption text-ink-3">From your profile: “{profileGoals}”</p>
+        : <p className="mt-2 text-caption text-ink-3">Add your goals in <Link href="/you/settings" className="underline">Settings</Link> first.</p>}
       {pending ? (
         <div className="mt-4 flex flex-col gap-2" role="status">
-          <span className="text-[12.5px] text-ink-3">Drafting a goal from your profile…</span>
+          <span className="text-caption text-ink-3">Drafting a goal from your profile…</span>
           <Skeleton className="h-3 w-3/4" /><Skeleton className="h-3 w-1/2" />
         </div>
       ) : null}
-      {message ? <p role="status" className={cn('mt-3 rounded-md px-3 py-2 text-[13px]', message.ok ? 'bg-good/10 text-ink-2' : 'bg-warn/10 text-ink-2')}>{message.text}</p> : null}
+      {message ? <p role="status" className={cn('mt-3 rounded-md px-3 py-2 text-small', message.ok ? 'bg-good/10 text-ink-2' : 'bg-warn/10 text-ink-2')}>{message.text}</p> : null}
       <Button className="mt-4" disabled={pending || !profileGoals || atCap} aria-describedby={atCap ? 'goal-cap-note' : undefined}
         onClick={() => start(async () => { const r = await draftGoalAction(); setMessage({ ok: r.ok, text: r.message }) })}>
-        <Sparkles className="size-4" strokeWidth={1.5} />{pending ? 'Drafting…' : 'Suggest a draft'}
+        {pending ? 'Drafting…' : 'Suggest a draft'}
       </Button>
     </Card>
   )
@@ -174,10 +174,10 @@ export function GoalDraftCard({ insightId, draft, picker, today, activeCount }: 
   const atCap = activeCount >= MAX_ACTIVE
   return (
     <Card>
-      <p className="mb-2 text-[12px] font-semibold text-pill-ink">Suggested by the coach</p>
-      <h3 className="text-[15px] font-semibold text-ink">{draft.title}</h3>
-      <p className="mt-1 text-[13px] leading-relaxed text-ink-2">{draft.reason}</p>
-      <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[12.5px] tabular-nums">
+      <p className="mb-2 text-caption font-medium text-pill-ink">Suggested by the coach</p>
+      <h3 className="text-heading font-medium text-ink">{draft.title}</h3>
+      <p className="mt-1 text-small leading-relaxed text-ink-2">{draft.reason}</p>
+      <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-caption tabular-nums">
         <dt className="text-ink-3">Measure</dt><dd className="text-ink-2">{measure}</dd>
         <dt className="text-ink-3">Target</dt><dd className="text-ink-2">{target({ direction: draft.direction, target: draft.target ?? null, rangeLow: draft.rangeLow ?? null, rangeHigh: draft.rangeHigh ?? null, unit })} by {day(draft.targetDate)}</dd>
         <dt className="text-ink-3">Baseline</dt><dd className="text-ink-2">You set it when you review the draft</dd>
@@ -212,7 +212,7 @@ function PausedRow({ g, atCap }: { g: GoalViewData; atCap: boolean }) {
       <IconChip color={CATEGORY[g.area].color}><Target strokeWidth={1.5} /></IconChip>
       <div className="min-w-0 flex-1">
         <PeekLink to={{ type: 'goal', id: g.id }} className="block truncate text-body font-medium text-ink hover:underline">{g.title}</PeekLink>
-        <p className="truncate text-[12.5px] text-ink-3 tabular-nums">{when} · {cur != null ? `latest ${value(cur, g.unit)}, ` : ''}baseline {value(g.baselineValue, g.unit)}, target {target(g)}</p>
+        <p className="truncate text-caption text-ink-3 tabular-nums">{when} · {cur != null ? `latest ${value(cur, g.unit)}, ` : ''}baseline {value(g.baselineValue, g.unit)}, target {target(g)}</p>
       </div>
       {g.status === 'paused' ? (
         <Button variant="ghost" size="sm" disabled={pending || atCap} aria-describedby={atCap ? 'goal-cap-note' : undefined} onClick={() => set('active')}>
@@ -225,6 +225,6 @@ function PausedRow({ g, atCap }: { g: GoalViewData; atCap: boolean }) {
 
 export function CapNote({ show }: { show: boolean }) {
   if (!show) return null
-  return <p id="goal-cap-note" className="rounded-md bg-pill/7 px-3 py-2 text-[13px] text-ink-2">{CAP_MESSAGE}</p>
+  return <p id="goal-cap-note" className="rounded-md bg-pill/7 px-3 py-2 text-small text-ink-2">{CAP_MESSAGE}</p>
 }
 

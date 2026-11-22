@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
-import { BookOpen, ChartColumn, ChevronDown, ChartPie, Flame, Footprints, Gift, GitCommitHorizontal, GitPullRequest, GraduationCap, HeartHandshake, Moon, PiggyBank, Shapes, Smile, Sparkles, Trophy, Waves, type LucideIcon } from 'lucide-react'
+import { BookOpen, ChartColumn, ChevronDown, ChartPie, CircleDot, Flame, Footprints, Gift, GitCommitHorizontal, GitPullRequest, GraduationCap, HeartHandshake, History, Moon, PiggyBank, Shapes, Smile, Trophy, Waves, type LucideIcon } from 'lucide-react'
 import type { Category } from '@/db/schema'
 import { getUser } from '@/core/user'
 import { addDays, formatDay, localDate } from '@/core/time'
@@ -90,7 +90,7 @@ async function Progress() {
           </Card>
 
           <Card>
-            <CardHeader title="Recent XP" icon={<Sparkles strokeWidth={2} />} color="var(--medal-gold)" description="What earned XP on your last active days" />
+            <CardHeader title="Recent XP" icon={<History strokeWidth={1.5} />} color="var(--medal-gold)" description="What earned XP on your last active days" />
             {days.length ? (
               <ol className="flex flex-col gap-6">
                 {days.map((d) => {
@@ -99,25 +99,25 @@ async function Progress() {
                   return (
                     <li key={d}>
                       <div className="mb-1 flex items-baseline justify-between">
-                        <span className="text-[12px] font-semibold tracking-[0.08em] text-ink-3 uppercase">{d === today ? 'Today' : d === addDays(today, -1) ? 'Yesterday' : formatDay(d)}</span>
-                        <span className="text-[12.5px] font-medium text-pill-ink tabular-nums">+{formatNumber(sum)} XP</span>
+                        <span className="text-caption font-medium text-ink-3">{d === today ? 'Today' : d === addDays(today, -1) ? 'Yesterday' : formatDay(d)}</span>
+                        <span className="text-caption font-medium text-pill-ink tabular-nums">+{formatNumber(sum)} XP</span>
                       </div>
                       <ul className="flex flex-col">
                         {items.slice(0, 6).map((e) => {
                           const { icon: Icon, color } = xpIcon(e.source, e.area, tierOf)
                           return (
-                            <li key={e.ref} className="flex h-12 items-center gap-3 text-[13.5px]">
+                            <li key={e.ref} className="flex h-12 items-center gap-3 text-small">
                               <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-[10px]" style={{ color: `color-mix(in oklch, ${color} 78%, var(--ink))`, background: `color-mix(in oklch, ${color} 16%, transparent)` }}>
                                 <Icon className="size-4" strokeWidth={2} />
                               </span>
                               <span className="min-w-0 flex-1 truncate text-ink">{e.reason}</span>
-                              {!e.verified ? <span className="rounded-full px-1.5 text-[11px] text-ink-3 shadow-[inset_0_0_0_1px_var(--hairline)]">typed</span> : null}
+                              {!e.verified ? <span className="rounded-full px-1.5 text-caption text-ink-3 shadow-[inset_0_0_0_1px_var(--hairline)]">typed</span> : null}
                               <span className="w-12 text-end font-medium text-ink tabular-nums">+{formatNumber(e.amount)}</span>
                             </li>
                           )
                         })}
                         {items.length > 6 ? (
-                          <li className="ps-11 pt-1 text-[12.5px] text-ink-3 tabular-nums">
+                          <li className="ps-11 pt-1 text-caption text-ink-3 tabular-nums">
                             {items.length - 6} more · +{formatNumber(items.slice(6).reduce((a, e) => a + e.amount, 0))} XP
                           </li>
                         ) : null}
@@ -126,7 +126,7 @@ async function Progress() {
                   )
                 })}
               </ol>
-            ) : <p className="text-[13px] text-ink-3">Check off a routine and its XP shows up here.</p>}
+            ) : <p className="text-small text-ink-3">Check off a routine and its XP shows up here.</p>}
           </Card>
         </div>
 
@@ -138,13 +138,13 @@ async function Progress() {
                 label="XP by kind, last 30 days" unit="XP" totalLabel="XP, 30 days"
                 segments={KIND.map((k) => ({ id: k.kind, name: k.label, color: k.color, value: mix.byKind.find((r) => r.kind === k.kind)?.n ?? 0 }))}
               />
-            ) : <p className="text-[13px] text-ink-3">No XP in the last 30 days yet.</p>}
+            ) : <p className="text-small text-ink-3">No XP in the last 30 days yet.</p>}
           </Card>
 
           <Card>
             <details className="group">
-              <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 text-heading font-semibold text-ink focus-visible:outline-2 focus-visible:outline-pill [&::-webkit-details-marker]:hidden"><BookOpen className="size-4 text-pill-ink" strokeWidth={2} aria-hidden />How XP works<ChevronDown className="ms-auto size-4 text-ink-3 transition-transform duration-150 group-open:rotate-180" strokeWidth={1.5} aria-hidden /></summary>
-            <ul className="mt-3 flex flex-col gap-3 text-[13px] leading-relaxed text-ink-2">
+              <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 text-heading font-medium text-ink focus-visible:outline-2 focus-visible:outline-pill [&::-webkit-details-marker]:hidden"><BookOpen className="size-4 text-pill-ink" strokeWidth={2} aria-hidden />How XP works<ChevronDown className="ms-auto size-4 text-ink-3 transition-transform duration-150 group-open:rotate-180" strokeWidth={1.5} aria-hidden /></summary>
+            <ul className="mt-3 flex flex-col gap-3 text-small leading-relaxed text-ink-2">
               <Rule color="var(--pill)" title="Your plan">Up to 100 XP a day, split across what was due. More routines don’t raise the ceiling.</Rule>
               <Rule color="var(--good)" title="Fixed measures">7h sleep, 8k steps, a commit, a catch-up and more. The same for everyone.</Rule>
               <Rule color="var(--good)" title="Synced beats typed">Data that arrives by itself earns full XP. Typed-in data earns half, up to 40 a day.</Rule>
@@ -171,7 +171,7 @@ function xpIcon(source: string, area: Category | 'general', tierOf: Map<string, 
     return { icon: ACHIEVEMENT_ICON[key] ?? Trophy, color: TIER_COLOR[tierOf.get(key) ?? 'gold'] }
   }
   if (source === 'plan' && area !== 'general') return { icon: AREA_ICON[area], color: CATEGORY[area].color }
-  return { icon: SOURCE_ICON[source] ?? Sparkles, color: area === 'general' ? 'var(--medal-gold)' : CATEGORY[area].color }
+  return { icon: SOURCE_ICON[source] ?? CircleDot, color: area === 'general' ? 'var(--medal-gold)' : CATEGORY[area].color }
 }
 
 function Rule({ color, title, children }: { color: string; title: string; children: React.ReactNode }) {

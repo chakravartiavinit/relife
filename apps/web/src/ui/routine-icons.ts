@@ -1,4 +1,4 @@
-import { Bath, BedDouble, BookOpen, Brain, Camera, ChefHat, Code, CreditCard, Crown, Droplets, Dumbbell, Footprints, Gamepad2, GitCommitHorizontal, GlassWater, GraduationCap, HeartPulse, Languages, Leaf, Moon, Music, NotebookPen, Palette, Phone, PiggyBank, Pill, Salad, Scale, Scissors, Smartphone, Smile, Sparkles, Sun, Users, Wallet, Wind, Zap, type LucideIcon } from 'lucide-react'
+import { Bath, BedDouble, BookOpen, Brain, Camera, ChefHat, Code, CreditCard, CircleDot, Crown, Droplet, Droplets, Dumbbell, Footprints, Gamepad2, GitCommitHorizontal, GlassWater, GraduationCap, HeartPulse, Languages, Leaf, Moon, Music, NotebookPen, Palette, Phone, PiggyBank, Pill, Salad, Scale, Scissors, Smartphone, Smile, Sun, Users, Wallet, Wind, Zap, type LucideIcon } from 'lucide-react'
 
 // A picture for every routine, from its name: a line icon (card headers, empty states) and a 3D picture
 // (lists of routines), Microsoft's Fluent 3D emoji (MIT) in public/routines. First match wins; otherwise
@@ -10,7 +10,7 @@ const RULES: [RegExp, LucideIcon, string][] = [
   [/weight/i, Scale, 'weight'],
   // "Reviews" (the GitHub tracker) and code reviews, but not "Review budget".
   [/commit|pull request|^reviews?$|code review/i, GitCommitHorizontal, 'code'],
-  [/skin|face|serum|sunscreen|mask|moistur/i, Sparkles, 'skin'],
+  [/skin|face|serum|sunscreen|mask|moistur/i, Droplet, 'skin'],
   [/yoga|stretch/i, Dumbbell, 'yoga'],
   [/run\b|running|jog/i, Footprints, 'run'],
   [/gym|workout|lift|exercise|push.?ups?|pull.?ups?|squat/i, Dumbbell, 'gym'],
@@ -49,7 +49,7 @@ function pick(name: string, kind: string, area: string): [LucideIcon, string] {
   if (kind === 'medicine') return [Pill, 'pill']
   if (kind === 'subscription' || kind === 'bill' || kind === 'renewal') return [CreditCard, 'card']
   const r = RULES.find(([re]) => re.test(name))
-  return r ? [r[1], r[2]] : AREA[area] ?? [Sparkles, 'sparkles']
+  return r ? [r[1], r[2]] : AREA[area] ?? [CircleDot, 'check']
 }
 
 /** Line icon for a routine: card headers, empty states, compact spots. */

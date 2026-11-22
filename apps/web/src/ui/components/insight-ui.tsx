@@ -1,7 +1,7 @@
 'use client'
 
 import { useTransition } from 'react'
-import { Check, Sparkles, X } from 'lucide-react'
+import { Check, X } from 'lucide-react'
 import { resolveInsight } from '@/app/actions'
 import { Button } from './button'
 import { useToast } from './toast'
@@ -14,7 +14,7 @@ export function InsightActions({ id, hasActions }: { id: string; hasActions: boo
   const go = (d: 'accept' | 'dismiss') => start(async () => {
     await resolveInsight(id, d)
     changed()
-    if (d === 'accept') toast(hasActions ? 'Added to your routines' : 'Insight noted', 'good', { icon: Sparkles })
+    if (d === 'accept') toast(hasActions ? 'Added to your routines' : 'Insight noted', 'good', { icon: Check })
     else toast('Insight dismissed', 'neutral', { icon: X })
   })
   return (

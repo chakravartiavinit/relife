@@ -2,7 +2,7 @@
 
 import brand from '@relife/brand/brand.json'
 import { useOptimistic, useState, useTransition } from 'react'
-import { Check, Send, Sparkles, Trash2 } from 'lucide-react'
+import { Check, Send, Trash2 } from 'lucide-react'
 import { ask, clearConversation, resolveInsight } from '@/app/actions'
 import type { ThreadEntry, ThreadProposal } from '@/core/coach-messages'
 import { formatTime } from '@/core/time'
@@ -32,7 +32,7 @@ function Proposal({ p }: { p: ThreadProposal }) {
   })
   return (
     <div className="mt-3 rounded-md bg-surface-2 p-3">
-      <p className="flex items-center gap-1.5 text-small font-medium text-ink"><Sparkles className="size-3.5 text-pill-ink" strokeWidth={1.5} aria-hidden />{p.title}</p>
+      <p className="text-small font-medium text-ink">{p.title}</p>
       {p.actions.length ? <ActionPreview actions={p.actions} /> : null}
       {status === 'pending' ? (
         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -136,7 +136,6 @@ export function AskThread({ thread, enabled, initial, timezone, className }: {
               <Message from="assistant">
                 <MessageContent>
                   <div className="flex items-center gap-2 rounded-lg bg-surface px-4 py-3 shadow-1" role="status">
-                    <Sparkles className="size-4 text-pill-ink" strokeWidth={1.5} aria-hidden />
                     <TextShimmer className="text-body font-medium">Reading your data…</TextShimmer>
                   </div>
                 </MessageContent>

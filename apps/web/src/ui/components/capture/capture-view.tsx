@@ -2,7 +2,7 @@
 
 import { Command } from 'cmdk'
 import { useState } from 'react'
-import { ArrowRight, ArrowUpRight, Frown, Laugh, LoaderCircle, Meh, Annoyed, Plus, Smile, Sparkles, Wallet, type LucideIcon } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, Frown, Laugh, LoaderCircle, Meh, Annoyed, MessagesSquare, Plus, Smile, Wallet, type LucideIcon } from 'lucide-react'
 import { amountText, previewQuickLog, type Bucket, type CapturePayload } from '@/domain/capture'
 import { formatMoney } from '@/domain/money'
 import { parseQuickLog } from '@/domain/quicklog'
@@ -117,9 +117,9 @@ export function CaptureView({ layout, data, status, value, onValue, actions, onC
         {typed ? (
           <Command.Group heading="Ask" className={groupClass}>
             {aiOff ? (
-              <Row value={`ask ${typed}`} onSelect={() => actions.go('/you/connections#ai')} icon={<Sparkles />} color="var(--cat-mind)" title="Choose a model to ask your coach" sub="Connect an AI model in You › Connections" trail={<ArrowRight className="size-4 text-ink-3" aria-hidden />} enter={false} />
+              <Row value={`ask ${typed}`} onSelect={() => actions.go('/you/connections#ai')} icon={<MessagesSquare />} color="var(--cat-mind)" title="Choose a model to ask your coach" sub="Connect an AI model in You › Connections" trail={<ArrowRight className="size-4 text-ink-3" aria-hidden />} enter={false} />
             ) : (
-              <Row value={`ask ${typed}`} onSelect={() => actions.ask(typed)} icon={<Sparkles />} color="var(--cat-mind)" title={<>Ask your coach: “<span className="text-ink">{typed}</span>”</>} sub="Answers from your data, in Coach" trail={<Kbd>⌘↵</Kbd>} enter={false} />
+              <Row value={`ask ${typed}`} onSelect={() => actions.ask(typed)} icon={<MessagesSquare />} color="var(--cat-mind)" title={<>Ask your coach: “<span className="text-ink">{typed}</span>”</>} sub="Answers from your data, in Coach" trail={<Kbd>⌘↵</Kbd>} enter={false} />
             )}
           </Command.Group>
         ) : null}
@@ -226,7 +226,7 @@ function EmptyRows({ data, status, actions, sheet }: { data: CapturePayload | nu
 
       {sheet && data.ai ? (
         <Command.Group heading="Ask" className={groupClass}>
-          <Row value="ask suggested" onSelect={() => actions.ask(ASK_SUGGESTION[data.bucket])} icon={<Sparkles />} color="var(--cat-mind)" title={ASK_SUGGESTION[data.bucket]} sub="Suggested from today · answers in Coach" trail={<ArrowRight className="size-4 text-ink-3" aria-hidden />} enter={false} />
+          <Row value="ask suggested" onSelect={() => actions.ask(ASK_SUGGESTION[data.bucket])} icon={<MessagesSquare />} color="var(--cat-mind)" title={ASK_SUGGESTION[data.bucket]} sub="Suggested from today · answers in Coach" trail={<ArrowRight className="size-4 text-ink-3" aria-hidden />} enter={false} />
         </Command.Group>
       ) : null}
     </>
@@ -323,7 +323,7 @@ function SpendForm({ data, actions }: { data: CapturePayload; actions: CaptureAc
         </label>
         <button
           type="button" disabled={!ok || !!busy} onClick={submit}
-          className="inline-flex h-11 shrink-0 items-center justify-center rounded-md bg-ink px-5 text-body font-semibold text-bg transition-[opacity,scale] duration-150 ease-out-quint active:scale-96 disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill"
+          className="inline-flex h-11 shrink-0 items-center justify-center rounded-md bg-ink px-5 text-body font-medium text-bg transition-[opacity,scale] duration-150 ease-out-quint active:scale-96 disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill"
         >
           {busy === 'spend' ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : 'Log'}
         </button>
@@ -427,7 +427,7 @@ function Pill({ value, onSelect, disabled, busy, icon, color, label, detail }: {
 function XpChip({ xp }: { xp: number }) {
   return (
     <span
-      className="inline-flex h-6 shrink-0 items-center rounded-full px-2 text-caption font-semibold tabular-nums max-sm:hidden"
+      className="inline-flex h-6 shrink-0 items-center rounded-full px-2 text-caption font-medium tabular-nums max-sm:hidden"
       style={{ color: 'color-mix(in oklch, var(--medal-gold) 80%, var(--ink))', background: 'color-mix(in oklch, var(--medal-gold) 12%, transparent)' }}
     >
       +{xp} XP
@@ -436,14 +436,14 @@ function XpChip({ xp }: { xp: number }) {
 }
 
 function GroupHeading({ children }: { children: React.ReactNode }) {
-  return <h3 className="pt-3 pb-1.5 text-label font-mono text-ink-3 uppercase">{children}</h3>
+  return <h3 className="pt-3 pb-1.5 text-small font-medium text-ink-3">{children}</h3>
 }
 
 function Kbd({ children, className }: { children: React.ReactNode; className?: string }) {
   return <kbd className={cn('inline-grid h-5 min-w-5 place-items-center rounded-xs bg-surface-2 px-1.5 text-caption font-medium text-ink-3 shadow-[inset_0_0_0_1px_var(--hairline)]', className)}>{children}</kbd>
 }
 
-const groupClass = '[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:pb-1.5 [&_[cmdk-group-heading]]:text-label [&_[cmdk-group-heading]]:font-mono [&_[cmdk-group-heading]]:text-ink-3 [&_[cmdk-group-heading]]:uppercase'
+const groupClass = '[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:pb-1.5 [&_[cmdk-group-heading]]:text-small [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-ink-3'
 const chipsClass = '[&_[cmdk-group-items]]:flex [&_[cmdk-group-items]]:flex-wrap [&_[cmdk-group-items]]:gap-2 [&_[cmdk-group-items]]:px-3'
 const pillClass = 'inline-flex h-10 items-center gap-2 rounded-full bg-surface-2 ps-2 pe-3.5 text-small transition-[background-color,scale] duration-150 ease-out-quint hover:bg-surface-3 active:scale-96 disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill'
 const fieldClass = 'h-11 w-full rounded-md bg-surface-2 text-body text-ink outline-none placeholder:text-ink-3 focus-visible:outline-2 focus-visible:outline-pill disabled:opacity-50'

@@ -1,5 +1,5 @@
 import type { Category } from '@/db/schema'
-import { Brain, Code, HeartPulse, LayoutGrid, MonitorSmartphone, Palette, Sparkles, Sunrise, Target, UserRound, Users, Wallet, type LucideIcon } from 'lucide-react'
+import { Brain, Code, HeartPulse, LayoutGrid, MonitorSmartphone, MessagesSquare, Palette, Sunrise, Target, UserRound, Users, Wallet, type LucideIcon } from 'lucide-react'
 
 // The destinations, as data. The sidebar, the tab bar and the Go-to list read it (`src/ui/components/shell/`).
 
@@ -24,7 +24,7 @@ export const NAV: { label?: string; items: NavItem[] }[] = [
   {
     items: [
       { href: '/plan', label: 'Plan', icon: Target },
-      { href: '/coach', label: 'Coach', icon: Sparkles },
+      { href: '/coach', label: 'Coach', icon: MessagesSquare },
       { href: '/you', label: 'You', icon: UserRound },
     ],
   },

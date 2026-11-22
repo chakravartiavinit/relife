@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   Bike, BookOpen, Check, CircleDot, Cookie, CupSoda, Droplet, Footprints, GitCommitHorizontal, GitPullRequest, GraduationCap, Laptop, Loader2,
-  MessageSquareCode, Moon, MoonStar, Puzzle, ShoppingBag, Siren, Smartphone, Smile, Sparkles, Target, Tv, Wallet, X, Zap, type LucideIcon,
+  CircleCheck, MessageSquareCode, Moon, MoonStar, Puzzle, ShoppingBag, Siren, Smartphone, Smile, Swords, Target, Tv, Wallet, X, Zap, type LucideIcon,
 } from 'lucide-react'
 import { CATEGORY } from '../tokens'
 import { chooseQuestRecovery, summonSystem } from '@/app/actions'
@@ -65,8 +65,8 @@ export function SystemQuests({ quests, difficulty, hasData, timezone, recovery, 
   return (
     <div>
       <div className="mb-2 flex items-center justify-between gap-3">
-        {compact ? <p className="font-mono text-label text-pill-ink uppercase">System · today{dailies.length ? ` · ${cleared}/${dailies.length}` : ''}</p> : <p className="text-[11px] font-semibold tracking-[0.12em] text-pill-ink uppercase">[System]</p>}
-        <span className="flex items-center gap-2 text-[11.5px] text-ink-3 tabular-nums">
+        {compact ? <p className="text-small font-medium text-pill-ink">System · today{dailies.length ? ` · ${cleared}/${dailies.length}` : ''}</p> : <p className="text-small font-medium text-pill-ink">[System]</p>}
+        <span className="flex items-center gap-2 text-caption text-ink-3 tabular-nums">
           <span title={`Difficulty ${difficulty} of 5: it rises as you clear quests and eases after misses.`} className="flex items-center gap-0.5" aria-label={`Difficulty ${difficulty} of 5`}>
             {[1, 2, 3, 4, 5].map((i) => <span key={i} aria-hidden className="h-2.5 w-1 rounded-full" style={{ background: i <= difficulty ? 'var(--pill)' : 'var(--hairline)' }} />)}
           </span>
@@ -86,7 +86,7 @@ export function SystemQuests({ quests, difficulty, hasData, timezone, recovery, 
             const items = quests.filter((q) => q.kind === k).sort((a, b) => ORDER[a.status] - ORDER[b.status])
             return (
               <div key={k}>
-                <h3 className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase" style={{ color: g.color }}>
+                <h3 className="mb-2 flex items-center gap-1.5 text-small font-medium" style={{ color: g.color }}>
                   {g.icon ? <g.icon className="size-3.5" strokeWidth={2} aria-hidden /> : null}
                   {g.label}{k === 'daily' && dailies.length ? <span className="text-ink-3 tabular-nums">· {cleared}/{dailies.length}</span> : null}
                 </h3>
@@ -95,9 +95,9 @@ export function SystemQuests({ quests, difficulty, hasData, timezone, recovery, 
             )
           })}
           {dailies.length && cleared === dailies.length ? (
-            <p className="flex items-center gap-1.5 text-[12.5px] font-medium text-good"><Sparkles className="size-3.5" strokeWidth={2} aria-hidden />All daily quests cleared. A reward box was granted.</p>
+            <p className="flex items-center gap-1.5 text-caption font-medium text-good"><CircleCheck className="size-3.5" strokeWidth={1.5} aria-hidden />All daily quests cleared. A reward box was granted.</p>
           ) : dailies.length ? (
-            <p className="text-[12px] text-ink-3">Missed daily quests offer recovery choices, not penalties.</p>
+            <p className="text-caption text-ink-3">Missed daily quests offer recovery choices, not penalties.</p>
           ) : null}
         </div>
       ) : !recovery ? <Summon hasData={hasData} /> : null}
@@ -137,29 +137,29 @@ export function RecoveryPanel({ recovery }: { recovery: RecoveryView }) {
     <section aria-label="Recovery choices" aria-busy={pending} className="mb-4 rounded-[14px] bg-ink/[0.025] p-3 dark:bg-white/[0.035]">
       {saved ? (
         <div role="status" className="flex flex-col gap-2.5">
-          <h3 className="flex items-center gap-1.5 text-[13.5px] font-medium text-ink"><Check className="size-4 text-good" strokeWidth={2} aria-hidden />{saved === 'rest' ? 'Rest today is saved.' : saved === 'smaller' ? 'Your smaller step is saved.' : 'Priorities review selected.'}</h3>
-          {saved === 'smaller' && preview ? <p className="text-[13px] text-ink-2">{preview.title}</p> : null}
-          <p className="text-[12.5px] leading-relaxed text-ink-3">{saved !== 'smaller' ? 'No recovery quest added. ' : ''}New quests stay paused until tomorrow.</p>
+          <h3 className="flex items-center gap-1.5 text-small font-medium text-ink"><Check className="size-4 text-good" strokeWidth={2} aria-hidden />{saved === 'rest' ? 'Rest today is saved.' : saved === 'smaller' ? 'Your smaller step is saved.' : 'Priorities review selected.'}</h3>
+          {saved === 'smaller' && preview ? <p className="text-small text-ink-2">{preview.title}</p> : null}
+          <p className="text-caption leading-relaxed text-ink-3">{saved !== 'smaller' ? 'No recovery quest added. ' : ''}New quests stay paused until tomorrow.</p>
           {saved === 'priorities' ? <Link href="/you/settings#system" className={buttonClass({ variant: 'secondary', size: 'lg' })}>Open priorities</Link> : null}
         </div>
       ) : (
         <div className="flex flex-col gap-3">
           <div>
-            <h3 className="text-[13.5px] font-medium text-ink">Choose what helps today</h3>
-            <p className="mt-1 text-[12.5px] leading-relaxed text-ink-3">Was yesterday too much, do you need rest, or have your priorities changed? New quests are paused today.</p>
+            <h3 className="text-small font-medium text-ink">Choose what helps today</h3>
+            <p className="mt-1 text-caption leading-relaxed text-ink-3">Was yesterday too much, do you need rest, or have your priorities changed? New quests are paused today.</p>
           </div>
           <ul className="flex flex-col gap-2">
-            {recovery.missed.map((q) => <li key={q.id} className="text-[12.5px] leading-relaxed text-ink-2"><span className="font-medium">{q.title}</span><span className="block text-ink-3 tabular-nums">Yesterday · {q.progress == null ? 'No data' : formatValue(q.progress, q.unit)} of {formatValue(q.target, q.unit)}</span></li>)}
+            {recovery.missed.map((q) => <li key={q.id} className="text-caption leading-relaxed text-ink-2"><span className="font-medium">{q.title}</span><span className="block text-ink-3 tabular-nums">Yesterday · {q.progress == null ? 'No data' : formatValue(q.progress, q.unit)} of {formatValue(q.target, q.unit)}</span></li>)}
           </ul>
           {preview ? (
             <div className="rounded-md bg-surface p-3">
-              <p className="text-[11.5px] text-ink-3">Optional smaller step</p>
-              <p className="mt-1 text-[13.5px] leading-relaxed font-medium text-ink">{preview.title}</p>
-              <p className="mt-1 text-[11.5px] text-ink-3 tabular-nums">{preview.fromDate === recovery.localDate ? 'Today' : 'Tomorrow'} · {preview.fromDate} · Rank {preview.rank} · {preview.xp} XP</p>
+              <p className="text-caption text-ink-3">Optional smaller step</p>
+              <p className="mt-1 text-small leading-relaxed font-medium text-ink">{preview.title}</p>
+              <p className="mt-1 text-caption text-ink-3 tabular-nums">{preview.fromDate === recovery.localDate ? 'Today' : 'Tomorrow'} · {preview.fromDate} · Rank {preview.rank} · {preview.xp} XP</p>
             </div>
-          ) : <p id={`recovery-unavailable-${recovery.id}`} className="text-[12.5px] leading-relaxed text-ink-3">No safe smaller step is available from the current data. Rest or review your priorities instead.</p>}
-          {error ? <p role="alert" className="text-[12.5px] leading-relaxed text-bad">{error}</p> : null}
-          {pending ? <p role="status" className="text-[12.5px] leading-relaxed text-ink-3">Saving your choice. No recovery quest is confirmed yet.</p> : null}
+          ) : <p id={`recovery-unavailable-${recovery.id}`} className="text-caption leading-relaxed text-ink-3">No safe smaller step is available from the current data. Rest or review your priorities instead.</p>}
+          {error ? <p role="alert" className="text-caption leading-relaxed text-bad">{error}</p> : null}
+          {pending ? <p role="status" className="text-caption leading-relaxed text-ink-3">Saving your choice. No recovery quest is confirmed yet.</p> : null}
           <div className="flex flex-col gap-2.5">
             <Button size="lg" variant="primary" disabled={pending || !preview || (retryOnly && attempt !== 'smaller')} aria-describedby={!preview ? `recovery-unavailable-${recovery.id}` : undefined} onClick={() => choose('smaller')}>
               {pending && attempt === 'smaller' ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden /> : null}
@@ -216,7 +216,7 @@ function QuestRow({ q }: { q: SystemQuestItem }) {
         <span
           title={`Rank ${q.rank}: ${RANK_HINT[q.rank]}`}
           aria-label={`Rank ${q.rank}, ${RANK_HINT[q.rank]}`}
-          className="absolute -right-1.5 -bottom-1.5 grid size-[18px] place-items-center rounded-full bg-surface font-display text-[10px] font-medium shadow-1"
+          className="absolute -right-1.5 -bottom-1.5 grid size-[18px] place-items-center rounded-full bg-surface font-display text-caption font-medium shadow-1"
           style={{ color: `color-mix(in oklch, ${rank} 85%, var(--ink))`, boxShadow: `0 0 0 1.5px color-mix(in oklch, ${rank} 45%, transparent)` }}
         >
           {q.rank}
@@ -225,22 +225,22 @@ function QuestRow({ q }: { q: SystemQuestItem }) {
 
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
-          <p className={cn('text-[13.5px] leading-snug font-medium', done ? 'text-ink-2' : failed ? 'text-ink-3' : 'text-ink')}>{q.title}</p>
+          <p className={cn('text-small leading-snug font-medium', done ? 'text-ink-2' : failed ? 'text-ink-3' : 'text-ink')}>{q.title}</p>
           {neutral ? (
-            <span className="inline-flex h-6 shrink-0 items-center rounded-full bg-surface-2 px-2 text-[11.5px] font-semibold text-ink-2">{q.status === 'unverified' ? 'No data' : 'Retired'}</span>
+            <span className="inline-flex h-6 shrink-0 items-center rounded-full bg-surface-2 px-2 text-caption font-medium text-ink-2">{q.status === 'unverified' ? 'No data' : 'Retired'}</span>
           ) : done ? (
-            <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-full bg-good/12 px-2 text-[11.5px] font-semibold text-good tabular-nums"><Check className="size-3.5" strokeWidth={2.5} aria-hidden />+{q.xp} XP</span>
+            <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-full bg-good/12 px-2 text-caption font-medium text-good tabular-nums"><Check className="size-3.5" strokeWidth={2.5} aria-hidden />+{q.xp} XP</span>
           ) : failed ? (
-            <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-full bg-bad/10 px-2 text-[11.5px] font-semibold text-bad"><X className="size-3.5" strokeWidth={2.5} aria-hidden />Failed</span>
+            <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-full bg-bad/10 px-2 text-caption font-medium text-bad"><X className="size-3.5" strokeWidth={2.5} aria-hidden />Failed</span>
           ) : (
-            <span className="inline-flex h-6 shrink-0 items-center rounded-full px-2 text-[11.5px] font-semibold tabular-nums" style={{ color: 'color-mix(in oklch, var(--medal-gold) 80%, var(--ink))', background: 'color-mix(in oklch, var(--medal-gold) 12%, transparent)' }}>+{q.xp} XP</span>
+            <span className="inline-flex h-6 shrink-0 items-center rounded-full px-2 text-caption font-medium tabular-nums" style={{ color: 'color-mix(in oklch, var(--medal-gold) 80%, var(--ink))', background: 'color-mix(in oklch, var(--medal-gold) 12%, transparent)' }}>+{q.xp} XP</span>
           )}
         </div>
         {q.reason ? (
-          <p title={q.reason} className={cn('mt-1 text-[12.5px] leading-relaxed text-ink-3 text-pretty', done || failed ? 'line-clamp-1' : 'line-clamp-2')}>{q.reason}</p>
+          <p title={q.reason} className={cn('mt-1 text-caption leading-relaxed text-ink-3 text-pretty', done || failed ? 'line-clamp-1' : 'line-clamp-2')}>{q.reason}</p>
         ) : null}
-        {neutral ? <p className="mt-1 text-[12.5px] leading-relaxed text-ink-3">{q.status === 'unverified' ? 'No measurement was available. This was not counted as a miss.' : 'This old penalty quest is no longer active. History and earned XP stay unchanged.'}</p> : null}
-        {!done && !failed && !neutral && q.progress == null ? <p className="mt-2 text-[12.5px] text-ink-3">No measurement yet</p> : null}
+        {neutral ? <p className="mt-1 text-caption leading-relaxed text-ink-3">{q.status === 'unverified' ? 'No measurement was available. This was not counted as a miss.' : 'This old penalty quest is no longer active. History and earned XP stay unchanged.'}</p> : null}
+        {!done && !failed && !neutral && q.progress == null ? <p className="mt-2 text-caption text-ink-3">No measurement yet</p> : null}
         {!done && !failed && !neutral && q.progress != null ? (
           <div className="mt-2 flex items-center gap-2.5">
             <Capsule
@@ -248,7 +248,7 @@ function QuestRow({ q }: { q: SystemQuestItem }) {
               color={over ? 'var(--bad)' : q.op === 'lte' ? 'var(--good)' : area}
               label={`${q.title}: ${formatValue(value, q.unit)} of ${formatValue(q.target, q.unit)}`}
             />
-            <span className={cn('shrink-0 text-[11.5px] font-medium tabular-nums', over ? 'text-bad' : 'text-ink-2')}>
+            <span className={cn('shrink-0 text-caption font-medium tabular-nums', over ? 'text-bad' : 'text-ink-2')}>
               {formatValue(value, q.unit)} <span className="font-normal text-ink-3">of {formatValue(q.target, q.unit)}{q.op === 'lte' ? ' max' : ''}</span>
             </span>
           </div>
@@ -261,13 +261,13 @@ function QuestRow({ q }: { q: SystemQuestItem }) {
 function Summon({ hasData }: { hasData: boolean }) {
   const [pending, start] = useTransition()
   if (!hasData) {
-    return <p className="text-[12.5px] leading-relaxed text-ink-3">The System needs data to set quests. Connect an app or log mood, sleep or steps for a few days.</p>
+    return <p className="text-caption leading-relaxed text-ink-3">The System needs data to set quests. Connect an app or log mood, sleep or steps for a few days.</p>
   }
   return (
     <div className="flex flex-col items-start gap-2.5">
-      <p className="text-[12.5px] text-ink-3">The System hasn’t issued today’s quests yet.</p>
+      <p className="text-caption text-ink-3">The System hasn’t issued today’s quests yet.</p>
       <Button size="sm" variant="primary" disabled={pending} onClick={() => start(async () => { await summonSystem() })}>
-        {pending ? <Loader2 className="size-3.5 animate-spin" strokeWidth={2} aria-hidden /> : <Sparkles className="size-3.5" strokeWidth={2} aria-hidden />}
+        {pending ? <Loader2 className="size-3.5 animate-spin" strokeWidth={2} aria-hidden /> : <Swords className="size-3.5" strokeWidth={1.5} aria-hidden />}
         {pending ? 'The System is choosing…' : 'Receive today’s quests'}
       </Button>
     </div>

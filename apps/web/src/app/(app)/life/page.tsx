@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
-import { Sparkles } from 'lucide-react'
 import { CATEGORIES, type Category } from '@/db/schema'
 import { AREA_LIST, areaScope, loadAreaKpis, type AreaDef } from '@/core/areas'
 import { loadTime } from '@/core/areas/time'
@@ -34,11 +33,10 @@ function HubHeader({ date, brief }: { date?: string; brief?: string }) {
     <Card className="p-5 sm:p-6">
       <SystemLabel>Life{date ? ` · ${date}` : ''}</SystemLabel>
       <h1 className="mt-0.5 font-display text-title text-ink sm:text-display">{date ?? 'Your life'}</h1>
-      <p className="mt-1.5 flex max-w-[64ch] items-start gap-2 text-body text-ink-2">
+      <p className="mt-1.5 max-w-[64ch] text-body text-ink-2">
         {brief ? (
           <>
-            <Sparkles aria-hidden className="mt-0.5 size-4 shrink-0 text-pill-ink" strokeWidth={1.5} />
-            <span>{brief}{' '}<PeekLink to={{ type: 'brief', id: 'today' }} className="rounded-xs font-semibold whitespace-nowrap text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-pill">Why?</PeekLink></span>
+            {brief}{' '}<PeekLink to={{ type: 'brief', id: 'today' }} className="rounded-xs font-medium whitespace-nowrap text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-pill">Why?</PeekLink>
           </>
         ) : 'All six areas and your laptop time, one click each.'}
       </p>
