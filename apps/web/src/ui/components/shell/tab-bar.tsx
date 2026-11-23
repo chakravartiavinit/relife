@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CircleCheck, Plus } from 'lucide-react'
 import type { NavStatus } from '@/domain/shell'
 import { cn } from '../../cn'
@@ -43,10 +43,23 @@ export function TabBarView({ areas, status, path, demo }: { areas?: string[]; st
   const [openOn, setOpenOn] = useState<string | null>(demo?.open ? path : null)
   const pin = demo ? 'absolute' : 'fixed lg:hidden'
   const open = openOn === path
+  const tabRef = useRef<HTMLButtonElement>(null)
+  const trayRef = useRef<HTMLDivElement>(null)
+  // Focus goes into the tray when it opens and back to the Life tab when it is dismissed (not when a row was followed).
+  const refocus = useRef(false)
+  const wasOpen = useRef(!!demo?.open)
+  const dismiss = () => { refocus.current = true; setOpenOn(null) }
   const close = () => setOpenOn(null)
   useEffect(() => {
+    if (open === wasOpen.current) return
+    wasOpen.current = open
+    if (open) trayRef.current?.querySelector('a')?.focus()
+    else if (refocus.current) tabRef.current?.focus()
+    refocus.current = false
+  }, [open])
+  useEffect(() => {
     if (!open) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpenOn(null) }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') dismiss() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [open])
@@ -74,8 +87,6 @@ export function TabBarView({ areas, status, path, demo }: { areas?: string[]; st
   const life = LEFT[1]
   return (
     <>
-      {open ? <button type="button" aria-label="Close Life" tabIndex={-1} onClick={close} className={cn(pin, 'inset-0 z-30 bg-scrim')} /> : null}
-      {open ? <LifeTray path={path} areas={areas} status={status} onNavigate={close} pin={pin} /> : null}
       <nav
         aria-label="Tabs"
         className={cn(pin, 'inset-x-0 bottom-0 z-40 grid h-[var(--tabbar-h)] grid-cols-5 items-start px-2 pt-1.5 bg-glass shadow-[inset_0_1px_0_var(--hairline)] backdrop-blur-xl')}
@@ -84,6 +95,8 @@ export function TabBarView({ areas, status, path, demo }: { areas?: string[]; st
         <button
           type="button"
           id="life-tab"
+          ref={tabRef}
+          aria-current={onLife ? 'page' : undefined}
           aria-expanded={open}
           aria-controls="life-tray"
           onClick={() => setOpenOn(open ? null : path)}
@@ -111,12 +124,15 @@ export function TabBarView({ areas, status, path, demo }: { areas?: string[]; st
         {link(plan)}
         {link(coach)}
       </nav>
+      {/* After the nav, so a screen reader reads the tray where the Life tab opened it. */}
+      {open ? <button type="button" aria-label="Close Life" tabIndex={-1} onClick={dismiss} className={cn(pin, 'inset-0 z-30 bg-scrim')} /> : null}
+      {open ? <LifeTray ref={trayRef} path={path} areas={areas} status={status} onNavigate={close} pin={pin} /> : null}
     </>
   )
 }
 
 /** Overview, the areas the user picked with today's state, then Time. Grows from the Life tab (200ms; shown in place under reduced motion). */
-function LifeTray({ path, areas, status, onNavigate, pin }: { path: string; areas?: string[]; status?: NavStatus; onNavigate: () => void; pin: string }) {
+function LifeTray({ ref, path, areas, status, onNavigate, pin }: { ref: React.Ref<HTMLDivElement>; path: string; areas?: string[]; status?: NavStatus; onNavigate: () => void; pin: string }) {
   const kids = visibleLifeChildren(areas, path)
   const row = (i: NavItem) => {
     const active = isActive(path, i.href)
@@ -147,7 +163,7 @@ function LifeTray({ path, areas, status, onNavigate, pin }: { path: string; area
   const rule = <div role="separator" className="mx-3 my-1 h-px bg-divider" />
   const { today } = status ?? {}
   return (
-    <div id="life-tray" role="region" aria-label="Life" className={cn(pin, 'tray-in inset-x-3 bottom-[calc(var(--tabbar-h)+16px)] z-40 rounded-xl bg-surface p-1.5 shadow-3')}>
+    <div ref={ref} id="life-tray" role="region" aria-label="Life" className={cn(pin, 'tray-in inset-x-3 bottom-[calc(var(--tabbar-h)+16px)] z-40 rounded-xl bg-surface p-1.5 shadow-3')}>
       <div className="flex h-9 items-center justify-between px-3 text-small font-medium text-ink-3">
         <span>Life</span>
         {today?.total ? <span className="font-normal tabular-nums">{today.done} of {today.total} done today</span> : null}
