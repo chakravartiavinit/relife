@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { addDays } from '@/core/time'
-import { describeChange, describeLink, findChanges, findLinks, spearman, type Signal } from './patterns'
+import { describeChange, describeLink, findChanges, findLinks, signalGroup, spearman, type Signal } from './patterns'
 
 const signal = (id: string, values: number[], end = '2026-11-07', extra: Partial<Signal> = {}): Signal => ({
   id, name: id, area: 'mind', group: id, direction: 'up', ...extra,
@@ -56,4 +56,14 @@ test('findChanges flags this week and names partners that moved with it', () => 
   assert.ok(mc.pct < 0)
   assert.deepEqual(mc.with.map((w) => w.signal.id), ['Sleep'])
   assert.match(describeChange(mc), /^Mood down \d+% this week: .* It usually moves with sleep \(down \d+%\)/)
+})
+
+test('two numbers from one app share a group and are never paired; hubs and mixed sources do not', () => {
+  assert.equal(signalGroup('listening', ['lastfm']), 'source:lastfm')
+  assert.equal(signalGroup('listening.songs', ['lastfm']), 'source:lastfm')
+  assert.equal(signalGroup('github.prs', ['github']), signalGroup('github.commits', ['github']))
+  assert.equal(signalGroup('steps', ['apple-health']), 'tracker:steps')
+  assert.equal(signalGroup('mood', ['manual']), 'tracker:mood')
+  assert.equal(signalGroup('sleep.hours', ['oura', 'manual']), 'tracker:sleep.hours')
+  assert.equal(signalGroup('weight', []), 'tracker:weight')
 })

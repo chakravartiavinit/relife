@@ -50,6 +50,19 @@ const MIN_RHO = 0.35
 const MIN_T = 3.5
 
 /** Spearman rank correlation: robust to outliers and to scales like 1–5 mood. */
+/** Sources that carry many unrelated measures (a phone health hub, things you type in): pairing two of their trackers is fine. */
+const HUB_SOURCES = new Set(['manual', 'user', 'browser', 'system', 'apple-health', 'health-connect', 'import', 'statement'])
+
+/**
+ * The pairing group of a tracker. Two numbers from the same app (Last.fm minutes and songs played, GitHub commits and
+ * pull requests, Duolingo XP and streak) always move together, so a "link" between them says nothing: they share a
+ * group and are never paired. A tracker fed by one hub source, or by several sources, keeps a group of its own.
+ */
+export function signalGroup(slug: string, sources: string[]): string {
+  const own = [...new Set(sources)].filter((s) => !HUB_SOURCES.has(s))
+  return own.length === 1 && own.length === new Set(sources).size ? `source:${own[0]}` : `tracker:${slug}`
+}
+
 export function spearman(xs: number[], ys: number[]) {
   const rx = ranks(xs)
   const ry = ranks(ys)
