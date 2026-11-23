@@ -20,6 +20,7 @@ import { BrandLogo } from '@/ui/components/brand-logo'
 import { StackedBars } from '@/ui/components/charts'
 import { EmptyState } from '@/ui/components/empty'
 import { buttonClass } from '@/ui/components/button'
+import { Fold } from '@/ui/components/fold'
 import { GridItem, PageGrid } from '@/ui/components/page-grid'
 import { CHART } from '@/ui/tokens'
 
@@ -97,7 +98,7 @@ async function Time() {
                     <span className="reveal-fill block h-full w-full rounded-full bg-ink-2" style={{ '--fill': `${(k.seconds / s.byKind[0].seconds) * 100}%`, '--i': i } as React.CSSProperties} />
                   </span>
                   <ul className="mt-2 flex flex-wrap gap-1.5">
-                    {(s.placesByKind.get(k.kind) ?? []).slice(0, 2).map((p) => (
+                    {(s.placesByKind.get(k.kind) ?? []).map((p) => (
                       <li key={p.name} className="rounded-sm bg-surface-2 px-2 py-0.5 text-caption text-ink-2 tabular-nums"><span className="max-w-[10rem] truncate align-bottom">{p.name}</span> <span className="text-ink-3">{hm(p.seconds)}</span></li>
                     ))}
                   </ul>
@@ -114,22 +115,19 @@ async function Time() {
           <div className="p-5 pb-2">
             <CardHeader className="mb-2" title={<span id="sites-heading">Top sites and apps</span>} description="Last 7 days · change what a site counts as and its past time is re-sorted" />
           </div>
-          <ul className="flex flex-col divide-y divide-divider border-t border-divider px-5">
-            {s.places.slice(0, 7).map((p) => (
-              // On a phone the kind picker drops under the name, so the name keeps the row's width.
-              <li key={p.name} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 py-2.5 grid-md:grid-cols-[auto_minmax(0,1fr)_auto_auto]">
-                <span className="row-span-2 self-start grid-md:row-span-1"><BrandLogo name={p.name} /></span>
-                <span className="min-w-0">
-                  <span className="block truncate text-body text-ink">{p.name}</span>
-                  <span className="block text-caption text-ink-3">{p.source === 'mac' ? 'Mac app' : 'Website'}</span>
-                </span>
-                <span className="col-start-2 row-start-2 justify-self-start grid-md:col-start-auto grid-md:row-start-auto grid-md:justify-self-auto">
-                  {p.source === 'browser' ? <SiteKind domain={p.name} kind={p.kind} /> : <KindTag kind={p.kind} />}
-                </span>
-                <span className="col-start-3 row-start-1 w-16 text-end text-small font-medium text-ink tabular-nums grid-md:col-start-auto grid-md:row-start-auto">{hm(p.seconds)}</span>
-              </li>
-            ))}
-          </ul>
+          <div className="border-t border-divider px-5">
+            <ul className="flex flex-col divide-y divide-divider">
+              {s.places.slice(0, TOP_SITES).map((p) => <SiteRow key={p.name} p={p} />)}
+            </ul>
+            {/* Every site keeps its "what this counts as" picker; the tail folds away. */}
+            {s.places.length > TOP_SITES ? (
+              <Fold title={`${s.places.length - TOP_SITES} more`} className="border-t border-divider">
+                <ul className="flex flex-col divide-y divide-divider">
+                  {s.places.slice(TOP_SITES).map((p) => <SiteRow key={p.name} p={p} />)}
+                </ul>
+              </Fold>
+            ) : null}
+          </div>
           {/* What the time was actually on, across every site and app (a video, a doc, a chat, a course page). */}
           <div className="border-t border-divider p-5">
             <h3 className="text-heading text-ink">What you spent it on</h3>
@@ -159,6 +157,28 @@ async function Time() {
         </Card>
       </GridItem>
     </PageGrid>
+  )
+}
+
+type Place = Awaited<ReturnType<typeof loadTime>>['s']['places'][number]
+
+/** Top sites shown before the rest fold away. */
+const TOP_SITES = 7
+
+function SiteRow({ p }: { p: Place }) {
+  return (
+    // On a phone the kind picker drops under the name, so the name keeps the row's width.
+    <li className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 py-2.5 grid-md:grid-cols-[auto_minmax(0,1fr)_auto_auto]">
+      <span className="row-span-2 self-start grid-md:row-span-1"><BrandLogo name={p.name} /></span>
+      <span className="min-w-0">
+        <span className="block truncate text-body text-ink">{p.name}</span>
+        <span className="block text-caption text-ink-3">{p.source === 'mac' ? 'Mac app' : 'Website'}</span>
+      </span>
+      <span className="col-start-2 row-start-2 justify-self-start grid-md:col-start-auto grid-md:row-start-auto grid-md:justify-self-auto">
+        {p.source === 'browser' ? <SiteKind domain={p.name} kind={p.kind} /> : <KindTag kind={p.kind} />}
+      </span>
+      <span className="col-start-3 row-start-1 w-16 text-end text-small font-medium text-ink tabular-nums grid-md:col-start-auto grid-md:row-start-auto">{hm(p.seconds)}</span>
+    </li>
   )
 }
 
