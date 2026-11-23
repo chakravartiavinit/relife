@@ -25,3 +25,7 @@ export const CHART = {
     'color-mix(in oklch, var(--ink-3) 25%, var(--surface))',
   ],
 }
+
+/** A ranked series' colour in a chart that leads with one: rank 1 the accent, ranks 2 and 3 the ramp, Other the last step. */
+export const chartShade = (rank: number, accent: string, other = false) =>
+  other ? CHART.neutral[2] : rank === 1 ? accent : CHART.neutral[Math.min(rank - 2, 2)]

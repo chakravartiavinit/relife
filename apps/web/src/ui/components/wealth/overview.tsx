@@ -2,8 +2,10 @@ import brand from '@relife/brand/brand.json'
 import { BellRing } from 'lucide-react'
 import type { loadWealthOverview } from '@/core/wealth-overview'
 import { formatMoney } from '@/domain/money'
+import { leadSeries } from '@/domain/series'
 import { dueLabel, monthLabel, timeAgo } from '@/domain/wealth'
 import { cn } from '../../cn'
+import { chartShade } from '../../tokens'
 import { CardLink } from '../area/card-link'
 import { BrandLogo } from '../brand-logo'
 import { Card, CardHeader, Skeleton } from '../card'
@@ -61,7 +63,15 @@ function MonthCard({ o, money }: { o: WealthOverview; money: Money }) {
       </div>
       <dl className="mt-2.5 flex flex-wrap justify-between gap-x-6 gap-y-1 text-caption text-ink-2 tabular-nums">
         {pace.usual ? <div className="flex items-center gap-1.5"><span aria-hidden className="h-3 w-0.5 rounded-xs bg-ink" /><dt className="sr-only">A usual month</dt><dd>Usual {money(pace.usual)}</dd></div> : <span />}
-        <div className="flex items-center gap-1.5"><span aria-hidden className="size-2 rounded-full opacity-30" style={{ background: ACCENT }} /><dt className="sr-only">At this pace</dt><dd>{money(pace.projected)} at this pace</dd></div>
+        <div className="flex items-center gap-1.5"><span aria-hidden className="size-2 rounded-full opacity-30" style={{ background: ACCENT }} /><dt className="sr-only">At this pace</dt><dd>
+          {money(pace.projected)} at this pace
+          {pace.vsUsual != null ? (
+            // How far that pace is from a usual month: green under it, red well over it.
+            <span className={cn('ms-1.5 font-medium', pace.vsUsual > 0.1 ? 'text-bad' : pace.vsUsual < -0.1 ? 'text-good' : 'text-ink-2')}>
+              {pace.vsUsual > 0 ? '▲' : '▼'} {Math.round(Math.abs(pace.vsUsual) * 100)}% {pace.vsUsual > 0 ? 'above' : 'below'} usual
+            </span>
+          ) : null}
+        </dd></div>
       </dl>
 
       <div className="mt-6 border-t border-divider pt-5">
@@ -81,6 +91,11 @@ function MonthCard({ o, money }: { o: WealthOverview; money: Money }) {
 }
 
 function WhereItWent({ o }: { o: WealthOverview }) {
+  // The colours the month bars give each category (ranked over the 12 months, the month's biggest leading), so a swatch here matches its bar.
+  const colors = Object.fromEntries(
+    leadSeries(o.categories.map((c) => ({ id: c, name: c, color: '', values: o.months.map((m) => o.byMonthCat.get(m)?.get(c) ?? 0) })), 3, o.thisMonthCats[0]?.label)
+      .filter((r) => !r.other).map((r) => [r.id, chartShade(r.rank, ACCENT)]),
+  )
   return (
     <Card aria-labelledby="where-heading" className="h-full">
       <CardHeader
@@ -88,7 +103,7 @@ function WhereItWent({ o }: { o: WealthOverview }) {
         action={<CardLink href="/wealth/spending">Spending</CardLink>}
       />
       <CategoryList
-        base={o.base} accent={ACCENT} lead={o.thisMonthCats[0]?.label} monthName={monthLabel(o.month).split(' ')[0]}
+        base={o.base} colors={colors} monthName={monthLabel(o.month).split(' ')[0]}
         month={o.thisMonthCats}
         all={o.allTime.map((c) => ({ label: c.category, value: c.total, sub: `${c.orders.toLocaleString('en-IN')} orders since ${MONTH_YEAR.format(new Date(`${c.first}T00:00:00Z`))} · ${formatMoney(c.total / c.orders, o.base, { decimals: 0 })} each` }))}
       />

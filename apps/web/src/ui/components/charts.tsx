@@ -7,7 +7,7 @@ import { EvilBarChart } from '@/components/evilcharts/charts/recharts-bar-chart'
 import { EvilPieChart } from '@/components/evilcharts/charts/recharts-pie-chart'
 import type { ChartConfig } from '@/components/evilcharts/ui/recharts-chart'
 import { hasTrend, interpolateGaps, leadSeries, niceAxis, trimLeadingEmpty, type RankedSeries } from '@/domain/series'
-import { CHART } from '../tokens'
+import { CHART, chartShade } from '../tokens'
 
 // ReLife's charts: EvilCharts (evilcharts.com), installed unmodified with `npx shadcn add @evilcharts/…` into
 // src/components/evilcharts. These wrappers only pick the chart, its parts and ReLife's colours.
@@ -65,8 +65,7 @@ const isArea = (color: string) => color.startsWith('var(--cat-')
 /** The colour rule: the lead takes the accent, ranks 2 and 3 and Other the neutral ramp; an area series keeps its area colour. */
 function shade(r: RankedSeries, accent: string) {
   if (isArea(r.color)) return r.color
-  if (r.other) return CHART.neutral[2]
-  return r.rank === 1 ? accent : CHART.neutral[Math.min(r.rank - 2, 2)]
+  return chartShade(r.rank, accent, r.other)
 }
 const LEGEND_MAX = 4
 

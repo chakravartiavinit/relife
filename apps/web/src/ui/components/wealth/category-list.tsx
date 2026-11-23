@@ -12,11 +12,11 @@ const SHOWN_ON_PHONE = 4
 
 /**
  * Where the money went as a ranked list: a small bar, the amount, one row per category, largest first. The pill switch
- * flips between this month and everything since the history begins. The lead category (the one the month bars lead
- * with) is in the area colour, the rest are neutral. On a phone the first four rows show and the rest fold.
+ * flips between this month and everything since the history begins. Each swatch is the colour the month bars give that
+ * category (`colors`: the lead in the area colour, the next ranks neutral, a category not in the bars the last step). On a phone the first four rows show and the rest fold.
  */
-export function CategoryList({ month, monthName, all, lead, base, accent }: {
-  month: CategoryRow[]; monthName: string; all: CategoryRow[]; lead?: string; base: string; accent: string
+export function CategoryList({ month, monthName, all, colors, base }: {
+  month: CategoryRow[]; monthName: string; all: CategoryRow[]; colors: Record<string, string>; base: string
 }) {
   const [view, setView] = useState<'month' | 'all'>('month')
   const rows = view === 'month' ? month : all
@@ -25,7 +25,7 @@ export function CategoryList({ month, monthName, all, lead, base, accent }: {
     <li key={`${view}:${r.label}`} className="grid min-h-9 grid-cols-[minmax(0,1fr)_4rem_auto] items-center gap-x-3 py-1">
       <span className="min-w-0">
         <span className="flex items-center gap-2 text-body text-ink">
-          <span aria-hidden className="size-2.5 shrink-0 rounded-xs" style={{ background: r.label === lead ? accent : CHART.neutral[Math.min(i, 2)] }} />
+          <span aria-hidden className="size-2.5 shrink-0 rounded-xs" style={{ background: colors[r.label] ?? CHART.neutral[2] }} />
           <span className="truncate">{r.label}</span>
         </span>
         {r.sub ? <span className="block truncate ps-[18px] text-caption text-ink-3 tabular-nums">{r.sub}</span> : null}
