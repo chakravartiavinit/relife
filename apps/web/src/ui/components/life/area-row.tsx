@@ -34,7 +34,7 @@ const DAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 const LINK = 'rounded-xs text-pill-ink font-medium whitespace-nowrap hover-fine:underline focus-visible:outline-2 focus-visible:outline-pill'
 
 /** The grid every row and the column heads share: stacked on a phone, two columns from 640px, three from 960px. */
-export const LEDGER_COLS = 'grid gap-x-8 grid-md:grid-cols-[minmax(0,1fr)_12.25rem] grid-lg:grid-cols-[13.75rem_minmax(0,1fr)_12.25rem]'
+export const LEDGER_COLS = 'grid grid-cols-1 gap-x-8 grid-md:grid-cols-[minmax(0,1fr)_12.25rem] grid-lg:grid-cols-[13.75rem_minmax(0,1fr)_12.25rem]'
 /** The body's own columns: three numbers, and from 960px a fourth for the trend. */
 export const KPI_COLS = 'grid grid-cols-3 gap-x-5 grid-lg:grid-cols-[repeat(3,minmax(0,1fr))_7.5rem]'
 
@@ -118,7 +118,7 @@ export function AreaRow({ d }: { d: RowData }) {
 function WeekCell({ def, week: r, change, steady, maxXp }: { def: AreaDef; week: WeekRow; change?: RowChange; steady: boolean; maxXp: number }) {
   const pct = Math.round(Math.abs(r.delta ?? 0) * 100)
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 grid-md:col-start-2 grid-md:row-start-1 grid-md:flex-col grid-md:items-stretch grid-md:justify-start grid-lg:col-start-3">
+    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 grid-md:col-start-2 grid-md:row-start-1 grid-md:flex-col grid-md:flex-nowrap grid-md:items-stretch grid-md:justify-start grid-lg:col-start-3">
       <div className="flex items-center gap-2" role="img" aria-label={`${r.activeDays} of ${r.elapsed} days active`}>
         <span className="flex items-center gap-1.5">
           {r.marks.map((m, i) => (

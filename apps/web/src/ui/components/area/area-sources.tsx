@@ -73,7 +73,7 @@ export async function AreaSources({ user, def, today }: { user: User; def: AreaD
       {suggested.length ? (
         <Card>
           <CardHeader title={`Suggested for ${def.title}`} icon={<Plus strokeWidth={2} />} color={def.color} description="Not connected yet. Each one opens its setup." />
-          <ul className="grid gap-3 md:grid-cols-2">
+          <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {suggested.map((c) => (
               <li key={c.id} className="flex items-center gap-3 rounded-md bg-surface-2 p-3">
                 <AppLogo id={c.id} category={c.category} size="sm" />
