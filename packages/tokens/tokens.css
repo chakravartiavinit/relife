@@ -24,6 +24,9 @@
   --good: oklch(0.56 0.12 155);
   --bad: oklch(0.56 0.17 25);
   --warn: oklch(0.62 0.13 70);
+  --good-ink: oklch(0.5 0.11 155);  /* text-safe good: 5.1:1 on surface-2 (light), 7.6:1 (dark) */
+  --warn-ink: oklch(0.53 0.12 62);  /* text-safe warn: 4.9:1 on surface-2 (light), 8.3:1 (dark) */
+  --bad-ink: oklch(0.52 0.17 25);  /* text-safe bad: 5.4:1 on surface-2 (light), 6.4:1 (dark) */
   --medal-bronze: oklch(0.62 0.11 55);
   --medal-silver: oklch(0.68 0.015 250);
   --medal-gold: oklch(0.74 0.14 85);
@@ -75,6 +78,9 @@
   --good: oklch(0.74 0.13 155);
   --bad: oklch(0.70 0.15 25);
   --warn: oklch(0.78 0.12 75);
+  --good-ink: oklch(0.76 0.12 155);
+  --warn-ink: oklch(0.80 0.11 75);
+  --bad-ink: oklch(0.74 0.14 25);
   --medal-bronze: oklch(0.70 0.11 55);
   --medal-silver: oklch(0.80 0.015 250);
   --medal-gold: oklch(0.82 0.13 85);
@@ -121,6 +127,9 @@
     --good: oklch(0.74 0.13 155);
     --bad: oklch(0.70 0.15 25);
     --warn: oklch(0.78 0.12 75);
+    --good-ink: oklch(0.76 0.12 155);
+    --warn-ink: oklch(0.80 0.11 75);
+    --bad-ink: oklch(0.74 0.14 25);
     --medal-bronze: oklch(0.70 0.11 55);
     --medal-silver: oklch(0.80 0.015 250);
     --medal-gold: oklch(0.82 0.13 85);

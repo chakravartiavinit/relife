@@ -15,7 +15,7 @@ import { cn } from '../cn'
  */
 export function PageHead({ capsule, label, title, brief, summary, tabs, actions, tone = 'var(--pill)', className }: {
   capsule?: React.ReactNode
-  /** The mono `SystemLabel`. */
+  /** The sentence-case `SystemLabel`. */
   label?: React.ReactNode
   title: React.ReactNode
   /** One line under the title, with its Why? link. */

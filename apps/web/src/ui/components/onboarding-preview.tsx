@@ -97,7 +97,7 @@ function Part({ label, at, step, empty, children, fromPack }: {
       <p className="mb-2 flex items-center justify-between gap-2 text-small font-medium text-ink-3">
         {label}
         <span className="flex items-center gap-1.5">
-          {fromPack && !empty ? <span className="font-mono text-label text-pill-ink">+ Pack</span> : null}
+          {fromPack && !empty ? <span className="text-label text-pill-ink">+ Pack</span> : null}
           <AnimatePresence initial={false}>
             {now ? <motion.span key="now" {...appear} className="rounded-full bg-pill px-1.5 font-sans text-label tracking-normal text-white normal-case">Editing</motion.span> : null}
           </AnimatePresence>
@@ -158,7 +158,7 @@ export function SaveFile({ v, step, picks, routines, starters, sources, pack, ai
             <CapsuleIcon letter={letter} size="md" />
           </motion.span>
           <div className="min-w-0 flex-1">
-            <p className="font-mono text-label font-medium text-pill-ink uppercase">Save file</p>
+            <p className="text-label text-pill-ink">Save file</p>
             <p className={cn('truncate font-display text-title', name ? 'text-ink' : 'text-ink-3')}>{name || 'Your name'}</p>
             <p className="mt-1 flex items-center gap-2 text-caption text-ink-3">
               <span className="inline-flex h-5 items-center rounded-full bg-ink px-1.5 text-label font-medium text-bg tabular-nums">Lv 1</span>

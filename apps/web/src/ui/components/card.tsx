@@ -38,7 +38,7 @@ export function CardHeader({ title, description, action, icon, color, className 
       <div className="flex min-w-0 items-start gap-3">
         {icon ? <IconChip color={color}>{icon}</IconChip> : null}
         <div className="min-w-0">
-          <h2 className={cn('text-heading text-ink', !!icon && 'leading-6')}>{title}</h2>
+          <h2 className={cn('font-display text-heading text-ink', !!icon && 'leading-6')}>{title}</h2>
           {description ? <p className="mt-0.5 text-small text-ink-3">{description}</p> : null}
         </div>
       </div>
@@ -81,11 +81,11 @@ export function Skeleton({ className }: { className?: string }) {
 }
 
 /**
- * The compact head of a page (see `PageHead`): the mono label, the serif title, one brief line, an optional summary on
+ * The compact head of a page (see `PageHead`): the sentence-case label, the Fraunces title, one brief line, an optional summary on
  * the right and an optional tab row with the page's actions at its end. Not a card. Category pages get their colour
  * automatically from the eyebrow.
  *
- * `eyebrow` is the mono label, `description` the brief line, `summary` the right-hand block, `tabs` an underline
+ * `eyebrow` is the sentence-case label, `description` the brief line, `summary` the right-hand block, `tabs` an underline
  * `RouteTabs`, `actions` the page's buttons (in the tabs row when there are tabs), `capsule` a `CapsuleIcon`.
  */
 export function PageHeader({ title, description, actions, eyebrow, summary, tabs, capsule, className }: {
@@ -102,13 +102,14 @@ export function PageHeader({ title, description, actions, eyebrow, summary, tabs
 }
 
 /**
- * A small mono label in the System's voice: ▮ HEALTH. Only in page banners (PageHeader, AreaHeader, the Life and You
- * heads, the Today date, the save file, the sign-in banner). Sections use `SectionLabel`.
+ * The sentence-case label above a page title: a small area-coloured dot and `Health`, `Monday, 23 November`.
+ * Only in page banners (PageHeader, AreaHeader, the Life and You heads, the Today date, the save file, the sign-in
+ * banner). Sections use `SectionLabel`.
  */
 export function SystemLabel({ color = 'var(--pill)', children }: { color?: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2 font-mono text-label uppercase text-ink-2">
-      <span aria-hidden className="h-3 w-[3px] rounded-xs" style={{ background: color }} />
+    <div className="flex items-center gap-2 text-label text-ink-2">
+      <span aria-hidden className="size-1.5 shrink-0 rounded-full" style={{ background: color }} />
       {children}
     </div>
   )

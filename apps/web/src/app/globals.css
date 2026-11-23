@@ -68,6 +68,10 @@
   --color-good: var(--good);
   --color-bad: var(--bad);
   --color-warn: var(--warn);
+  /* Text-safe status colours (4.5:1 on surface and surface-2): status words, overdue times. */
+  --color-good-ink: var(--good-ink);
+  --color-warn-ink: var(--warn-ink);
+  --color-bad-ink: var(--bad-ink);
   --color-health: var(--cat-health);
   --color-mind: var(--cat-mind);
   --color-skills: var(--cat-skills);
@@ -88,12 +92,13 @@
   --color-destructive: var(--bad);
   --color-accent: var(--pill);
 
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  /* Display: the serif, for page titles and the Today greeting only. */
-  --font-display: var(--font-serif), Georgia, 'Times New Roman', serif;
-  /* Figures: Inter with tabular digits (see the num utility). */
-  --font-figure: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+  --font-sans: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
+  /* Display: Fraunces, for page titles, card titles and one standalone figure. It has no tabular figures. */
+  --font-display: var(--font-fraunces), Georgia, 'Times New Roman', serif;
+  /* Figures in a row or column: Hanken Grotesk with tabular digits (see the num utility). */
+  --font-figure: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
+  /* No mono face is loaded: code and codes use the system one. */
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
   --shadow-1: var(--elev-1);
   --shadow-2: var(--elev-2);
@@ -105,34 +110,40 @@
 
 /* The type scale is a plain @theme (not inline) so utilities read var(--text-*) and a media query can resize a step. */
 @theme {
-  /* Type scale. Use these instead of text-[Npx]: `font-display text-display`, `text-label font-mono uppercase`.
-     Weights are 400 and 500 only. Sizes and tracking come from the Character sheet mockups. */
-  --text-hero: 56px;
-  --text-hero--line-height: 60px;
-  --text-hero--font-weight: 400;
-  --text-hero--letter-spacing: -0.01em;
+  /* Type scale (T1 "Field notebook"). Use these instead of text-[Npx]: `font-display text-display`, `text-label`.
+     Display, Title, Heading and Figure are set in Fraunces (add `font-display`); the rest is Hanken Grotesk.
+     Weights 400-600, sentence case, no negative tracking under 20px. */
   --text-display: 44px;
   --text-display--line-height: 48px;
   --text-display--font-weight: 400;
   --text-display--letter-spacing: -0.01em;
-  --text-title: 24px;
-  --text-title--line-height: 32px;
-  --text-title--font-weight: 500;
-  --text-title--letter-spacing: -0.015em;
-  --text-heading: 16px;
-  --text-heading--line-height: 22px;
+  --text-title: 28px;
+  --text-title--line-height: 34px;
+  --text-title--font-weight: 400;
+  --text-title--letter-spacing: -0.005em;
+  --text-heading: 19px;
+  --text-heading--line-height: 24px;
   --text-heading--font-weight: 500;
-  --text-heading--letter-spacing: -0.005em;
-  --text-body: 14px;
-  --text-body--line-height: 20px;
+  --text-figure: 36px;
+  --text-figure--line-height: 40px;
+  --text-figure--font-weight: 400;
+  --text-figure--letter-spacing: -0.01em;
+  --text-body: 15px;
+  --text-body--line-height: 22px;
   --text-small: 13px;
   --text-small--line-height: 18px;
   --text-caption: 12px;
   --text-caption--line-height: 16px;
-  --text-label: 12px;
+  --text-caption--letter-spacing: 0.01em;
+  --text-label: 13px;
   --text-label--line-height: 16px;
   --text-label--font-weight: 500;
-  --text-label--letter-spacing: 0.08em;
+  --text-label--letter-spacing: 0.01em;
+  /* The Today greeting used the 56px hero. It is now the Display step. */
+  --text-hero: 44px;
+  --text-hero--line-height: 48px;
+  --text-hero--font-weight: 400;
+  --text-hero--letter-spacing: -0.01em;
 }
 
 @layer base {
@@ -142,16 +153,19 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
-    font-feature-settings: "cv11", "ss01";
+    font-variant-numeric: tabular-nums;
   }
   body {
     font-family: var(--font-sans);
     position: relative;
     isolation: isolate;
   }
-  /* The serif has a 400 only: never fake a bold. */
+  /* Fraunces: soft, no wonk; the optical size follows the text size. No tabular figures, so lining ones. */
   .font-display {
     font-synthesis-weight: none;
+    font-optical-sizing: auto;
+    font-variation-settings: "SOFT" 50, "WONK" 0;
+    font-variant-numeric: lining-nums;
   }
   h1, h2, h3 {
     text-wrap: balance;
@@ -311,18 +325,22 @@ details[open]::details-content { opacity: 1; }
   mask-image: linear-gradient(to bottom, transparent 0, #000 10px, #000 calc(100% - 28px), transparent);
 }
 
-/* Big numbers (KPI values, totals): the figure face (Inter), medium weight, digits that line up. */
+/* Big numbers in rows and columns (KPI values, totals): the UI face (Hanken Grotesk), medium weight, digits that line up. */
 @utility num {
   font-family: var(--font-figure);
   font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
 
-/* Phone: the Today greeting steps down from 56px to 40px (the Character sheet phone mockup). */
+/* Phone: Display 44/48 steps down to 34/40 and Body 15/22 up to 16/24 (the calm type specimen). */
 @media (max-width: 639px) {
   :root {
-    --text-hero: 40px;
-    --text-hero--line-height: 44px;
+    --text-display: 34px;
+    --text-display--line-height: 40px;
+    --text-hero: 34px;
+    --text-hero--line-height: 40px;
+    --text-body: 16px;
+    --text-body--line-height: 24px;
   }
 }
 

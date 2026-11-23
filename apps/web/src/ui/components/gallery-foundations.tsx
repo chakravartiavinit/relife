@@ -47,25 +47,25 @@ const Grid = ({ children }: { children: React.ReactNode }) => <div className="gr
 /** The type scale, one row per token. Each line is the real class, so it follows the tokens. */
 export function TypeScale() {
   const rows: [string, string, string][] = [
-    ['text-hero font-display', 'hero 56/60 serif', 'Still up, Aarav.'],
-    ['text-display font-display', 'display 44/48 serif', 'Health'],
-    ['text-title', 'title 24/32', 'Today’s plan'],
-    ['text-heading', 'heading 16/22', 'Sleep this week'],
-    ['text-body', 'body 14/20', 'Six of sixteen routines done.'],
+    ['text-display font-display', 'display 44/48 (34/40 phone)', 'Good evening, Aarav'],
+    ['text-title font-display', 'title 28/34', 'Today’s plan'],
+    ['text-heading font-display', 'heading 19/24 500', 'Sleep this week'],
+    ['text-figure font-display', 'figure 36/40', '7.2 h'],
+    ['text-body', 'body 15/22 (16/24 phone)', 'Six of sixteen routines done.'],
     ['text-small', 'small 13/18', 'Water is 500 ml behind pace.'],
     ['text-caption', 'caption 12/16', 'Updated 2 minutes ago'],
-    ['text-label font-mono uppercase', 'label 12/16 mono', 'Health · Today'],
+    ['text-label', 'label 13/16 500', 'Health · Today'],
   ]
   return (
     <div className="flex flex-col divide-y divide-divider">
       {rows.map(([cls, name, sample]) => (
         <div key={name} className="flex items-baseline gap-4 py-3">
-          <code className="w-44 shrink-0 text-caption text-ink-3">{name}</code>
+          <code className="w-52 shrink-0 text-caption text-ink-3">{name}</code>
           <span className={`${cls} min-w-0 truncate text-ink`}>{sample}</span>
         </div>
       ))}
       <div className="flex items-baseline gap-4 py-3">
-        <code className="w-44 shrink-0 text-caption text-ink-3">num</code>
+        <code className="w-52 shrink-0 text-caption text-ink-3">num</code>
         <span className="num text-title text-ink">₹12,480 · 7.2 h</span>
       </div>
     </div>

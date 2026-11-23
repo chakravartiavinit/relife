@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, Instrument_Serif, JetBrains_Mono } from 'next/font/google'
+import { Fraunces, Hanken_Grotesk } from 'next/font/google'
 import brand from '@relife/brand/brand.json'
 import { THEME_SCRIPT } from '@/ui/components/theme-toggle'
 import '@/app/globals.css'
@@ -8,11 +8,11 @@ import '@/app/globals.css'
 // signed-in providers) and the one for pages a visitor sees before signing in (app/(bare)/layout.tsx: /signin and /pair).
 // Keeping them apart means a visitor's page never renders anything of the owner's: no name, level or counts.
 
-const inter = Inter({ variable: '--font-inter', subsets: ['latin'], display: 'swap' })
-// Page titles and the Today greeting only (`font-display`); the one serif of the Character sheet look.
-const serif = Instrument_Serif({ variable: '--font-serif', subsets: ['latin'], weight: ['400'], display: 'swap' })
-// `SystemLabel` only (banners).
-const jetbrains = JetBrains_Mono({ variable: '--font-jetbrains', subsets: ['latin'], weight: ['500'], display: 'swap' })
+// UI text and every number in a row or column (tabular figures).
+const hanken = Hanken_Grotesk({ variable: '--font-hanken', subsets: ['latin'], weight: ['400', '500', '600'], display: 'swap' })
+// Page titles, card titles and a single standalone figure (`font-display`). Variable: weight 400-500, optical size follows
+// the text size, and `globals.css` sets SOFT 50 and WONK 0 on `.font-display`. It has no tabular figures.
+const fraunces = Fraunces({ variable: '--font-fraunces', subsets: ['latin'], axes: ['opsz', 'SOFT', 'WONK'], display: 'swap' })
 
 export const rootMetadata: Metadata = {
   title: { default: brand.name, template: `%s · ${brand.name}` },
@@ -31,7 +31,7 @@ export const rootViewport: Viewport = {
 /** `head`: extra tags for this layout only (the dashboard adds the sidebar script that runs before paint). */
 export function RootHtml({ children, head }: { children: React.ReactNode; head?: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${serif.variable} ${jetbrains.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${hanken.variable} ${fraunces.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         {head}
