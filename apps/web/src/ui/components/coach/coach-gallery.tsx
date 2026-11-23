@@ -41,9 +41,12 @@ export function CoachGallery() {
     <div className="grid gap-6 lg:grid-cols-2">
       <div className="lg:col-span-2">
         <p className="mb-3 text-small text-ink-3">Needs you, every kind in rank order. Buttons use the real actions, so on these fixture ids they fail and the row comes back with an error toast.</p>
-        <Card className="max-w-[640px] overflow-hidden px-0 py-0">
-          <NeedsYouList items={ITEMS} timezone="Asia/Kolkata" today="2026-11-12" categories={['Groceries', 'Food delivery', 'Transport', 'Eating out', 'Shopping', 'Health', 'Bills']} goal={null} />
-        </Card>
+        {/* The container is the page grid's: from 640px the To sort rows are open, below it they fold to one line. */}
+        <div className="@container max-w-[760px]">
+          <Card className="overflow-hidden px-0 py-0">
+            <NeedsYouList items={ITEMS} timezone="Asia/Kolkata" today="2026-11-12" categories={['Groceries', 'Food delivery', 'Transport', 'Eating out', 'Shopping', 'Health', 'Bills']} goal={null} />
+          </Card>
+        </div>
       </div>
       <div className="flex flex-col gap-3">
         <p className="text-small text-ink-3">Resolved row, with and without Undo, and a row while it works</p>
@@ -63,13 +66,13 @@ export function CoachGallery() {
       </div>
       <div className="max-w-[420px] lg:col-span-2">
         <p className="mb-3 text-small text-ink-3">No model: the Connect card with what still works</p>
-        <ConnectCoach />
+        <Card className="flex flex-col gap-3"><ConnectCoach /></Card>
       </div>
       <div className="max-w-[420px] lg:col-span-2">
         <p className="mb-3 text-small text-ink-3">Free local AI chosen, server not answering (the pill reads “Local AI not running”)</p>
         <span className="mb-3 inline-flex h-7 items-center gap-1.5 rounded-full bg-surface px-3 text-caption font-medium text-ink-2 shadow-1"><span aria-hidden className="size-1.5 rounded-full bg-warn" /><span className="text-warn">Local AI not running</span></span>
-        <LocalAiDown message="Nothing answered at localhost:11434. Install Ollama from ollama.com, then run `ollama pull qwen3:4b-instruct`." />
-        <div className="mt-3"><LocalAiDown message="Nothing answered at ollama:11434. Start it with `docker compose --profile ai up -d`, or pick another provider in You › Connections." /></div>
+        <Card><LocalAiDown message="Nothing answered at localhost:11434. Install Ollama from ollama.com, then run `ollama pull qwen3:4b-instruct`." /></Card>
+        <Card className="mt-3"><LocalAiDown message="Nothing answered at ollama:11434. Start it with `docker compose --profile ai up -d`, or pick another provider in You › Connections." /></Card>
       </div>
     </div>
   )

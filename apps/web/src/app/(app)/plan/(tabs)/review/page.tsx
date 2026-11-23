@@ -8,6 +8,7 @@ import { getUser } from '@/core/user'
 import { buttonClass } from '@/ui/components/button'
 import { Card, Skeleton } from '@/ui/components/card'
 import { EmptyState } from '@/ui/components/empty'
+import { GridItem, PageGrid } from '@/ui/components/page-grid'
 import { ReviewFlow, ReviewNow } from '@/ui/components/goals/review-flow'
 import { day } from '@/ui/components/goals/format'
 
@@ -15,7 +16,7 @@ export const metadata: Metadata = { title: 'Weekly review' }
 
 export default function GoalReviewPage() {
   return (
-    <Suspense fallback={<div aria-busy><Skeleton className="mb-6 h-[72px] rounded-lg" /><Skeleton className="h-[480px] rounded-lg" /></div>}>
+    <Suspense fallback={<PageGrid aria-busy><GridItem><Skeleton className="h-[72px] rounded-lg" /></GridItem><GridItem><Skeleton className="h-[480px] rounded-lg" /></GridItem></PageGrid>}>
       <Review />
     </Suspense>
   )
@@ -31,12 +32,12 @@ async function Review() {
   // The same period the cards show, not up to today: a review covers the window it closed.
   const to = cards.map((d) => d.review.snapshot.window.to).sort().at(-1) ?? data.today
   return (
-    <div>
-      <div className="mb-6 max-w-[60ch]">
-        <h2 className="text-heading font-semibold text-ink">{from ? `Weekly review · ${day(from)} – ${day(to)}` : 'Weekly review'}</h2>
+    <PageGrid>
+      <GridItem className="max-w-[60ch]">
+        <h2 className="text-heading text-ink">{from ? `Weekly review · ${day(from)} – ${day(to)}` : 'Weekly review'}</h2>
         <p className="mt-1 text-body text-ink-2">For each goal, compare what you did with how the outcome moved. Then choose what happens next. Goals you don’t decide stay as they are.</p>
-      </div>
-      {cards.length ? (
+      </GridItem>
+      <GridItem>{cards.length ? (
         <ReviewFlow
           picker={data.picker} today={data.today}
           items={cards.map(({ goal, review }) => {
@@ -50,7 +51,7 @@ async function Review() {
             action={<Link href="/plan" className={buttonClass({ variant: 'primary' })}>Back to goals</Link>} />
           <ReviewNow goals={data.active.map((g) => ({ id: g.id, title: g.title }))} />
         </Card>
-      )}
-    </div>
+      )}</GridItem>
+    </PageGrid>
   )
 }

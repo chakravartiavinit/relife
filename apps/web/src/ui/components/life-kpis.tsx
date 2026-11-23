@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { eq } from 'drizzle-orm'
-import { ArrowDownRight, ArrowUpRight, Brain, Check, Code, Flame, HeartPulse, Palette, Users, Wallet } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, Brain, Code, HeartPulse, Palette, Users, Wallet } from 'lucide-react'
 import { db, schema } from '@/db'
 import type { Category } from '@/db/schema'
 import type { User } from '@/core/user'
@@ -13,11 +13,12 @@ import { shiftMonth, monthRange } from '@/domain/wealth'
 import { CATEGORY } from '../tokens'
 import { Capsule } from './capsule'
 import { IconChip } from './card'
+import { ProgressBlock } from './progress-block'
 import { Sparkline, type Point } from './charts'
 import { Ticker } from './ticker'
 import { cn } from '../cn'
 
-// Home-screen KPIs: one tile per life area plus a "showed up" streak.
+// Progress's "This week, area by area": one cell per life area.
 // Each tile compares the last 7 days with the 7 before, so the number reads as a direction, not a snapshot.
 
 const ICON: Record<Category, React.ReactNode> = {
@@ -39,6 +40,8 @@ type Tile = {
   delta?: Delta
   spark?: Point[]
   ratio?: [number, number]
+  /** The tile as a few plain words, for the phone fold's one line. */
+  short?: string
 }
 
 const sum = (xs: Point[]) => xs.reduce((s, p) => s + (p.value ?? 0), 0)
@@ -90,6 +93,7 @@ export async function LifeKpis({ user, now }: { user: User; now: Date }) {
       value: a == null ? null : <Ticker value={a} decimals={1} suffix="h" />,
       sub: a == null ? 'No sleep logged this week' : `${cur.filter((p) => p.value != null).length} nights logged`,
       delta: delta(a, b, (d) => `${formatNumber(Math.abs(d), 1)}h`),
+      short: a == null ? undefined : `Sleep ${formatNumber(a, 1)}h`,
     }
   } else if (steps) {
     const [prev, cur] = week(steps)
@@ -98,6 +102,7 @@ export async function LifeKpis({ user, now }: { user: User; now: Date }) {
       cat: 'health', href: '/health', label: 'Steps, 7-day avg', spark: steps,
       value: a == null ? null : <Ticker value={Math.round(a)} />, sub: 'per day',
       delta: delta(a, b, (d) => formatNumber(Math.abs(d))),
+      short: a == null ? undefined : `${formatNumber(Math.round(a))} steps`,
     }
   } else {
     health = { cat: 'health', href: '/health', label: 'Sleep', value: null, sub: 'Send sleep from your iPhone or type “sleep 7”' }
@@ -114,6 +119,7 @@ export async function LifeKpis({ user, now }: { user: User; now: Date }) {
       value: a == null ? null : <span><Ticker value={a} decimals={1} /><span className="text-ink-3">/5</span></span>,
       sub: a == null ? 'Not logged this week' : `${cur.filter((p) => p.value != null).length} days logged`,
       delta: delta(a, b, (d) => formatNumber(Math.abs(d), 1)),
+      short: a == null ? undefined : `mood ${formatNumber(a, 1)}/5`,
     }
   }
 
@@ -128,6 +134,7 @@ export async function LifeKpis({ user, now }: { user: User; now: Date }) {
       value: <Ticker value={a} />,
       sub: `${cur.filter((p) => (p.value ?? 0) > 0).length} of 7 days active`,
       delta: delta(a, b, (d) => formatNumber(Math.abs(d))),
+      short: `${formatNumber(a)} commits`,
     }
   }
 
@@ -144,6 +151,7 @@ export async function LifeKpis({ user, now }: { user: User; now: Date }) {
       value: <Ticker value={mtd} currency={user.baseCurrency} compact={mtd >= 100_000} />,
       sub: lastMtd > 0 ? `${formatMoney(lastMtd, user.baseCurrency, { compact: true })} by now last month` : 'This month so far',
       delta: pct ? { text: `${Math.abs(pct)}%`, up: pct > 0, good: pct < 0 } : undefined,
+      short: `spent ${formatMoney(mtd, user.baseCurrency, { compact: true })}`,
     }
     : { cat: 'wealth', href: '/wealth', label: 'Spent this month', value: null, sub: 'Connect an order app or type “spent 120 chai”' }
 
@@ -155,6 +163,7 @@ export async function LifeKpis({ user, now }: { user: User; now: Date }) {
       cat: 'relationships', href: '/people', label: 'In touch', ratio: [tracked.length - overdue, tracked.length],
       value: <span>{tracked.length - overdue}<span className="text-ink-3">/{tracked.length}</span></span>,
       sub: overdue ? `${overdue} to reach out to` : 'Everyone’s in rhythm',
+      short: `${tracked.length - overdue}/${tracked.length} in touch`,
     }
     : { cat: 'relationships', href: '/people', label: 'In touch', value: null, sub: 'Add people you want to stay close to' }
 
@@ -172,23 +181,24 @@ export async function LifeKpis({ user, now }: { user: User; now: Date }) {
       value: <span><Ticker value={a} /><span className="text-ink-3"> min</span></span>,
       sub: `${cur.filter((p) => (p.value ?? 0) > 0).length} of 7 days practised`,
       delta: delta(a, b, (d) => `${formatNumber(Math.abs(d))} min`),
+      short: `${formatNumber(a)} min practised`,
     }
   }
 
-  const { current, best } = streaks(active, today)
-  const last7 = Array.from({ length: 7 }, (_, i) => addDays(today, i - 6))
+  const tiles = [health, mind, skills, wealth, hobbies, relationships]
+  const summary = tiles.flatMap((t) => (t.short ? [t.short] : [])).slice(0, 3).join(' · ')
 
+  // The daily streak with this week's check-ins is on the character sheet: one streak on the page.
   return (
-    <section aria-label="Your life at a glance" className="grid grid-cols-2 gap-3 md:grid-cols-4">
-      <div className="col-span-2 grid">
-        <StreakTile current={current} best={best} doneToday={active.has(today)} days={last7.map((d) => ({ date: d, done: active.has(d), today: d === today }))} />
-      </div>
-      {[health, mind, skills, wealth, hobbies, relationships].map((t) => <KpiTile key={t.cat} tile={t} />)}
-    </section>
+    <ProgressBlock title="This week, area by area" description="The last 7 days, and how they compare with the 7 before" summary={summary || 'Nothing logged yet'}>
+      <ul className="-mx-5 -mb-5 mt-1 grid grid-cols-2 gap-px overflow-hidden rounded-b-lg border-t border-divider bg-divider grid-md:grid-cols-3 grid-lg:grid-cols-6">
+        {tiles.map((t) => <li key={t.cat} className="flex min-w-0 *:flex-1"><KpiTile tile={t} /></li>)}
+      </ul>
+    </ProgressBlock>
   )
 }
 
-const TILE = 'rounded-lg p-4 shadow-1 transition-[box-shadow] duration-150 ease-out-quint hover:shadow-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill'
+const TILE = 'bg-surface p-4 transition-[background-color] duration-150 ease-out-quint hover-fine:bg-surface-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-pill'
 
 function DeltaBadge({ d }: { d: Delta }) {
   const Arrow = d.up ? ArrowUpRight : ArrowDownRight
@@ -208,14 +218,14 @@ function KpiTile({ tile: t }: { tile: Tile }) {
   const { color, label: area } = CATEGORY[t.cat]
   // Child 1 of the grid is the streak, so an even last child means an odd tile count: stretch it on phones.
   return (
-    <Link href={t.href} className={cn(TILE, 'group flex min-w-0 flex-col bg-surface max-md:even:last:col-span-2')}>
+    <Link href={t.href} className={cn(TILE, 'group flex min-w-0 flex-col')}>
       <div className="flex items-center gap-2">
         <IconChip color={color} className="size-6 rounded-[7px] [&_svg]:size-3.5">{ICON[t.cat]}</IconChip>
         <span className="truncate text-caption font-medium text-ink">{area}</span>
       </div>
       <div className="mt-3 text-caption text-ink-3">{t.label}</div>
       <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span className="font-display text-title leading-none font-medium text-ink tabular-nums">
+        <span className="num text-title leading-none text-ink">
           {t.value ?? <span className="text-ink-3">–</span>}
         </span>
         {t.delta ? <DeltaBadge d={t.delta} /> : null}
@@ -226,54 +236,6 @@ function KpiTile({ tile: t }: { tile: Tile }) {
           : t.ratio ? <div className="flex h-7 items-center"><Capsule value={t.ratio[0]} max={t.ratio[1]} color={color} size="sm" label={`${t.ratio[0]} of ${t.ratio[1]} in touch`} /></div>
             : <div aria-hidden className="flex h-7 items-end"><div className="w-full border-t border-dashed border-divider" /></div>}
       </div>
-    </Link>
-  )
-}
-
-const weekday = (d: string) => new Intl.DateTimeFormat('en', { weekday: 'narrow', timeZone: 'UTC' }).format(new Date(`${d}T00:00:00Z`))
-const longDay = (d: string) => new Intl.DateTimeFormat('en', { weekday: 'long', timeZone: 'UTC' }).format(new Date(`${d}T00:00:00Z`))
-
-function StreakTile({ current, best, doneToday, days }: {
-  current: number; best: number; doneToday: boolean; days: { date: string; done: boolean; today: boolean }[]
-}) {
-  const lit = current > 0
-  return (
-    <Link
-      href="/plan/routines"
-      className={cn(TILE, 'relative isolate col-span-2 flex min-w-0 flex-col overflow-hidden bg-surface md:col-span-1')}
-    >
-      <div className="flex items-center gap-2">
-        <IconChip color={lit ? 'var(--pill)' : undefined} className="size-6 rounded-[7px] [&_svg]:size-3.5">
-          <Flame strokeWidth={2} />
-        </IconChip>
-        <span className="text-caption font-medium text-ink">Daily streak</span>
-        <span className="ml-auto text-caption font-medium text-ink-3 tabular-nums">Best {best}</span>
-      </div>
-      <div className="mt-3 text-caption text-ink-3">Days you showed up</div>
-      <div className="mt-1 flex items-baseline gap-1.5 font-display leading-none text-ink tabular-nums">
-        <span className="text-title font-medium"><Ticker value={current} /></span>
-        <span className="text-body font-medium text-ink-2">{current === 1 ? 'day' : 'days'}</span>
-      </div>
-      <div className={cn('mt-1.5 text-caption leading-snug', doneToday ? 'text-ink-3' : 'text-ink-2')}>
-        {doneToday ? 'You showed up today.' : current ? `Check off one thing to make it ${current + 1}.` : 'Check off one thing to start.'}
-      </div>
-      <ol className="mt-auto flex justify-between gap-1 pt-3" aria-label="Last 7 days">
-        {days.map((d) => (
-          <li key={d.date} className="flex flex-col items-center gap-1">
-            <span
-              className={cn(
-                'grid size-6 place-items-center rounded-full',
-                d.done ? 'bg-pill text-white' : 'bg-surface-2 shadow-[inset_0_0_0_1px_var(--hairline)]',
-                d.today && !d.done && 'shadow-[inset_0_0_0_1.5px_var(--ink-3)]',
-              )}
-              aria-label={`${longDay(d.date)}${d.today ? ' (today)' : ''}: ${d.done ? 'showed up' : d.today ? 'not yet' : 'missed'}`}
-            >
-              {d.done ? <Check className="size-3" strokeWidth={3} aria-hidden /> : null}
-            </span>
-            <span aria-hidden className={cn('text-caption font-medium', d.today ? 'text-ink' : 'text-ink-3')}>{weekday(d.date)}</span>
-          </li>
-        ))}
-      </ol>
     </Link>
   )
 }

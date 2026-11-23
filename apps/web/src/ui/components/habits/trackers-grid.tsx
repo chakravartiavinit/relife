@@ -38,7 +38,7 @@ export async function TrackersGrid({ user }: { user: User }) {
         const color = CATEGORY[c].color
         return (
           <Card key={c} as="section" aria-labelledby={`cat-${c}`} className="@container">
-            <h2 id={`cat-${c}`} className="mb-3 flex items-center gap-2 text-heading font-semibold text-ink">
+            <h2 id={`cat-${c}`} className="mb-3 flex items-center gap-2 text-heading font-medium text-ink">
               <span aria-hidden className="size-2 rounded-full" style={{ background: color }} />
               {CATEGORY[c].label}
               <span className="text-small font-normal text-ink-3 tabular-nums">{mine.length}</span>

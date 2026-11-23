@@ -72,6 +72,12 @@ export function ActionPreview({ actions }: { actions: NonNullable<InsightLite['a
   )
 }
 
+/** The one line a data item folds to on a phone: what it is, and when or how much. */
+export function sortSummary(item: Extract<NeedsYouItem, { kind: 'unread' | 'categorise' }>, c: RowCtx) {
+  if (item.kind === 'categorise') return { title: item.merchant, line: `Pick a category · ${item.count} ${item.count === 1 ? 'payment' : 'payments'} · ${formatMoney(item.total, item.currency)}` }
+  return { title: `A message ${brand.name} couldn’t read`, line: `${item.summary.title} · ${when(item.at, c)} · ${item.reason.replace(/^Couldn’t read it: /, '')}` }
+}
+
 export function NeedsYouRow({ item, ctx }: { item: NeedsYouItem; ctx: RowCtx }) {
   switch (item.kind) {
     case 'recovery': return <RecoveryRow item={item} ctx={ctx} />
@@ -198,7 +204,7 @@ function UnreadRow({ item, ctx }: { item: Extract<NeedsYouItem, { kind: 'unread'
     <QueueItem
       kind="unread" label={<>{s.title}{' '}<span aria-hidden>·</span> {when(item.at, ctx)}</>} busy={pending}
       title={s.amount ? <>A payment message {brand.name} couldn’t read <span className="font-normal text-ink-3 tabular-nums">· {formatMoney(s.amount.value, s.amount.currency)}</span></> : `A message ${brand.name} couldn’t read`}
-      actions={
+      aside={
         <>
           <Button size="sm" disabled={pending} onClick={retry}><RefreshCw className={cn('size-3.5', pending && 'animate-spin motion-reduce:animate-none')} strokeWidth={1.5} aria-hidden />{pending ? 'Trying…' : 'Retry'}</Button>
           <Button size="sm" variant="ghost" disabled={pending} onClick={() => ctx.act(item.id, 'Ignored', () => ignoreRawEvent(item.rawEventIds[0]))}>Ignore</Button>
@@ -215,7 +221,7 @@ function UnreadRow({ item, ctx }: { item: Extract<NeedsYouItem, { kind: 'unread'
           </ul>
         </div>
       ) : null}
-      {s.text ? <p className="line-clamp-3 rounded-md bg-surface-2 px-3 py-2 font-mono text-caption leading-relaxed break-words text-ink-2">{s.text}</p> : null}
+      {s.text ? <p className="truncate rounded-md bg-surface-2 px-3 py-2 font-mono text-caption text-ink-2">{s.text}</p> : null}
       <p className="mt-2.5 flex items-start gap-1.5 text-small leading-snug text-bad"><CircleAlert className="mt-px size-3.5 shrink-0" strokeWidth={1.5} aria-hidden />{item.reason}</p>
       <details className="group/raw mt-1">
         <summary className="inline-flex h-8 cursor-pointer list-none items-center gap-1 rounded-sm text-small text-ink-3 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill [&::-webkit-details-marker]:hidden">
@@ -275,8 +281,7 @@ function CategoriseRow({ item, ctx }: { item: Extract<NeedsYouItem, { kind: 'cat
       }
     >
       <p className="text-body text-ink-2 text-pretty">
-        <span className="tabular-nums">{item.count} {item.count === 1 ? 'payment' : 'payments'} · {formatMoney(item.total, item.currency)}.</span>{' '}
-        Pick once and {brand.name} files the next ones itself.
+        <span className="tabular-nums">{item.count} {item.count === 1 ? 'payment' : 'payments'} · {formatMoney(item.total, item.currency)}</span>
       </p>
     </QueueItem>
   )

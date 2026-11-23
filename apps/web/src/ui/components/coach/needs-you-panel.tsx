@@ -27,18 +27,18 @@ export function NeedsYouPanel({ items, filter, categories, timezone, today, goal
   const shown = filterNeedsYou(items, filter)
   const n = (k: NeedsYouFilter | null) => (k === 'data' ? counts.data : k === 'decisions' ? counts.decisions : counts.total)
   return (
-    <div className="flex flex-col gap-4">
-      <Card as="section" className="overflow-hidden px-0 pb-0">
-        <header className="px-5 pb-4">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="flex items-center gap-2 text-title font-semibold text-ink">
+    <div className="flex h-full flex-col gap-4">
+      <Card as="section" aria-labelledby="needs-you" className="flex-1 overflow-hidden px-0 pb-0">
+        <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 px-5 pb-4">
+          <div className="min-w-0">
+            <h2 id="needs-you" className="flex items-center gap-2 text-heading text-ink">
               Needs you
-              {counts.total ? <span className="grid h-6 min-w-6 place-items-center rounded-full bg-pill px-2 text-caption font-semibold text-white tabular-nums">{counts.total}</span> : null}
+              {counts.total ? <span className="grid h-5 min-w-5 place-items-center rounded-full bg-ink px-1.5 text-caption font-medium text-surface tabular-nums">{counts.total}</span> : null}
             </h2>
-            <p className="text-small text-ink-3 max-sm:hidden">Most urgent first</p>
+            <p className="mt-0.5 text-small text-ink-3">{counts.total} {counts.total === 1 ? 'thing' : 'things'}, most urgent first</p>
           </div>
           {counts.total ? (
-            <nav aria-label="Show" className="mt-3 flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none]">
+            <nav aria-label="Show" className="flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none]">
               {FILTERS.map((f) => {
                 const active = f.key === filter
                 return (
@@ -58,7 +58,7 @@ export function NeedsYouPanel({ items, filter, categories, timezone, today, goal
           <NeedsYouList key={filter ?? 'all'} items={shown} timezone={timezone} today={today} categories={categories} goal={goal} />
         ) : counts.total ? (
           <div className="border-t border-divider px-5 py-10 text-center">
-            <p className="text-heading font-semibold text-ink">Nothing under {filter === 'data' ? 'Data' : 'Decisions'}</p>
+            <p className="text-heading text-ink">Nothing under {filter === 'data' ? 'Data' : 'Decisions'}</p>
             <p className="mt-1 text-body text-ink-3">{counts.total} {counts.total === 1 ? 'thing needs' : 'things need'} you in the other list.</p>
             <Link href="/coach" scroll={false} className={buttonClass({ variant: 'secondary', size: 'sm', className: 'mt-4' })}>Show all</Link>
           </div>
@@ -66,7 +66,7 @@ export function NeedsYouPanel({ items, filter, categories, timezone, today, goal
           <div className="border-t border-divider">
             <div className="flex flex-col items-center px-6 pt-10 pb-8 text-center">
               <span aria-hidden className="mb-4 grid size-16 place-items-center rounded-[20px] bg-good/10 text-good"><CheckCheck className="size-8" strokeWidth={1.5} /></span>
-              <h3 className="text-title font-semibold text-ink">All caught up</h3>
+              <h3 className="text-title text-ink">All caught up</h3>
               <p className="mt-1.5 max-w-[40ch] text-body text-ink-2 text-pretty">
                 {cleared.length ? `You cleared ${cleared.length} ${cleared.length === 1 ? 'thing' : 'things'} today. ` : ''}
                 {aiOn ? 'New ones land here: the morning nudge and the weekly review on Sunday.' : `Rule-based alerts and anything ${brand.name} can’t read land here. Connect a model for morning nudges and a Sunday review.`}
@@ -78,11 +78,11 @@ export function NeedsYouPanel({ items, filter, categories, timezone, today, goal
       </Card>
       <Link
         href="/coach/patterns"
-        className="flex min-h-14 items-center gap-3 rounded-lg bg-surface px-4 py-3 shadow-1 transition-[scale,background-color] duration-150 hover:bg-surface-2 active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill lg:hidden"
+        className="flex min-h-14 items-center gap-3 rounded-lg bg-surface px-4 py-3 shadow-1 transition-[scale,background-color] duration-150 hover-fine:bg-surface-2 active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill grid-md:hidden"
       >
         <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-[12px] bg-pill-wash text-pill-ink"><Waypoints className="size-[18px]" strokeWidth={1.5} /></span>
         <span className="min-w-0 flex-1">
-          <span className="block text-body font-semibold text-ink">Patterns across your life</span>
+          <span className="block text-body font-medium text-ink">Patterns across your life</span>
           <span className="block text-small text-ink-3 tabular-nums">{patternChanges ? `${patternChanges} ${patternChanges === 1 ? 'change' : 'changes'} this week` : 'What moves together'}</span>
         </span>
         <ChevronRight className="size-4 shrink-0 text-ink-3" strokeWidth={1.5} aria-hidden />

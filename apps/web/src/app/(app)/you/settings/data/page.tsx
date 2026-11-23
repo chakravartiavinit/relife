@@ -18,6 +18,7 @@ import { ExportButton } from '@/ui/components/data/export-button'
 import { PrivacyList } from '@/ui/components/data/privacy-list'
 import { WipeData } from '@/ui/components/data/wipe-data'
 import { SettingsRow, SettingsSection } from '@/ui/components/settings-layout'
+import { GridItem, PageGrid } from '@/ui/components/page-grid'
 import { SettingsRail } from '@/ui/components/settings-rail'
 
 export const metadata: Metadata = { title: 'Data & privacy' }
@@ -26,14 +27,14 @@ export default function DataPage() {
   return (
     <>
       <PageHeader eyebrow="Settings" title="Data & privacy" description={`Everything ${brand.name} knows lives on this machine. Take a copy, keep backups, see what leaves, or start over.`} />
-      <div className="grid gap-8 lg:grid-cols-[200px_minmax(0,1fr)] xl:gap-12">
+      <PageGrid>
         <SettingsRail current="data" />
-        <div className="flex max-w-3xl min-w-0 flex-col gap-10">
+        <GridItem span={{ base: 12, lg: 9 }} className="flex max-w-3xl flex-col gap-10">
           <Suspense fallback={<DataSkeleton />}>
             <DataSections />
           </Suspense>
-        </div>
-      </div>
+        </GridItem>
+      </PageGrid>
     </>
   )
 }

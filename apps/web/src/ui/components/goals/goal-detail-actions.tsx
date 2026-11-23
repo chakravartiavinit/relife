@@ -18,7 +18,7 @@ export function GoalDetailActions({ g, picker, today, activeCount, reviewDue }: 
   if (confirmFinish) {
     return (
       <div role="group" aria-labelledby="goal-finish-q" className="flex flex-col gap-2 rounded-md bg-bad/8 px-3 py-3">
-        <p id="goal-finish-q" className="text-[13.5px] text-ink">Finish this goal? Finished goals can’t be resumed or edited.</p>
+        <p id="goal-finish-q" className="text-body text-ink">Finish this goal? Finished goals can’t be resumed or edited.</p>
         <div className="flex flex-wrap gap-2">
           <Button variant="primary" disabled={pending} onClick={() => set('finished')}><Flag className="size-4" strokeWidth={1.5} />{pending ? 'Finishing…' : 'Finish goal'}</Button>
           <Button variant="ghost" disabled={pending} onClick={() => setConfirmFinish(false)} data-autofocus>Cancel</Button>
@@ -40,8 +40,8 @@ export function GoalDetailActions({ g, picker, today, activeCount, reviewDue }: 
           : <Button variant="ghost" disabled={pending || atCap} aria-describedby={atCap ? 'goal-detail-cap-note' : undefined} onClick={() => set('active')}><Play className="size-4" strokeWidth={1.5} />Resume</Button>}
         <Button variant="ghost" disabled={pending} onClick={() => setConfirmFinish(true)}><Flag className="size-4" strokeWidth={1.5} />Finish…</Button>
       </div>
-      {atCap ? <p id="goal-detail-cap-note" className="text-[12.5px] text-ink-3">{CAP_MESSAGE}</p> : null}
-      {pending ? <p role="status" className="text-[12.5px] text-ink-3">Saving…</p> : null}
+      {atCap ? <p id="goal-detail-cap-note" className="text-small text-ink-3">{CAP_MESSAGE}</p> : null}
+      {pending ? <p role="status" className="text-small text-ink-3">Saving…</p> : null}
     </div>
   )
 }

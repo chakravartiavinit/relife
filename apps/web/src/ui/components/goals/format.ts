@@ -1,5 +1,5 @@
 import { formatDay } from '@/core/time'
-import { targetText, type GoalSnapshot, type OutcomeStatus } from '@/domain/goals'
+import { targetText, type ActionSnapshot, type GoalSnapshot, type OutcomeStatus } from '@/domain/goals'
 import { formatValue } from '@/domain/patterns'
 import type { Category } from '@/db/schema'
 
@@ -73,4 +73,12 @@ export function coverageLine(g: GoalViewData) {
     return `${o.observations} ${word}${o.observations === 1 ? '' : 's'} recorded, ${o.needed} needed for a status`
   }
   return g.measureKind === 'check_in' ? `Latest check-in ${day(o.latestCheckIn!.localDate)}` : `${o.observations} of ${g.snapshot!.window.days} days recorded`
+}
+
+/** How a linked action went in the goal's window: "6 of 6 days this week", "recorded 6 of 7 days". */
+export function actionNumbers(a: ActionSnapshot) {
+  if (!a.available) return 'Action no longer available'
+  const span = a.windowDays === 7 ? 'this week' : `in ${a.windowDays} days`
+  if (a.kind === 'schedule') return a.due ? `${a.done} of ${a.due} days ${span}` : `Nothing due ${span}`
+  return a.recordedDays ? `recorded ${a.recordedDays} of ${a.windowDays} days${a.metDays != null ? `, target met on ${a.metDays}` : ''}` : `no record ${span}`
 }

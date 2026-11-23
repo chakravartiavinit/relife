@@ -7,6 +7,7 @@ import { Smartphone } from 'lucide-react'
 import { buttonClass } from '@/ui/components/button'
 import { headers } from 'next/headers'
 import { PageHeader, Skeleton } from '@/ui/components/card'
+import { GridItem, PageGrid } from '@/ui/components/page-grid'
 import { SettingsRail } from '@/ui/components/settings-rail'
 import { ConnectButton } from '@/ui/components/devices/connect-button'
 import { DevicesPanel } from '@/ui/components/devices/devices-panel'
@@ -28,14 +29,14 @@ export default function DevicesPage({ searchParams }: PageProps<'/you/settings/d
   return (
     <>
       <PageHeader eyebrow="Settings" title="Devices" description={`Everything signed in to your ${brand.name}. Disconnect anything you don’t recognise.`} actions={<><Link href="/you/settings/devices/phone" className={buttonClass({ variant: 'secondary' })}><Smartphone className="size-4" strokeWidth={1.5} aria-hidden />Use on your phone</Link><ConnectButton /></>} />
-      <div className="grid gap-8 lg:grid-cols-[200px_minmax(0,1fr)] xl:gap-12">
+      <PageGrid>
         <SettingsRail current="devices" />
-        <div className="flex max-w-3xl min-w-0 flex-col gap-10">
+        <GridItem span={{ base: 12, lg: 9 }} className="flex max-w-3xl flex-col gap-10">
           <Suspense fallback={<DevicesSkeleton />}>
             <Devices searchParams={searchParams} />
           </Suspense>
-        </div>
-      </div>
+        </GridItem>
+      </PageGrid>
     </>
   )
 }

@@ -8,28 +8,31 @@ import type { NeedsYouKind } from '@/domain/needs-you'
  * One row of the Needs you queue: the kind's chip, a mono label (kind · when), the title, a body and a slot for the
  * actions. Presentational, so /dev/ui can draw every kind from fixtures.
  */
-export function QueueItem({ kind, label, title, children, actions, busy, className }: {
+export function QueueItem({ kind, label, title, children, actions, aside, busy, className }: {
   kind: NeedsYouKind
   /** What follows the kind name in the mono label: when, or what it is about. */
   label?: React.ReactNode
   title: React.ReactNode
   children?: React.ReactNode
   actions?: React.ReactNode
+  /** Buttons for a compact row: at the right of the title from 640px, under the body on a phone. */
+  aside?: React.ReactNode
   busy?: boolean
   className?: string
 }) {
   const k = QUEUE_KIND[kind]
   return (
-    <article aria-busy={busy} data-kind={kind} className={cn('flex gap-3.5 px-5 py-5 sm:gap-4', className)}>
+    <article aria-busy={busy} data-kind={kind} className={cn(aside ? 'grid grid-cols-[auto_minmax(0,1fr)] gap-x-3.5 px-5 py-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-x-4' : 'flex gap-3.5 px-5 py-5 sm:gap-4', className)}>
       <IconChip color={k.color} className="mt-px size-9 rounded-[12px] [&_svg]:size-[18px]"><k.icon strokeWidth={1.5} /></IconChip>
       <div className="min-w-0 flex-1">
         <p className="text-caption font-medium text-ink-3">
           <span className="text-ink-2">{k.label}</span>{label ? <> <span aria-hidden>·</span> {label}</> : null}
         </p>
-        <h3 className="mt-1 text-heading font-medium text-ink text-pretty">{title}</h3>
+        <h3 className="mt-1 text-heading text-ink text-pretty">{title}</h3>
         {children ? <div className="mt-1.5">{children}</div> : null}
         {actions ? <div className="mt-4 flex flex-wrap items-center gap-2">{actions}</div> : null}
       </div>
+      {aside ? <div className="col-start-2 mt-3 flex items-center gap-2 sm:col-start-3 sm:row-start-1 sm:mt-0 sm:self-start">{aside}</div> : null}
     </article>
   )
 }

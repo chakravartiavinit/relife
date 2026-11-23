@@ -4,6 +4,7 @@ import { Suspense } from 'react'
 import { getUser } from '@/core/user'
 import { Skeleton } from '@/ui/components/card'
 import { NewTrackerButton } from '@/ui/components/forms/tracker-forms'
+import { GridItem, PageGrid } from '@/ui/components/page-grid'
 import { TrackersGrid } from '@/ui/components/habits/trackers-grid'
 
 export const metadata: Metadata = { title: 'Trackers' }
@@ -20,18 +21,18 @@ async function Trackers() {
   await connection()
   const user = await getUser()
   return (
-    <div>
-      <div className="mb-4 flex justify-end"><NewTrackerButton /></div>
-      <TrackersGrid user={user} />
-    </div>
+    <PageGrid>
+      <GridItem className="flex justify-end"><NewTrackerButton /></GridItem>
+      <GridItem><TrackersGrid user={user} /></GridItem>
+    </PageGrid>
   )
 }
 
 function TrackersSkeleton() {
   return (
-    <div aria-busy>
-      <Skeleton className="mb-4 ml-auto h-10 w-36" />
-      <Skeleton className="h-[420px] rounded-lg" />
-    </div>
+    <PageGrid aria-busy>
+      <GridItem><Skeleton className="ml-auto h-10 w-36" /></GridItem>
+      <GridItem><Skeleton className="h-[420px] rounded-lg" /></GridItem>
+    </PageGrid>
   )
 }

@@ -9,6 +9,7 @@ import { loadPatterns } from '@/core/patterns'
 import { localAiDown, localAiStatus } from '@/ai/local'
 import { localDate } from '@/core/time'
 import { getUser } from '@/core/user'
+import { cn } from '@/ui/cn'
 import { Card, Skeleton } from '@/ui/components/card'
 import { AskThread } from '@/ui/components/coach/ask-thread'
 import { CoachPanes } from '@/ui/components/coach/coach-panes'
@@ -16,13 +17,16 @@ import { isDemo } from '@/core/demo'
 import { ConnectCoach } from '@/ui/components/coach/connect-coach'
 import { LocalAiDown } from '@/ui/components/coach/local-ai-down'
 import { NeedsYouPanel } from '@/ui/components/coach/needs-you-panel'
+import { PatternsWeek } from '@/ui/components/coach/patterns-week'
+import { GridItem, PageGrid } from '@/ui/components/page-grid'
+import { Rail } from '@/ui/components/rail'
 import { PromptInput } from '@/ui/beui/agents/prompt-input'
 
 export const metadata: Metadata = { title: 'Coach' }
 
 export default function CoachPage({ searchParams }: PageProps<'/coach'>) {
   return (
-    <Suspense fallback={<div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,32.5rem)]"><Skeleton className="h-[520px] rounded-lg" /><Skeleton className="h-[520px] rounded-lg" /></div>}>
+    <Suspense fallback={<PageGrid aria-busy><GridItem span={{ base: 12, lg: 7 }}><Skeleton className="h-[640px] rounded-lg" /></GridItem><Rail span={{ base: 12, lg: 5 }}><Skeleton className="h-[460px] rounded-lg" /><Skeleton className="h-[220px] rounded-lg" /></Rail></PageGrid>}>
       <Coach searchParams={searchParams} />
     </Suspense>
   )
@@ -58,29 +62,31 @@ async function Coach({ searchParams }: { searchParams: PageProps<'/coach'>['sear
         />
       }
       ask={
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <span className="inline-flex h-7 items-center gap-1.5 rounded-full bg-surface px-3 text-caption font-medium text-ink-2 shadow-1 max-lg:ml-auto">
+        // Beside Needs you it grows with the row (`flex-1 basis-0`) so the rail ends level with it and the thread scrolls inside;
+        // stacked, a thread gets a fixed height (an empty Ask is only as tall as its content).
+        <Card as="section" aria-labelledby="ask-coach" className={cn('flex flex-col overflow-hidden p-0 grid-lg:min-h-[28rem] grid-lg:flex-1 grid-lg:basis-0', (aiOn || thread.length > 0) && 'h-[min(680px,max(460px,calc(100dvh-22rem)))] grid-lg:h-auto')}>
+          <header className="flex items-center justify-between gap-3 px-5 pt-5 pb-3">
+            <h2 id="ask-coach" className="text-heading text-ink">Ask</h2>
+            <span className="flex items-center gap-1.5 text-small text-ink-3">
               <span aria-hidden className={aiOn ? 'size-1.5 rounded-full bg-good' : down ? 'size-1.5 rounded-full bg-warn' : 'size-1.5 rounded-full bg-ink-3'} />
               {aiOn ? 'Chat model ready' : down ? <span className="text-warn">Local AI not running</span> : 'No model connected'}
               {model ? <span className="sr-only"> ({model})</span> : null}
             </span>
-          </div>
+          </header>
           {!aiOn && thread.length === 0 ? (
             <>
-              {down ? <LocalAiDown message={down.message} /> : <ConnectCoach demo={isDemo()} />}
-              <Card className="p-2"><PromptInput disabled minRows={1} placeholder={down ? 'Local AI is not running.' : 'Connect an AI model to ask questions.'} aria-label="Ask about your data" /></Card>
+              <div className="px-5 pb-4">{down ? <LocalAiDown message={down.message} /> : <ConnectCoach demo={isDemo()} />}</div>
+              <div className="mt-auto px-3 pb-3"><PromptInput disabled minRows={1} placeholder={down ? 'Local AI is not running.' : 'Connect an AI model to ask questions.'} aria-label="Ask about your data" /></div>
             </>
           ) : (
             <>
-              {!aiOn ? (down ? <LocalAiDown message={down.message} /> : <ConnectCoach compact demo={isDemo()} />) : null}
-              <Card as="section" aria-label="Ask" className="flex h-[min(680px,max(460px,calc(100dvh-22rem)))] flex-col overflow-hidden p-0">
-                <AskThread thread={thread} enabled={aiOn} initial={initial} timezone={user.timezone} />
-              </Card>
+              {!aiOn ? <div className="px-5 pb-3">{down ? <LocalAiDown message={down.message} /> : <ConnectCoach compact demo={isDemo()} />}</div> : null}
+              <AskThread thread={thread} enabled={aiOn} initial={initial} timezone={user.timezone} />
             </>
           )}
-        </div>
+        </Card>
       }
+      patterns={<PatternsWeek patterns={patterns} />}
     />
   )
 }

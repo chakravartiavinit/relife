@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Bot, Brain, LayoutGrid, MonitorSmartphone, Palette, ShieldCheck, Swords, UserRound, type LucideIcon } from 'lucide-react'
 import { cn } from '@/ui/cn'
+import { GridItem } from './page-grid'
 
 // The Settings section rail. On /you/settings the sections are anchors on the one long page; Devices is a page of its own
 // (`/you/settings/devices`), as is Data & privacy (`/you/settings/data`), so from there every anchor points back to /you/settings.
@@ -14,11 +15,12 @@ export const SECTIONS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: 'ai', label: 'AI', icon: Bot },
 ]
 
-const row = 'flex h-9 items-center gap-2.5 rounded-md px-2.5 text-small text-ink-2 transition-[background-color,color] duration-150 hover:bg-ink/[0.04] hover:text-ink focus-visible:outline-2 focus-visible:outline-pill dark:hover:bg-white/[0.05]'
+const row = 'flex h-9 items-center gap-2.5 rounded-md px-2.5 text-small text-ink-2 transition-[background-color,color] duration-150 hover-fine:bg-ink/[0.04] hover-fine:text-ink focus-visible:outline-2 focus-visible:outline-pill dark:hover-fine:bg-white/[0.05]'
 
 export function SettingsRail({ current }: { current: 'settings' | 'devices' | 'data' }) {
   return (
-    <nav aria-label="Settings sections" className="hidden lg:block">
+    <GridItem as="aside" span={{ base: 12, lg: 3 }} className="hidden grid-lg:block">
+    <nav aria-label="Settings sections">
       <ul className="sticky top-9 flex flex-col gap-0.5 rounded-lg bg-surface p-2 shadow-1">
         {SECTIONS.map(({ id, label, icon: Icon }) => (
           <li key={id}>
@@ -39,5 +41,6 @@ export function SettingsRail({ current }: { current: 'settings' | 'devices' | 'd
         </li>
       </ul>
     </nav>
+    </GridItem>
   )
 }

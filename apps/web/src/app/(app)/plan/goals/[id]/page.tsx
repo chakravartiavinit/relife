@@ -9,6 +9,8 @@ import { getUser } from '@/core/user'
 import { CATEGORY } from '@/ui/tokens'
 import { Card, CardHeader, PageHeader, Skeleton, Stat } from '@/ui/components/card'
 import { Capsule } from '@/ui/components/capsule'
+import { GridItem, PageGrid } from '@/ui/components/page-grid'
+import { Rail } from '@/ui/components/rail'
 import { GoalStatusBadge } from '@/ui/components/goals/goal-card'
 import { GoalDetailActions } from '@/ui/components/goals/goal-detail-actions'
 import { CheckInList, GoalHistory } from '@/ui/components/goals/goal-history'
@@ -19,7 +21,7 @@ export const metadata: Metadata = { title: 'Goal' }
 
 export default function GoalDetailPage({ params }: PageProps<'/plan/goals/[id]'>) {
   return (
-    <Suspense fallback={<div aria-busy><Skeleton className="mb-6 h-[150px] rounded-[24px]" /><Skeleton className="h-[360px] rounded-lg" /></div>}>
+    <Suspense fallback={<PageGrid aria-busy><GridItem span={{ base: 12, lg: 8 }}><Skeleton className="h-[360px] rounded-lg" /></GridItem><Rail span={{ base: 12, lg: 4 }}><Skeleton className="h-[240px] rounded-lg" /></Rail></PageGrid>}>
       <Detail params={params} />
     </Suspense>
   )
@@ -44,8 +46,8 @@ async function Detail({ params }: { params: PageProps<'/plan/goals/[id]'>['param
         description={g.reason}
         actions={<GoalDetailActions g={g} picker={data.picker} today={data.today} activeCount={data.activeCount} reviewDue={!!data.due} />}
       />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="flex flex-col gap-6">
+      <PageGrid>
+        <GridItem span={{ base: 12, lg: 8 }} className="flex flex-col gap-6">
           <Card>
             <CardHeader icon={<Target strokeWidth={1.5} />} color={color} title="Progress" description={measureLine(g)} action={<GoalStatusBadge g={g} />} />
             <div className="grid grid-cols-3 gap-4">
@@ -72,8 +74,8 @@ async function Detail({ params }: { params: PageProps<'/plan/goals/[id]'>['param
               <CheckInPanel g={g} today={data.today} full />
             </Card>
           ) : null}
-        </div>
-        <aside className="flex flex-col gap-6" aria-label="Actions and history">
+        </GridItem>
+        <Rail as="aside" aria-label="Actions and history" span={{ base: 12, lg: 4 }} pairs>
           <Card>
             <CardHeader icon={<Repeat strokeWidth={1.5} />} title="Linked actions" description={s ? `${day(s.window.from)}–${day(s.window.to)}` : undefined} />
             <ul className="flex flex-col gap-4">
@@ -90,8 +92,8 @@ async function Detail({ params }: { params: PageProps<'/plan/goals/[id]'>['param
             </ul>
           </Card>
           <GoalHistory unit={g.unit} startedOn={g.startedOn} baseline={`Baseline ${value(g.baselineValue, g.unit)}, ${g.baselineHow}`} rows={data.history} />
-        </aside>
-      </div>
+        </Rail>
+      </PageGrid>
     </div>
   )
 }

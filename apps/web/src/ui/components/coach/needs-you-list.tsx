@@ -1,13 +1,16 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Undo2 } from 'lucide-react'
-import type { NeedsYouItem } from '@/domain/needs-you'
+import brand from '@relife/brand/brand.json'
+import { ChevronRight, Undo2 } from 'lucide-react'
+import { isDataItem, type NeedsYouItem } from '@/domain/needs-you'
 import { Button } from '../button'
+import { IconChip } from '../card'
 import { RetryAll } from '../raw-event-actions'
 import { useToast } from '../toast'
 import { usePeekChanged } from '../peek/peek-context'
-import { NeedsYouRow, type RowCtx } from './needs-you-row'
+import { QUEUE_KIND } from './kinds'
+import { NeedsYouRow, sortSummary, type RowCtx } from './needs-you-row'
 import { ResolvedItem } from './queue-item'
 
 type Resolved = { text: string; index: number; undo?: () => Promise<unknown>; undoing?: boolean }
@@ -56,28 +59,75 @@ export function NeedsYouList({ items, timezone, today, categories, goal }: Pick<
   }
 
   const unread = items.filter((i): i is Extract<NeedsYouItem, { kind: 'unread' }> => i.kind === 'unread' && !resolved.has(i.id))
+  const kindOf = (id: string) => items.find((i) => i.id === id)
+  const decisions = rows.filter((r) => { const i = 'item' in r ? r.item : kindOf(r.id); return !i || !isDataItem(i) })
+  const toSort = rows.filter((r) => { const i = 'item' in r ? r.item : kindOf(r.id); return !!i && isDataItem(i) })
+  const open = (r: typeof rows[number]) => 'item' in r
+
+  const resolvedRow = (r: { id: string; r: Resolved }) => (
+    <li key={r.id}>
+      <ResolvedItem
+        text={r.r.text}
+        undo={r.r.undo ? (
+          <Button size="sm" variant="ghost" disabled={r.r.undoing} onClick={() => void undo(r.id, r.r.undo!)}><Undo2 className="size-3.5" strokeWidth={1.5} aria-hidden />Undo</Button>
+        ) : undefined}
+      />
+    </li>
+  )
 
   return (
     <>
-      {unread.length > 1 ? (
-        <div className="flex justify-end px-5 py-2">
-          <RetryAll ids={unread.flatMap((u) => u.rawEventIds)} />
-        </div>
+      {decisions.length ? (
+        <section aria-labelledby="needs-decisions">
+          <GroupHead id="needs-decisions" title="Decisions" count={decisions.filter(open).length} />
+          <ul className="flex flex-col divide-y divide-divider border-t border-divider">
+            {decisions.map((r) => 'item' in r ? <li key={r.item.id}><NeedsYouRow item={r.item} ctx={ctx} /></li> : resolvedRow(r))}
+          </ul>
+        </section>
       ) : null}
-      <ul className="flex flex-col divide-y divide-divider border-t border-divider">
-        {rows.map((r) => 'item' in r ? (
-          <li key={r.item.id}><NeedsYouRow item={r.item} ctx={ctx} /></li>
-        ) : (
-          <li key={r.id}>
-            <ResolvedItem
-              text={r.r.text}
-              undo={r.r.undo ? (
-                <Button size="sm" variant="ghost" disabled={r.r.undoing} onClick={() => void undo(r.id, r.r.undo!)}><Undo2 className="size-3.5" strokeWidth={1.5} aria-hidden />Undo</Button>
-              ) : undefined}
-            />
-          </li>
-        ))}
-      </ul>
+      {toSort.length ? (
+        <section aria-labelledby="needs-to-sort">
+          <GroupHead id="needs-to-sort" title="To sort" count={toSort.filter(open).length}
+            hint={<><span className="max-sm:hidden">Pick once and {brand.name} files the next ones itself.</span><span className="sm:hidden">Tap one to sort it</span></>}
+            action={unread.length > 1 ? <RetryAll ids={unread.flatMap((u) => u.rawEventIds)} /> : null} />
+          <ul className="flex flex-col divide-y divide-divider border-t border-divider">
+            {toSort.map((r) => 'item' in r ? (
+              <li key={r.item.id}>
+                {/* A phone folds each data item to one line; from 640px of page width the row is always open. */}
+                <details data-fold-inline className="group/sort">
+                  <FoldLine item={r.item as Extract<NeedsYouItem, { kind: 'unread' | 'categorise' }>} ctx={ctx} />
+                  <NeedsYouRow item={r.item} ctx={ctx} />
+                </details>
+              </li>
+            ) : resolvedRow(r))}
+          </ul>
+        </section>
+      ) : null}
     </>
+  )
+}
+
+/** The title row of a group: its name and count, a hint, and one group action (Retry all). */
+function GroupHead({ id, title, count, hint, action }: { id: string; title: string; count: number; hint?: React.ReactNode; action?: React.ReactNode }) {
+  return (
+    <header className="flex min-h-12 flex-wrap items-center justify-between gap-x-4 border-t border-divider px-5 py-1">
+      <h3 id={id} className="text-small font-medium text-ink-2">{title} <span className="ml-1 font-normal text-ink-3 tabular-nums">{count}</span></h3>
+      <div className="flex min-w-0 items-center gap-2 text-small text-ink-3">{hint}{action}</div>
+    </header>
+  )
+}
+
+function FoldLine({ item, ctx }: { item: Extract<NeedsYouItem, { kind: 'unread' | 'categorise' }>; ctx: RowCtx }) {
+  const k = QUEUE_KIND[item.kind]
+  const { title, line } = sortSummary(item, ctx)
+  return (
+    <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3.5 px-5 py-2 transition-colors duration-150 ease-out-quint hover-fine:bg-surface-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-pill [&::-webkit-details-marker]:hidden">
+      <IconChip color={k.color} className="size-9 rounded-[12px] [&_svg]:size-[18px]"><k.icon strokeWidth={1.5} /></IconChip>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-body font-medium text-ink">{title}</span>
+        <span className="block truncate text-small text-ink-3 tabular-nums">{line}</span>
+      </span>
+      <ChevronRight aria-hidden strokeWidth={1.5} className="size-4 shrink-0 text-ink-3 transition-transform duration-150 ease-out-quint group-open/sort:rotate-90 motion-reduce:transition-none" />
+    </summary>
   )
 }

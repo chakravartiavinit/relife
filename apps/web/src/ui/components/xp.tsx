@@ -38,7 +38,7 @@ export function TitleTrack({ level, titles }: { level: number; titles: { level: 
   // Phones show four titles around the current one (one before, two after) so labels never touch; wider screens show all.
   const lo = Math.max(0, Math.min(ci - 1, titles.length - 4))
   return (
-    <div className="pb-1">
+    <div className="pb-1 md:pb-5">
       <ol aria-label="Titles" className="flex">
         {titles.map((t, i) => {
           const reached = level >= t.level
@@ -53,7 +53,7 @@ export function TitleTrack({ level, titles }: { level: number; titles: { level: 
               )}>
                 {t.level}
               </span>
-              <span className={cn('mt-2 text-caption leading-tight max-md:text-caption', isCurrent ? 'font-medium text-ink' : reached ? 'text-ink-2' : 'text-ink-3')}>{t.title}</span>
+              <span className={cn('mt-2 text-caption leading-tight', i % 2 === 1 && 'md:mt-7', isCurrent ? 'font-medium text-ink' : reached ? 'text-ink-2' : 'text-ink-3')}>{t.title}</span>
             </li>
           )
         })}

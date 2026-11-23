@@ -16,6 +16,7 @@ import { buttonClass } from '@/ui/components/button'
 import { Badge, Card, IconChip, Skeleton } from '@/ui/components/card'
 import { QUEUE_KIND } from '@/ui/components/coach/kinds'
 import { STATUS } from '@/ui/components/insight-kinds'
+import { GridItem, PageGrid } from '@/ui/components/page-grid'
 import { PeekLink } from '@/ui/components/peek/peek-link'
 import { RawEventActions, RetryAll } from '@/ui/components/raw-event-actions'
 
@@ -25,9 +26,11 @@ const SHOW = [{ key: null, label: 'All' }, { key: 'decisions', label: 'Decisions
 
 export default function HistoryPage({ searchParams }: PageProps<'/coach/history'>) {
   return (
-    <div className="flex max-w-[52rem] flex-col gap-4">
-      <Suspense fallback={<Skeleton className="h-[420px] rounded-lg" />}><History searchParams={searchParams} /></Suspense>
-    </div>
+    <PageGrid>
+      <GridItem span={{ base: 12, lg: 8 }}>
+        <Suspense fallback={<Skeleton className="h-[420px] rounded-lg" />}><History searchParams={searchParams} /></Suspense>
+      </GridItem>
+    </PageGrid>
   )
 }
 

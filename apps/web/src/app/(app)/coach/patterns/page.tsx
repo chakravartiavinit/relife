@@ -4,15 +4,18 @@ import { Suspense } from 'react'
 import { loadPatterns } from '@/core/patterns'
 import { getUser } from '@/core/user'
 import { Skeleton } from '@/ui/components/card'
+import { GridItem, PageGrid } from '@/ui/components/page-grid'
 import { PatternsCard } from '@/ui/components/patterns-card'
 
 export const metadata: Metadata = { title: 'Patterns · Coach' }
 
 export default function PatternsPage() {
   return (
-    <div className="flex max-w-[52rem] flex-col gap-4">
-      <Suspense fallback={<Skeleton className="h-[420px] rounded-lg" />}><Patterns /></Suspense>
-    </div>
+    <PageGrid>
+      <GridItem span={{ base: 12, lg: 8 }}>
+        <Suspense fallback={<Skeleton className="h-[420px] rounded-lg" />}><Patterns /></Suspense>
+      </GridItem>
+    </PageGrid>
   )
 }
 

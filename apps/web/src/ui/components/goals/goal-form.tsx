@@ -484,7 +484,7 @@ function GoalForm({ mode, initial, picker, today, onDone, onBack }: { mode: Mode
  * "New goal"; also open while the URL is `/plan?new=1`. Open state comes from the URL, not from state set once,
  * so a page kept alive in the background never comes back with a stale dialog. Disabled at the cap with the reason read out.
  */
-export function NewGoalButton({ today, picker, activeCount, listenToUrl = false, drafts }: { today: string; picker: GoalPickerData; activeCount: number; listenToUrl?: boolean; drafts?: DraftOffer[] }) {
+export function NewGoalButton({ today, picker, activeCount, listenToUrl = false, drafts, variant = 'primary' }: { today: string; picker: GoalPickerData; activeCount: number; listenToUrl?: boolean; drafts?: DraftOffer[]; variant?: 'primary' | 'secondary' }) {
   const atCap = activeCount >= MAX_ACTIVE
   const [open, setOpen] = useState(false)
   const router = useRouter()
@@ -493,7 +493,7 @@ export function NewGoalButton({ today, picker, activeCount, listenToUrl = false,
   const fromUrl = listenToUrl && pathname === '/plan' && params.get('new') === '1'
   return (
     <>
-      <Button variant="primary" onClick={() => setOpen(true)} disabled={atCap} aria-describedby={atCap ? 'goal-cap-note' : undefined}>
+      <Button variant={variant} onClick={() => setOpen(true)} disabled={atCap} aria-describedby={atCap ? 'goal-cap-note' : undefined}>
         <Plus className="size-4" strokeWidth={2} />
         New goal
       </Button>

@@ -5,6 +5,7 @@ import { headers } from 'next/headers'
 import { Suspense } from 'react'
 import { getUser } from '@/core/user'
 import { Skeleton } from '@/ui/components/card'
+import { GridItem, PageGrid } from '@/ui/components/page-grid'
 import { ConnectorMarket } from '@/ui/components/connector-market'
 import { loadConnectorItems } from '@/core/connector-items'
 import { requestOrigin } from '@/core/auth/trust'
@@ -16,11 +17,11 @@ export const metadata: Metadata = { title: 'Connections' }
 
 export default function ConnectionsPage() {
   return (
-    <>
-      <p className="mb-6 max-w-[60ch] text-body text-ink-2">
+    <PageGrid>
+      <GridItem as="div"><p className="max-w-[60ch] text-body text-ink-2">
         Apps and devices that feed {brand.name}, sorted by what they track, plus Telegram and AI models. You bring the keys: they’re encrypted in your local database, and nothing syncs until you connect it.
-      </p>
-      <Suspense fallback={
+      </p></GridItem>
+      <GridItem><Suspense fallback={
         <div className="flex flex-col gap-6">
           <Skeleton className="h-8 w-72 rounded-full" />
           <div className="grid gap-6 lg:grid-cols-[200px_minmax(0,1fr)] xl:gap-10">
@@ -33,8 +34,8 @@ export default function ConnectionsPage() {
         </div>
       }>
         <Connections />
-      </Suspense>
-    </>
+      </Suspense></GridItem>
+    </PageGrid>
   )
 }
 

@@ -59,7 +59,7 @@ export function ReviewFlow({ items: fresh, picker, today }: { items: ReviewItem[
                   n === index && 'bg-surface shadow-1',
                 )}
               >
-                <span aria-hidden className={cn('grid size-6 shrink-0 place-items-center rounded-full text-caption font-semibold tabular-nums', decisionOf(i) ? 'bg-good/15 text-good' : n === index ? 'bg-ink text-surface' : 'bg-surface-2 text-ink-3')}>
+                <span aria-hidden className={cn('grid size-6 shrink-0 place-items-center rounded-full text-caption font-medium tabular-nums', decisionOf(i) ? 'bg-good/15 text-good' : n === index ? 'bg-ink text-surface' : 'bg-surface-2 text-ink-3')}>
                   {decisionOf(i) ? <Check className="size-3.5" strokeWidth={2.5} /> : n + 1}
                 </span>
                 <span className="min-w-0">
