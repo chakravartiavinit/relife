@@ -61,7 +61,7 @@ async function Coach({ searchParams }: { searchParams: PageProps<'/coach'>['sear
       <Rail span={{ base: 12, lg: 5 }}>
         {/* Beside Needs you it grows with the row (`flex-1 basis-0`) so the rail ends level with it and the thread scrolls inside;
             stacked, a thread gets a fixed height (an empty Ask is only as tall as its content). */}
-        <Card as="section" aria-labelledby="ask-coach" className={cn('flex scroll-mt-20 flex-col overflow-hidden p-0 grid-lg:min-h-[30rem] grid-lg:flex-1 grid-lg:basis-0', (aiOn || thread.length > 0) && 'h-[min(680px,max(460px,calc(100dvh-22rem)))] grid-lg:h-auto')}>
+        <Card as="section" aria-labelledby="ask-coach" className={cn('flex scroll-mt-20 flex-col overflow-hidden p-0 grid-lg:min-h-[30rem] grid-lg:flex-1 grid-lg:basis-0', (aiOn || thread.length > 0) && 'h-[min(680px,max(520px,calc(100dvh-22rem)))] grid-lg:h-auto')}>
           <header className="flex items-center justify-between gap-3 px-5 pt-5 pb-3">
             <h2 id="ask-coach" className="font-display text-heading text-ink">Ask</h2>
             <span className="flex items-center gap-1.5 text-small text-ink-3">
