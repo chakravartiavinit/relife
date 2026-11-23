@@ -2,10 +2,9 @@ import brand from '@relife/brand/brand.json'
 import Link from 'next/link'
 import { ChevronDown } from 'lucide-react'
 import type { AreaDef } from '@/core/areas'
-import { trackerDays, trackerFacts } from '@/core/metrics'
-import { addDays } from '@/core/time'
+import { loadAreaTrackers } from '@/core/areas/trackers'
 import type { User } from '@/core/user'
-import { orderTiles, summarizeTracker } from '@/domain/metric-tile'
+import { orderTiles } from '@/domain/metric-tile'
 import { Fold } from '../fold'
 import { CardLink } from './card-link'
 import { MetricTile } from './metric-tile'
@@ -22,9 +21,8 @@ const CELL = 'min-w-0 border-e border-b border-divider bg-surface *:h-full'
  * On a phone the whole block is a fold (the targets table above already has the numbers that matter).
  */
 export async function AllMetrics({ user, def, today }: { user: User; def: AreaDef; today: string }) {
-  const days = await trackerDays(user, addDays(today, -89), today, { category: def.category! })
-  const facts = await trackerFacts(user, addDays(today, -89), today, days.filter((d) => d.days.size).map((d) => d.tracker.id))
-  const tiles = days.map((d) => summarizeTracker(d.tracker, d.days, today, facts.get(d.tracker.id)))
+  // The same read as the targets table above it (cached per request).
+  const tiles = (await loadAreaTrackers(user, def.category!, today)).map((x) => x.tile)
   const { shown, quiet } = orderTiles(tiles, def.pinned)
   const count = shown.length + quiet.length
   return (

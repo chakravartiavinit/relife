@@ -11,6 +11,7 @@ import { StackedBars } from '../charts'
 import { CoinLogo } from '../coin-logo'
 import { Fold } from '../fold'
 import { GridItem, PageGrid } from '../page-grid'
+import { ProgressBlock } from '../progress-block'
 import { Rail } from '../rail'
 import { Ticker } from '../ticker'
 import { CategoryList } from './category-list'
@@ -32,21 +33,6 @@ const MONTH_YEAR = new Intl.DateTimeFormat('en-IN', { month: 'short', year: 'num
 const SHOWN_APPS = 8
 const APPS_ON_PHONE = 3
 const SUBS_ON_PHONE = 2
-
-/** A card that is a fold on a phone: its head shows from 640px, below that the fold's own summary row stands in. */
-function FoldCard({ title, description, summary, action, children, className }: {
-  title: string; description?: string; summary?: string; action?: React.ReactNode; children: React.ReactNode; className?: string
-}) {
-  return (
-    <Fold inline card title={title} summary={summary ?? description} className={className}>
-      <header className="hidden items-start justify-between gap-4 pt-4 pb-4 grid-md:flex">
-        <div className="min-w-0"><h2 className="text-heading text-ink">{title}</h2>{description ? <p className="mt-0.5 text-small text-ink-3">{description}</p> : null}</div>
-        {action ? <div className="shrink-0">{action}</div> : null}
-      </header>
-      {children}
-    </Fold>
-  )
-}
 
 /** The month so far: the number, a bar of spent / projected with a usual month marked on it, then the months side by side. */
 function MonthCard({ o, money }: { o: WealthOverview; money: Money }) {
@@ -249,7 +235,7 @@ function Merchants({ o, money }: { o: WealthOverview; money: Money }) {
 /** The latest money nudges the app sent, and what it keeps an eye on. */
 function Noticed({ o }: { o: WealthOverview }) {
   return (
-    <FoldCard title={`What ${brand.name} noticed`} description="Money nudges sent to Telegram, last 30 days" summary={o.nudges.length ? `${o.nudges.length} in the last 30 days` : 'All quiet so far · last 30 days'} action={<CardLink href="/coach">All</CardLink>}>
+    <ProgressBlock title={`What ${brand.name} noticed`} description="Money nudges sent to Telegram, last 30 days" summary={o.nudges.length ? `${o.nudges.length} in the last 30 days` : 'All quiet so far · last 30 days'} action={<CardLink href="/coach">All</CardLink>}>
       {o.nudges.length ? (
         <ul className="flex flex-col gap-1">
           {o.nudges.map((n) => (
@@ -268,13 +254,13 @@ function Noticed({ o }: { o: WealthOverview }) {
           <p className="mt-1 text-small text-ink-3">You get a Telegram nudge when something moves: your month’s pace, a spending spike, a repeat buy above usual, a new subscription, a coin swing or a futures position near liquidation.</p>
         </div>
       )}
-    </FoldCard>
+    </ProgressBlock>
   )
 }
 
 function BoughtAgain({ o, money }: { o: WealthOverview; money: Money }) {
   return (
-    <FoldCard title="Bought again and again" description="Last 90 days · what small repeats add up to" summary="Last 90 days · what small repeats add up to" action={<CardLink href="/wealth/spending">Items</CardLink>}>
+    <ProgressBlock title="Bought again and again" description="Last 90 days · what small repeats add up to" summary="Last 90 days · what small repeats add up to" action={<CardLink href="/wealth/spending">Items</CardLink>}>
       {o.repeat.length ? (
         <ol className="flex flex-col divide-y divide-divider">
           {o.repeat.map((r, i) => (
@@ -292,7 +278,7 @@ function BoughtAgain({ o, money }: { o: WealthOverview; money: Money }) {
           ))}
         </ol>
       ) : <p className="rounded-md bg-surface-2 p-4 text-small text-ink-3">Nothing bought on three or more days in the last 90 days.</p>}
-    </FoldCard>
+    </ProgressBlock>
   )
 }
 
