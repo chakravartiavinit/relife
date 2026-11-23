@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useOptimistic, useState, useTransition } from 'react'
-import { Check, Minus, Moon, RotateCcw, SkipForward, Sun, Sunrise, type LucideIcon } from 'lucide-react'
+import { Check, ChevronDown, Minus, Moon, RotateCcw, SkipForward, Sun, Sunrise, type LucideIcon } from 'lucide-react'
 import { routineArt } from '../routine-icons'
 import { RoutineArt } from './routine-art'
 import { addToGoal, setGoalTarget, toggleCheck, undoGoalStep, undoQuickLog } from '@/app/actions'
@@ -43,12 +43,13 @@ const PERIODS = [
 const periodOf = (time: string) => PERIODS.find((p) => Number(time.slice(0, 2)) < p.until)!.key
 
 /** Check off today's routines and medicines. Optimistic: the tap lands instantly. */
-export function Agenda({ rows, timeline }: { rows: AgendaRow[]; /** Today's layout: the Up next block (with `lead` beside it, the all-day panel), then Morning, Afternoon, Evening as compact rows with a Now line at this `HH:MM`, done rows folded. */ timeline?: { now: string; lead?: React.ReactNode } }) {
+export function Agenda({ rows, timeline, phoneOpen }: { rows: AgendaRow[]; /** On a phone only this many open rows show; the rest open with "N more today". From 640px every row shows. */ phoneOpen?: number; /** Today's layout: the Up next block (with `lead` beside it, the all-day panel), then Morning, Afternoon, Evening as compact rows with a Now line at this `HH:MM`, done rows folded. */ timeline?: { now: string; lead?: React.ReactNode } }) {
   const [optimistic, setOptimistic] = useOptimistic(
     rows,
     (state, { key, status }: { key: string; status: AgendaRow['status'] }) => state.map((r) => (r.key === key ? { ...r, status } : r)),
   )
   const [, start] = useTransition()
+  const [more, setMore] = useState(false)
   const toast = useToast()
 
   // Every check-off toasts what happened with Undo (the same words Capture uses); Undo is `toggleCheck(…, null)`.
@@ -77,11 +78,16 @@ export function Agenda({ rows, timeline }: { rows: AgendaRow[]; /** Today's layo
     ...(overdue.length ? [{ key: 'overdue', label: 'Overdue', rows: overdue, alert: true }] : []),
     ...PERIODS.map((p) => ({ key: p.key, label: p.label, rows: upcoming.filter((r) => periodOf(r.time) === p.key), alert: false })),
   ].filter((g) => g.rows.length)
+  // A phone shows the first `phoneOpen` open rows; the later ones (and any group left with none) wait behind the button.
+  const open = groups.flatMap((g) => g.rows)
+  const laterCount = phoneOpen == null ? 0 : Math.max(0, open.length - phoneOpen)
+  const keep = new Set((more || phoneOpen == null ? open : open.slice(0, phoneOpen)).map((r) => r.key))
+  const hideLater = (shown: boolean) => (shown ? undefined : 'hidden grid-md:block')
 
   return (
     <div className="flex flex-col gap-5">
       {groups.map((g) => (
-        <section key={g.key} aria-label={g.label}>
+        <section key={g.key} aria-label={g.label} className={hideLater(g.rows.some((r) => keep.has(r.key)))}>
           <h3 className={cn('mb-1 flex items-center gap-2 px-1 text-small font-medium', g.alert ? 'text-bad' : 'text-ink-3')}>
             {g.label}
             <span className="font-medium tabular-nums opacity-70">{g.rows.length}</span>
@@ -97,6 +103,7 @@ export function Agenda({ rows, timeline }: { rows: AgendaRow[]; /** Today's layo
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 4 }}
                   transition={{ duration: 0.2, ease: EASE_OUT }}
+                  className={keep.has(r.key) ? undefined : 'hidden grid-md:list-item'}
                 >
                   <Row r={r} onToggle={() => act(r, 'done')} onSkip={() => act(r, 'skipped')} />
                 </motion.li>
@@ -105,6 +112,18 @@ export function Agenda({ rows, timeline }: { rows: AgendaRow[]; /** Today's layo
           </ul>
         </section>
       ))}
+
+      {phoneOpen != null && laterCount > 0 ? (
+        <button
+          type="button"
+          aria-expanded={more}
+          onClick={() => setMore((x) => !x)}
+          className="-mt-2 flex h-11 items-center gap-2 rounded-md px-1 text-small font-medium text-ink-3 transition-colors duration-150 ease-out-quint hover-fine:text-ink-2 focus-visible:outline-2 focus-visible:outline-pill grid-md:hidden"
+        >
+          {more ? 'Show fewer' : `${laterCount} more today`}
+          <ChevronDown aria-hidden strokeWidth={1.5} className={cn('size-3.5 transition-transform duration-150 ease-out-quint motion-reduce:transition-none', more && 'rotate-180')} />
+        </button>
+      ) : null}
 
       {groups.length === 0 && rows.length > 0 ? (
         <p className="rise flex items-center gap-2 px-1 text-small text-ink-2">
@@ -180,8 +199,8 @@ function UpNext({ r, now, act }: { r: AgendaRow; now: string; act: (r: AgendaRow
         </div>
       </div>
       <div className="mt-auto flex items-center gap-2 pt-4">
-        <Button variant="primary" onClick={() => act(r, 'done')} className="h-11 flex-1 grid-md:h-9 grid-md:flex-none">Check off</Button>
-        <Button variant="ghost" onClick={() => act(r, 'skipped')} className="h-11 text-ink-2 grid-md:h-8">Skip</Button>
+        <Button variant="primary" onClick={() => act(r, 'done')} aria-label={`Check off ${r.name}`} className="h-11 flex-1 grid-md:h-9 grid-md:flex-none">Check off</Button>
+        <Button variant="ghost" onClick={() => act(r, 'skipped')} aria-label={`Skip ${r.name}`} className="h-11 text-ink-2 grid-md:h-8">Skip</Button>
       </div>
     </div>
   )
@@ -586,11 +605,11 @@ function QuantityRow({ g, done, left, glasses, add }: { g: GoalRow; done: boolea
         </div>
       ) : <Capsule value={g.value} max={g.target} color={done ? 'var(--good)' : g.color} label={`${g.name} progress`} className="mt-4" />}
       <div role="group" aria-label={`Log ${g.name}`} className="mt-auto flex items-center gap-2 pt-4">
-        <Button size="sm" variant="secondary" className="h-10 flex-1 grid-md:h-8" disabled={g.value <= 0} onClick={() => add(g, -Math.min(g.step, g.value))} aria-label={`Remove ${fmtAmount(g.step, g.unit)}`}>
+        <Button size="sm" variant="secondary" className="h-11 flex-1 grid-md:h-8" disabled={g.value <= 0} onClick={() => add(g, -Math.min(g.step, g.value))} aria-label={`Remove ${fmtAmount(g.step, g.unit)}`}>
           <Minus className="size-3.5" strokeWidth={2} />
         </Button>
         {[g.step, g.step * 2].map((amount) => (
-          <Button key={amount} size="sm" variant="secondary" className="h-10 flex-[2] tabular-nums grid-md:h-8" onClick={() => add(g, amount)}>+{fmtAmount(amount, g.unit)}</Button>
+          <Button key={amount} size="sm" variant="secondary" className="h-11 flex-[2] tabular-nums grid-md:h-8" onClick={() => add(g, amount)}>+{fmtAmount(amount, g.unit)}</Button>
         ))}
       </div>
     </li>
