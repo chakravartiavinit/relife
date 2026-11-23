@@ -8,10 +8,9 @@ import type { LocalAiResult } from '@/app/actions'
 import type { Category } from '@/db/schema'
 import type { Template } from '@/core/onboarding'
 import { CATEGORY } from '../tokens'
-import { AppLogo } from './app-logo'
+import { Picture } from './picture'
 import type { ConnectorItem } from './connector-market'
-import { AREA_ICON, CapsuleIcon } from './capsule-icon'
-import { RoutineArt } from './routine-art'
+import { CapsuleIcon } from './capsule-icon'
 import { cn } from '../cn'
 import { EASE_OUT, EASE_OUT_STRONG } from '@/ui/beui/lib/ease'
 import { AT, IMPROVE, city, firstName, litres, nfIN, toMin, type V } from './onboarding-data'
@@ -185,17 +184,12 @@ export function SaveFile({ v, step, picks, routines, starters, sources, pack, ai
 
           <Part label="Areas" at={AT.areas} step={step} fromPack={!!pack} empty={reached(AT.areas) ? null : 'The parts of life you level up'}>
             <ul className="flex flex-wrap gap-1.5">
-              {v.areas.map((c: Category) => {
-                const Icon = AREA_ICON[c]
-                return (
-                  <motion.li key={c} layout="position" transition={SPRING} className="inline-flex h-7 items-center gap-1.5 rounded-full bg-surface-2 ps-1 pe-2.5 text-caption font-medium text-ink">
-                    <span aria-hidden className="grid size-5 place-items-center rounded-full" style={{ color: `color-mix(in oklch, ${CATEGORY[c].color} 80%, var(--ink))`, background: `color-mix(in oklch, ${CATEGORY[c].color} 16%, transparent)` }}>
-                      <Icon className="size-3" strokeWidth={2} />
-                    </span>
-                    {CATEGORY[c].label}
-                  </motion.li>
-                )
-              })}
+              {v.areas.map((c: Category) => (
+                <motion.li key={c} layout="position" transition={SPRING} className="inline-flex h-7 items-center gap-1.5 rounded-full bg-surface-2 ps-1 pe-2.5 text-caption font-medium text-ink">
+                  <Picture of="area" to={c} size={20} />
+                  {CATEGORY[c].label}
+                </motion.li>
+              ))}
             </ul>
           </Part>
 
@@ -204,7 +198,7 @@ export function SaveFile({ v, step, picks, routines, starters, sources, pack, ai
               <AnimatePresence initial={false}>
                 {on.map((c) => (
                   <motion.li key={c.id} layout="position" {...appear} className="flex items-center gap-2.5 rounded-[8px] bg-good/10 p-2">
-                    <AppLogo id={c.id} category={c.category} size="xs" />
+                    <Picture of="connector" id={c.id} name={c.name} size={32} />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-caption font-medium text-ink">{c.name}</span>
                       <span className="block truncate text-caption text-ink-3">{c.category ? `${CATEGORY[c.category].label} › ` : ''}{c.provides.slice(0, 2).join(' and ')}</span>
@@ -272,9 +266,7 @@ export function SaveFile({ v, step, picks, routines, starters, sources, pack, ai
               <AnimatePresence initial={false}>
                 {picked.slice(0, 4).map((t) => (
                   <motion.li key={t.id} layout="position" {...appear} className="flex h-9 items-center gap-2.5">
-                    <span aria-hidden className="grid size-7 shrink-0 place-items-center rounded-[8px]" style={{ background: `color-mix(in oklch, ${CATEGORY[t.area].color} 14%, transparent)` }}>
-                      <RoutineArt name={t.name} kind={t.kind} area={t.area} className="size-[18px]" />
-                    </span>
+                    <Picture of="routine" name={t.name} kind={t.kind} area={t.area} size={32} />
                     <span className="min-w-0 flex-1 truncate text-caption font-medium text-ink">{t.name}</span>
                     <span className="shrink-0 text-caption text-ink-3 tabular-nums">{t.rule.times[0]}</span>
                     <span aria-hidden className="size-4 shrink-0 rounded-full shadow-[inset_0_0_0_1.5px_var(--hairline)]" />
@@ -300,7 +292,7 @@ function AiLine({ ai }: { ai: { choice: V['aiChoice']; connected: string | null;
     : [`Local AI${ai.local?.ok ? ` · ${ai.local.model}` : ''}`, 'On this machine. Nothing leaves it.']
   return (
     <p className="flex items-center gap-2.5 rounded-[8px] bg-surface-2 p-2">
-      <AppLogo id={ai.connected && !ai.connected.startsWith('local:') ? ai.connected.split(':')[0] : 'local'} size="xs" />
+      <Picture of="provider" id={ai.connected && !ai.connected.startsWith('local:') ? ai.connected.split(':')[0] : 'local'} size={32} />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-caption font-medium text-ink">{title}</span>
         <span className="block truncate text-caption text-ink-3">{sub}</span>
@@ -322,7 +314,7 @@ export function SaveStrip({ v }: { v: V }) {
       </div>
       <ul aria-label="Areas" className="flex -space-x-1">
         {v.areas.map((c) => (
-          <li key={c} title={CATEGORY[c].label} className="size-3 rounded-full ring-2 ring-surface" style={{ background: CATEGORY[c].color }} />
+          <li key={c} title={CATEGORY[c].label}><Picture of="area" to={c} size={20} /></li>
         ))}
       </ul>
     </div>
