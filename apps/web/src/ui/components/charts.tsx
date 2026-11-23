@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Sector, type PieSectorShapeProps } from 'recharts'
 import { EvilAreaChart } from '@/components/evilcharts/charts/recharts-area-chart'
 import { EvilLineChart } from '@/components/evilcharts/charts/recharts-line-chart'
 import { EvilBarChart } from '@/components/evilcharts/charts/recharts-bar-chart'
@@ -171,16 +172,34 @@ export function Sparkline({ data, color = CHART.accent, height = 32, label = 'Tr
     const values = interpolateGaps(data.map((p) => p.value))
     return data.map((p, i) => ({ day: shortDate(p.date), value: values[i] }))
   }, [data])
+  const [box, shown] = useHasSize<HTMLDivElement>()
   // One or two points draw as a sliver at the edge; the space stays, the line waits for more days.
   if (!hasTrend(data)) return null
   return (
     <figure aria-label={label} className="m-0">
-      <div style={{ height }}><EvilAreaChart data={rows} config={{ value: tone(seriesName(label), color) }} animationType="none" className="aspect-auto h-full w-full"
+      <div ref={box} style={{ height }}>{shown ? <EvilAreaChart data={rows} config={{ value: tone(seriesName(label), color) }} animationType="none" className="aspect-auto h-full w-full"
         chartProps={{ margin: { top: 2, right: 2, bottom: 2, left: 2 } }}>
         <EvilAreaChart.Area dataKey="value" variant="gradient" strokeVariant="solid" connectNulls />
-      </EvilAreaChart></div>
+      </EvilAreaChart> : null}</div>
     </figure>
   )
+}
+
+/**
+ * True once the element has a size. A sparkline inside a cell that CSS hides (display: none at some widths) has no
+ * box, and Recharts warns "width(0) and height(0)" when it draws into one; so the chart mounts only while it is seen.
+ */
+function useHasSize<T extends HTMLElement>() {
+  const ref = useRef<T>(null)
+  const [shown, setShown] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const ro = new ResizeObserver(([e]) => setShown(e.contentRect.width > 0 && e.contentRect.height > 0))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  return [ref, shown] as const
 }
 
 /** Ranked horizontal bars (magnitude by category), largest first. */
@@ -199,6 +218,15 @@ export function RankedBars({ data, color = CHART.accent, unit, label }: {
         </EvilBarChart></div>
       </figure>
   )
+}
+
+/**
+ * One donut slice. The vendored pie spreads Recharts' shape props, `key` included, into `<Sector>`, which React rejects
+ * ("A props object containing a key prop is being spread into JSX"). We leave EvilCharts untouched and draw the slice
+ * here without the key; the fill is still the pie's own colour.
+ */
+function donutSlice({ key: _key, ...props }: PieSectorShapeProps & { key?: unknown }) {
+  return <Sector {...props} stroke="none" strokeWidth={0} />
 }
 
 /**
@@ -224,7 +252,7 @@ export function ShareDonut({ segments, unit, totalLabel, label, top = 3, accent 
   return (
     <figure aria-label={label} className="m-0">
       <EvilPieChart data={rows} dataKey="value" nameKey="key" config={config} className="mx-auto aspect-square w-full max-w-[16rem]">
-        <EvilPieChart.Pie innerRadius="62%" paddingAngle={2} cornerRadius={4} />
+        <EvilPieChart.Pie innerRadius="62%" paddingAngle={2} cornerRadius={4} pieProps={{ shape: donutSlice }} />
         <EvilPieChart.Tooltip />
       </EvilPieChart>
       {/* Our own legend, outside the square chart, so long names wrap instead of running past the card. */}
