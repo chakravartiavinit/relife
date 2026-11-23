@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { briefHash, changeLine, pickAiLines, ruleLine, shouldRewrite, stableJson, topChange, type BriefFacts } from './briefs'
+import { briefHash, briefMatchesPlan, changeLine, pickAiLines, ruleLine, shouldRewrite, stableJson, topChange, type BriefFacts } from './briefs'
 
 const sleep = { name: 'Sleep', unit: 'h', pct: -0.18, recent: 6.1, usual: 7.4, peek: 'metric:sleep.hours' }
 const base: BriefFacts = { changes: [], kpis: [{ label: 'Steps, 7-day avg', value: '6,512' }] }
@@ -87,4 +87,13 @@ test('model lines are kept only when usable', () => {
   assert.deepEqual(out, { health: 'Sleep is down.' })
   assert.deepEqual(pickAiLines(null, ['health']), {})
   assert.equal(pickAiLines({ mind: 'x'.repeat(110) }, ['mind']).mind?.length, 110)
+})
+
+test('a stored Today brief is shown only while its done count matches the live plan', () => {
+  const facts = [{ label: 'Done today', value: '3 of 11' }]
+  assert.equal(briefMatchesPlan(facts, { done: 3, total: 11 }), true)
+  assert.equal(briefMatchesPlan(facts, { done: 5, total: 11 }), false)
+  assert.equal(briefMatchesPlan(facts, { done: 3, total: 12 }), false)
+  assert.equal(briefMatchesPlan([{ label: 'Focus today', value: '2h' }], { done: 0, total: 4 }), true)
+  assert.equal(briefMatchesPlan(undefined, { done: 0, total: 4 }), true)
 })

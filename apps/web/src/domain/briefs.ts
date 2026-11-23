@@ -135,3 +135,13 @@ export function pickAiLines(reply: unknown, scopes: readonly BriefScope[]): Part
   }
   return out
 }
+
+/**
+ * Is today's stored brief still true? It was written from a snapshot of the plan ("Done today: 3 of 11"); after a
+ * check-off it says the wrong count until the job runs again (it is throttled). Today shows the brief only while that
+ * fact still matches the live plan; otherwise the rule-based plan line stands in. A brief without the fact is kept.
+ */
+export function briefMatchesPlan(facts: { label: string; value: string }[] | undefined, plan: { done: number; total: number }): boolean {
+  const done = facts?.find((f) => f.label === 'Done today')
+  return !done || done.value === `${plan.done} of ${plan.total}`
+}

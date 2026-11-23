@@ -10,6 +10,7 @@ import { loadShellStatus } from '@/core/shell'
 import { loadPulse } from '@/core/pulse'
 import { loadTodayBriefing, moneyView } from '@/core/today'
 import { latestBrief } from '@/core/briefs'
+import { briefMatchesPlan } from '@/domain/briefs'
 import { addDays, daysBetween, formatDay, formatTime, localDate, localHour } from '@/core/time'
 import { dayState, greeting, planLine, recapLine } from '@/domain/day-plan'
 import { weekStart } from '@/domain/quests'
@@ -102,7 +103,8 @@ async function Header({ user }: { user: User }) {
   const state = dayState(plan.total, plan.done)
   const complete = state === 'complete'
   const tomorrow = complete ? (await loadTomorrowRows(user))[0] : undefined
-  const stored = brief && brief.localDate === today ? brief.text : null
+  // A brief written before the latest check-off would show an old count: then the live plan line stands in.
+  const stored = brief && brief.localDate === today && briefMatchesPlan(brief.why?.facts, plan) ? brief.text : null
   const hour = localHour(new Date(), user.timezone)
   return (
     <TodayHeader d={{
