@@ -2,7 +2,9 @@ import { Users } from 'lucide-react'
 import { loadPeople } from '@/core/areas/people'
 import type { User } from '@/core/user'
 import { PeekLink } from '../components/peek/peek-link'
-import { Badge, Card, CardHeader } from '../components/card'
+import { Card, CardHeader } from '../components/card'
+import { Picture } from '../components/picture'
+import { StatusWord } from '../components/status-word'
 import { EmptyState } from '../components/empty'
 import { ContactedButton, NewPersonButton } from '../components/forms/people-forms'
 
@@ -23,26 +25,18 @@ export async function PeopleOverview({ user, today }: { user: User; today: strin
       <Card>
         <CardHeader title="Keep in touch" description={rows.length ? `${rows.filter((r) => r.overdue).length} overdue` : 'Who you talk to, and how often'} />
         {rows.length ? (
-          <ul className="-my-2 divide-y divide-divider">
+          <ul className="-my-1">
             {rows.map(({ p, since, overdue }) => (
-              <li key={p.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
-                <PeekLink to={{ type: 'person', id: p.id }} aria-label={`${p.name}: open details`} className="flex min-w-0 flex-1 basis-48 items-center gap-4 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">
-                  <span
-                    aria-hidden
-                    className="grid size-10 shrink-0 place-items-center rounded-full text-body font-medium"
-                    style={{ color: 'color-mix(in oklch, var(--cat-relationships) 80%, var(--ink))', background: overdue ? 'color-mix(in oklch, var(--warn) 18%, transparent)' : 'color-mix(in oklch, var(--cat-relationships) 16%, transparent)' }}
-                  >
-                    {p.name.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase()}
-                  </span>
+              <li key={p.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-2 [&+&]:shadow-[0_-1px_0_var(--divider)]">
+                <PeekLink to={{ type: 'person', id: p.id }} aria-label={`${p.name}: open details`} className="-mx-2 flex min-h-14 min-w-0 flex-1 basis-56 items-center gap-3 rounded-md px-2 transition-colors duration-150 ease-out-quint hover-fine:bg-surface-2 focus-visible:outline-2 focus-visible:outline-pill">
+                  <Picture of="merchant" name={p.name} size={40} className="rounded-full" />
                   <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-2">
-                      <span className="truncate text-body text-ink">{p.name}</span>
-                      {overdue ? <Badge color="var(--warn)">Overdue</Badge> : null}
-                    </span>
-                    <span className="mt-0.5 block text-small text-ink-3">
+                    <span className="block truncate text-body font-medium text-ink">{p.name}</span>
+                    <span className="block truncate text-small text-ink-3">
                       {[p.relation, since == null ? 'Not logged yet' : ago(since), p.contactEveryDays ? `every ${p.contactEveryDays} days` : null].filter(Boolean).join(' · ')}
                     </span>
                   </span>
+                  {overdue ? <StatusWord status="Behind" /> : p.contactEveryDays ? <StatusWord status="On track" /> : null}
                 </PeekLink>
                 <ContactedButton id={p.id} name={p.name} />
               </li>

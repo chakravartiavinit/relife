@@ -7,7 +7,11 @@ const RULES: [RegExp, LucideIcon, string][] = [
   [/water|hydrat/i, GlassWater, 'water'],
   [/mood/i, Smile, 'mood'],
   [/energy/i, Zap, 'energy'],
-  [/weight/i, Scale, 'weight'],
+  [/weight|body fat|bmi/i, Scale, 'weight'],
+  // Connector metrics (Oura, WHOOP, Strava): recovery and readiness are the heart's, strain the energy's, active minutes a run's.
+  [/recovery|readiness|hrv|resting|heart/i, HeartPulse, 'heart'],
+  [/strain|stress/i, Zap, 'energy'],
+  [/active minutes|activity/i, Footprints, 'run'],
   // "Reviews" (the GitHub tracker) and code reviews, but not "Review budget".
   [/commit|pull request|^reviews?$|code review/i, GitCommitHorizontal, 'code'],
   [/skin|face|serum|sunscreen|mask|moistur/i, Droplet, 'skin'],
@@ -19,7 +23,7 @@ const RULES: [RegExp, LucideIcon, string][] = [
   [/journal|diary|write/i, NotebookPen, 'journal'],
   [/meditat|breath|mindful/i, Wind, 'yoga'],
   [/vitamin|omega|pill|tablet|capsule|medicine|supplement|creatine/i, Pill, 'pill'],
-  [/lights out|sleep|bed/i, BedDouble, 'sleep'],
+  [/lights out|sleep|bed|wind.?down/i, BedDouble, 'sleep'],
   [/phone|screen/i, Smartphone, 'phone'],
   [/call|parents|mom|dad|family|friend/i, Phone, 'call'],
   [/budget|money|spen[dt]|save|invest/i, PiggyBank, 'money'],

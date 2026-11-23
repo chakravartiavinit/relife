@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { Repeat } from 'lucide-react'
 import type { Category } from '@/db/schema'
 import type { User } from '@/core/user'
 import type { ScheduleMeta } from '@/core/schedules'
@@ -10,7 +9,8 @@ import { Capsule } from '../capsule'
 import { EmptyState } from '../empty'
 import { buttonClass } from '../button'
 import { AdherenceStrip } from './adherence-strip'
-import { RoutineArt } from '../routine-art'
+import { Picture } from '../picture'
+import { cn } from '../../cn'
 import { PeekLink } from '../peek/peek-link'
 import { loadAdherence, type ScheduleAdherence } from '@/core/adherence'
 
@@ -22,7 +22,7 @@ export async function RoutinesCard({ user, category, title = 'Routines', kinds =
   return (
     <Card>
       <CardHeader
-        title={title} icon={<Repeat strokeWidth={2} />} color={CATEGORY[category].color}
+        title={title}
         description="Last 14 days"
         action={<Link href="/plan/routines" className={buttonClass({ variant: 'ghost', size: 'sm' })}>Manage</Link>}
       />
@@ -32,7 +32,7 @@ export async function RoutinesCard({ user, category, title = 'Routines', kinds =
         </ul>
       ) : (
         <EmptyState
-          title={`No ${CATEGORY[category].label.toLowerCase()} routines yet`} icon={Repeat} color={CATEGORY[category].color}
+          title={`No ${CATEGORY[category].label.toLowerCase()} routines yet`} picture={{ of: 'area', to: category }}
           description="Routines you add here get reminders on Telegram and a streak."
           action={<Link href="/plan/routines?new=1" className={buttonClass({ variant: 'primary', size: 'sm' })}>Add a routine</Link>}
         />
@@ -47,9 +47,7 @@ export function AdherenceRow({ r, actions }: { r: ScheduleAdherence; actions?: R
   const color = CATEGORY[s.category].color
   return (
     <li className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
-      <span aria-hidden className="grid size-10 shrink-0 place-items-center self-start rounded-[11px]" style={{ color: `color-mix(in oklch, ${color} 80%, var(--ink))`, background: `color-mix(in oklch, ${color} 16%, transparent)`, opacity: s.active ? 1 : 0.5 }}>
-        <RoutineArt name={s.name} kind={s.kind} area={s.category} className={s.active ? undefined : 'grayscale'} />
-      </span>
+      <Picture of="routine" name={s.name} kind={s.kind} area={s.category} size={40} className={cn('self-start', !s.active && 'opacity-50 grayscale')} />
       <div className="min-w-0 flex-1 basis-40 sm:basis-56">
         <div className="flex items-center gap-2">
           <PeekLink to={{ type: 'routine', id: s.id }} className={`truncate rounded-xs text-body font-medium hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill ${s.active ? 'text-ink' : 'text-ink-3'}`}>{s.name}</PeekLink>

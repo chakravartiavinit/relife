@@ -4,14 +4,15 @@ import { AREAS } from '@/core/areas'
 import { addDays } from '@/core/time'
 import { summarizeTracker, type TileTracker } from '@/domain/metric-tile'
 import { fillDays } from '@/domain/series'
-import { targetRows, type TargetTracker } from '@/domain/target-rows'
+import type { TargetTracker } from '@/core/areas/trackers'
+import { needsLookFirst, trackerLine, trackerStatus } from '@/domain/tracker-row'
 import { Card, CardHeader, Skeleton } from '../card'
-import { TargetTableView } from '../category/target-table'
-import { TargetTrend, TargetTrendLegend } from '../category/target-trend'
-import { PageGrid, GridItem } from '../page-grid'
+import { LeadChart } from '../charts'
+import { Connection } from '../connection'
 import { WealthOverviewView, type WealthOverview } from '../wealth/overview'
 import { OverviewSkeleton } from '../category/skeleton'
-import { MetricTile } from './metric-tile'
+import { TrackerRows } from './area-trackers'
+import { TrendsExplorer, type TrendSeries } from './trends-explorer'
 
 // /dev/ui: the area Overview's new blocks from fixed data (one fixed "today"): the targets table with bars, trend, rows
 // without a target, headline-only rows and the "N more" fold; the sleep chart with direct labels; the Wealth Overview.
@@ -34,15 +35,15 @@ const TRACKERS = [
   mk(tr('few', 'Body fat', '%', { target: 18 }), new Map([[TODAY, 20.1], [addDays(TODAY, -3), 20.3]])),
 ]
 const health = AREAS.health
-const ROWS = targetRows({
-  today: TODAY, pinned: ['sleep.hours', 'hrv', 'resting.hr', 'oura.readiness', 'mood'], trackers: TRACKERS, fallback: { type: 'brief', id: 'health' },
-  kpis: [
-    { label: 'Medicines kept', value: '84%', sub: '2 medicines, last 60 days', ratio: 0.84 },
-    { label: 'Sleep, 7-day avg', value: '7.2h', peek: { type: 'metric', id: 'sleep.hours' } },
-    { label: 'Steps, 7-day avg', value: '7,243', peek: { type: 'metric', id: 'steps' } },
-    { label: 'Water today', value: '1,250', peek: { type: 'metric', id: 'water' } },
-  ],
-})
+const ROWS = needsLookFirst([
+  { key: 'kpi:meds', name: 'Medicines kept', line: '82%, 2 medicines, last 60 days', status: 'On track' as const, picture: { of: 'tracker' as const, name: 'Medicines kept', area: 'health' }, peek: { type: 'brief' as const, id: 'health' } },
+  ...TRACKERS.map(({ tracker, tile }) => ({ key: tracker.slug, name: tile.name, line: trackerLine(tracker, tile), status: trackerStatus(tracker, tile), picture: { of: 'tracker' as const, name: tile.name, area: 'health' }, peek: { type: 'metric' as const, id: tracker.slug } })),
+])
+const SERIES: TrendSeries[] = TRACKERS.map(({ tracker, tile, days }, i) => ({
+  tracker, picture: { of: 'tracker', name: tile.name, area: 'health' }, status: trackerStatus(tracker, tile), line: trackerLine(tracker, tile),
+  peek: { type: 'metric', id: tracker.slug }, points: fillDays(days, addDays(TODAY, -89), TODAY),
+  connection: i === 0 ? <Connection link={{ a: { id: 'routines', name: 'Routines done', area: 'mind', group: 'routines', direction: 'up', days: new Map() }, b: { id: 'tracker:sleep.hours', name: 'Sleep', area: 'health', group: 'sleep', unit: 'h', direction: 'up', days: new Map() }, lag: 1, rho: 0.52, n: 42, high: 7.6, low: 6.8, split: 8 }} /> : null,
+}))
 
 const USUAL = ['Rent', 'Shopping', 'Eating out', 'Groceries', 'Health']
 const MONTHS = ['2026-07', '2026-08', '2026-09', '2026-10', '2026-11']
@@ -69,24 +70,21 @@ export async function OverviewGallery() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <div className="mb-2 text-small text-ink-2">Against your targets: bars with the target mark, on-target days, trend; a row with no target; a headline-only row; the fold after eight rows</div>
-        <TargetTableView rows={ROWS} color={health.color} trendsHref="/health/trends" id="gallery-targets" />
+        <div className="mb-2 text-small text-ink-2">Against your targets: status rows with tracker pictures, the ones that need a look first, the fold after six</div>
+        <TrackerRows rows={ROWS} trendsHref="/health/trends" />
       </div>
-      <PageGrid>
-        <GridItem span={{ base: 12, lg: 8 }}>
-          <div className="mb-2 text-small text-ink-2">Sleep against its target, labelled on the chart</div>
-          <Card>
-            <CardHeader title="Sleep, last 28 days" description="7.1h average against your 7.5h target" action={<TargetTrendLegend target={7.5} unit="h" color={health.color} className="hidden @lg:flex" />} />
-            <TargetTrend data={sleepDays} target={7.5} unit="h" color={health.color} label="Sleep, last 28 days" />
-          </Card>
-        </GridItem>
-        <GridItem span={{ base: 12, lg: 4 }}>
-          <div className="mb-2 text-small text-ink-2">All metrics cells (flat tile)</div>
-          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md bg-divider">
-            {TRACKERS.slice(0, 4).map((x) => <MetricTile key={x.tracker.slug} flat t={x.tile} color={health.color} />)}
-          </div>
-        </GridItem>
-      </PageGrid>
+      <div>
+        <div className="mb-2 text-small text-ink-2">The lead chart against its target, with the connection that explains it</div>
+        <Card className="flex flex-col gap-4">
+          <CardHeader className="mb-0" title="Sleep, last 28 nights" description="On target 9 of 28 nights · 7h 18m on average" />
+          <LeadChart data={sleepDays} color={health.color} unit="h" reference={{ value: 7.5, label: 'Target' }} label="Sleep, last 28 days" height={240} />
+          <div className="rounded-md bg-surface-2 p-4">{SERIES[0].connection}</div>
+        </Card>
+      </div>
+      <div>
+        <div className="mb-2 text-small text-ink-2">Trends: pick a tracker row, the chart follows; the 7, 28 and 90 day chips</div>
+        <TrendsExplorer series={SERIES} color={health.color} intro="10 trackers from Oura, WHOOP and you" />
+      </div>
       <div>
         <div className="mb-2 text-small text-ink-2">Overview skeleton (the shape the page loads into)</div>
         <OverviewSkeleton />

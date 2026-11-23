@@ -13,10 +13,10 @@ import { AreaLog, AreaTabs } from './area-tabs'
  * The headline numbers (`AreaKpiStrip`) are drawn by the tabs after Overview, so the Overview, which carries the same
  * numbers in its targets table, never reads them. Wealth keeps its numbers per tab, and Time puts its in the head (`summary`).
  */
-export function AreaLayout({ def, children, right, summary }: { def: AreaDef; children: React.ReactNode; right?: React.ReactNode; summary?: React.ReactNode }) {
+export function AreaLayout({ def, children, right, summary, eyebrow }: { def: AreaDef; children: React.ReactNode; right?: React.ReactNode; summary?: React.ReactNode; /** The line above the title; default "Life · Health". */ eyebrow?: React.ReactNode }) {
   return (
     <>
-      <AreaHeader def={def} right={right} summary={summary} tabs={def.tabs.length > 1 ? <AreaTabs def={def} /> : undefined} actions={def.tabs.length > 1 ? <AreaLog def={def} /> : undefined} />
+      <AreaHeader def={def} right={right} summary={summary} eyebrow={eyebrow} tabs={def.tabs.length > 1 ? <AreaTabs def={def} /> : undefined} actions={def.tabs.length > 1 ? <AreaLog def={def} /> : undefined} />
       <div className="@container flex flex-col gap-6">
         {children}
       </div>

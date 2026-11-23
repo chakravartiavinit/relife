@@ -6,9 +6,9 @@ import { getUser } from '@/core/user'
 import { OverviewShell } from '@/ui/components/area/overview-shell'
 import { OverviewSkeleton } from '@/ui/components/category/skeleton'
 import { Skeleton } from '@/ui/components/card'
-import { OVERVIEWS } from '@/ui/areas'
+import { OVERVIEWS, RAIL_TOPS } from '@/ui/areas'
 
-/** Overview: the targets table and the area's own cards on the left, today's routines and the sources line on the right, every metric below. */
+/** Overview: the lead chart and the tracker rows (the area's own cards for Hobbies and People), today's routines and two link rows on the right. */
 export default function AreaOverviewPage({ params }: PageProps<'/[area]'>) {
   return (
     <Suspense fallback={<OverviewSkeleton />}>
@@ -22,10 +22,13 @@ async function Overview({ params }: Pick<PageProps<'/[area]'>, 'params'>) {
   await connection()
   const user = await getUser()
   const today = localDate(new Date(), user.timezone)
-  const Body = OVERVIEWS[slug]
+  const Body = OVERVIEWS[slug], RailTop = RAIL_TOPS[slug]
   return (
-    <OverviewShell def={AREAS[slug]} user={user} today={today}>
-      <Suspense fallback={<Skeleton className="h-[360px] flex-1 rounded-lg" />}><Body user={user} today={today} /></Suspense>
+    <OverviewShell
+      def={AREAS[slug]} user={user} today={today} trackers={slug !== 'people'}
+      railTop={RailTop ? <Suspense fallback={<Skeleton className="h-[260px] rounded-lg" />}><RailTop user={user} today={today} /></Suspense> : undefined}
+    >
+      {Body ? <Suspense fallback={<Skeleton className="h-[360px] flex-1 rounded-lg" />}><Body user={user} today={today} /></Suspense> : null}
     </OverviewShell>
   )
 }

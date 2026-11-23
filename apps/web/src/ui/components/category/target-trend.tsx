@@ -46,6 +46,11 @@ export function TargetTrend({ data, target, unit, color, label, direction = 'up'
     return { rows, axis, config, last: rows.length - 1 }
   }, [data, target, unit, color])
   if (rows.length < 2) return <figure aria-label={`${label}: no data yet`} className="m-0 grid place-items-center rounded-md bg-surface-2 text-small text-ink-3" style={{ height }}>Not enough days yet</figure>
+  // The last value and the target's name share the right margin: when the two lines end close together (under 8% of the axis) the value goes above and the name below, or the reverse.
+  const lastValue = Number(rows[rows.length - 1].value)
+  const [lo, hi] = axis.domain ?? [Math.min(target, lastValue), Math.max(target, lastValue)]
+  const close = Math.abs(lastValue - target) < 0.08 * (hi - lo || 1)
+  const valueShift = close ? (lastValue >= target ? -8 : 8) : 0
   const meets = (v: number) => (direction === 'down' ? v <= target : v >= target)
   return (
     <figure aria-label={label} className="m-0" style={{ height }}>
@@ -61,14 +66,14 @@ export function TargetTrend({ data, target, unit, color, label, direction = 'up'
             dot: ({ cx, cy, payload, index }: Dot) => (
               cx == null || cy == null || !payload?.real ? <g key={index} /> : <circle key={index} cx={cx} cy={cy} r={meets(payload.value) ? 3.5 : 3} fill={meets(payload.value) ? color : 'var(--surface)'} stroke={color} strokeWidth={1.5} />
             ),
-            label: ({ x, y, index }: Lab) => (index === last ? <text key="last" x={Number(x) + 8} y={Number(y) + 4} fontSize={13} fontWeight={500} fill="var(--ink)">{withUnit(Number(rows[last].value), unit)}</text> : <g key={index} />),
+            label: ({ x, y, index }: Lab) => (index === last ? <text key="last" x={Number(x) + 8} y={Number(y) + 4 + valueShift} fontSize={13} fontWeight={500} fill="var(--ink)">{withUnit(Number(rows[last].value), unit)}</text> : <g key={index} />),
           }}
         />
         <EvilLineChart.Line
           dataKey="goal" strokeVariant="dashed" strokeWidth={1.5}
           lineProps={{
             dataKey: 'goal', stroke: 'var(--ink-2)', dot: false,
-            label: ({ x, y, index }: Lab) => (index === last ? <text key="goal" x={Number(x) + 8} y={Number(y) + 4} fontSize={12} fill="var(--ink-2)">{targetLabel}</text> : <g key={index} />),
+            label: ({ x, y, index }: Lab) => (index === last ? <text key="goal" x={Number(x) + 8} y={Number(y) + 4 - valueShift} fontSize={12} fill="var(--ink-2)">{targetLabel}</text> : <g key={index} />),
           }}
         />
       </EvilLineChart>

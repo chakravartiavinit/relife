@@ -30,6 +30,9 @@ export type StatusSource =
   /** `monthPace().vsUsual`: this month's projection against a usual month. 10% under or more is Ahead, within 10% On
    *  track, up to 25% over Slipping, beyond that Behind; with no usual month there is nothing to compare: Quiet. */
   | { from: 'month'; vsUsual: number | null }
+  /** A tracker's average (or latest) against its own target, `direction` saying which side is good. At or past the target
+   *  is On track; within 10% of it Steady; within 25% Slipping; further off Behind. */
+  | { from: 'target'; value: number; target: number; direction: 'up' | 'down' }
 
 const GOAL: Record<Pace['label'], Status> = { Reached: 'Ahead', Ahead: 'Ahead', 'On pace': 'On track', Behind: 'Behind', 'Too early': 'Quiet' }
 
@@ -46,6 +49,11 @@ export function statusOf(s: StatusSource): { word: Status; tone: StatusTone } {
       case 'change': {
         const t = tone(s.change.signal, s.change.pct)
         return t === 'good' ? 'Ahead' : t === 'bad' ? 'Slipping' : 'Steady'
+      }
+      case 'target': {
+        if (!s.target) return 'Steady'
+        const r = s.direction === 'down' ? (s.value ? s.target / s.value : 1) : s.value / s.target
+        return r >= 1 ? 'On track' : r >= 0.9 ? 'Steady' : r >= 0.75 ? 'Slipping' : 'Behind'
       }
       case 'month': {
         const v = s.vsUsual

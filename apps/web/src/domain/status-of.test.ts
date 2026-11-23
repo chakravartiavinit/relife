@@ -51,3 +51,10 @@ test('every status has a tone, and Quiet is its own ink', () => {
   const tones = Object.fromEntries(STATUSES.map((s: Status) => [s, STATUS_TONE[s]]))
   assert.deepEqual(tones, { Ahead: 'good', 'On track': 'good', Steady: 'neutral', Slipping: 'warn', Behind: 'bad', Quiet: 'quiet' })
 })
+
+test('target: at it is On track, close Steady, a bit short Slipping, far short Behind; a "down" target flips the side', () => {
+  const up = (value: number) => word({ from: 'target', value, target: 100, direction: 'up' })
+  assert.deepEqual([up(100), up(120), up(92), up(80), up(40)], ['On track', 'On track', 'Steady', 'Slipping', 'Behind'])
+  const down = (value: number) => word({ from: 'target', value, target: 100, direction: 'down' })
+  assert.deepEqual([down(90), down(100), down(105), down(125), down(300)], ['On track', 'On track', 'Steady', 'Slipping', 'Behind'])
+})

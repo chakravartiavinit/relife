@@ -1,13 +1,12 @@
 import { headers } from 'next/headers'
 import { and, eq, gte, inArray, isNull, sql } from 'drizzle-orm'
-import { Cable, Keyboard, Plus } from 'lucide-react'
 import type { AreaDef } from '@/core/areas'
 import { loadConnectorItems } from '@/core/connector-items'
 import { db, schema } from '@/db'
 import { requestOrigin } from '@/core/auth/trust'
 import { addDays, formatDay } from '@/core/time'
 import type { User } from '@/core/user'
-import { AppLogo } from '../app-logo'
+import { Picture } from '../picture'
 import { buttonClass } from '../button'
 import { Card, CardHeader } from '../card'
 import { STATUS } from '../connector-status'
@@ -45,7 +44,7 @@ export async function AreaSources({ user, def, today }: { user: User; def: AreaD
       <AreaKpiStrip def={def} />
       <Card>
         <CardHeader
-          title="Connected" icon={<Cable strokeWidth={2} />} color={def.color}
+          title="Connected"
           description={connected.length ? `${connected.length} source${connected.length === 1 ? '' : 's'} feeding ${def.title}` : undefined}
           action={<Link href="/you/connections" className={buttonClass({ variant: 'ghost', size: 'sm' })}>Connections</Link>}
         />
@@ -58,7 +57,7 @@ export async function AreaSources({ user, def, today }: { user: User; def: AreaD
 
       {own.length ? (
         <Card>
-          <CardHeader title="Typed in and shortcuts" icon={<Keyboard strokeWidth={2} />} color={def.color} description="What you log yourself, or send from Telegram and your phone" />
+          <CardHeader title="Typed in and shortcuts" description="What you log yourself, or send from Telegram and your phone" />
           <ul className="-my-2 divide-y divide-divider">
             {own.map((t) => (
               <li key={t.source} className="flex min-h-14 items-center justify-between gap-3 py-2">
@@ -72,11 +71,11 @@ export async function AreaSources({ user, def, today }: { user: User; def: AreaD
 
       {suggested.length ? (
         <Card>
-          <CardHeader title={`Suggested for ${def.title}`} icon={<Plus strokeWidth={2} />} color={def.color} description="Not connected yet. Each one opens its setup." />
+          <CardHeader title={`Suggested for ${def.title}`} description="Not connected yet. Each one opens its setup." />
           <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {suggested.map((c) => (
               <li key={c.id} className="flex items-center gap-3 rounded-md bg-surface-2 p-3">
-                <AppLogo id={c.id} category={c.category} size="sm" />
+                <Picture of="connector" id={c.id} name={c.name} size={40} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-body font-medium text-ink">{c.name}</span>
                   <span className="block truncate text-caption text-ink-3">{c.provides.slice(0, 3).join(' · ')}</span>
@@ -107,7 +106,7 @@ function SourceRow({ c }: { c: ConnectorItem }) {
   const problem = c.status === 'error' || c.status === 'setup' || c.status === 'waiting'
   return (
     <li className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
-      <AppLogo id={c.id} category={c.category} size="sm" />
+      <Picture of="connector" id={c.id} name={c.name} size={40} />
       <div className="min-w-0 flex-1 basis-48">
         <div className="flex items-center gap-2">
           <span className="truncate text-body font-medium text-ink">{c.name}</span>
@@ -116,9 +115,7 @@ function SourceRow({ c }: { c: ConnectorItem }) {
           </span>
         </div>
         <div className="truncate text-caption text-ink-3" title={c.error ?? undefined}>{c.error || c.detail}</div>
-        <div className="mt-1.5 flex flex-wrap gap-1.5">
-          {c.provides.slice(0, 4).map((p) => <span key={p} className="rounded-full bg-surface-2 px-2 py-0.5 text-caption text-ink-2">{p}</span>)}
-        </div>
+        <div className="mt-0.5 truncate text-caption text-ink-3">{c.provides.slice(0, 4).join(', ')}</div>
       </div>
       <PeekLink to={{ type: 'connector', id: c.id }} className={buttonClass({ variant: problem ? 'primary' : 'secondary', size: 'sm' })}>{problem ? 'Fix' : 'Details'}</PeekLink>
     </li>
