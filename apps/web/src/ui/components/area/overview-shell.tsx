@@ -17,12 +17,14 @@ import { TodayRoutines } from './area-routines'
 
 /**
  * An Overview tab on the page grid. Main 8 columns: "Against your targets", then the area's own cards (`children`, its
- * lead chart first). Rail 4: today's routines with the check-off, and the sources summary at its foot. Full width: All
+ * lead chart first). Rail 4: today's routines with the check-off, and the sources summary at its foot; the rail is as tall as
+ * its own content (it does not stretch to the main column, which would leave a blank band between the last routine and
+ * the sources line when there are few routines), and the main column's last card grows when the rail is the taller one. Full width: All
  * metrics in 6 columns. Each block is its own Suspense island with a skeleton of its final size.
  *
  * On a phone the order is the targets, the routines (the next two, the rest folded), the area's cards, All metrics
  * folded: the main column's wrapper is `display: contents` below 960px, so its blocks take their place in the grid
- * through `order` and from 960px it is one flex column that the rail ends level with.
+ * through `order` and from 960px it is one flex column.
  */
 export function OverviewShell({ def, user, today, children }: { def: AreaDef; user: User; today: string; children: React.ReactNode }) {
   return (
@@ -31,8 +33,8 @@ export function OverviewShell({ def, user, today, children }: { def: AreaDef; us
         <GridItem className="order-1"><Suspense fallback={<TargetsSkeleton />}><TargetTable user={user} def={def} today={today} /></Suspense></GridItem>
         <GridItem className="order-3 @container flex flex-col gap-6 grid-lg:[&>:last-child]:flex-1">{children}</GridItem>
       </div>
-      <Rail span={{ base: 12, lg: 4 }} className="order-2">
-        <Suspense fallback={<Skeleton className="h-[640px] flex-1 rounded-lg" />}>
+      <Rail span={{ base: 12, lg: 4 }} className="order-2 grid-lg:self-start">
+        <Suspense fallback={<Skeleton className="h-[420px] rounded-lg" />}>
           <TodayRoutines user={user} def={def} foot={<Suspense fallback={<div className="h-[72px]" />}><SourcesMini def={def} /></Suspense>} />
         </Suspense>
       </Rail>
