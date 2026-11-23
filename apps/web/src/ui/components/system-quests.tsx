@@ -65,7 +65,7 @@ export function SystemQuests({ quests, difficulty, hasData, timezone, recovery, 
   return (
     <div>
       <div className="mb-2 flex items-center justify-between gap-3">
-        {compact ? <p className="text-small font-medium text-pill-ink">System · today{dailies.length ? ` · ${cleared}/${dailies.length}` : ''}</p> : <p className="text-small font-medium text-pill-ink">[System]</p>}
+        {compact ? <p className="text-small font-medium text-ink-3">System · today{dailies.length ? ` · ${cleared}/${dailies.length}` : ''}</p> : <p className="text-small font-medium text-pill-ink">[System]</p>}
         <span className="flex items-center gap-2 text-caption text-ink-3 tabular-nums">
           <span title={`Difficulty ${difficulty} of 5: it rises as you clear quests and eases after misses.`} className="flex items-center gap-0.5" aria-label={`Difficulty ${difficulty} of 5`}>
             {[1, 2, 3, 4, 5].map((i) => <span key={i} aria-hidden className="h-2.5 w-1 rounded-full" style={{ background: i <= difficulty ? 'var(--pill)' : 'var(--hairline)' }} />)}

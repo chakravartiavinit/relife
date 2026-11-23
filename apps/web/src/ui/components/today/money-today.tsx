@@ -14,9 +14,9 @@ const ROW = 'flex min-h-12 items-center gap-3 rounded-md p-2 -mx-2 transition-co
  */
 export function MoneyToday({ v }: { v: MoneyView }) {
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader title="Money today" icon={<Wallet strokeWidth={1.5} />} color="var(--cat-wealth)"
-        action={<Link href="/wealth" className="inline-flex h-10 items-center rounded-md px-2 text-small font-medium text-pill-ink hover:underline">Wealth</Link>} />
+        action={<Link href="/wealth" className="inline-flex h-10 items-center rounded-md px-2 text-small font-medium text-pill-ink hover-fine:underline">Wealth</Link>} />
       <p className="-mt-1 mb-3 flex flex-wrap items-baseline gap-x-2">
         <span className="num text-display">{v.total}</span>
         {v.versus ? <span className={cn('text-small tabular-nums', v.versus.bad ? 'font-medium text-bad' : 'text-good')}>{v.versus.text}</span> : null}

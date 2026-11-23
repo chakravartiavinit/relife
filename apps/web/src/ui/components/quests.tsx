@@ -30,13 +30,13 @@ const areaColor = (a: string) => (a in CATEGORY ? CATEGORY[a as keyof typeof CAT
  * Today's rail: the System's daily quests, this week's quest, the chest waiting to be opened and the streak freezes
  * held, each on one line. Quests open their Peek; mood-type quests carry a Log button for Capture.
  */
-export function Quests({ system, weekly, chests, freezes, frozeOn, weekLeft }: {
+export function Quests({ system, weekly, chests, freezes, frozeOn, weekLeft, className }: {
   system: { quests: SystemQuestItem[]; difficulty: number; hasData: boolean; timezone: string; recovery?: RecoveryView | null }
-  weekly: QuestItem[]; chests: ChestItem[]; freezes: number; frozeOn: string[]; weekLeft: number
+  weekly: QuestItem[]; chests: ChestItem[]; freezes: number; frozeOn: string[]; weekLeft: number; className?: string
 }) {
   const [opening, setOpening] = useState(false)
   return (
-    <section aria-labelledby="quests-h" className="relative rounded-lg bg-surface p-5 shadow-1">
+    <section aria-labelledby="quests-h" className={cn('relative rounded-lg bg-surface p-5 shadow-1', className)}>
       <header className="mb-3 flex items-center justify-between gap-3">
         <h2 id="quests-h" className="flex items-center gap-2.5 text-heading text-ink">
           <IconChip color="var(--pill)"><Swords /></IconChip>

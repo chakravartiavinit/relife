@@ -66,6 +66,23 @@ export function planPeriods<T extends PlanRow>(rows: T[], now?: string): PeriodG
   })
 }
 
+const minutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5))
+
+/** The routine to lead with: the first pending one from now on, else the earliest one still open (overdue). Undefined when nothing is open. */
+export function nextUp<T extends PlanRow>(rows: T[], now: string): T | undefined {
+  const open = rows.filter((r) => r.status === 'pending' || r.status === 'missed').sort(byTime)
+  return open.find((r) => r.status === 'pending' && r.time >= now) ?? open[0]
+}
+
+/** "in 3 h 6 min", "in 45 min", "now"; a time already past reads "since 07:00". Both are `HH:MM`. */
+export function timeUntil(now: string, time: string): string {
+  const d = minutes(time) - minutes(now)
+  if (d < 0) return `since ${time}`
+  if (d === 0) return 'now'
+  const h = Math.floor(d / 60), m = d % 60
+  return `in ${h ? `${h} h` : ''}${h && m ? ' ' : ''}${m ? `${m} min` : ''}`
+}
+
 export type DayState = 'empty' | 'open' | 'complete'
 
 /** Nothing planned, still going, or every row and goal done. */

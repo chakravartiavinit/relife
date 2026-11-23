@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { dayState, goalPace, greeting, periodOf, planLine, planPeriods, recapLine, xpShare, type PlanRow } from './day-plan'
+import { dayState, goalPace, greeting, nextUp, periodOf, planLine, planPeriods, recapLine, timeUntil, xpShare, type PlanRow } from './day-plan'
 
 const row = (time: string, status: PlanRow['status'] = 'pending', name = time): PlanRow => ({ time, name, status })
 
@@ -76,4 +76,22 @@ test('goalPace: progress against the share of time gone', () => {
   assert.equal(goalPace({ ...g, share: 0.5, met: false }, '2026-01-06').elapsed, 0.5)
   // Past the target date without reaching it: the whole period has passed, nothing divides by zero.
   assert.equal(goalPace({ startedOn: '2026-01-01', targetDate: '2026-01-01', share: 0.2, met: false }, '2026-02-01').elapsed, 1)
+})
+
+test('nextUp: the first pending row from now on, else the earliest open one', () => {
+  const rows: PlanRow[] = [
+    { time: '07:00', name: 'Gym', status: 'missed' }, { time: '08:00', name: 'Skincare', status: 'done' },
+    { time: '19:00', name: 'DSA', status: 'pending' }, { time: '12:30', name: 'Lunch', status: 'pending' },
+  ]
+  assert.equal(nextUp(rows, '12:00')?.name, 'Lunch')
+  assert.equal(nextUp(rows, '20:00')?.name, 'Gym')
+  assert.equal(nextUp(rows.filter((r) => r.status === 'done'), '09:00'), undefined)
+})
+
+test('timeUntil reads hours and minutes, now, and a time already past', () => {
+  assert.equal(timeUntil('03:54', '07:00'), 'in 3 h 6 min')
+  assert.equal(timeUntil('06:15', '07:00'), 'in 45 min')
+  assert.equal(timeUntil('07:00', '09:00'), 'in 2 h')
+  assert.equal(timeUntil('07:00', '07:00'), 'now')
+  assert.equal(timeUntil('09:30', '07:00'), 'since 07:00')
 })

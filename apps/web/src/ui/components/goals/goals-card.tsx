@@ -5,7 +5,7 @@ import { CATEGORY } from '@/ui/tokens'
 import { cn } from '../../cn'
 import { Badge, Card, CardHeader } from '../card'
 import { buttonClass } from '../button'
-import { Capsule } from '../capsule'
+import { LevelBar } from '../capsule'
 import { PeekLink } from '../peek/peek-link'
 
 // Today's goals card, presentational (no server imports), so /dev/ui can draw it from fixtures.
@@ -21,24 +21,24 @@ export type PaceGoal = {
 /** Up to three goals, each opening its Peek; with none, how to start one. */
 export function GoalsCard({ goals, due }: { goals: PaceGoal[]; due: number }) {
   return (
-    <Card>
+    <Card className="flex flex-col">
       <CardHeader icon={<Target strokeWidth={1.5} />} color="var(--pill)" title="Goals"
-        action={<Link href="/plan" className="inline-flex h-10 items-center rounded-md px-2 text-small font-medium text-pill-ink hover:underline">Plan</Link>} />
+        action={<Link href="/plan" className="inline-flex h-10 items-center rounded-md px-2 text-small font-medium text-pill-ink hover-fine:underline focus-visible:outline-2 focus-visible:outline-pill">Plan</Link>} />
       {due ? (
-        <Link href="/plan/review" className="mb-4 flex items-center gap-3 rounded-md bg-pill/7 px-3 py-2.5 transition-[background-color] duration-150 hover:bg-pill/12">
+        <Link href="/plan/review" className="mb-4 flex items-center gap-3 rounded-md bg-surface-2 px-3 py-2.5 transition-[background-color] duration-150 hover-fine:bg-surface-3 focus-visible:outline-2 focus-visible:outline-pill">
           <CalendarCheck aria-hidden className="size-4 shrink-0 text-pill-ink" strokeWidth={2} />
           <span className="min-w-0 flex-1">
-            <span className="block text-small font-semibold text-ink">Weekly review is due</span>
+            <span className="block text-small font-medium text-ink">Weekly review is due</span>
             <span className="block text-caption text-ink-3 tabular-nums">{due} {due === 1 ? 'goal' : 'goals'} to review</span>
           </span>
           <ChevronRight aria-hidden className="size-4 text-ink-3" strokeWidth={1.5} />
         </Link>
       ) : null}
       {goals.length ? (
-        <ul className="flex flex-col gap-1">
+        <ul className="flex flex-col gap-3">
           {goals.map((g) => (
             <li key={g.id}>
-              <PeekLink to={{ type: 'goal', id: g.id }} className="block rounded-md p-2 -m-1 transition-colors duration-150 ease-out-quint hover:bg-ink/[0.04] focus-visible:outline-2 focus-visible:outline-pill dark:hover:bg-white/[0.05]">
+              <PeekLink to={{ type: 'goal', id: g.id }} className="block rounded-md p-2 -m-1 transition-colors duration-150 ease-out-quint hover-fine:bg-ink/[0.04] focus-visible:outline-2 focus-visible:outline-pill dark:hover-fine:bg-white/[0.05]">
                 <span className="flex items-center justify-between gap-3">
                   <span className="flex min-w-0 items-center gap-2 text-body font-medium text-ink">
                     <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: CATEGORY[g.area].color }} />
@@ -48,7 +48,7 @@ export function GoalsCard({ goals, due }: { goals: PaceGoal[]; due: number }) {
                 </span>
                 {/* The tick is where the pace says you should be today: the bar past it is ahead, short of it is behind. */}
                 <span className="relative mt-2 block">
-                  <Capsule size="sm" value={g.share} color={CATEGORY[g.area].color} label={`Progress toward ${g.title}`} />
+                  <LevelBar size="md" segments={20} value={g.share} color={CATEGORY[g.area].color} label={`Progress toward ${g.title}`} />
                   <span aria-hidden className={cn('absolute -inset-y-0.5 w-0.5 -translate-x-1/2 rounded-full bg-ink', g.pace.label === 'Reached' && 'hidden')} style={{ left: `${g.pace.elapsed * 100}%` }} />
                 </span>
                 <span className="mt-1.5 flex items-center justify-between gap-3 text-caption text-ink-3 tabular-nums">

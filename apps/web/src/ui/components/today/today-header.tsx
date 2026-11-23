@@ -31,18 +31,21 @@ export type HeaderData = {
  */
 export function TodayHeader({ d }: { d: HeaderData }) {
   const suffix = d.firstDay ? ' · Day 1' : d.complete ? ' · Day complete' : ''
+  // The same 12 columns as the page below: the streak card is the width of the rail (4 of 12 columns from 960px, 5 of 12 from 640px).
   return (
-    <header className="relative isolate flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
+    <header className="@container relative isolate">
       <div aria-hidden className="halftone -top-6 -right-5 -z-10 h-44 w-3/4 sm:-right-8 sm:w-1/2" />
-      <div className="min-w-0">
-        <SystemLabel>{d.date}{suffix}</SystemLabel>
-        <h1 className="mt-2 font-display text-hero text-ink">{d.greeting}, {d.name}.</h1>
-        <p className="mt-1.5 max-w-[64ch] text-body text-ink-2 sm:text-heading sm:font-normal">
-          {d.line}
-          {d.why ? <>{' '}<PeekLink to={{ type: 'brief', id: 'today' }} className="rounded-xs font-medium whitespace-nowrap text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-pill">Why?</PeekLink></> : null}
-        </p>
+      <div className="grid grid-cols-1 items-end gap-x-6 gap-y-5 grid-md:grid-cols-12">
+        <div className="min-w-0 grid-md:col-[1/8] grid-lg:col-[1/9]">
+          <SystemLabel>{d.date}{suffix}</SystemLabel>
+          <h1 className="mt-2 font-display text-hero text-ink">{d.greeting}, {d.name}.</h1>
+          <p className="mt-1.5 max-w-[64ch] text-body text-ink-2 grid-md:text-heading">
+            {d.line}
+            {d.why ? <>{' '}<PeekLink to={{ type: 'brief', id: 'today' }} className="rounded-xs font-medium whitespace-nowrap text-pill-ink hover-fine:underline focus-visible:outline-2 focus-visible:outline-pill">Why?</PeekLink></> : null}
+          </p>
+        </div>
+        <div className="min-w-0 grid-md:col-[8/13] grid-lg:col-[9/13]"><StreakCard d={d} /></div>
       </div>
-      <StreakCard d={d} />
     </header>
   )
 }
@@ -51,7 +54,7 @@ export function TodayHeader({ d }: { d: HeaderData }) {
 function StreakCard({ d }: { d: HeaderData }) {
   const { current, doneToday } = d.streak
   return (
-    <Card as="div" className="flex flex-col gap-1 p-4 sm:w-[340px] sm:shrink-0">
+    <Card as="div" className="flex flex-col gap-1 p-4">
       <Link href="/you#streak" className="absolute inset-0 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">
         <span className="sr-only">{current} day streak. {doneToday ? 'Kept today.' : 'Not kept yet today.'}{d.xpToday ? ` ${formatNumber(d.xpToday)} XP today.` : ''}</span>
       </Link>

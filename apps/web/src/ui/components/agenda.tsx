@@ -9,10 +9,11 @@ import { addToGoal, setGoalTarget, toggleCheck, undoGoalStep, undoQuickLog } fro
 import { cn } from '../cn'
 import { Button } from './button'
 import { Capsule } from './capsule'
+import { Fold } from './fold'
 import { announceXp, useToast } from './toast'
 import { EASE_OUT, EASE_OUT_STRONG } from '@/ui/beui/lib/ease'
 import { Collapsible, CollapsibleContent, CollapsibleIndicator, CollapsibleTrigger } from '@/ui/beui/motion/collapsible'
-import { planPeriods, type Period, type PeriodGroup } from '@/domain/day-plan'
+import { nextUp, planPeriods, timeUntil, type Period, type PeriodGroup } from '@/domain/day-plan'
 import { PeekLink } from './peek/peek-link'
 
 export type AgendaRow = {
@@ -42,7 +43,7 @@ const PERIODS = [
 const periodOf = (time: string) => PERIODS.find((p) => Number(time.slice(0, 2)) < p.until)!.key
 
 /** Check off today's routines and medicines. Optimistic: the tap lands instantly. */
-export function Agenda({ rows, timeline }: { rows: AgendaRow[]; /** Today's layout: Morning, Afternoon, Evening with a Now line at this `HH:MM`, done rows folded. */ timeline?: { now: string } }) {
+export function Agenda({ rows, timeline }: { rows: AgendaRow[]; /** Today's layout: the Up next block (with `lead` beside it, the all-day panel), then Morning, Afternoon, Evening as compact rows with a Now line at this `HH:MM`, done rows folded. */ timeline?: { now: string; lead?: React.ReactNode } }) {
   const [optimistic, setOptimistic] = useOptimistic(
     rows,
     (state, { key, status }: { key: string; status: AgendaRow['status'] }) => state.map((r) => (r.key === key ? { ...r, status } : r)),
@@ -67,7 +68,7 @@ export function Agenda({ rows, timeline }: { rows: AgendaRow[]; /** Today's layo
       }
     })
 
-  if (timeline) return <Timeline rows={optimistic} now={timeline.now} act={act} />
+  if (timeline) return <Timeline rows={optimistic} now={timeline.now} lead={timeline.lead} act={act} />
 
   const overdue = optimistic.filter((r) => r.status === 'missed')
   const upcoming = optimistic.filter((r) => r.status === 'pending')
@@ -133,39 +134,100 @@ export function Agenda({ rows, timeline }: { rows: AgendaRow[]; /** Today's layo
 const PERIOD_ICON: Record<Period, LucideIcon> = { morning: Sunrise, afternoon: Sun, evening: Moon }
 
 /**
- * Today's plan as a day: Morning, Afternoon, Evening, each with its overdue and pending rows, a Now line where the
- * clock is, and everything already done folded into one line ("6 done ●●●●●● names") that opens in place.
+ * Today's plan as a day: the Up next block (the next routine, time until it, Check off and Skip) beside the all-day
+ * panel, then Morning, Afternoon, Evening as compact rows with overdue ones first, a Now line where the clock is, and
+ * everything already done folded into one line ("6 done ●●●●●● names") that opens in place. On a phone every period
+ * after the first one with something to do folds, so the plan opens on what is next.
  */
-function Timeline({ rows, now, act }: { rows: AgendaRow[]; now: string; act: (r: AgendaRow, status: 'done' | 'skipped' | null) => void }) {
+function Timeline({ rows, now, lead, act }: { rows: AgendaRow[]; now: string; lead?: React.ReactNode; act: (r: AgendaRow, status: 'done' | 'skipped' | null) => void }) {
+  const next = nextUp(rows, now)
+  const all = planPeriods(rows, now)
+  // The next row is drawn in the Up next block, so the rows below leave it out; the counts still include it.
+  const rest = planPeriods(rows.filter((r) => r !== next), now)
+  const first = all.findIndex((p) => p.open.length)
   return (
-    <div className="flex flex-col gap-6">
-      {planPeriods(rows, now).map((p) => <PeriodSection key={p.key} p={p} now={now} act={act} />)}
+    <div className="flex flex-col gap-5">
+      {next || lead ? (
+        <div className="grid gap-3 grid-md:grid-cols-[minmax(0,1fr)_16.25rem] grid-lg:grid-cols-[minmax(0,1fr)_18.75rem]">
+          {next ? <UpNext key={next.key} r={next} now={now} act={act} /> : null}
+          {lead ? <div className={cn('min-w-0', !next && 'grid-md:col-span-2')}>{lead}</div> : null}
+        </div>
+      ) : null}
+      {rest.map((p) => {
+        const i = all.findIndex((a) => a.key === p.key)
+        return <PeriodSection key={p.key} p={{ ...p, summary: all[i].summary }} now={now} act={act} foldable={first !== -1 && i > first} />
+      })}
     </div>
   )
 }
 
-function PeriodSection({ p, now, act }: { p: PeriodGroup<AgendaRow>; now: string; act: (r: AgendaRow, status: 'done' | 'skipped' | null) => void }) {
-  const Icon = PERIOD_ICON[p.key]
+/** The next routine, large: when, what, and the two things you do with it. */
+function UpNext({ r, now, act }: { r: AgendaRow; now: string; act: (r: AgendaRow, status: 'done' | 'skipped' | null) => void }) {
+  const facts = [...(r.chips?.map((c) => c.text) ?? []), ...(r.detail ? [r.detail] : [])].join(' · ')
   return (
-    <section aria-label={p.label}>
-      <h3 className="mb-2 flex items-center gap-2 px-1 text-small font-medium text-ink-3">
-        <Icon aria-hidden className="size-3.5" strokeWidth={1.5} />
-        {p.label}
-        <span className="font-normal text-ink-3">{p.summary}</span>
-        <span aria-hidden className="h-px flex-1 bg-divider" />
-      </h3>
-      <ul className="flex flex-col gap-2">
+    <div className="flex flex-col rounded-lg bg-surface-2 p-4">
+      <p className="mb-3 flex items-center gap-2 text-small font-medium text-ink-2">
+        Up next<span className="font-normal text-ink-3 tabular-nums">· {timeUntil(now, r.time)}</span>
+      </p>
+      <div className="flex items-center gap-4">
+        <span aria-hidden className="grid size-16 shrink-0 place-items-center rounded-lg bg-surface">
+          <RoutineArt name={r.name} kind={r.kind} area={r.area} className="size-11" />
+        </span>
+        <div className="min-w-0">
+          <p className={cn('text-small font-medium tabular-nums', r.status === 'missed' ? 'text-bad' : 'text-ink-2')}>{r.time}{r.status === 'missed' ? ' · overdue' : ''}</p>
+          <PeekLink to={{ type: 'routine', id: r.scheduleId }} className="line-clamp-2 rounded-xs text-title text-ink hover-fine:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">{r.name}</PeekLink>
+          {facts ? <p className="truncate text-small text-ink-3 tabular-nums">{facts}</p> : null}
+        </div>
+      </div>
+      <div className="mt-auto flex items-center gap-2 pt-4">
+        <Button variant="primary" onClick={() => act(r, 'done')} className="h-11 flex-1 grid-md:h-9 grid-md:flex-none">Check off</Button>
+        <Button variant="ghost" onClick={() => act(r, 'skipped')} className="h-11 text-ink-2 grid-md:h-8">Skip</Button>
+      </div>
+    </div>
+  )
+}
+
+function PeriodSection({ p, now, act, foldable }: { p: PeriodGroup<AgendaRow>; now: string; act: (r: AgendaRow, status: 'done' | 'skipped' | null) => void; foldable: boolean }) {
+  const Icon = PERIOD_ICON[p.key]
+  const head = (
+    <>
+      <Icon aria-hidden className="size-3.5" strokeWidth={1.5} />
+      {p.label}
+      <span className="font-normal text-ink-3">{p.summary}</span>
+    </>
+  )
+  const body = (
+    <>
+      <ul className="flex flex-col">
         <AnimatePresence initial={false}>
           {p.open.flatMap((r, i) => [
             ...(p.nowAt === i ? [<NowLine key="now" now={now} />] : []),
             <motion.li key={r.key} layout="position" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }} transition={{ duration: 0.2, ease: EASE_OUT }}>
-              <Row r={r} onToggle={() => act(r, 'done')} onSkip={() => act(r, 'skipped')} />
+              <Row r={r} compact onToggle={() => act(r, 'done')} onSkip={() => act(r, 'skipped')} />
             </motion.li>,
           ])}
           {p.nowAt === p.open.length ? <NowLine key="now" now={now} /> : null}
         </AnimatePresence>
       </ul>
       {p.closed.length ? <DoneLine rows={p.closed} act={act} /> : null}
+    </>
+  )
+  if (foldable) {
+    const from = p.open[0]?.time
+    // A fold on a phone (one line: the period, what is left, when it starts); plain content with its heading from 640px.
+    return (
+      <section aria-label={p.label}>
+        <Fold inline title={<span className="flex items-center gap-2 text-small font-medium text-ink-2">{head}{from ? <span className="font-normal text-ink-3">· from {from}</span> : null}</span>}>
+          <h3 className="mb-1 hidden items-center gap-2 px-1 text-small font-medium text-ink-2 grid-md:flex">{head}</h3>
+          {body}
+        </Fold>
+      </section>
+    )
+  }
+  return (
+    <section aria-label={p.label}>
+      <h3 className="mb-1 flex items-center gap-2 px-1 text-small font-medium text-ink-2">{head}</h3>
+      {body}
     </section>
   )
 }
@@ -173,7 +235,7 @@ function PeriodSection({ p, now, act }: { p: PeriodGroup<AgendaRow>; now: string
 /** The current time, drawn between the rows that are before it and after it. */
 function NowLine({ now }: { now: string }) {
   return (
-    <li aria-label={`Now, ${now}`} className="flex items-center gap-2 px-3 text-caption font-medium text-pill-ink tabular-nums">
+    <li aria-label={`Now, ${now}`} className="flex items-center gap-2 px-1 py-1.5 text-caption font-medium text-pill-ink tabular-nums">
       <span aria-hidden className="size-1.5 rounded-full bg-pill" />
       {now}
       <span aria-hidden className="h-px flex-1 bg-pill/40" />
@@ -233,7 +295,7 @@ function CheckButton({ r, onToggle, size = 'md', forceDone }: { r: AgendaRow; on
 }
 
 /** One quest: when (a time column, red when overdue), the routine's picture, what with its facts, XP, and the check. */
-function Row({ r, onToggle, onSkip }: { r: AgendaRow; onToggle: () => void; onSkip: () => void }) {
+function Row({ r, onToggle, onSkip, compact = false }: { r: AgendaRow; onToggle: () => void; onSkip: () => void; /** Today's compact row: no tint, a smaller picture, a hairline above; Skip shows on hover (always on touch). */ compact?: boolean }) {
   const missed = r.status === 'missed'
   const reduce = useReducedMotion()
   const [won, setWon] = useState(false)
@@ -249,14 +311,19 @@ function Row({ r, onToggle, onSkip }: { r: AgendaRow; onToggle: () => void; onSk
     <motion.div
       animate={won ? { backgroundColor: [`color-mix(in oklch, ${r.color} 18%, transparent)`, 'color-mix(in oklch, var(--ink) 2.5%, transparent)'] } : undefined}
       transition={{ duration: 0.3, ease: EASE_OUT_STRONG }}
-      className="group/row @container relative flex min-h-[64px] items-center gap-3.5 rounded-md bg-ink/[0.025] px-3 py-2 transition-[background-color] duration-150 hover:bg-ink/[0.045] dark:bg-white/[0.035] dark:hover:bg-white/[0.06]"
+      className={cn(
+        'group/row @container relative flex items-center transition-[background-color] duration-150',
+        compact
+          ? 'group min-h-14 gap-3 border-t border-divider px-1 py-1 hover-fine:bg-ink/[0.025] dark:hover-fine:bg-white/[0.035]'
+          : 'min-h-[64px] gap-3.5 rounded-md bg-ink/[0.025] px-3 py-2 hover:bg-ink/[0.045] dark:bg-white/[0.035] dark:hover:bg-white/[0.06]',
+      )}
     >
-      <span className={cn('w-11 shrink-0 text-small font-medium tabular-nums', missed ? 'text-bad' : 'text-ink-2')}>{r.time}</span>
+      <span className={cn('w-11 shrink-0 tabular-nums', compact ? 'text-small' : 'text-small font-medium', missed ? 'text-bad' : compact ? 'text-ink-3' : 'text-ink-2')}>{r.time}</span>
       <motion.span
         aria-hidden
         animate={won ? { scale: [1, 1.12, 1], rotate: [0, -8, 0] } : undefined}
         transition={{ duration: 0.4, ease: EASE_OUT_STRONG }}
-        className="grid size-10 shrink-0 place-items-center rounded-[11px]"
+        className={cn('grid shrink-0 place-items-center', compact ? 'size-9 rounded-md' : 'size-10 rounded-[11px]')}
         style={{ color: `color-mix(in oklch, ${r.color} 80%, var(--ink))`, background: `color-mix(in oklch, ${r.color} 16%, transparent)` }}
       >
         <RoutineArt name={r.name} kind={r.kind} area={r.area} />
@@ -273,7 +340,8 @@ function Row({ r, onToggle, onSkip }: { r: AgendaRow; onToggle: () => void; onSk
           </div>
         ) : null}
       </div>
-      <Button variant="ghost" size="sm" onClick={onSkip} className="text-ink-3 opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 max-lg:hidden @max-md:hidden">Skip</Button>
+      <Button variant="ghost" size="sm" onClick={onSkip} aria-label={`Skip ${r.name}`}
+        className={cn('text-ink-3', compact ? 'max-sm:hidden [@media(hover:hover)_and_(pointer:fine)]:opacity-0 group-hover-fine:opacity-100 group-focus-within:opacity-100' : 'opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 max-lg:hidden @max-md:hidden')}>Skip</Button>
       <span className="relative grid place-items-center">
         {won ? <CheckBurst color={r.color} /> : null}
         <CheckButton r={r} onToggle={complete} size="lg" forceDone={won} />
@@ -393,7 +461,7 @@ export function Goals({ rows, compact }: { rows: GoalRow[]; /** Today's "All day
   })
 
   return (
-    <ul className="flex flex-col gap-3">
+    <ul className={cn('flex flex-col gap-3', compact && 'h-full')}>
       {optimistic.map((g) => {
         const done = g.value >= g.target
         const left = Math.max(0, g.target - g.value)
@@ -487,13 +555,14 @@ function QuantityRow({ g, done, left, glasses, add }: { g: GoalRow; done: boolea
     </>
   )
   return (
-    <li className="rounded-lg p-3" style={{ background: `color-mix(in oklch, ${g.color} 7%, transparent)` }}>
-      <div className="flex items-start gap-3">
-        <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-md" style={{ background: `color-mix(in oklch, ${g.color} 16%, transparent)` }}>
-          <RoutineArt name={g.name} kind="routine" area={g.area ?? 'health'} />
+    <li className="flex flex-1 flex-col rounded-lg bg-surface-2 p-4">
+      <p className="mb-3 text-small font-medium text-ink-2">All day</p>
+      <div className="flex items-center gap-3">
+        <span aria-hidden className="grid size-11 shrink-0 place-items-center rounded-md bg-surface">
+          <RoutineArt name={g.name} kind="routine" area={g.area ?? 'health'} className="size-8" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-body font-medium text-ink">{g.name}</p>
+          <p className="text-heading text-ink">{g.name}</p>
           <p className={cn('text-small tabular-nums', done ? 'font-medium text-good' : 'text-ink-3')}>
             {g.value === 0 ? 'Tap a glass as you drink' : done ? `Goal reached · ${fmtAmount(g.value, g.unit)}` : `${fmtAmount(left, g.unit)} to go`}
             {!done && g.next ? ` · next reminder ${g.next}` : ''}
@@ -501,31 +570,28 @@ function QuantityRow({ g, done, left, glasses, add }: { g: GoalRow; done: boolea
         </div>
         {g.slug ? (
           <PeekLink to={{ type: 'metric', id: g.slug }} aria-label={`${g.name}: ${fmtAmount(g.value, g.unit)} of ${fmtAmount(g.target, g.unit)}, open details`}
-            className="-m-1 shrink-0 rounded-md p-1 text-end text-ink tabular-nums hover:bg-ink/[0.04] focus-visible:outline-2 focus-visible:outline-pill dark:hover:bg-white/[0.05]">{number}</PeekLink>
+            className="-m-1 shrink-0 rounded-md p-1 text-end text-ink tabular-nums hover-fine:bg-ink/[0.04] focus-visible:outline-2 focus-visible:outline-pill dark:hover-fine:bg-white/[0.05]">{number}</PeekLink>
         ) : <p className="shrink-0 text-end text-ink tabular-nums">{number}</p>}
       </div>
       {glasses <= 24 ? (
-        <div className="mt-3 flex gap-1" role="img" aria-label={`${fmt(g.value)} of ${fmt(g.target)} ${g.unit}`}>
+        <div className="mt-4 flex gap-0.5" role="img" aria-label={`${fmt(g.value)} of ${fmt(g.target)} ${g.unit}`}>
           {Array.from({ length: glasses }, (_, i) => {
             const fill = Math.min(1, Math.max(0, (g.value - i * g.step) / g.step))
             return (
-              <span key={i} className="relative h-2.5 flex-1 overflow-hidden rounded-full bg-ink/[0.07] dark:bg-white/[0.08]">
-                <span className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-300 ease-out-quint" style={{ width: `${fill * 100}%`, background: done ? 'var(--good)' : g.color }} />
+              <span key={i} className="relative h-2 flex-1 overflow-hidden rounded-xs bg-ink/[0.08] dark:bg-white/[0.1]">
+                <span className="absolute inset-y-0 left-0 transition-[width] duration-300 ease-out-quint" style={{ width: `${fill * 100}%`, background: done ? 'var(--good)' : g.color }} />
               </span>
             )
           })}
         </div>
-      ) : <Capsule value={g.value} max={g.target} color={done ? 'var(--good)' : g.color} label={`${g.name} progress`} className="mt-3" />}
-      <div className="mt-3 flex items-center justify-between gap-2">
-        <div role="group" aria-label={`Log ${g.name}`} className="inline-flex items-center rounded-full bg-surface p-0.5 shadow-1">
-          <Button size="icon-sm" variant="ghost" className="rounded-full text-ink-3" disabled={g.value <= 0} onClick={() => add(g, -Math.min(g.step, g.value))} aria-label={`Remove ${fmtAmount(g.step, g.unit)}`}>
-            <Minus className="size-3.5" strokeWidth={2} />
-          </Button>
-          {[g.step, g.step * 2].map((amount) => (
-            <Button key={amount} size="sm" variant="ghost" className="rounded-full px-3 tabular-nums" onClick={() => add(g, amount)}>+{fmtAmount(amount, g.unit)}</Button>
-          ))}
-        </div>
-        <span className="text-caption text-ink-3 max-sm:hidden">All day</span>
+      ) : <Capsule value={g.value} max={g.target} color={done ? 'var(--good)' : g.color} label={`${g.name} progress`} className="mt-4" />}
+      <div role="group" aria-label={`Log ${g.name}`} className="mt-auto flex items-center gap-2 pt-4">
+        <Button size="sm" variant="secondary" className="h-10 flex-1 grid-md:h-8" disabled={g.value <= 0} onClick={() => add(g, -Math.min(g.step, g.value))} aria-label={`Remove ${fmtAmount(g.step, g.unit)}`}>
+          <Minus className="size-3.5" strokeWidth={2} />
+        </Button>
+        {[g.step, g.step * 2].map((amount) => (
+          <Button key={amount} size="sm" variant="secondary" className="h-10 flex-[2] tabular-nums grid-md:h-8" onClick={() => add(g, amount)}>+{fmtAmount(amount, g.unit)}</Button>
+        ))}
       </div>
     </li>
   )

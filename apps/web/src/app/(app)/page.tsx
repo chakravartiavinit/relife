@@ -17,9 +17,11 @@ import { formatMoney } from '@/domain/money'
 import { questBoard, type QuestView } from '@/core/quests'
 import { systemBoard } from '@/core/system'
 import { xpSummary } from '@/core/xp'
-import { OnboardingCompact, onboardingSteps } from '@/ui/components/onboarding'
+import { onboardingSteps } from '@/ui/components/onboarding'
 import { Agenda, Goals } from '@/ui/components/agenda'
-import { Card, CardHeader, Skeleton } from '@/ui/components/card'
+import { Badge, Card, CardHeader, Skeleton } from '@/ui/components/card'
+import { GridItem, PageGrid } from '@/ui/components/page-grid'
+import { Rail } from '@/ui/components/rail'
 import { Capsule } from '@/ui/components/capsule'
 import { EmptyState } from '@/ui/components/empty'
 import { buttonClass } from '@/ui/components/button'
@@ -28,15 +30,17 @@ import { TodayGoals } from '@/ui/components/goals/goals-summary'
 import { Quests, type QuestItem } from '@/ui/components/quests'
 import { TodayHeader } from '@/ui/components/today/today-header'
 import { AttentionStrip } from '@/ui/components/today/attention-strip'
-import { PulseRow } from '@/ui/components/today/pulse-row'
+import { PulseHead, PulseRow } from '@/ui/components/today/pulse-row'
 import { MoneyToday } from '@/ui/components/today/money-today'
 import { SetupCard } from '@/ui/components/today/setup-card'
+import { SetupSteps } from '@/ui/components/today/setup-compact'
 import { DayComplete } from '@/ui/components/today/day-complete'
 import { TomorrowCard } from '@/ui/components/today/tomorrow-card'
 import { CaptureButton } from '@/ui/components/today/capture-button'
 
-// Today: a light header (greeting, one line from the brief, streak), what needs you first, the Life pulse, then the
-// day's plan next to the rail (quests, goals, money). The game is a light layer here; the full character sheet is You.
+// Today: a light header (greeting, one line from the brief, streak), then the day's plan (Up next beside the all-day water
+// panel, the rest as compact rows) next to the rail (Check first, Goals, Quests, Finish setting up), and the Life pulse
+// beside Money today below. The game is a light layer here; the full character sheet is You.
 // Every section is its own Suspense island with a skeleton of its final size; they share cached loaders.
 
 export default function TodayPage() {
@@ -70,21 +74,24 @@ async function Today() {
   return (
     <div className="flex flex-col gap-6">
       <Suspense fallback={<HeaderSkeleton />}><Header user={user} /></Suspense>
-      <Suspense fallback={null}><Attention user={user} /></Suspense>
-      <Suspense fallback={null}><Setup user={user} /></Suspense>
-      <Suspense fallback={<Skeleton className="h-[170px] rounded-lg xl:h-[148px]" />}><Pulse user={user} /></Suspense>
-      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="flex flex-col gap-6">
+      <PageGrid>
+        <Suspense fallback={null}><Setup user={user} /></Suspense>
+        {/* The plan and the rail end on one line: the plan's card (the last in its column) grows when the rail is taller. */}
+        <GridItem span={{ base: 12, lg: 8 }} className="flex flex-col gap-6 [&>:last-child]:flex-1">
           <Suspense fallback={null}><DayEnd user={user} /></Suspense>
-          <Suspense fallback={<Skeleton className="h-[520px] rounded-lg" />}><Plan user={user} /></Suspense>
-        </div>
-        <aside className="flex flex-col gap-6" aria-label="Also today">
-          <Suspense fallback={<Skeleton className="h-[320px] rounded-lg" />}><Rail user={user} /></Suspense>
+          <Suspense fallback={<Skeleton className="h-[820px] rounded-lg grid-lg:h-[1020px]" />}><Plan user={user} /></Suspense>
+        </GridItem>
+        {/* On a phone the rail's cards join the page's own column (`contents`), so Finish setting up can sit after Money. */}
+        <Rail span={{ base: 12, lg: 4 }} pairs as="aside" aria-label="Also today" className="@max-[40rem]:contents">
+          <Suspense fallback={null}><Attention user={user} /></Suspense>
           <Suspense fallback={null}><Goal user={user} /></Suspense>
-          <Suspense fallback={<Skeleton className="h-[420px] rounded-lg" />}><Money user={user} /></Suspense>
+          <Suspense fallback={<Skeleton className="h-[320px] rounded-lg" />}><QuestsRail user={user} /></Suspense>
           <Suspense fallback={null}><SetupCompact user={user} /></Suspense>
-        </aside>
-      </div>
+        </Rail>
+        <Suspense fallback={<GridItem><Skeleton className="h-6 rounded-md" /></GridItem>}><PulseHeading user={user} /></Suspense>
+        <Suspense fallback={<GridItem span={{ base: 12, lg: 8 }}><Skeleton className="h-[412px] rounded-lg grid-md:h-[320px] grid-lg:h-[250px]" /></GridItem>}><Pulse user={user} /></Suspense>
+        <Suspense fallback={<GridItem span={{ base: 12, lg: 4 }}><Skeleton className="h-[300px] rounded-lg grid-lg:h-[250px]" /></GridItem>}><Money user={user} /></Suspense>
+      </PageGrid>
     </div>
   )
 }
@@ -115,19 +122,25 @@ async function Attention({ user }: { user: User }) {
   if (await isFirstDay(user)) return null
   const [{ briefing }, shell] = await Promise.all([loadTodayBriefing(user), loadShellStatus(user)])
   // Nudges are part of Coach's count, so the briefing leaves them out; overdue routines stay in the timeline.
-  return <AttentionStrip cards={briefing.attention} coach={shell.needsYou.total} />
+  return <AttentionStrip cards={briefing.attention} coach={shell.needsYou.total} className="grid-md:col-span-2 grid-lg:col-span-1" />
 }
 
 async function Setup({ user }: { user: User }) {
   await connection()
   if (!(await isFirstDay(user))) return null
-  return <SetupCard steps={await loadSetup(user)} />
+  return <GridItem><SetupCard steps={await loadSetup(user)} /></GridItem>
+}
+
+async function PulseHeading({ user }: { user: User }) {
+  await connection()
+  if (await isFirstDay(user)) return null
+  return <GridItem><PulseHead /></GridItem>
 }
 
 async function Pulse({ user }: { user: User }) {
   await connection()
   if (await isFirstDay(user)) return null
-  return <PulseRow tiles={await loadPulse(user)} />
+  return <GridItem span={{ base: 12, lg: 8 }}><PulseRow tiles={await loadPulse(user)} /></GridItem>
 }
 
 /** The end of the day: the Day complete card (with the chest it earned) and tomorrow's first rows. */
@@ -152,38 +165,31 @@ async function Plan({ user }: { user: User }) {
   await connection()
   const plan = await loadDayPlan(user)
   const { rows, goals, total, done } = plan
-  const left = total - done
   const now = formatTime(new Date(), user.timezone)
+  const water = goals.length ? <Goals rows={goals} compact /> : undefined
   return (
-    <Card id="quest-log" className="scroll-mt-6 p-5 sm:p-6">
+    <Card id="quest-log" className="flex scroll-mt-6 flex-col p-5 grid-md:p-6">
       <CardHeader
-        title={<>Today’s plan{total ? <span className="ms-2 inline-flex h-6 items-center rounded-full bg-surface-2 px-2 align-middle text-caption font-medium text-ink-2 tabular-nums">{done} of {total}</span> : null}</>}
-        description={total ? (left ? `${left} to go` : `All ${total} done. Nice.`) : undefined}
-        action={<Link href="/plan/routines" className="inline-flex h-10 items-center rounded-md px-2 text-small font-medium text-pill-ink hover:underline">Edit in Plan</Link>}
+        title={<>Today’s plan{total ? <Badge className="ms-2 align-middle tabular-nums">{done} of {total} done</Badge> : null}</>}
+        action={<Link href="/plan/routines" className="inline-flex h-10 items-center rounded-md px-2 text-small font-medium text-pill-ink hover-fine:underline focus-visible:outline-2 focus-visible:outline-pill">Edit in Plan</Link>}
       />
       {total ? <Capsule value={done} max={total} size="sm" color="var(--pill)" label="Done today" className="-mt-2 mb-5" /> : null}
-      {goals.length ? (
-        <div className="mb-6">
-          <h3 className="mb-2 flex items-center gap-2 px-1 text-small font-medium text-ink-3">All day<span aria-hidden className="h-px flex-1 bg-divider" /></h3>
-          <Goals rows={goals} compact />
-        </div>
-      ) : null}
       {rows.length ? (
-        <Agenda rows={rows} timeline={{ now }} />
-      ) : !goals.length ? (
+        <Agenda rows={rows} timeline={{ now, lead: water }} />
+      ) : goals.length ? water : (
         <EmptyState
           title="Nothing planned today" icon={Sunrise} color="var(--pill)"
           description="Add routines like skincare or medicines and they’ll show up here, with reminders on Telegram. Or log something you did."
           action={<div className="flex flex-wrap justify-center gap-2"><Link href="/plan/routines?new=1" className={buttonClass({ variant: 'primary', size: 'lg' })}><Plus className="size-4" strokeWidth={2} aria-hidden />Add a routine</Link><CaptureButton /></div>}
         />
-      ) : null}
+      )}
     </Card>
   )
 }
 
 const questItem = (q: QuestView): QuestItem => ({ key: q.key, title: q.title, area: q.area, measure: q.measure, target: q.target, progress: q.progress, done: q.done, rarity: q.rarity })
 
-async function Rail({ user }: { user: User }) {
+async function QuestsRail({ user }: { user: User }) {
   await connection()
   const { quests, system, today } = await loadGame(user)
   return (
@@ -213,7 +219,7 @@ async function Money({ user }: { user: User }) {
   await connection()
   if (await isFirstDay(user)) return null
   const { briefing, payments } = await loadTodayBriefing(user)
-  return <MoneyToday v={moneyView(user, briefing, payments)} />
+  return <GridItem span={{ base: 12, lg: 4 }}><MoneyToday v={moneyView(user, briefing, payments)} /></GridItem>
 }
 
 /** Past day one the setup steps stay in the rail until done or hidden. The tour's last stop points here. */
@@ -221,18 +227,20 @@ async function SetupCompact({ user }: { user: User }) {
   await connection()
   if (user.profile.setupHiddenAt || (await isFirstDay(user))) return null
   const steps = await loadSetup(user)
-  return steps.some((s) => !s.done) ? <OnboardingCompact steps={steps} /> : null
+  return steps.some((s) => !s.done) ? <SetupSteps steps={steps} className="order-1 grid-md:col-span-2 grid-lg:col-span-1" /> : null
 }
 
 function HeaderSkeleton() {
   return (
-    <div aria-busy className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
-      <div className="grid min-w-0 flex-1 gap-1">
-        <Skeleton className="h-4 w-44" />
-        <Skeleton className="mt-1 h-10 w-72 sm:h-[60px] sm:w-[480px]" />
-        <Skeleton className="mt-1 h-10 w-full max-w-[64ch]" />
+    <div aria-busy className="@container">
+      <div className="grid grid-cols-1 items-end gap-x-6 gap-y-5 grid-md:grid-cols-12">
+        <div className="grid min-w-0 gap-1 grid-md:col-[1/8] grid-lg:col-[1/9]">
+          <Skeleton className="h-4 w-44" />
+          <Skeleton className="mt-1 h-10 w-72 grid-md:h-[60px] grid-md:w-[480px]" />
+          <Skeleton className="mt-1 h-10 w-full max-w-[64ch]" />
+        </div>
+        <Skeleton className="h-[74px] rounded-lg grid-md:col-[8/13] grid-lg:col-[9/13]" />
       </div>
-      <Skeleton className="h-[138px] w-full rounded-lg sm:w-[340px]" />
     </div>
   )
 }
@@ -241,11 +249,10 @@ function TodaySkeleton() {
   return (
     <div className="flex flex-col gap-6" aria-busy>
       <HeaderSkeleton />
-      <Skeleton className="h-[170px] rounded-lg xl:h-[148px]" />
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <Skeleton className="h-[520px] rounded-lg" />
-        <div className="flex flex-col gap-6"><Skeleton className="h-[320px] rounded-lg" /><Skeleton className="h-[200px] rounded-lg" /></div>
-      </div>
+      <PageGrid>
+        <GridItem span={{ base: 12, lg: 8 }}><Skeleton className="h-[820px] rounded-lg grid-lg:h-[1020px]" /></GridItem>
+        <Rail span={{ base: 12, lg: 4 }}><Skeleton className="h-[320px] rounded-lg" /><Skeleton className="h-[200px] rounded-lg" /></Rail>
+      </PageGrid>
     </div>
   )
 }
