@@ -2,9 +2,9 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { addDays } from '@/core/time'
 import {
-  GOAL_FOOTNOTE, actionAdherence, checkGoalDraft, goalSnapshot, goalStatIds, isActivityMeasure, isSensitiveMeasure,
+  GOAL_FOOTNOTE, actionAdherence, actionStatus, checkGoalDraft, feedLine, goalSnapshot, goalStatIds, isActivityMeasure, isSensitiveMeasure,
   minObservations, nextReviewOn, outcomeNow, outcomeStatus, reviewLines, trackerBaseline, validateGoal,
-  type GoalInput, type GoalLike, type RawGoalDraft,
+  type ActionSnapshot, type GoalInput, type GoalLike, type RawGoalDraft,
 } from './goals'
 
 const today = '2026-11-11'
@@ -213,4 +213,30 @@ test('the first review never judges days from before the baseline date', () => {
 test('impossible calendar dates are rejected', () => {
   assert.ok(validateGoal(input({ targetDate: '2027-02-30' }), ctx).targetDate)
   assert.ok(validateGoal(input({ baselineDate: '2026-02-30' }), ctx).baselineDate)
+})
+
+test('actionStatus grades a linked action by its own rhythm', () => {
+  const s = (over: Partial<ActionSnapshot>): ActionSnapshot => ({ kind: 'schedule', id: 'a', name: 'A', available: true, due: 6, done: 6, rate: 1, recordedDays: null, metDays: null, windowDays: 7, ...over })
+  assert.equal(actionStatus(s({})), 'On track')
+  assert.equal(actionStatus(s({ done: 3, rate: 0.5 })), 'Steady')
+  assert.equal(actionStatus(s({ done: 1, rate: 1 / 6 })), 'Slipping')
+  assert.equal(actionStatus(s({ due: 0, done: 0, rate: null })), 'Quiet')
+  assert.equal(actionStatus(s({ available: false })), 'Quiet')
+  const t = (over: Partial<ActionSnapshot>): ActionSnapshot => s({ kind: 'tracker', due: null, done: null, rate: null, recordedDays: 6, metDays: 4, ...over })
+  assert.equal(actionStatus(t({})), 'Steady')
+  assert.equal(actionStatus(t({ recordedDays: 5, metDays: 2 })), 'Slipping')
+  assert.equal(actionStatus(t({ recordedDays: 5, metDays: 5 })), 'On track')
+  assert.equal(actionStatus(t({ recordedDays: 4, metDays: null })), 'Steady')
+  assert.equal(actionStatus(t({ recordedDays: 2, metDays: null })), 'Slipping')
+  assert.equal(actionStatus(t({ recordedDays: 0, metDays: null })), 'Quiet')
+})
+
+test('feedLine says what the review would, without the question or blame', () => {
+  assert.equal(feedLine(1, 'toward'), 'You kept the actions and the outcome moved the right way.')
+  assert.equal(feedLine(0.9, 'flat'), 'You kept the actions, but the outcome has not moved yet.')
+  assert.equal(feedLine(0.6, 'away'), 'You did the actions on about half the due days.')
+  assert.equal(feedLine(0.2, 'toward'), 'The actions were hard to fit in this period.')
+  assert.equal(feedLine(null, 'toward'), 'The outcome moved the right way.')
+  assert.equal(feedLine(null, 'met'), 'The outcome reached the target.')
+  assert.equal(feedLine(1, 'not_enough_data'), null)
 })

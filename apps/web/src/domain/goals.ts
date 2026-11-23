@@ -3,6 +3,7 @@ import { isLocalDate, medicationOrDose } from '@/ai/tool-policy'
 import type { Category } from '@/db/schema'
 import { adherenceRate, type DayStatus } from './adherence'
 import { formatValue } from './patterns'
+import type { Status } from './status-of'
 
 // Outcome goals: one outcome measure with a baseline, 1–3 linked actions, and a review that compares
 // action adherence with outcome change. Pure: callers pass local-date keyed maps (no DB, no React).
@@ -192,6 +193,31 @@ export function actionAdherence(link: GoalActionLink, source: ActionSource | nul
 /** Mean of the schedule rates that had due days. Tracker actions have no due days, so they don't count. */
 export function overallAdherence(actions: ActionSnapshot[]) {
   return mean(actions.filter((a) => a.kind === 'schedule' && a.rate != null).map((a) => a.rate!))
+}
+
+/**
+ * How a linked action went in the goal's window, as one of the six status words. A routine: done on 80% of its due days
+ * or more is On track, half or more Steady, less Slipping. A tracker: the share of recorded days that met its own target
+ * (or, with no target, whether it was recorded on half the days). Nothing due or recorded, or an action that is gone, is Quiet.
+ */
+export function actionStatus(a: ActionSnapshot): Status {
+  if (!a.available) return 'Quiet'
+  const grade = (share: number): Status => (share >= 0.8 ? 'On track' : share >= 0.5 ? 'Steady' : 'Slipping')
+  if (a.kind === 'schedule') return a.due && a.rate != null ? grade(a.rate) : 'Quiet'
+  if (!a.recordedDays) return 'Quiet'
+  if (a.metDays != null) return grade(a.metDays / a.recordedDays)
+  return a.recordedDays / a.windowDays >= 0.5 ? 'Steady' : 'Slipping'
+}
+
+/** The plain line under "What feeds it": adherence × outcome, the review's fixed question without the question. Null when there is nothing fair to say. */
+export function feedLine(adherence: number | null, status: OutcomeStatus): string | null {
+  if (status === 'met') return 'The outcome reached the target.'
+  if (status === 'not_enough_data') return null
+  const moving = status === 'toward'
+  if (adherence == null) return moving ? 'The outcome moved the right way.' : 'The outcome has not moved yet.'
+  if (adherence >= 0.7) return moving ? 'You kept the actions and the outcome moved the right way.' : 'You kept the actions, but the outcome has not moved yet.'
+  if (adherence >= 0.5) return 'You did the actions on about half the due days.'
+  return 'The actions were hard to fit in this period.'
 }
 
 export function goalSnapshot(

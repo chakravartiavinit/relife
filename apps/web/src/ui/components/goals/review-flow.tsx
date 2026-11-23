@@ -13,7 +13,8 @@ import { ShareButton } from '../share/share-button'
 import { useToast } from '../toast'
 import { GoalReviewCard, DECISION_DONE, type DecisionId, type ReviewData } from './goal-review'
 import type { GoalPickerData } from './goal-form'
-import { weekday, type GoalViewData } from './format'
+import { Picture } from '../picture'
+import { goalPicture, weekday, type GoalViewData } from './format'
 
 export type ReviewItem = { goal: GoalViewData; review: ReviewData }
 
@@ -59,12 +60,10 @@ export function ReviewFlow({ items: fresh, picker, today }: { items: ReviewItem[
                   n === index && 'bg-surface shadow-1',
                 )}
               >
-                <span aria-hidden className={cn('grid size-6 shrink-0 place-items-center rounded-full text-caption font-medium tabular-nums', decisionOf(i) ? 'bg-good/15 text-good' : n === index ? 'bg-ink text-surface' : 'bg-surface-2 text-ink-3')}>
-                  {decisionOf(i) ? <Check className="size-3.5" strokeWidth={2.5} /> : n + 1}
-                </span>
+                <Picture {...goalPicture(i.goal)} size={32} />
                 <span className="min-w-0">
                   <span className="block truncate text-small font-medium text-ink max-lg:max-w-[160px]">{i.goal.title}</span>
-                  <span className="block text-caption text-ink-3">{stateOf(i, n)}</span>
+                  <span className={cn('flex items-center gap-1 text-caption', decisionOf(i) ? 'text-good-ink' : 'text-ink-3')}>{decisionOf(i) ? <Check aria-hidden className="size-3" strokeWidth={2.5} /> : null}{stateOf(i, n)}</span>
                 </span>
               </button>
             </li>

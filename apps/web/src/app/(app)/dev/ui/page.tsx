@@ -39,7 +39,7 @@ import { InstalledBeuiGallery, PeekLinkDemo, SegmentTabsDemo, SheetDemo, ShellDe
 import { RecoveryPanel, SystemQuests } from '@/ui/components/system-quests'
 import type { RecoveryView } from '@/domain/recovery'
 import { GOAL_FOOTNOTE, goalSnapshot } from '@/domain/goals'
-import { GoalsBoard, PausedFinishedList } from '@/ui/components/goals/goal-card'
+import { GoalFolds, GoalsBoard } from '@/ui/components/goals/goal-card'
 import { DevicesGallery } from '@/ui/components/devices/gallery'
 import { DataGallery } from '@/ui/components/data/data-gallery'
 import { PhoneGallery } from '@/ui/components/devices/phone-gallery'
@@ -316,12 +316,12 @@ export default function UiGallery() {
       <Section title="Outcome goals">
         <p className="mb-4 text-[13px] text-ink-3">Synthetic examples. Menus, decisions and check-ins need real goals on /goals before the server can save them.</p>
         <div className="grid gap-6">
-          <GoalsBoard picker={goalPicker} today={goalToday} goals={[
+          <GoalsBoard picker={goalPicker} today={goalToday} feeds={{ 'sample-goal': { peeks: [null], change: { parts: [{ text: 'Typing speed up 8% this week: ', bold: false }, { text: '66 wpm', bold: true }, { text: ' a day vs your usual ', bold: false }, { text: '61 wpm', bold: true }, { text: '.', bold: false }], caption: 'This week against the 4 before', peek: null } } }} goals={[
             goalSample,
             checkInSample,
             { ...goalSample, id: 'sample-sensitive', title: 'Sleep 7–8 hours a night', measureName: 'Sleep', unit: 'h', direction: 'range', target: null, rangeLow: 7, rangeHigh: 8, baselineValue: 7.4, sensitive: true, snapshot: snap({ ...goalSample, direction: 'range', target: null, rangeLow: 7, rangeHigh: 8, baselineValue: 7.4 }, 6.4, true) },
           ]} />
-          <PausedFinishedList activeCount={2} goals={[
+          <GoalFolds activeCount={2} goals={[
             { ...goalSample, id: 'sample-paused', title: 'Run 5 km in under 30 minutes', status: 'paused', pausedAt: new Date('2026-11-02T08:00:00Z'), pausedOn: '2026-11-02' },
             { ...goalSample, id: 'sample-finished', title: 'Read 20 pages a day', status: 'finished', finishedAt: new Date('2026-10-04T08:00:00Z'), snapshot: { ...goalSample.snapshot!, met: false } },
           ]} />

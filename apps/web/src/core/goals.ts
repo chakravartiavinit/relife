@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { cache } from 'react'
 import { and, desc, eq, inArray, isNull, lte, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import {
@@ -164,6 +165,10 @@ export async function loadGoalsPage(user: User, now = new Date()) {
     activeCount: active.length,
   }
 }
+
+/** One request, one load: the Plan head and the tab under it both read the goals, and the second read reuses the first. */
+const goalsMemo = cache((): { page?: ReturnType<typeof loadGoalsPage> } => ({}))
+export const loadGoalsPageOnce = (user: User) => (goalsMemo().page ??= loadGoalsPage(user))
 
 /** What the goal form needs to open from a draft anywhere (Coach's Needs you): the picker, today and how many goals are active. */
 export async function goalFormContext(user: User, now = new Date()) {

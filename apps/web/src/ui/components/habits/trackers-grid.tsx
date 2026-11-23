@@ -1,20 +1,40 @@
-import { Activity, ChevronDown } from 'lucide-react'
+import { Activity } from 'lucide-react'
 import { CATEGORIES } from '@/domain/categories'
 import type { User } from '@/core/user'
 import { trackerDays, trackerFacts } from '@/core/metrics'
 import { addDays, localDate } from '@/core/time'
-import { orderTiles, summarizeTracker } from '@/domain/metric-tile'
+import { deltaText, formatTileValue, orderTiles, summarizeTracker, type TileSummary } from '@/domain/metric-tile'
+import { statusOf } from '@/domain/status-of'
+import { pictureSpec } from '@/ui/picture'
 import { CATEGORY } from '@/ui/tokens'
 import { Card } from '../card'
 import { EmptyState } from '../empty'
-import { MetricTile } from '../area/metric-tile'
+import { Fold } from '../fold'
+import { Picture } from '../picture'
+import { StatusRow } from '../status-row'
 
-const GRID = 'grid grid-cols-2 gap-3 @md:grid-cols-3 @2xl:grid-cols-4'
+/** The latest number with its change on usual (or the 7-day average), and where it comes from as the connector's own logo. */
+function trackerLine(t: TileSummary) {
+  const v = t.latest == null ? null : formatTileValue(t.latest, t.unit)
+  const avg = t.avg7 == null ? null : formatTileValue(t.avg7, t.unit)
+  const value = v ? `${v.text}${v.unit ? ` ${v.unit}` : ''}` : 'No value yet'
+  const context = t.stale ? `synced ${t.daysSince} days ago` : t.note ? t.note : t.delta ? deltaText(t.delta) : avg ? `avg ${avg.text}${avg.unit ? ` ${avg.unit}` : ''}` : ''
+  const source = t.sources.find((x) => x !== 'manual')
+  const id = source?.split(/[-.:]/)[0]
+  const logo = id && pictureSpec({ of: 'connector', id }).type !== 'letter' ? id : null
+  return (
+    <span className="inline-flex max-w-full items-center gap-1.5 align-bottom">
+      <span className="truncate tabular-nums">{value}{context ? ` · ${context}` : ''}</span>
+      {logo ? <><span aria-hidden>·</span><Picture of="connector" id={logo} size={20} label={`from ${logo}`} /></> : source === undefined ? <span className="shrink-0">· you</span> : null}
+    </span>
+  )
+}
 
 /**
- * Every tracker by area as a `MetricTile` (the tile All metrics uses): latest number, 28-day trend, change on usual,
- * one tap for the Peek where the value is logged. Active ones first; quiet trackers and ones with no data yet fold
- * into a "Quiet" group so a new tracker is still findable. Server component.
+ * Every tracker by area, one `StatusRow` each: its picture, the latest number with the change on usual, where it comes
+ * from (the connector's logo, or "you" for a hand-entered one) and a status word. A tap opens the metric's Peek where the
+ * value is logged. Active ones first; quiet trackers and ones with no data yet fold into a Fold so a new tracker is still
+ * findable. Server component.
  */
 export async function TrackersGrid({ user }: { user: User }) {
   const today = localDate(new Date(), user.timezone)
@@ -22,7 +42,7 @@ export async function TrackersGrid({ user }: { user: User }) {
   if (!all.length) {
     return (
       <Card>
-        <EmptyState title="No trackers yet" icon={Activity} color={'var(--pill)'} description="Create one, or type “water 250” in ⌘K and it appears here." />
+        <EmptyState title="No trackers yet" picture={{ of: 'tracker', name: 'Steps' }} description="Create one, or type “water 250” in ⌘K and it appears here." />
       </Card>
     )
   }
@@ -35,25 +55,22 @@ export async function TrackersGrid({ user }: { user: User }) {
         if (!mine.length) return null
         const { shown, quiet } = orderTiles(mine, [])
         const folded = [...quiet, ...mine.filter((t) => t.state === 'none')]
-        const color = CATEGORY[c].color
+        const row = (t: TileSummary) => (
+          <StatusRow key={t.slug} picture={{ of: 'tracker', name: t.name, kind: t.kind, area: c }} name={t.name} line={trackerLine(t)}
+            status={statusOf({ from: 'tracker', tile: t }).word} peek={{ type: 'metric', id: t.slug }} />
+        )
         return (
-          <Card key={c} as="section" aria-labelledby={`cat-${c}`} className="@container">
-            <h2 id={`cat-${c}`} className="mb-3 flex items-center gap-2 text-heading font-medium text-ink">
-              <span aria-hidden className="size-2 rounded-full" style={{ background: color }} />
+          <Card key={c} as="section" aria-labelledby={`cat-${c}`}>
+            <h2 id={`cat-${c}`} className="mb-2 flex items-center gap-2.5 font-display text-heading text-ink">
+              <Picture of="area" to={c} size={32} />
               {CATEGORY[c].label}
-              <span className="text-small font-normal text-ink-3 tabular-nums">{mine.length}</span>
+              <span className="font-sans text-small font-normal text-ink-3 tabular-nums">{mine.length}</span>
             </h2>
-            {shown.length ? (
-              <ul className={GRID}>{shown.map((t) => <li key={t.slug} className="min-w-0 *:h-full"><MetricTile t={t} color={color} /></li>)}</ul>
-            ) : null}
+            {shown.length ? <div>{shown.map(row)}</div> : null}
             {folded.length ? (
-              <details className={shown.length ? 'group mt-4' : 'group'} open={!shown.length}>
-                <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-sm text-small font-medium text-ink-2 focus-visible:outline-2 focus-visible:outline-pill [&::-webkit-details-marker]:hidden">
-                  <ChevronDown className="size-4 transition-transform duration-150 group-open:rotate-180" strokeWidth={1.5} aria-hidden />
-                  Quiet · {folded.length} with nothing in 14 days
-                </summary>
-                <ul className={`${GRID} mt-3`}>{folded.map((t) => <li key={t.slug} className="min-w-0 *:h-full"><MetricTile t={t} color={color} /></li>)}</ul>
-              </details>
+              <Fold title="Quiet" summary={`${folded.length} with nothing in 14 days`} defaultOpen={!shown.length} className="mt-1">
+                <div>{folded.map(row)}</div>
+              </Fold>
             ) : null}
           </Card>
         )

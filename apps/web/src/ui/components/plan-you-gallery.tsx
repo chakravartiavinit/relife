@@ -43,7 +43,7 @@ export function PlanYouGallery() {
       <div className="grid gap-6 lg:grid-cols-2">
         <Sub title="Weekly review card (rail)">
           <ReviewDueCard date="2026-11-08" today="2026-11-08" window={{ from: '2026-11-02', to: '2026-11-08' }} goals={[
-            { id: 'g1', title: 'Type 70 words a minute', status: 'toward', sensitive: false, note: 'Practice landed on most due days and the typing average is above the baseline.',
+            { id: 'g1', title: 'Type 70 words a minute', status: 'toward', sensitive: false, picture: { of: 'tracker', name: 'Typing speed', area: 'skills' }, measure: 'Typing speed, wpm', note: 'Practice landed on most due days and the typing average is above the baseline.',
               days: [['2026-11-02', 64], ['2026-11-03', 68], ['2026-11-04', 59], ['2026-11-05', 65], ['2026-11-06', 69], ['2026-11-07', null], ['2026-11-08', null]].map(([date, value]) => ({ date: date as string, value: value as number | null })) },
             { id: 'g2', title: 'Play Blackbird at 90 bpm', status: 'flat', sensitive: false },
           ]} />

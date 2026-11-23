@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
-import { CalendarCheck } from 'lucide-react'
 import { loadGoalsPage, reviewPoint } from '@/core/goals'
 import { getUser } from '@/core/user'
 import { buttonClass } from '@/ui/components/button'
@@ -34,7 +33,7 @@ async function Review() {
   return (
     <PageGrid>
       <GridItem className="max-w-[60ch]">
-        <h2 className="text-heading text-ink">{from ? `Weekly review · ${day(from)} – ${day(to)}` : 'Weekly review'}</h2>
+        <h2 className="font-display text-heading text-ink">{from ? `Weekly review · ${day(from)} – ${day(to)}` : 'Weekly review'}</h2>
         <p className="mt-1 text-body text-ink-2">For each goal, compare what you did with how the outcome moved. Then choose what happens next. Goals you don’t decide stay as they are.</p>
       </GridItem>
       <GridItem>{cards.length ? (
@@ -47,7 +46,7 @@ async function Review() {
         />
       ) : (
         <Card>
-          <EmptyState icon={CalendarCheck} title="Nothing to review" description="Reviews land on Sundays. You can also review a goal today."
+          <EmptyState picture={{ of: 'nav', to: '/plan' }} title="Nothing to review" description="Reviews land on Sundays. You can also review a goal today."
             action={<Link href="/plan" className={buttonClass({ variant: 'primary' })}>Back to goals</Link>} />
           <ReviewNow goals={data.active.map((g) => ({ id: g.id, title: g.title }))} />
         </Card>

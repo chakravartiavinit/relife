@@ -1,19 +1,20 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Check, Flag, Info, Pause, Pencil, Target } from 'lucide-react'
+import { Check, Flag, Info, Pause, Pencil } from 'lucide-react'
 import { decideGoalReviewAction, recordGoalCheckInAction } from '@/app/actions'
 import { GOAL_FOOTNOTE, applyProposal, goalFields, proposalText, type GoalDecision, type GoalProposal, type GoalSnapshot } from '@/domain/goals'
 import { CATEGORY } from '@/ui/tokens'
 import { cn } from '@/ui/cn'
 import { Button } from '../button'
-import { Badge, Card, IconChip, Stat } from '../card'
+import { Badge, Card, Stat } from '../card'
+import { Picture } from '../picture'
 import { Capsule } from '../capsule'
 import { usePeekChanged } from '../peek/peek-context'
 import { Field, Input, Textarea } from '../form'
 import { GoalStatusBadge } from './goal-card'
 import { GoalDialog, Notice, UnitInput, initialFromGoal, type GoalPickerData } from './goal-form'
-import { day, target, value, weekday, type GoalViewData } from './format'
+import { day, goalPicture, target, value, weekday, type GoalViewData } from './format'
 
 // One goal in the weekly review: what you did vs how the outcome moved, then an explicit decision.
 // Nothing about the goal changes until the server confirms a choice.
@@ -70,9 +71,9 @@ export function GoalReviewCard({ g, review, picker, today, onSaved, onNext, last
     <Card as="article" aria-labelledby={`review-${review.id}`}>
       <header className="mb-5 flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
-          <IconChip color={color}><Target strokeWidth={1.5} /></IconChip>
+          <Picture {...goalPicture(g)} size={40} />
           <div className="min-w-0">
-            <h2 id={`review-${review.id}`} className="text-heading leading-7 font-medium text-ink">{g.title}</h2>
+            <h2 id={`review-${review.id}`} className="font-display text-heading text-ink">{g.title}</h2>
             <p className="-mt-0.5 text-small text-ink-3 tabular-nums">{g.measureKind === 'tracker' ? `${g.measureName} tracker` : `Check-in · ${g.measureName}`} · {day(s.window.from)}–{day(s.window.to)}</p>
           </div>
         </div>
@@ -86,7 +87,10 @@ export function GoalReviewCard({ g, review, picker, today, onSaved, onNext, last
             {s.actions.map((a) => (
               <li key={`${a.kind}:${a.id}`}>
                 <div className="flex items-baseline justify-between gap-2 text-small">
-                  <span className={cn('min-w-0 truncate', a.available ? 'text-ink' : 'text-ink-3')}>{a.name}</span>
+                  <span className={cn('flex min-w-0 items-center gap-2', a.available ? 'text-ink' : 'text-ink-3')}>
+                    <Picture of={a.kind === 'schedule' ? 'routine' : 'tracker'} name={a.name} area={g.area} size={20} />
+                    <span className="truncate">{a.name}</span>
+                  </span>
                   <span className="shrink-0 text-caption text-ink-3 tabular-nums">
                     {!a.available ? 'Not available' : a.kind === 'schedule' ? (a.due ? `${a.done} of ${a.due} days` : 'Nothing due') : a.recordedDays ? `recorded ${a.recordedDays} of ${a.windowDays} days` : 'No record'}
                   </span>
