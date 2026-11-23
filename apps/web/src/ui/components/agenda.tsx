@@ -338,30 +338,30 @@ function Row({ r, onToggle, onSkip, compact = false }: { r: AgendaRow; onToggle:
           : 'min-h-[64px] gap-3.5 rounded-md bg-ink/[0.025] px-3 py-2 hover:bg-ink/[0.045] dark:bg-white/[0.035] dark:hover:bg-white/[0.06]',
       )}
     >
-      <span className={cn('w-11 shrink-0 tabular-nums', compact ? 'text-small' : 'text-small font-medium', missed ? 'text-bad' : compact ? 'text-ink-3' : 'text-ink-2')}>{r.time}</span>
+      {/* Overdue is the time in --bad-ink plus the word Overdue under the name, never colour alone. */}
+      <span className={cn('w-11 shrink-0 tabular-nums', compact ? 'text-small' : 'text-small font-medium', missed ? 'font-medium text-bad-ink' : compact ? 'text-ink-3' : 'text-ink-2')}>{r.time}</span>
       <motion.span
         aria-hidden
         animate={won ? { scale: [1, 1.12, 1], rotate: [0, -8, 0] } : undefined}
         transition={{ duration: 0.4, ease: EASE_OUT_STRONG }}
-        className={cn('grid shrink-0 place-items-center', compact ? 'size-9 rounded-md' : 'size-10 rounded-[11px]')}
-        style={{ color: `color-mix(in oklch, ${r.color} 80%, var(--ink))`, background: `color-mix(in oklch, ${r.color} 16%, transparent)` }}
+        className={cn('grid shrink-0 place-items-center bg-surface-2', compact ? 'size-9 rounded-md' : 'size-10 rounded-md')}
       >
         <RoutineArt name={r.name} kind={r.kind} area={r.area} />
       </motion.span>
       <div className="min-w-0 flex-1">
         <PeekLink to={{ type: 'routine', id: r.scheduleId }} className={cn('block truncate rounded-xs text-body font-medium transition-[color] duration-200 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill', won ? 'text-ink-3' : 'text-ink')}>{r.name}</PeekLink>
         {r.chips?.length || r.detail || missed ? (
-          <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 text-caption text-ink-3 tabular-nums">
-            {missed ? <span className="inline-flex h-5 items-center rounded-full bg-bad/10 px-2 text-caption font-medium text-bad">Overdue</span> : null}
+          <p className="mt-0.5 flex min-w-0 items-center gap-1 text-small text-ink-3 tabular-nums">
+            {missed ? <span className="shrink-0 font-medium text-bad-ink">Overdue</span> : null}
             {r.chips?.map((c) => (
-              <span key={c.text} className={cn('inline-flex h-5 items-center rounded-full px-2 text-caption font-medium whitespace-nowrap', c.warn ? 'bg-warn/12 text-warn' : 'bg-ink/[0.05] text-ink-2 dark:bg-white/[0.07]')}>{c.text}</span>
+              <span key={c.text} className={cn('shrink-0', c.warn && 'font-medium text-warn-ink')}>{missed || r.chips?.[0] !== c ? '· ' : ''}{c.text}</span>
             ))}
-            {r.detail ? <span className="min-w-0 truncate">{r.detail}</span> : null}
-          </div>
+            {r.detail ? <span className="min-w-0 truncate">{missed || r.chips?.length ? '· ' : ''}{r.detail}</span> : null}
+          </p>
         ) : null}
       </div>
       <Button variant="ghost" size="sm" onClick={onSkip} aria-label={`Skip ${r.name}`}
-        className={cn('text-ink-3', compact ? 'max-sm:hidden [@media(hover:hover)_and_(pointer:fine)]:opacity-0 group-hover-fine:opacity-100 group-focus-within:opacity-100' : 'opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 max-lg:hidden @max-md:hidden')}>Skip</Button>
+        className={cn('text-ink-3', compact ? 'max-sm:hidden [@media(hover:hover)_and_(pointer:fine)]:opacity-0 group-hover-fine:opacity-100 group-focus-within:opacity-100' : 'opacity-0 group-hover/row:opacity-100 group-focus-within/row:opacity-100 focus-visible:opacity-100 max-lg:hidden @max-md:hidden')}>Skip</Button>
       <span className="relative grid place-items-center">
         {won ? <CheckBurst color={r.color} /> : null}
         <CheckButton r={r} onToggle={complete} size="lg" forceDone={won} />

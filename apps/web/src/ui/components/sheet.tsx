@@ -119,7 +119,7 @@ function Panel({ onOpenChange, title, description, icon, modal, className, child
       <header className="flex items-start gap-3 p-5 pb-3">
         {icon}
         <div className="min-w-0 flex-1">
-          <h2 id={`${uid}-title`} className="text-heading text-ink">{title}</h2>
+          <h2 id={`${uid}-title`} className="font-display text-heading text-ink">{title}</h2>
           {description ? <p id={`${uid}-desc`} className="mt-0.5 text-small text-ink-3">{description}</p> : null}
         </div>
         <Button variant="ghost" size="icon-sm" aria-label="Close" data-sheet-close onClick={close}><X className="size-4" strokeWidth={1.5} /></Button>

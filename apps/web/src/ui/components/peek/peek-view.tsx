@@ -1,6 +1,8 @@
 'use client'
 
 import type { PeekData } from '@/core/peek/types'
+import type { PictureRef } from '../../picture'
+import { Picture } from '../picture'
 import { connectorHeading, ConnectorPeekView } from './views/connector'
 import { goalHeading, GoalPeekView } from './views/goal'
 import { insightHeading, InsightPeekView } from './views/insight'
@@ -10,8 +12,17 @@ import { personHeading, PersonPeekView, questHeading, QuestPeekView } from './vi
 import { routineHeading, RoutinePeekView } from './views/routine'
 import { briefHeading, BriefPeekView, syncHeading, SyncPeekView } from './views/status'
 
-/** The Sheet's title, description and icon for an item. */
-export function peekHeading(d: PeekData): { title: string; description?: string; icon?: React.ReactNode } {
+export type PeekHeading = {
+  title: string; description?: string; icon?: React.ReactNode
+  /** The subject's picture (a tracker, merchant, connector, area, medal...): drawn at 40px where `icon` would be. */
+  picture?: PictureRef
+}
+
+/** What goes before the title: the heading's `icon`, else its `picture`. */
+export const headingMark = (h: PeekHeading): React.ReactNode => h.icon ?? (h.picture ? <Picture {...h.picture} size={40} /> : undefined)
+
+/** The Sheet's title, description and picture or icon for an item. */
+export function peekHeading(d: PeekData): PeekHeading {
   switch (d.type) {
     case 'metric': return metricHeading(d)
     case 'routine': return routineHeading(d)

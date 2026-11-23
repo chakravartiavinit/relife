@@ -1,6 +1,8 @@
 import { cn } from '../cn'
 
-type Variant = 'primary' | 'accent' | 'secondary' | 'ghost' | 'danger'
+// The calm system has one pair (primary, secondary), a quiet button (`quiet`, same as `ghost`) and the underlined link
+// (`buttonLinkClass`). `accent` and `danger` stay for the screens that still use them.
+type Variant = 'primary' | 'accent' | 'secondary' | 'ghost' | 'quiet' | 'danger'
 type Size = 'sm' | 'md' | 'lg' | 'icon' | 'icon-sm'
 
 const VARIANT: Record<Variant, string> = {
@@ -9,6 +11,7 @@ const VARIANT: Record<Variant, string> = {
   accent: 'bg-pill-ink text-bg hover:bg-pill-ink/90',
   secondary: 'bg-surface text-ink shadow-1 hover:bg-surface-2',
   ghost: 'text-ink-2 hover:bg-ink/[0.05] hover:text-ink',
+  quiet: 'text-ink-2 hover:bg-surface-2 hover:text-ink',
   danger: 'bg-surface text-bad shadow-1 hover:bg-bad/8',
 }
 const SIZE: Record<Size, string> = {
@@ -36,4 +39,14 @@ export function buttonClass({ variant = 'secondary', size = 'md', pressable = tr
 export function Button({ variant, size, static: isStatic, className, type = 'button', ...props }:
   React.ComponentProps<'button'> & { variant?: Variant; size?: Size; static?: boolean }) {
   return <button type={type} className={buttonClass({ variant, size, pressable: !isStatic, className })} {...props} />
+}
+
+/** The one link look: text with a quiet underline that darkens on hover. For "Why?", "See the days", "Edit in Plan". */
+export function buttonLinkClass(className?: string) {
+  return cn(
+    'rounded-xs font-medium text-ink-2 underline decoration-1 decoration-ink/30 underline-offset-4',
+    'transition-[color,text-decoration-color] duration-150 ease-out-quint focus-visible:outline-2 focus-visible:outline-pill',
+    'hover-fine:text-ink hover-fine:decoration-current',
+    className,
+  )
 }

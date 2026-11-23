@@ -7,8 +7,10 @@ import { ArrowDownLeft, Check, CircleAlert, Info, LoaderCircle, Pause, Trash2, X
 import { EASE_OUT_STRONG } from '@/ui/beui/lib/ease'
 import { AnimatedToastStack, type AnimatedToast, type ToastStatus } from '@/ui/beui/motion/animated-toast-stack'
 import { cn } from '../cn'
+import type { PictureRef } from '../picture'
 import { AppLogo } from './app-logo'
 import { Button, buttonClass } from './button'
+import { Picture } from './picture'
 import { DEMO_MESSAGE } from '@/core/demo'
 
 type Tone = 'good' | 'bad' | 'neutral'
@@ -19,10 +21,15 @@ type Kind = Tone | 'loading'
  * or a ready-made tile such as `<AppLogo size="xs" />`. Pictures and tiles show the tone as a badge on their corner.
  */
 type Glyph = LucideIcon | string | React.ReactElement
-type Extra = { description?: string; icon?: Glyph; action?: { label: string; onClick: () => void }; duration?: number }
+type Extra = {
+  description?: string; icon?: Glyph
+  /** The thing the toast is about, as a 20px `Picture` in the tile (a routine, tracker, merchant, connector...). Wins over `icon`. */
+  picture?: PictureRef
+  action?: { label: string; onClick: () => void }; duration?: number
+}
 
 /**
- * `toast(title, tone, { description, icon, action })`: the title says what happened to what ("Gym paused"), the
+ * `toast(title, tone, { description, icon, picture, action })`: the title says what happened to what ("Gym paused"), the
  * description adds one detail. `action` is one button, such as Undo: it runs `onClick` and closes the toast.
  * `toast.loading(title)` returns an id; `toast.update(id, title, tone)` morphs it in place (spinner → check), so
  * a long action reads as one notification, not two. `toast.error()` is the one wording for "that didn't save".
@@ -196,7 +203,7 @@ function ToastBody({ item: t }: { item: Item }) {
 
   return (
     <div className="group flex items-center gap-3" onPointerEnter={() => hover(true)} onPointerLeave={() => hover(false)} onFocus={() => hover(true)} onBlur={() => hover(false)}>
-      <Tile kind={t.kind} icon={t.icon} />
+      <Tile kind={t.kind} icon={t.picture ? <span className="grid size-9 place-items-center rounded-[10px] bg-surface-2"><Picture {...t.picture} size={20} /></span> : t.icon} />
 
       <div className="min-w-0 flex-1">
         <AnimatePresence mode="popLayout" initial={false}>
@@ -238,6 +245,8 @@ export function ToastGallery() {
       <Button onClick={() => toast('Settings saved', 'good')}>Done</Button>
       <Button onClick={() => toast('Water +250 ml', 'good', { description: '750 ml today', icon: '/routines/water.png' })}>With a picture</Button>
       <Button onClick={() => toast('Water +250 ml · 750 ml today', 'good', { description: '+5 XP', icon: '/routines/water.png', action: { label: 'Undo', onClick: () => toast('Undone', 'neutral') } })}>With Undo</Button>
+      <Button onClick={() => toast('Morning skincare done', 'good', { description: '+5 XP', picture: { of: 'routine', name: 'Morning skincare' }, action: { label: 'Undo', onClick: () => toast('Undone', 'neutral') } })}>With a picture (20px)</Button>
+      <Button onClick={() => toast('₹420 to Swiggy Instamart', 'neutral', { picture: { of: 'merchant', name: 'Swiggy Instamart' } })}>With a logo (20px)</Button>
       <Button onClick={() => toast('Gym paused', 'neutral', { icon: Pause })}>Paused</Button>
       <Button onClick={() => toast('Gym deleted', 'neutral', { icon: Trash2 })}>Deleted</Button>
       <Button onClick={() => toast.error()}>Error</Button>

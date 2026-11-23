@@ -15,6 +15,8 @@ export type ConnectionView = {
   pair: string
   /** "next day", "same day" or "this week". */
   when: string
+  /** The short name of each signal (`Routines done`, `Sleep`), for labels on the sparkline. */
+  names: string[]
   /** The area of each signal (`mind`, `health`...), for the two marks. A change with no partner has one. */
   areas: string[]
   /** The describe text as parts; the key figures are bold. Joined, it is exactly the describe text. */
@@ -60,6 +62,7 @@ export function connectionView(src: { link: Link } | { change: Change }, opts: {
       variant: 'link',
       pair: `${l.a.name} and ${l.b.name.toLowerCase()}`,
       when: l.lag ? 'next day' : 'same day',
+      names: [l.a.name, l.b.name],
       areas: [l.a.area, l.b.area],
       parts: mark(describeLink(l), [formatValue(l.high, l.b.unit), formatValue(l.low, l.b.unit)]),
       caption: `From ${l.n} days of data`,
@@ -77,6 +80,7 @@ export function connectionView(src: { link: Link } | { change: Change }, opts: {
     variant: 'change',
     pair: partner ? `${c.signal.name} and ${partner.name.toLowerCase()}` : c.signal.name,
     when: 'this week',
+    names: partner ? [c.signal.name, partner.name] : [c.signal.name],
     areas: partner ? [c.signal.area, partner.area] : [c.signal.area],
     parts: mark(describeChange(c), [formatValue(c.recent, c.signal.unit), formatValue(c.usual, c.signal.unit)]),
     caption: 'This week against the 4 before',

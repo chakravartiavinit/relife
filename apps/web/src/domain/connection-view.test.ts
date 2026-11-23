@@ -19,6 +19,7 @@ test('a link keeps describeLink as its sentence and bolds the two averages', () 
   const v = connectionView({ link })
   assert.equal(v.parts.map((p) => p.text).join(''), describeLink(link))
   assert.deepEqual(v.parts.filter((p) => p.bold).map((p) => p.text), ['7.6 h', '6.8 h'])
+  assert.deepEqual(v.names, ['Routines done', 'Sleep'])
   assert.deepEqual([v.variant, v.pair, v.when, v.areas, v.caption, v.status], ['link', 'Routines done and sleep', 'next day', ['mind', 'health'], 'From 42 days of data', null])
 })
 

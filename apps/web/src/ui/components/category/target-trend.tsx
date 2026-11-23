@@ -30,8 +30,10 @@ export function TargetTrendLegend({ target, unit, color, className }: { target: 
   )
 }
 
-export function TargetTrend({ data, target, unit, color, label, direction = 'up', height = 260 }: {
+export function TargetTrend({ data, target, unit, color, label, direction = 'up', height = 260, targetLabel = 'Target' }: {
   data: Point[]; target: number; unit?: string; color: string; label: string; direction?: 'up' | 'down'; height?: number
+  /** What the dashed line is called at its end (`Usual` for a line that is not a target). */
+  targetLabel?: string
 }) {
   const { rows, axis, config, last } = useMemo(() => {
     const first = data.findIndex((p) => p.value != null)
@@ -66,7 +68,7 @@ export function TargetTrend({ data, target, unit, color, label, direction = 'up'
           dataKey="goal" strokeVariant="dashed" strokeWidth={1.5}
           lineProps={{
             dataKey: 'goal', stroke: 'var(--ink-2)', dot: false,
-            label: ({ x, y, index }: Lab) => (index === last ? <text key="goal" x={Number(x) + 8} y={Number(y) + 4} fontSize={12} fill="var(--ink-2)">Target</text> : <g key={index} />),
+            label: ({ x, y, index }: Lab) => (index === last ? <text key="goal" x={Number(x) + 8} y={Number(y) + 4} fontSize={12} fill="var(--ink-2)">{targetLabel}</text> : <g key={index} />),
           }}
         />
       </EvilLineChart>

@@ -157,11 +157,21 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
   they are filled, then does the same. Today redirects here until `profile.onboardedAt` is set; "Run setup again" (Settings)
   sends only what was changed. `/dev/ui` "Setup" draws every step and the preview from fixtures.
 - Look ("ReLife capsule"): ink black, white and the logo's capsule blue, light-first. The signature shapes are
-  `CapsuleIcon` (`capsule-icon.tsx`, the tilted pill from the logo, for areas and avatars), `SystemLabel` (mono
-  area label in `card.tsx`) and the `.halftone` dot texture in header corners. No other decorative textures.
-- Type: the scale lives in `globals.css` (`text-display`, `text-title`, `text-heading`, `text-body`, `text-small`,
-  `text-caption`, `text-label font-mono uppercase`; big numbers use `num`). New code uses these, not `text-[13px]`;
+  `CapsuleIcon` (`capsule-icon.tsx`, the tilted pill from the logo, for areas and avatars), `SystemLabel` (the sentence-case
+  label with an area dot in `card.tsx`) and the `.halftone` dot texture in header corners. No other decorative textures.
+- Type (T1 "Field notebook"): Fraunces (`font-display`, SOFT 50, WONK 0, opsz auto; 400/500) for page titles, card titles and
+  one standalone figure; Hanken Grotesk (400/500/600, tabular figures) for everything else and every number in a row or column
+  (`num`). No mono face is loaded (`font-mono` is the system one, for codes). The scale lives in `globals.css`: `text-display`
+  44/48 (phone 34/40), `text-title` 28/34, `text-heading` 19/24, `text-figure` 36/40, `text-body` 15/22 (phone 16/24),
+  `text-small`, `text-caption`, `text-label` 13/16 500. New code uses these, not `text-[13px]`;
   `apps/web/src/ui/type-scale.test.ts` counts the old arbitrary sizes and fails if the number goes up (lower it when you convert some).
+- Calm components (`apps/web/src/ui/components/`, `/dev/ui` "Calm system"): `StatusWord` (dot + word in `--good-ink`, `--warn-ink`,
+  `--bad-ink`; the six words come from `statusOf` in `domain/status-of.ts`), `StatCard`, `StatusRow`, `Connection` (a `Link` or
+  `Change`; text and figures from `connectionView` in `domain/connection-view.ts`), `InsightLine`, `Fold`, `EmptyState`,
+  `LeadChart` (`charts.tsx`), `Chip` (filters only), `buttonLinkClass` (the one link look) and `Picture`, which draws what
+  `pictureSpec` (`ui/picture.ts`) resolves for a nav item, area, routine, tracker, hobby, category, merchant, connector, AI
+  provider, coin, device, medal or library item, from files the app ships, with the lettered fallback. Toasts take `picture`
+  (20px) and `peekHeading` can return `picture` (40px).
 - Shared primitives: `Sheet` (`sheet.tsx`: bottom sheet on a phone, non-modal 440px right panel on a laptop, starting at
   `--sheet-top`), `SegmentTabs` (`segment-tabs.tsx`: route-driven pill tabs), `PeekLink`/`openPeek`
   (`peek/peek-link.tsx`: open `?peek=type:id` without a server trip; `apps/web/src/domain/peek.ts` parses it). Route map and

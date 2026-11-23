@@ -9,6 +9,7 @@ import { EvilPieChart } from '@/components/evilcharts/charts/recharts-pie-chart'
 import type { ChartConfig } from '@/components/evilcharts/ui/recharts-chart'
 import { hasTrend, interpolateGaps, leadSeries, niceAxis, trimLeadingEmpty, type RankedSeries } from '@/domain/series'
 import { CHART, chartShade } from '../tokens'
+import { TargetTrend } from './category/target-trend'
 
 // ReLife's charts: EvilCharts (evilcharts.com), installed unmodified with `npx shadcn add @evilcharts/…` into
 // src/components/evilcharts. These wrappers only pick the chart, its parts and ReLife's colours.
@@ -18,6 +19,7 @@ import { CHART, chartShade } from '../tokens'
 //   a ranking (spending by category)              → RankedBars  (horizontal bars, sorted)
 //   shares of a whole (XP by kind, holdings)      → ShareDonut  (pie chart as a ring, with its legend)
 //   several series per period (spend by month)    → StackedBars  (the lead series in the accent, the rest in neutrals)
+//   the one lead chart of a screen                (LeadChart: a line with its dashed reference and its last value written on it)
 //   a tiny trend in a stat tile                   → Sparkline    (render its slot only when `hasTrend` from domain/series says there is one)
 // One lead chart per screen, 240 to 280 high (`height`); the others sit at 120 to 160 and are a different kind.
 // One accent per chart. Area colours (`--cat-*`) belong to area series and are kept; nothing else gets its own hue.
@@ -304,4 +306,18 @@ export function StackedBars({ categories, series, unit, height = 220, label, top
       {legend ? <Legend items={ranked} /> : null}
     </figure>
   )
+}
+
+/**
+ * The one lead chart of a screen: direction over time, labelled on the chart itself. Give it a `reference` (a target, or
+ * the usual level) and it draws a line with a dashed reference line named at its end, a filled dot for every day on the
+ * right side of it and a hollow one under it, and the last value written beside the last dot; with none it is the plain
+ * area. At most one per screen, 240 to 280 high. Its card heading carries the status word, the chart carries no legend.
+ */
+export function LeadChart({ data, color = CHART.accent, unit, reference, direction = 'up', label, height = 260 }: {
+  data: Point[]; color?: string; unit?: string; label: string; direction?: 'up' | 'down'; height?: number
+  reference?: { value: number; label?: string }
+}) {
+  if (!reference) return <TrendArea data={data} color={color} unit={unit} label={label} height={height} />
+  return <TargetTrend data={data} color={color} unit={unit} label={label} height={height} direction={direction} target={reference.value} targetLabel={reference.label} />
 }
