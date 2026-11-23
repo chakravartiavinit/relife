@@ -93,3 +93,13 @@ export function CapsuleGauge({ value, max, color, label }: { value: number; max:
     </div>
   )
 }
+
+/** The plain 4px bar for a count toward a total (done of today's plan): a flat track and one fill, no segments. */
+export function Bar({ value, max = 1, color = 'var(--ink-2)', label, className }: { value: number; max?: number; color?: string; label?: string; className?: string }) {
+  const pct = max > 0 ? Math.max(0, Math.min(1, value / max)) : 0
+  return (
+    <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={Math.min(value, max)} className={cn('h-1 overflow-hidden rounded-full bg-ink/[0.08]', className)}>
+      <div className="h-full rounded-full transition-[width] duration-300 ease-out-quint" style={{ width: `${pct * 100}%`, background: color }} />
+    </div>
+  )
+}

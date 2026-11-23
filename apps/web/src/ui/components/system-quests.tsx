@@ -4,8 +4,8 @@ import { useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
-  Bike, BookOpen, Check, CircleDot, Cookie, CupSoda, Droplet, Footprints, GitCommitHorizontal, GitPullRequest, GraduationCap, Laptop, Loader2,
-  CircleCheck, MessageSquareCode, Moon, MoonStar, Puzzle, ShoppingBag, Siren, Smartphone, Smile, Swords, Target, Tv, Wallet, X, Zap, type LucideIcon,
+  Bike, BookOpen, Check, CircleDot, Cookie, CupSoda, Flag, Droplet, Footprints, GitCommitHorizontal, GitPullRequest, GraduationCap, Laptop, Loader2,
+  CircleCheck, MessageSquareCode, Moon, MoonStar, Puzzle, ShoppingBag, Siren, Smartphone, Smile, Target, Tv, Wallet, X, Zap, type LucideIcon,
 } from 'lucide-react'
 import { CATEGORY } from '../tokens'
 import { chooseQuestRecovery, summonSystem } from '@/app/actions'
@@ -13,10 +13,11 @@ import { formatValue } from '@/domain/patterns'
 import type { QuestStatus, Rank, SystemKind } from '@/domain/system'
 import type { RecoveryChoice, RecoveryView } from '@/domain/recovery'
 import { Button, buttonClass } from './button'
-import { Capsule } from './capsule'
+import { Bar, Capsule } from './capsule'
 import { usePeekChanged } from './peek/peek-context'
 import { PeekLink } from './peek/peek-link'
 import { openCapture } from './capture/capture-data'
+import { Picture } from './picture'
 import { cn } from '../cn'
 
 export type SystemQuestItem = {
@@ -64,8 +65,8 @@ export function SystemQuests({ quests, difficulty, hasData, timezone, recovery, 
 
   return (
     <div>
-      <div className="mb-2 flex items-center justify-between gap-3">
-        {compact ? <p className="text-small font-medium text-ink-3">System · today{dailies.length ? ` · ${cleared}/${dailies.length}` : ''}</p> : <p className="text-small font-medium text-pill-ink">[System]</p>}
+      <div className={cn('mb-2 flex items-center justify-between gap-3', compact && !quests.length && 'hidden')}>
+        {compact ? <p className="text-small font-medium text-ink-3">The System, today</p> : <p className="text-small font-medium text-pill-ink">[System]</p>}
         <span className="flex items-center gap-2 text-caption text-ink-3 tabular-nums">
           <span title={`Difficulty ${difficulty} of 5: it rises as you clear quests and eases after misses.`} className="flex items-center gap-0.5" aria-label={`Difficulty ${difficulty} of 5`}>
             {[1, 2, 3, 4, 5].map((i) => <span key={i} aria-hidden className="h-2.5 w-1 rounded-full" style={{ background: i <= difficulty ? 'var(--pill)' : 'var(--hairline)' }} />)}
@@ -266,8 +267,8 @@ function Summon({ hasData }: { hasData: boolean }) {
   return (
     <div className="flex flex-col items-start gap-2.5">
       <p className="text-caption text-ink-3">The System hasn’t issued today’s quests yet.</p>
-      <Button size="sm" variant="primary" disabled={pending} onClick={() => start(async () => { await summonSystem() })}>
-        {pending ? <Loader2 className="size-3.5 animate-spin" strokeWidth={2} aria-hidden /> : <Swords className="size-3.5" strokeWidth={1.5} aria-hidden />}
+      <Button variant="secondary" disabled={pending} onClick={() => start(async () => { await summonSystem() })}>
+        {pending ? <Loader2 className="size-4 animate-spin" strokeWidth={2} aria-hidden /> : <Flag className="size-4" strokeWidth={1.5} aria-hidden />}
         {pending ? 'The System is choosing…' : 'Receive today’s quests'}
       </Button>
     </div>
@@ -277,7 +278,6 @@ function Summon({ hasData }: { hasData: boolean }) {
 
 /** The rail's quest: title, what it needs ("5,412 / 8,000", XP, Done) and a thin bar. Mood-type quests carry a Log button for Capture. */
 function CompactQuestRow({ q }: { q: SystemQuestItem }) {
-  const area = q.area && q.area in CATEGORY ? CATEGORY[q.area as keyof typeof CATEGORY].color : 'var(--pill)'
   const done = q.status === 'cleared'
   const closed = q.status !== 'active'
   const value = q.progress ?? 0
@@ -287,8 +287,8 @@ function CompactQuestRow({ q }: { q: SystemQuestItem }) {
     <li className="min-w-0">
       <div className="flex min-h-10 items-center justify-between gap-3">
         <PeekLink to={{ type: 'quest', id: q.id }} className={cn('flex min-w-0 items-center gap-2 rounded-xs text-body hover:underline focus-visible:outline-2 focus-visible:outline-pill', done ? 'text-ink-3 line-through decoration-ink-3/50' : 'text-ink')}>
-          <span aria-hidden title={`Rank ${q.rank}`} className="font-mono text-label" style={{ color: `color-mix(in oklch, ${RANK_COLOR[q.rank]} 85%, var(--ink))` }}>{q.rank}</span>
-          <span className="truncate">{q.title}</span>
+          <Picture of="routine" name={q.title} kind="quest" area={q.area} size={20} />
+          <span className="truncate">{q.title}<span className="sr-only">, rank {q.rank}</span></span>
         </PeekLink>
         {asks ? (
           <Button size="sm" variant="secondary" onClick={() => openCapture()}>Log</Button>
@@ -307,7 +307,7 @@ function CompactQuestRow({ q }: { q: SystemQuestItem }) {
         )}
       </div>
       {!closed && !asks && q.progress != null ? (
-        <Capsule value={Math.min(value, q.target)} max={q.target || 1} size="sm" color={over ? 'var(--bad)' : q.op === 'lte' ? 'var(--good)' : area} label={`${q.title}: ${formatValue(value, q.unit)} of ${formatValue(q.target, q.unit)}`} />
+        <Bar value={Math.min(value, q.target)} max={q.target || 1} color={over ? 'var(--bad)' : q.op === 'lte' ? 'var(--good)' : undefined} label={`${q.title}: ${formatValue(value, q.unit)} of ${formatValue(q.target, q.unit)}`} className="mt-0.5" />
       ) : null}
     </li>
   )

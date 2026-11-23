@@ -3,8 +3,8 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useOptimistic, useState, useTransition } from 'react'
 import { Check, ChevronDown, Minus, Moon, RotateCcw, SkipForward, Sun, Sunrise, type LucideIcon } from 'lucide-react'
-import { routineArt } from '../routine-icons'
 import { RoutineArt } from './routine-art'
+import { Picture } from './picture'
 import { addToGoal, setGoalTarget, toggleCheck, undoGoalStep, undoQuickLog } from '@/app/actions'
 import { cn } from '../cn'
 import { Button } from './button'
@@ -12,7 +12,6 @@ import { Capsule } from './capsule'
 import { Fold } from './fold'
 import { announceXp, useToast } from './toast'
 import { EASE_OUT, EASE_OUT_STRONG } from '@/ui/beui/lib/ease'
-import { Collapsible, CollapsibleContent, CollapsibleIndicator, CollapsibleTrigger } from '@/ui/beui/motion/collapsible'
 import { nextUp, planPeriods, timeUntil, type Period, type PeriodGroup } from '@/domain/day-plan'
 import { PeekLink } from './peek/peek-link'
 
@@ -60,7 +59,7 @@ export function Agenda({ rows, timeline, phoneOpen }: { rows: AgendaRow[]; /** O
         announceXp(toast, await toggleCheck(r.scheduleId, r.occurrence, status))
         if (status) {
           toast(`${r.name} ${status === 'done' ? 'done' : 'skipped'}`, 'good', {
-            description: status === 'done' && r.xp ? `+${r.xp} XP` : undefined, icon: routineArt(r.name, r.kind, r.area),
+            description: status === 'done' && r.xp ? `+${r.xp} XP` : undefined, picture: { of: 'routine', name: r.name, kind: r.kind, area: r.area },
             action: { label: 'Undo', onClick: () => act(r, null) },
           })
         }
@@ -194,13 +193,13 @@ function UpNext({ r, now, act }: { r: AgendaRow; now: string; act: (r: AgendaRow
         </span>
         <div className="min-w-0">
           <p className={cn('text-small font-medium tabular-nums', r.status === 'missed' ? 'text-bad' : 'text-ink-2')}>{r.time}{r.status === 'missed' ? ' · overdue' : ''}</p>
-          <PeekLink to={{ type: 'routine', id: r.scheduleId }} className="line-clamp-2 rounded-xs text-title text-ink hover-fine:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">{r.name}</PeekLink>
+          <PeekLink to={{ type: 'routine', id: r.scheduleId }} className="line-clamp-2 rounded-xs font-display text-title text-ink hover-fine:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">{r.name}</PeekLink>
           {facts ? <p className="truncate text-small text-ink-3 tabular-nums">{facts}</p> : null}
         </div>
       </div>
       <div className="mt-auto flex items-center gap-2 pt-4">
         <Button variant="primary" onClick={() => act(r, 'done')} aria-label={`Check off ${r.name}`} className="h-11 flex-1 grid-md:h-9 grid-md:flex-none">Check off</Button>
-        <Button variant="ghost" onClick={() => act(r, 'skipped')} aria-label={`Skip ${r.name}`} className="h-11 text-ink-2 grid-md:h-8">Skip</Button>
+        <Button variant="quiet" onClick={() => act(r, 'skipped')} aria-label={`Skip ${r.name}`} className="h-11 grid-md:h-9">Skip</Button>
       </div>
     </div>
   )
@@ -262,20 +261,12 @@ function NowLine({ now }: { now: string }) {
   )
 }
 
-/** "6 done ●●●●●● Wake up, Morning walk, …": one line per period; opens to the done rows, each with Undo. */
+/** "3 done  Gym, Vitamin D3, Omega-3": one line per period (a fold); opens to the done rows, each with Undo. */
 function DoneLine({ rows, act }: { rows: AgendaRow[]; act: (r: AgendaRow, status: 'done' | 'skipped' | null) => void }) {
   return (
-    <Collapsible className="mt-1">
-      <CollapsibleTrigger className="flex min-h-10 w-full items-center gap-3 rounded-md px-3 text-small text-ink-3 hover:text-ink-2 focus-visible:outline-2 focus-visible:outline-pill">
-        <CollapsibleIndicator className="ml-0 -rotate-90 text-ink-3" />
-        <span className="font-medium text-ink-2 tabular-nums">{rows.length} done</span>
-        <span aria-hidden className="flex shrink-0 gap-1">{rows.slice(0, 8).map((r) => <span key={r.key} className="size-2 rounded-full" style={{ background: r.color }} />)}</span>
-        <span className="min-w-0 flex-1 truncate text-start max-sm:hidden">{rows.map((r) => r.name).join(', ')}</span>
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <ul className="flex flex-col pb-1">{rows.map((r) => <li key={r.key}><DoneRow r={r} onUndo={() => act(r, null)} /></li>)}</ul>
-      </CollapsibleContent>
-    </Collapsible>
+    <Fold title={`${rows.length} done`} summary={rows.map((r) => r.name).join(', ')} className="mt-1">
+      <ul className="flex flex-col pb-1">{rows.map((r) => <li key={r.key}><DoneRow r={r} onUndo={() => act(r, null)} /></li>)}</ul>
+    </Fold>
   )
 }
 
@@ -344,9 +335,9 @@ function Row({ r, onToggle, onSkip, compact = false }: { r: AgendaRow; onToggle:
         aria-hidden
         animate={won ? { scale: [1, 1.12, 1], rotate: [0, -8, 0] } : undefined}
         transition={{ duration: 0.4, ease: EASE_OUT_STRONG }}
-        className={cn('grid shrink-0 place-items-center bg-surface-2', compact ? 'size-9 rounded-md' : 'size-10 rounded-md')}
+        className={cn('grid shrink-0 place-items-center', !compact && 'size-10 rounded-md bg-surface-2')}
       >
-        <RoutineArt name={r.name} kind={r.kind} area={r.area} />
+        {compact ? <Picture of="routine" name={r.name} kind={r.kind} area={r.area} size={32} /> : <RoutineArt name={r.name} kind={r.kind} area={r.area} />}
       </motion.span>
       <div className="min-w-0 flex-1">
         <PeekLink to={{ type: 'routine', id: r.scheduleId }} className={cn('block truncate rounded-xs text-body font-medium transition-[color] duration-200 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill', won ? 'text-ink-3' : 'text-ink')}>{r.name}</PeekLink>
@@ -414,7 +405,7 @@ function DoneRow({ r, onUndo }: { r: AgendaRow; onUndo: () => void }) {
   return (
     <div className="group/row flex h-11 items-center gap-3.5 rounded-[12px] px-3 transition-[background-color] duration-150 hover:bg-ink/[0.03] dark:hover:bg-white/[0.04]">
       {/* Done: the same picture, faded and greyed, beside struck-through text. */}
-      <RoutineArt name={r.name} kind={r.kind} area={r.area} className="size-5 shrink-0 opacity-70 grayscale-[0.5]" />
+      <Picture of="routine" name={r.name} kind={r.kind} area={r.area} size={20} className="opacity-70 grayscale-[0.5]" />
       <span className="min-w-0 flex-1 truncate text-body text-ink-3 line-through decoration-ink-3/40">{r.name}</span>
       {skipped ? <span className="text-caption text-ink-3">Skipped</span> : null}
       {/* Hover hint only: the check button beside it is the one control (and the one name) for Undo. */}
@@ -462,7 +453,7 @@ export function Goals({ rows, compact }: { rows: GoalRow[]; /** Today's "All day
       announceXp(toast, news)
       let used = false
       toast(`${g.name} +${fmtAmount(amount, g.unit)}`, 'good', {
-        description: `${fmtAmount(g.value + amount, g.unit)} of ${fmtAmount(g.target, g.unit)} today`, icon: routineArt(g.name, 'routine', g.area ?? 'health'),
+        description: `${fmtAmount(g.value + amount, g.unit)} of ${fmtAmount(g.target, g.unit)} today`, picture: { of: 'routine', name: g.name, kind: 'routine', area: g.area ?? 'health' },
         action: { label: 'Undo', onClick: () => {
           if (used) return
           used = true
@@ -476,7 +467,7 @@ export function Goals({ rows, compact }: { rows: GoalRow[]; /** Today's "All day
   })
   const retarget = (g: GoalRow, target: number) => start(async () => {
     change({ id: g.scheduleId, target })
-    try { await setGoalTarget(g.scheduleId, target); toast(`${g.name} target saved`, 'good', { description: `${fmtAmount(target, g.unit)} a day`, icon: routineArt(g.name, 'routine', g.area ?? 'health') }) } catch { toast.error() }
+    try { await setGoalTarget(g.scheduleId, target); toast(`${g.name} target saved`, 'good', { description: `${fmtAmount(target, g.unit)} a day`, picture: { of: 'routine', name: g.name, kind: 'routine', area: g.area ?? 'health' } }) } catch { toast.error() }
   })
 
   return (

@@ -1,13 +1,13 @@
 import { cache } from 'react'
 import { AREA_LIST, areaScope, loadAreaKpis, type AreaKpi, type AreaSlug } from './areas'
-import { loadHubSparks } from './life-week'
 import { loadTodayBriefing } from './today'
-import { localDate } from './time'
 import type { User } from './user'
-import { formatMoney } from '@/domain/money'
 import type { PeekRef } from '@/domain/peek'
+import { areaStatus, changesOf } from '@/domain/life-status'
+import type { Status } from '@/domain/status-of'
+import { patternsFor } from './patterns'
 
-/** One cell of Today's Life pulse: an area's key number for today, a line of context and a 7-day trend. */
+/** One row of Today's Life pulse: an area's key number for today with a line of context and a status word. */
 export type PulseTile = {
   slug: AreaSlug
   title: string
@@ -17,50 +17,38 @@ export type PulseTile = {
   value: string
   sub?: string
   tone?: 'good' | 'bad'
+  status: Status
   /** Where a tap goes. */
   peek: PeekRef
-  /** Nothing logged yet: the cell says so and opens Capture instead of a Peek. */
+  /** Nothing logged yet: the row says so and opens Capture instead of a Peek. */
   action?: 'capture'
-  spark?: { date: string; value: number | null }[]
 }
 
 /** Which of an area's headline numbers is its key number on Today (the first unless listed). Time leads with focus. */
 const KEY_KPI: Partial<Record<AreaSlug, number>> = { time: 1 }
-/** The tracker behind each cell's trend when the area has no pinned one. */
-const SPARK: Partial<Record<AreaSlug, string>> = { time: 'screen.work' }
-
 const measureOf = (k: AreaKpi) => k.label.split(',')[0].replace(/ today$/, '')
 
 /**
- * Today's Life pulse: the areas the user shows, then Time. Each number comes from the area's own headline
- * numbers (`AreaDef.kpis`, the ones its page and the Life hub show), so a cell never disagrees with its page.
- * Wealth reads spent today against a usual day and Mind says so when no mood is logged yet.
+ * Today's Life pulse: the areas the user shows except Wealth (Money today has it), then Time. Each row's number comes
+ * from the area's own headline numbers (`AreaDef.kpis`, the ones its page and the Life hub show), so a row never
+ * disagrees with its page; its word comes from the week's change in that area, else from those numbers. Mind says so
+ * when no mood is logged yet.
  */
 export const loadPulse = cache(async (user: User): Promise<PulseTile[]> => {
-  const today = localDate(new Date(), user.timezone)
   const picked = user.profile.areas
-  const defs = AREA_LIST.filter((d) => d.category === null || !picked?.length || picked.includes(d.category))
-  const [{ briefing: b }, kpis, sparks] = await Promise.all([
+  const defs = AREA_LIST.filter((d) => d.slug !== 'wealth' && (d.category === null || !picked?.length || picked.includes(d.category)))
+  const [{ briefing: b }, kpis, patterns] = await Promise.all([
     loadTodayBriefing(user),
     Promise.all(defs.map((d) => loadAreaKpis(user, d.slug))),
-    loadHubSparks(user, today, Object.fromEntries(defs.map((d) => [d.slug, SPARK[d.slug] ?? d.pinned[0]]))),
+    patternsFor(user),
   ])
-  const money = (v: number) => formatMoney(v, user.baseCurrency, { decimals: 0 })
   return defs.map((d, i): PulseTile => {
     const k = kpis[i][KEY_KPI[d.slug] ?? 0]
-    const base = { slug: d.slug, title: d.title, color: d.color, spark: sparks[d.slug]?.points.slice(-7) }
+    const base = { slug: d.slug, title: d.title, color: d.color }
     const brief: PeekRef = { type: 'brief', id: areaScope(d) }
-    if (d.slug === 'wealth') {
-      const { spentToday, usualDay } = b.money
-      const diff = usualDay ? spentToday - usualDay : null
-      return {
-        ...base, measure: 'Spent', value: money(spentToday), peek: brief,
-        sub: diff == null ? `${b.money.countToday} payment${b.money.countToday === 1 ? '' : 's'}` : `${money(Math.abs(diff))} ${diff <= 0 ? 'under' : 'over'} a usual day`,
-        tone: usualDay && spentToday > usualDay * 1.5 ? 'bad' : undefined,
-      }
-    }
-    if (d.slug === 'mind' && b.mood == null) return { ...base, measure: 'Mood', value: '–', sub: 'Not logged · tap to log', peek: k?.peek ?? brief, action: 'capture' }
-    if (!k) return { ...base, measure: d.title, value: '–', sub: 'Nothing tracked yet', peek: brief }
-    return { ...base, measure: measureOf(k), value: k.value, sub: k.sub, tone: k.tone, peek: k.peek ?? brief }
+    const status = (hasData: boolean) => areaStatus({ changes: changesOf(patterns.changes, d.category ?? 'time'), tones: kpis[i].map((x) => x.tone), hasData })
+    if (d.slug === 'mind' && b.mood == null) return { ...base, measure: 'Mood', value: '–', sub: 'Not logged · tap to log', peek: k?.peek ?? brief, action: 'capture', status: status(false) }
+    if (!k) return { ...base, measure: d.title, value: '–', sub: 'Nothing tracked yet', peek: brief, status: 'Quiet' }
+    return { ...base, measure: measureOf(k), value: k.value, sub: k.sub, tone: k.tone, peek: k.peek ?? brief, status: status(true) }
   })
 })

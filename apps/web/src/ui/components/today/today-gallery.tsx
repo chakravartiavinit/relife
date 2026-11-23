@@ -1,8 +1,9 @@
 'use client'
 
 import { Agenda, Goals } from '../agenda'
-import { Badge, Card, CardHeader } from '../card'
-import { Capsule } from '../capsule'
+import { Card, CardHeader } from '../card'
+import { Bar } from '../capsule'
+import { buttonLinkClass } from '../button'
 import { SetupSteps } from './setup-compact'
 import { GridItem, PageGrid } from '../page-grid'
 import { Quests } from '../quests'
@@ -11,14 +12,15 @@ import { GoalsCard } from '../goals/goals-card'
 import { AttentionStrip } from './attention-strip'
 import { DayComplete } from './day-complete'
 import { MoneyToday } from './money-today'
-import { PulseHead, PulseRow } from './pulse-row'
+import { PulseCard } from './pulse-row'
+import { Connection } from '../connection'
 import { SetupCard } from './setup-card'
 import { TodayHeader } from './today-header'
 import { TomorrowCard } from './tomorrow-card'
 import * as fx from '@/ui/fixtures/today'
 
-// /dev/ui: Today from fixtures, in the sample day's states: the whole layout (plan with Up next, rail, pulse beside
-// Money), the head, the rail cards on their own, first day and all done. The timeline and quantity rows use the real
+// /dev/ui: Today from fixtures, in the sample day's states: the whole layout (plan with Up next and the Life pulse under it,
+// the rail), the head, the rail cards on their own, first day and all done. The timeline and quantity rows use the real
 // actions, so on fixture ids a tap fails and the row comes back with the error toast.
 
 const Sub = ({ title, children }: { title: string; children: React.ReactNode }) => (
@@ -32,8 +34,8 @@ function Plan({ now, rows = fx.TIMELINE, lead }: { now: string; rows?: typeof fx
   const done = rows.filter((r) => r.status === 'done').length
   return (
     <Card className="flex flex-col p-5 grid-md:p-6">
-      <CardHeader title={<>Today’s plan<Badge className="ms-2 align-middle tabular-nums">{done} of {rows.length} done</Badge></>} action={<span className="text-small font-medium text-pill-ink">Edit in Plan</span>} />
-      <Capsule value={done} max={rows.length} size="sm" color="var(--pill)" label="Done today" className="-mt-2 mb-5" />
+      <CardHeader title="Today’s plan" className="mb-3" action={<span className={buttonLinkClass('inline-flex h-8 items-center text-small')}>Edit in Plan</span>} />
+      <Bar value={done} max={rows.length} label="Done today" className="mb-5" />
       <Agenda rows={rows} timeline={{ now, lead }} />
     </Card>
   )
@@ -46,18 +48,20 @@ export function TodayGallery() {
       <Sub title="Header: first day"><TodayHeader d={fx.HEADER_FIRST_DAY} /></Sub>
       <Sub title="Header: all done"><TodayHeader d={fx.HEADER_DONE} /></Sub>
 
-      <Sub title="The page: plan with Up next beside the water panel (Now at 14:10), the rail, Life pulse beside Money today">
+      <Sub title="The page: plan with Up next beside the water panel (Now at 14:10) and the Life pulse under it, the rail beside them">
         <PageGrid>
-          <GridItem span={{ base: 12, lg: 8 }} className="flex flex-col [&>:last-child]:flex-1"><Plan now="14:10" lead={<Goals rows={fx.ALL_DAY} compact />} /></GridItem>
-          <Rail span={{ base: 12, lg: 4 }} pairs as="aside" aria-label="Also today">
+          <GridItem span={{ base: 12, lg: 8 }} className="flex flex-col gap-6 self-start">
+            <Plan now="14:10" lead={<Goals rows={fx.ALL_DAY} compact />} />
+            <PulseCard tiles={fx.PULSE} connection={<Connection change={fx.CHANGE} today={fx.FIXTURE_TODAY} />} />
+          </GridItem>
+          <Rail span={{ base: 12, lg: 4 }} pairs as="aside" aria-label="Also today" className="self-start">
             <AttentionStrip cards={fx.ATTENTION} coach={4} className="grid-md:col-span-2 grid-lg:col-span-1" />
+            <Card aria-labelledby="worth-fx" className="flex flex-col gap-3"><h2 id="worth-fx" className="text-label text-ink-2">Worth knowing</h2><Connection link={fx.LINK} today={fx.FIXTURE_TODAY} spark /></Card>
             <GoalsCard goals={fx.GOALS} due={1} />
+            <MoneyToday v={fx.MONEY} />
             <Quests system={SYSTEM} weekly={fx.WEEKLY} chests={fx.CHESTS} freezes={1} frozeOn={[]} weekLeft={3} />
             <SetupSteps steps={fx.STEPS} className="grid-md:col-span-2 grid-lg:col-span-1" />
           </Rail>
-          <GridItem><PulseHead /></GridItem>
-          <GridItem span={{ base: 12, lg: 8 }}><PulseRow tiles={fx.PULSE} /></GridItem>
-          <GridItem span={{ base: 12, lg: 4 }}><MoneyToday v={fx.MONEY} /></GridItem>
         </PageGrid>
       </Sub>
 

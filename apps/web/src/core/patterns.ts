@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { and, eq, gte, lte, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { describeChange, describeLink, findChanges, findLinks, type Signal } from '@/domain/patterns'
@@ -66,6 +67,9 @@ export async function loadPatterns(user: User, now = new Date()) {
   const { today, signals } = await loadSignals(user, now)
   return patternsFrom(signals, today)
 }
+
+/** The same, read once per request: Today, Life and the week's changes share it. */
+export const patternsFor = cache((user: User) => loadPatterns(user))
 
 export function patternsFrom(signals: Signal[], today: string) {
   const links = findLinks(signals)

@@ -2,14 +2,14 @@
 
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
-import { Check, Snowflake, Swords } from 'lucide-react'
+import { Check, Snowflake } from 'lucide-react'
 import type { QuestMeasure, Rarity } from '@/domain/quests'
 import { openChestAction } from '@/app/actions'
-import { CATEGORY } from '../tokens'
 import { Button } from './button'
-import { IconChip } from './card'
+import { Picture } from './picture'
+import { StatusWord } from './status-word'
 import { PeekLink } from './peek/peek-link'
-import { Capsule } from './capsule'
+import { Bar } from './capsule'
 import { announceXp, useToast } from './toast'
 import { cn } from '../cn'
 import { SystemQuests, type SystemQuestItem } from './system-quests'
@@ -24,7 +24,6 @@ export const RARITY: Record<Rarity, { label: string; color: string }> = {
   rare: { label: 'Rare', color: 'var(--medal-gold)' },
   epic: { label: 'Epic', color: 'var(--medal-sakura)' },
 }
-const areaColor = (a: string) => (a in CATEGORY ? CATEGORY[a as keyof typeof CATEGORY].color : 'var(--pill)')
 
 /**
  * Today's rail: the System's daily quests, this week's quest, the chest waiting to be opened and the streak freezes
@@ -38,17 +37,8 @@ export function Quests({ system, weekly, chests, freezes, frozeOn, weekLeft, cla
   return (
     <section aria-labelledby="quests-h" className={cn('relative rounded-lg bg-surface p-5 shadow-1', className)}>
       <header className="mb-3 flex items-center justify-between gap-3">
-        <h2 id="quests-h" className="flex items-center gap-2.5 text-heading text-ink">
-          <IconChip color="var(--pill)"><Swords /></IconChip>
-          Quests
-        </h2>
-        <span
-          title="Streak freezes: one is used automatically when you miss a day, so your streak survives."
-          className="inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-caption font-medium text-ink-2 shadow-[inset_0_0_0_1px_var(--hairline)] tabular-nums"
-        >
-          <Snowflake className="size-3.5 text-sky" strokeWidth={2} aria-hidden />
-          {freezes} <span className="sr-only">streak freezes</span><span aria-hidden className="text-ink-3">/ 2</span>
-        </span>
+        <h2 id="quests-h" className="font-display text-heading text-ink">Quests</h2>
+        <DailyWord quests={system.quests} recovery={!!system.recovery} />
       </header>
 
       <SystemQuests {...system} compact />
@@ -81,9 +71,14 @@ export function Quests({ system, weekly, chests, freezes, frozeOn, weekLeft, cla
         </button>
       ) : null}
 
+      <p title="Streak freezes: one is used automatically when you miss a day, so your streak survives." className="mt-4 flex items-center gap-1.5 text-caption text-ink-3 tabular-nums">
+        <Snowflake className="size-3.5 text-sky" strokeWidth={1.5} aria-hidden />
+        {freezes} of 2 streak {freezes === 1 ? 'freeze' : 'freezes'} held
+      </p>
+
       {frozeOn.length ? (
-        <p className="mt-4 flex items-center gap-1.5 text-caption text-ink-3">
-          <Snowflake className="size-3.5 text-sky" strokeWidth={2} aria-hidden />
+        <p className="mt-2 flex items-center gap-1.5 text-caption text-ink-3">
+          <Snowflake className="size-3.5 text-sky" strokeWidth={1.5} aria-hidden />
           A freeze kept your streak on {frozeOn.map((d) => new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: 'UTC' }).format(new Date(`${d}T00:00:00Z`))).join(' and ')}.
         </p>
       ) : null}
@@ -94,28 +89,36 @@ export function Quests({ system, weekly, chests, freezes, frozeOn, weekLeft, cla
   )
 }
 
-/** The week's quests, one line each: the title opens its Peek, "4 of 6" and a thin bar say how far. */
+/** The daily quests in one word beside the heading: how many are cleared, or that none is issued yet. */
+function DailyWord({ quests, recovery }: { quests: SystemQuestItem[]; recovery: boolean }) {
+  const dailies = quests.filter((q) => q.kind === 'daily')
+  if (!dailies.length) return recovery ? null : <StatusWord tone="quiet">Not issued yet</StatusWord>
+  const cleared = dailies.filter((q) => q.status === 'cleared').length
+  return <StatusWord tone={cleared === dailies.length ? 'good' : 'neutral'}>{cleared === dailies.length ? 'All cleared' : `${cleared} of ${dailies.length} cleared`}</StatusWord>
+}
+
+/** The week's quests, one line each: the quest's picture, the title (opens its Peek), “4 of 6” and a thin bar. */
 function Group({ label, items }: { label: string; items: QuestItem[] }) {
   return (
     <div>
       <h3 className="mb-1 text-small font-medium text-ink-3">{label}</h3>
       <ul className="flex flex-col gap-3">
-        {items.map((q) => {
-          const color = areaColor(q.area)
-          return (
-            <li key={q.key} className="min-w-0">
-              <div className="flex min-h-10 items-center justify-between gap-3">
-                <PeekLink to={{ type: 'quest', id: `weekly.${q.key}` }} className={cn('min-w-0 truncate rounded-xs text-body hover:underline focus-visible:outline-2 focus-visible:outline-pill', q.done ? 'text-ink-3 line-through decoration-ink-3/50' : 'text-ink')}>{q.title}</PeekLink>
-                {q.done ? (
-                  <span className="inline-flex shrink-0 items-center gap-1 text-caption font-medium text-good"><Check className="size-3.5" strokeWidth={2.5} aria-hidden />Done</span>
-                ) : (
-                  <span className="shrink-0 text-caption text-ink-2 tabular-nums">{q.progress} of {q.target}</span>
-                )}
-              </div>
-              {!q.done && q.target > 1 ? <Capsule value={q.progress} max={q.target} size="sm" color={color} label={`${q.title}: ${q.progress} of ${q.target}`} /> : null}
-            </li>
-          )
-        })}
+        {items.map((q) => (
+          <li key={q.key} className="min-w-0">
+            <div className="flex min-h-10 items-center justify-between gap-3">
+              <PeekLink to={{ type: 'quest', id: `weekly.${q.key}` }} className={cn('flex min-w-0 items-center gap-2 rounded-xs text-body hover:underline focus-visible:outline-2 focus-visible:outline-pill', q.done ? 'text-ink-3 line-through decoration-ink-3/50' : 'text-ink')}>
+                <Picture of="routine" name={q.title} kind="quest" area={q.area} size={20} />
+                <span className="truncate">{q.title}</span>
+              </PeekLink>
+              {q.done ? (
+                <span className="inline-flex shrink-0 items-center gap-1 text-caption font-medium text-good-ink"><Check className="size-3.5" strokeWidth={2.5} aria-hidden />Done</span>
+              ) : (
+                <span className="shrink-0 text-small text-ink-3 tabular-nums">{q.progress} of {q.target}</span>
+              )}
+            </div>
+            {!q.done && q.target > 1 ? <Bar value={q.progress} max={q.target} label={`${q.title}: ${q.progress} of ${q.target}`} className="mt-0.5" /> : null}
+          </li>
+        ))}
       </ul>
     </div>
   )

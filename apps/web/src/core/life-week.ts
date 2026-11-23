@@ -7,7 +7,7 @@ import { weekStart } from '@/domain/quests'
 import { peekParam } from '@/domain/peek'
 import { latestBriefs } from './briefs'
 import { isSpend, trackerDays, transactionsBetween } from './metrics'
-import { loadPatterns } from './patterns'
+import { patternsFor } from './patterns'
 import { addDays, localDate } from './time'
 import type { User } from './user'
 import { xpSummary } from './xp'
@@ -28,7 +28,7 @@ export const loadLifeWeek = cache(async (user: User, areas: string[]) => {
   const [xp, patterns] = await Promise.all([
     db.select({ date: schema.xpEvents.localDate, area: schema.xpEvents.area, amount: schema.xpEvents.amount }).from(schema.xpEvents)
       .where(and(eq(schema.xpEvents.userId, user.id), gte(schema.xpEvents.localDate, from), lte(schema.xpEvents.localDate, today), ne(schema.xpEvents.area, 'general'), ne(schema.xpEvents.kind, 'achievement'))),
-    loadPatterns(user),
+    patternsFor(user),
   ])
   const week = buildWeek(xp, today, areas)
   const change = (area: string) => {
