@@ -8,6 +8,7 @@ import { monthlyCost, upcomingPayments } from './schedules'
 import { loadPortfolio, contractCoin } from './portfolio'
 import { snapshotNetWorth, netWorthHistory } from './net-worth'
 import { addDays, localDate } from './time'
+import { categoryPace } from '@/domain/category-pace'
 import { activeMonths, monthPace, monthRange, oneOffs, repeatBuys, shiftMonth, usualMonth } from '@/domain/wealth'
 import { toLiquidation } from '@/domain/watch'
 
@@ -60,6 +61,10 @@ export async function loadWealthOverview(user: User, now = new Date()) {
   const usual = usualMonth(byMonth, month)
   const oneOff = oneOffs(spend.filter((t) => t.localDate.startsWith(month)).map((t) => -t.base), usual)
   const pace = { spent, day, daysInMonth, usual, oneOff, ...monthPace(spent, day, daysInMonth, usual, oneOff) }
+  // What was spent on each day so far this month (day 1 first), and each category against the same days of the last 3 months.
+  const daily = Array.from({ length: day }, () => 0)
+  for (const t of spend) if (t.localDate.startsWith(month)) daily[Number(t.localDate.slice(8)) - 1] -= t.base
+  const catPace = categoryPace(spend, month, day)
   const thisMonthCats = [...(byMonthCat.get(month) ?? new Map<string, number>())].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value)
 
   // Apps, last 12 months.
@@ -95,7 +100,7 @@ export async function loadWealthOverview(user: User, now = new Date()) {
   const history = await netWorthHistory(user, 90, now)
 
   return {
-    base, today, month, months, activeMonths: activeMonths(months, byMonth), categories, byMonthCat, byMonth, year, pace, thisMonthCats,
+    base, today, month, months, activeMonths: activeMonths(months, byMonth), categories, byMonthCat, byMonth, year, pace, daily, catPace, thisMonthCats,
     apps: appList, allTime, repeat: repeatBuys(lines),
     subs: { monthly: subsMonthly, count: subs.length, next, top: monthlyBase.sort((a, b) => b.monthly - a.monthly) },
     invest: {

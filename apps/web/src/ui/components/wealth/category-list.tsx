@@ -1,61 +1,50 @@
-'use client'
-
-import { useState } from 'react'
-import { formatMoney } from '@/domain/money'
-import { cn } from '../../cn'
-import { CHART } from '../../tokens'
+import type { CategoryPace } from '@/domain/category-pace'
+import { statusOf, STEADY_BAND } from '@/domain/status-of'
 import { Fold } from '../fold'
+import { StatusRow } from '../status-row'
 
-export type CategoryRow = { label: string; value: number; sub?: string }
+// Where the money went as status rows: each category with its picture, one plain line against the same days of the last 3
+// months and a status word from `statusOf` (the month rule, applied to the category). Overview leads with three and folds
+// the rest; Spending leads with five. The figures beyond those live in the line and in the page the row opens.
 
-const SHOWN_ON_PHONE = 4
+type Money = (v: number, opts?: { sign?: boolean }) => string
 
-/**
- * Where the money went as a ranked list: a small bar, the amount, one row per category, largest first. The pill switch
- * flips between this month and everything since the history begins. Each swatch is the colour the month bars give that
- * category (`colors`: the lead in the area colour, the next ranks neutral, a category not in the bars the last step). On a phone the first four rows show and the rest fold.
- */
-export function CategoryList({ month, monthName, all, colors, base }: {
-  month: CategoryRow[]; monthName: string; all: CategoryRow[]; colors: Record<string, string>; base: string
-}) {
-  const [view, setView] = useState<'month' | 'all'>('month')
-  const rows = view === 'month' ? month : all
-  const max = Math.max(1, ...rows.map((r) => r.value))
-  const item = (r: CategoryRow, i: number) => (
-    <li key={`${view}:${r.label}`} className="grid min-h-9 grid-cols-[minmax(0,1fr)_4rem_auto] items-center gap-x-3 py-1">
-      <span className="min-w-0">
-        <span className="flex items-center gap-2 text-body text-ink">
-          <span aria-hidden className="size-2.5 shrink-0 rounded-xs" style={{ background: colors[r.label] ?? CHART.neutral[2] }} />
-          <span className="truncate">{r.label}</span>
-        </span>
-        {r.sub ? <span className="block truncate ps-[18px] text-caption text-ink-3 tabular-nums">{r.sub}</span> : null}
-      </span>
-      <span aria-hidden className="h-1 overflow-hidden rounded-full bg-ink/[0.08]">
-        <span className="reveal-fill block h-full w-full rounded-full bg-ink-2" style={{ '--fill': `${(r.value / max) * 100}%`, '--i': i } as React.CSSProperties} />
-      </span>
-      <span className="text-end text-body font-medium text-ink tabular-nums">{formatMoney(r.value, base, { decimals: 0 })}</span>
-    </li>
-  )
-  const first = rows.slice(0, SHOWN_ON_PHONE), rest = rows.slice(SHOWN_ON_PHONE)
+/** "₹11,860, ₹4,460 above usual by now" (`by` is the tail: ' by now' for this month, '' for a past one), "₹3,003, about what you usually spend", or just the amount with nothing to compare. */
+export function categoryLine(r: CategoryPace, money: Money, by = ' by now') {
+  if (r.usual == null || r.vsUsual == null) return `${money(r.now)} so far`
+  if (Math.abs(r.vsUsual) < STEADY_BAND) return `${money(r.now)}, about what you usually spend`
+  const diff = money(Math.abs(r.now - r.usual))
+  return `${money(r.now)}, ${diff} ${r.vsUsual > 0 ? 'above' : 'under'} usual${by}`
+}
+
+/** One row per category; the name leads, the status word closes the row. `href` makes the row a link. */
+export function CategoryRows({ rows, money, pictureSize = 40, href, by }: { rows: CategoryPace[]; money: Money; pictureSize?: 32 | 40; href?: string; by?: string }) {
   return (
     <div>
-      <div role="group" aria-label="Period" className="mb-3 inline-flex gap-1 rounded-full bg-surface-2 p-1 shadow-[inset_0_0_0_1px_var(--hairline)]">
-        {([['month', monthName], ['all', 'All time']] as const).map(([k, label]) => (
-          <button
-            key={k} type="button" aria-pressed={view === k} onClick={() => setView(k)}
-            className={cn(
-              'h-8 rounded-full px-3 text-small font-medium transition-[background-color,color,scale] duration-150 ease-out-quint active:scale-96 focus-visible:outline-2 focus-visible:outline-pill',
-              view === k ? 'bg-surface text-ink shadow-1' : 'text-ink-3 hover-fine:text-ink',
-            )}
-          >{label}</button>
-        ))}
-      </div>
-      {rows.length ? (
-        <>
-          <ul className="flex flex-col">{first.map(item)}</ul>
-          {rest.length ? <Fold inline title={`${rest.length} more categories`}><ul className="flex flex-col">{rest.map((r, i) => item(r, i + SHOWN_ON_PHONE))}</ul></Fold> : null}
-        </>
-      ) : <p className="text-small text-ink-3">No orders {view === 'month' ? 'yet this month' : 'yet'}.</p>}
+      {rows.map((r) => (
+        <StatusRow
+          key={r.category} picture={{ of: 'category', name: r.category }} pictureSize={pictureSize} name={r.category}
+          line={categoryLine(r, money, by)} status={r.vsUsual == null ? undefined : statusOf({ from: 'month', vsUsual: r.vsUsual }).word} href={href}
+        />
+      ))}
     </div>
+  )
+}
+
+/** The first `lead` rows, then the rest in a fold named by how many and which. */
+export function CategoryList({ rows, money, lead, pictureSize = 40, href, by }: { rows: CategoryPace[]; money: Money; lead: number; pictureSize?: 32 | 40; href?: string; by?: string }) {
+  if (!rows.length) return <p className="text-small text-ink-3">No spending yet this month.</p>
+  const rest = rows.slice(lead)
+  const names = rest.slice(0, 3).map((r, i) => (i ? r.category.toLowerCase() : r.category))
+  const summary = rest.length > 3 ? `${names.join(', ')} and ${rest.length - 3} ${rest.length - 3 === 1 ? 'other' : 'others'}` : names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0]
+  return (
+    <>
+      <CategoryRows rows={rows.slice(0, lead)} money={money} pictureSize={pictureSize} href={href} by={by} />
+      {rest.length ? (
+        <Fold title={`${rest.length} more`} summary={summary} className="mt-1">
+          <CategoryRows rows={rest} money={money} pictureSize={pictureSize} href={href} by={by} />
+        </Fold>
+      ) : null}
+    </>
   )
 }

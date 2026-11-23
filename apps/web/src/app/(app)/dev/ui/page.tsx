@@ -27,6 +27,7 @@ import { CoachGallery } from '@/ui/components/coach/coach-gallery'
 import { PartyGallery } from '@/ui/components/party/party-gallery'
 import { AreaGallery } from '@/ui/components/area/area-gallery'
 import { OverviewGallery } from '@/ui/components/area/overview-gallery'
+import { WealthGallery } from '@/ui/components/wealth/wealth-gallery'
 import { TodayGallery } from '@/ui/components/today/today-gallery'
 import { PlanYouGallery } from '@/ui/components/plan-you-gallery'
 import { OnboardingGallery } from '@/ui/components/onboarding-gallery'
@@ -249,6 +250,10 @@ export default function UiGallery() {
 
       <Section title="Area Overview: targets table, sleep chart, Wealth Overview">
         <Suspense fallback={<Skeleton className="h-[420px]" />}><OverviewGallery /></Suspense>
+      </Section>
+
+      <Section title="Wealth: Overview, day bars, category rows, habit and transactions">
+        <Suspense fallback={<Skeleton className="h-[900px] rounded-lg" />}><WealthGallery /></Suspense>
       </Section>
 
       <Section title="Coach: Needs you, Ask and no model">

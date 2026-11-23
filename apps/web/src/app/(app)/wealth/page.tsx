@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { Coins } from 'lucide-react'
 import Link from 'next/link'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
@@ -10,12 +9,13 @@ import { Card } from '@/ui/components/card'
 import { EmptyState } from '@/ui/components/empty'
 import { buttonClass } from '@/ui/components/button'
 import { WealthOverviewView, WealthSkeleton } from '@/ui/components/wealth/overview'
+import { wealthHabits } from './wealth-habits'
 
 export const metadata: Metadata = { title: 'Wealth' }
 
 /**
- * Wealth Overview: how this month's spending compares with a usual one, where the money went, net worth,
- * subscriptions and the merchants. The head's brief carries the pace sentence; there is no number strip.
+ * Wealth Overview: spent so far against a usual month on one pace line, the top categories, the money habit and this
+ * week's quest, net worth, subscriptions and the payees. The head's brief carries the pace sentence.
  */
 export default function WealthPage() {
   return (
@@ -34,7 +34,7 @@ async function Wealth() {
     return (
       <Card>
         <EmptyState
-          title="No money data yet" icon={Coins} color="var(--cat-wealth)"
+          title="No money data yet" picture={{ of: 'area', to: 'wealth' }}
           description="Connect Binance, your order apps (Zomato, Swiggy, Blinkit, Zepto, Amazon, Flipkart) or add a subscription, and this page fills in."
           action={<Link href="/you/connections" className={buttonClass({ variant: 'primary' })}>Open connections</Link>}
         />
@@ -43,7 +43,7 @@ async function Wealth() {
   }
 
   const symbols = [...o.invest.coins.map((c) => c.asset), ...o.invest.positions.map((x) => x.coin)]
-  const info = symbols.length ? await coinInfo(symbols) : {}
+  const [info, habits] = await Promise.all([symbols.length ? coinInfo(symbols) : Promise.resolve<Awaited<ReturnType<typeof coinInfo>>>({}), wealthHabits(user)])
   const logos = Object.fromEntries(Object.entries(info).map(([k, v]) => [k, !!v?.logo]))
-  return <WealthOverviewView o={o} logos={logos} />
+  return <WealthOverviewView o={o} logos={logos} habits={habits} />
 }
