@@ -14,6 +14,7 @@ import { EmptyState } from '@/ui/components/empty'
 import { CapsuleMark, Wordmark } from '@/ui/components/logo'
 import { DailyBars, RankedBars, ShareDonut, Sparkline, StackedBars, TrendArea } from '@/ui/components/charts'
 import { CalmGallery } from '@/ui/components/calm-gallery'
+import { LoaderGallery } from '@/ui/components/loader-gallery'
 import { BeuiGallery } from '@/ui/components/gallery-beui'
 import { PositionCard } from '@/ui/components/wealth/position-card'
 import { IlloGallery } from '@/ui/components/tour/illos'
@@ -93,6 +94,10 @@ export default function UiGallery() {
             </div>
           ))}
         </div>
+      </Section>
+
+      <Section title="Loader: splash, page and inline, progress, reduced motion, Finish runs the hand-off">
+        <LoaderGallery />
       </Section>
 
       <Section title="Calm system: status words, stat card, status row, pictures, connection, insight line, fold, empty state, lead chart, routine row, buttons, tabs, chips">

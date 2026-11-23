@@ -8,11 +8,11 @@ import type { ThreadEntry, ThreadProposal } from '@/core/coach-messages'
 import { formatTime } from '@/core/time'
 import { Message, MessageContent, MessageGroup, MessageScroller } from '@/ui/beui/agents/message'
 import { PromptInput } from '@/ui/beui/agents/prompt-input'
-import { TextShimmer } from '@/ui/beui/motion/text-shimmer'
 import { Button } from '../button'
 import { useToast } from '../toast'
 import { usePeekChanged } from '../peek/peek-context'
 import { cn } from '../../cn'
+import { Loader } from '../loader'
 import { AnswerCard, QuestionBubble } from './answer-card'
 import { ActionPreview } from './needs-you-row'
 
@@ -135,9 +135,7 @@ export function AskThread({ thread, enabled, initial, timezone, className }: {
             {pending ? (
               <Message from="assistant">
                 <MessageContent>
-                  <div className="flex items-center gap-2 rounded-lg bg-surface px-4 py-3 shadow-1" role="status">
-                    <TextShimmer className="text-body font-medium">Reading your data…</TextShimmer>
-                  </div>
+                  <Loader size="inline" label="Reading your data…" showLabel className="min-h-11" />
                 </MessageContent>
               </Message>
             ) : null}

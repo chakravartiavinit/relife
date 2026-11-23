@@ -26,6 +26,7 @@ import { DemoGuard } from '@/ui/components/demo-guard'
 import { connection } from 'next/server'
 import { isDemo } from '@/core/demo'
 import { SwRegister } from '@/ui/components/sw-register'
+import { ColdStartSplash } from '@/ui/components/loader'
 
 export const metadata = rootMetadata
 export const viewport = rootViewport
@@ -73,6 +74,7 @@ async function LiveParts() {
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <RootHtml head={<script dangerouslySetInnerHTML={{ __html: SIDEBAR_SCRIPT }} />}>
+        <ColdStartSplash />
         <AppMotion>
         <ToastProvider>
           <SidebarProvider>

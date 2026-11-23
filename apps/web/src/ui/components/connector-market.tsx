@@ -19,6 +19,7 @@ import { ConnectSuccess, YourSources, SuggestedForYou, needsFix } from './connec
 import { ImportButton } from './imports/import-button'
 import { PastImports, type PastImport } from './imports/import-history'
 import { cn } from '../cn'
+import { LoaderSwap } from './loader'
 
 export type { ConnectorStatus }
 /** A dialog field plus what the server already has for it. Secret values are never sent. */
@@ -346,6 +347,8 @@ function Tile({ c, ...props }: { c: ConnectorItem } & React.ButtonHTMLAttributes
   const status = STATUS[c.status]
   const how = method(c)
   const calm = c.status === 'ok' || c.status === 'ready'
+  // Connected and waiting for its first sync, which needs nothing from you: the capsule fills in the status dot's place.
+  const firstSync = c.connected && c.status === 'waiting' && !needsFix(c)
   return (
     <button
       type="button"
@@ -366,7 +369,9 @@ function Tile({ c, ...props }: { c: ConnectorItem } & React.ButtonHTMLAttributes
       <span className="mt-auto flex min-h-8 items-center gap-2 border-t border-divider pt-3">
         {c.connected ? (
           <>
-            <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: status.color }} />
+            <LoaderSwap loading={firstSync} px={16} label={`First sync of ${c.name}`} className="-mx-1 size-4 shrink-0 place-items-center">
+              <span aria-hidden className="size-2 rounded-full" style={{ background: status.color }} />
+            </LoaderSwap>
             <span className={cn('min-w-0 flex-1 truncate text-caption tabular-nums', calm ? 'text-ink-3' : 'font-medium')} style={calm ? undefined : { color: status.color }}>
               <span className="sr-only">{status.label}: </span>{calm ? c.detail : c.statusLabel ?? status.label}
             </span>

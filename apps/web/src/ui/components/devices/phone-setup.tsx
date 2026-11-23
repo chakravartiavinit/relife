@@ -2,12 +2,13 @@
 
 import brand from '@relife/brand/brand.json'
 import { useEffect, useState, useTransition } from 'react'
-import { Check, ChevronDown, Download, Loader2, QrCode as QrIcon, RefreshCw, TriangleAlert } from 'lucide-react'
+import { Check, ChevronDown, Download, QrCode as QrIcon, RefreshCw, TriangleAlert } from 'lucide-react'
 import { reachStatus } from '@/app/devices-actions'
 import type { ReachId, ReachOption } from '@/core/auth/reach'
 import { cn } from '@/ui/cn'
 import { Button, buttonClass } from '../button'
 import { Card, SectionLabel } from '../card'
+import { Loader } from '../loader'
 import { OfferQr } from './offer-qr'
 import { PushControl } from '../push-control'
 import { ReachOptionRow } from './reach-option-row'
@@ -58,7 +59,7 @@ export function PhoneSetup({ reach, phone, qr, push, check = reachStatus }: {
           <p className="mt-0.5 max-w-[62ch] text-small text-ink-3">Pick one that is ready. Https addresses can install the web app and send notifications.</p>
         </div>
         <Button size="sm" onClick={recheck} disabled={pending}>
-          {pending ? <Loader2 className="size-4 animate-spin" strokeWidth={1.5} aria-hidden /> : <RefreshCw className="size-4" strokeWidth={1.5} aria-hidden />}
+          {pending ? <Loader size="inline" px={16} label="Checking" /> : <RefreshCw className="size-4" strokeWidth={1.5} aria-hidden />}
           {pending ? 'Checking…' : 'Check again'}
         </Button>
       </div>

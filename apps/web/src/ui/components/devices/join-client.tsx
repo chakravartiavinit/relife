@@ -7,6 +7,7 @@ import { ShieldCheck, UserPlus } from 'lucide-react'
 import type { PairJoinResult } from '@relife/contract'
 import { Button } from '../button'
 import { FormError } from '../forms/dialog'
+import { Loader } from '../loader'
 import { Input } from '../form'
 import { postJson } from './pair-api'
 
@@ -73,7 +74,7 @@ export function JoinClient() {
       <p className="mt-3 flex items-start gap-2 text-small text-ink-3"><ShieldCheck className="mt-0.5 size-4 shrink-0 text-good" strokeWidth={1.5} aria-hidden />The person who runs this server can read everything stored on it, including connector keys. Don’t connect anything you wouldn’t tell them.</p>
       <div className="mt-3"><FormError message={error ?? undefined} /></div>
 
-      <Button type="submit" variant="primary" size="lg" className="mt-5 w-full" disabled={busy || !name.trim()}>{busy ? 'Joining…' : 'Join'}</Button>
+      <Button type="submit" variant="primary" size="lg" className="mt-5 w-full" disabled={busy || !name.trim()}>{busy ? <Loader size="inline" px={16} label="Joining" /> : null}{busy ? 'Joining…' : 'Join'}</Button>
       <Link href="/signin" className="mt-2 flex h-11 items-center justify-center rounded-md text-body font-medium text-ink-2 transition-colors duration-150 hover:text-ink focus-visible:outline-2 focus-visible:outline-pill">Not now</Link>
     </form>
   )

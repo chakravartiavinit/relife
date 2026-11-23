@@ -10,6 +10,7 @@ import { formatMoney } from '@/domain/money'
 import type { StatementMapping } from '@/domain/statement'
 import type { TrackerCsvMapping } from '@/domain/tracker-csv'
 import { Capsule } from '../capsule'
+import { Loader } from '../loader'
 import { Input, Segmented, Select } from '../form'
 import { cn } from '../../cn'
 
@@ -403,9 +404,12 @@ export function ZipFound({ preview }: { preview: ZipPreview }) {
 // ── Running and done ─────────────────────────────────────────────────────────────────────────────────
 export function ImportProgress({ phase, done, total, sub }: { phase: string; done: number; total?: number; sub?: string }) {
   return (
-    <div role="status" aria-live="polite" className="flex flex-col gap-3 py-2">
-      <p className="text-body font-medium text-ink">{phase}…</p>
-      <Capsule value={total ? done : 0.35} max={total || 1} label={phase} className={cn(!total && 'animate-pulse')} />
+    <div aria-live="polite" className="flex flex-col gap-3 py-2">
+      {/* The capsule fills with the real share when the total is known, and loops when it is not. */}
+      <div className="flex items-center gap-3">
+        <Loader size="inline" label={`${phase}…`} progress={total ? (done / total) * 100 : undefined} />
+        <p aria-hidden className="text-body font-medium text-ink">{phase}…</p>
+      </div>
       <p className="text-caption text-ink-3 tabular-nums">{total ? `${nf.format(done)} of ${nf.format(total)}` : sub ?? 'This can take a few minutes for a large file. You can close this window: it keeps running.'}</p>
     </div>
   )
