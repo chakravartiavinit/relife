@@ -108,13 +108,13 @@ export function AreaRow({ d }: { d: RowData }) {
         )}
       </div>
 
-      {week ? <WeekCell def={def} week={week} change={d.brief ? undefined : d.change} steady={!d.change} maxXp={d.maxXp ?? 1} /> : null}
+      {week ? <WeekCell def={def} week={week} change={d.change} steady={!d.change} maxXp={d.maxXp ?? 1} /> : null}
     </li>
   )
 }
 
 /** The week's dots (Monday to Sunday), how many days earned XP, the XP with its change, and a bar against the busiest area. */
-/** `change` is left out when the brief above already tells it; `steady` says the area had no notable change. */
+/** `change` is the week's biggest change, shown even when the brief has its own sentence; `steady` says there was none. */
 function WeekCell({ def, week: r, change, steady, maxXp }: { def: AreaDef; week: WeekRow; change?: RowChange; steady: boolean; maxXp: number }) {
   const pct = Math.round(Math.abs(r.delta ?? 0) * 100)
   return (
@@ -136,7 +136,7 @@ function WeekCell({ def, week: r, change, steady, maxXp }: { def: AreaDef; week:
       <span aria-hidden className="hidden h-1 rounded-full bg-ink/[0.08] grid-md:block dark:bg-white/[0.08]">
         <span className="block h-full rounded-full" style={{ width: `${Math.min(100, (r.xp / maxXp) * 100)}%`, background: def.color }} />
       </span>
-      <p className={cn('min-w-0 basis-full text-caption text-ink-3 grid-md:basis-auto', !change && 'hidden grid-md:block')}>
+      <p className={cn('truncate min-w-0 basis-full text-caption text-ink-3 grid-md:basis-auto', !change && 'hidden grid-md:block')}>
         {change ? (change.peek ? <PeekLink to={change.peek} className="rounded-xs hover-fine:underline focus-visible:outline-2 focus-visible:outline-pill">{change.text}</PeekLink> : change.text) : steady ? 'Steady' : null}
       </p>
     </div>
