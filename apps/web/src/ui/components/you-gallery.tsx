@@ -50,7 +50,7 @@ export function YouGallery() {
   return (
     <div className="flex flex-col gap-8">
       <div className="grid gap-6 lg:grid-cols-3">
-        <Sub title="Character sheet"><div className="lg:col-span-2"><CharacterSheet s={SUMMARY} name="Aarav" streak={STREAK} freezes={2} today={TODAY}><TitleTrack level={SUMMARY.level} titles={TITLES} /></CharacterSheet></div></Sub>
+        <div className="lg:col-span-2"><Sub title="Character sheet"><CharacterSheet s={SUMMARY} name="Aarav" streak={STREAK} freezes={2} today={TODAY}><TitleTrack level={SUMMARY.level} titles={TITLES} /></CharacterSheet></Sub></div>
         <Sub title="Next unlocks (level first, then the closest)"><CloseToUnlocking items={BOARD} level={{ level: 25, toGo: 210, progress: 0.86, title: 'Ascendant', when: 'Tomorrow', pace: 'about a day' }} /></Sub>
       </div>
       <div className="grid gap-6 lg:grid-cols-3">
