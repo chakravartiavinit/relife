@@ -31,6 +31,7 @@ import { ShareGallery } from '@/ui/components/share/share-gallery'
 import { TemplatesGallery } from '@/ui/components/templates/templates-gallery'
 import { builtInPacks } from '@/core/packs'
 import { TEMPLATES } from '@/core/onboarding'
+import { FoldDemo, PageGridDemo, PageHeaderDemo, PageHeaderPlainDemo, RailDemo } from '@/ui/components/layout-gallery'
 import { InstalledBeuiGallery, PeekLinkDemo, SegmentTabsDemo, SheetDemo, ShellDemo, TypeScale } from '@/ui/components/gallery-foundations'
 import { RecoveryPanel, SystemQuests } from '@/ui/components/system-quests'
 import type { RecoveryView } from '@/domain/recovery'
@@ -198,6 +199,23 @@ export default function UiGallery() {
 
       <Section title="Segment tabs">
         <SegmentTabsDemo />
+      </Section>
+
+      <Section title="Page grid: 12 / 8 / 1 columns, spans per tier">
+        <PageGridDemo />
+      </Section>
+
+      <Section title="Page head: label, title, brief, summary, underline tabs, actions">
+        <PageHeaderDemo />
+        <div className="mt-8"><PageHeaderPlainDemo /></div>
+      </Section>
+
+      <Section title="Rail: the last card grows so both columns end together">
+        <RailDemo />
+      </Section>
+
+      <Section title="Fold: closed, open, card, inline">
+        <FoldDemo />
       </Section>
 
       <Section title="Peek link">

@@ -1,5 +1,6 @@
 import type { PeekRef } from '@/domain/peek'
 import { cn } from '../cn'
+import { PageHead } from './page-head'
 import { PeekLink } from './peek/peek-link'
 
 const CATEGORY_BY_LABEL: Record<string, string> = {
@@ -80,25 +81,23 @@ export function Skeleton({ className }: { className?: string }) {
 }
 
 /**
- * Page title block, as a banner in the game style (same shape as the area and character banners).
- * Category pages get their colour automatically from the eyebrow.
+ * The compact head of a page (see `PageHead`): the mono label, the serif title, one brief line, an optional summary on
+ * the right and an optional tab row with the page's actions at its end. Not a card. Category pages get their colour
+ * automatically from the eyebrow.
+ *
+ * `eyebrow` is the mono label, `description` the brief line, `summary` the right-hand block, `tabs` an underline
+ * `RouteTabs`, `actions` the page's buttons (in the tabs row when there are tabs), `capsule` a `CapsuleIcon`.
  */
-export function PageHeader({ title, description, actions, eyebrow }: {
+export function PageHeader({ title, description, actions, eyebrow, summary, tabs, capsule, className }: {
   title: React.ReactNode; description?: React.ReactNode; actions?: React.ReactNode; eyebrow?: React.ReactNode
+  summary?: React.ReactNode; tabs?: React.ReactNode; capsule?: React.ReactNode; className?: string
 }) {
   const c = typeof eyebrow === 'string' ? CATEGORY_BY_LABEL[eyebrow.toLowerCase()] ?? 'var(--pill)' : 'var(--pill)'
   return (
-    <header className="relative isolate mb-6 overflow-hidden rounded-xl bg-surface p-5 shadow-1 sm:p-6">
-      <div aria-hidden className="halftone inset-y-0 right-0 -z-10 w-2/3" style={{ '--tone': c } as React.CSSProperties} />
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0">
-          {eyebrow ? <SystemLabel color={c}>{eyebrow}</SystemLabel> : null}
-          <h1 className="mt-1 font-display text-title text-ink sm:text-display">{title}</h1>
-          {description ? <p className="mt-1.5 max-w-[60ch] text-body text-ink-2">{description}</p> : null}
-        </div>
-        {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
-      </div>
-    </header>
+    <PageHead
+      tone={c} capsule={capsule} label={eyebrow ? <SystemLabel color={c}>{eyebrow}</SystemLabel> : undefined}
+      title={title} brief={description} summary={summary} tabs={tabs} actions={actions} className={className}
+    />
   )
 }
 

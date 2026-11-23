@@ -8,6 +8,19 @@
 @custom-variant short (@media (min-width: 64rem) and (max-height: 52.5rem));
 /* The shell's saved sidebar state, on <html> before first paint (shell/sidebar-script.ts): no layout flash. */
 @custom-variant rail (html[data-sidebar="rail"] &);
+/* Hover only where a mouse or trackpad exists, so a tap on a phone never leaves a stuck hover state. Use `hover-fine:` in new code. */
+@custom-variant hover-fine {
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      @slot;
+    }
+  }
+}
+/* PageGrid breakpoints are container queries on the page's own column (not the window), so the 240px sidebar and the
+   72px rail both get the right column count: 1 column below 40rem, 8 columns from 40rem, 12 columns from 60rem. */
+@custom-variant grid-md (@container (min-width: 40rem));
+@custom-variant grid-lg (@container (min-width: 60rem));
+
 
 /*
  * ReLife design tokens: the ReLIFE capsule. Ink black, flat warm grey and capsule blue, light-first,
@@ -263,6 +276,13 @@ details::details-content {
   transition: opacity 150ms var(--ease-out-quint), content-visibility 150ms allow-discrete;
 }
 details[open]::details-content { opacity: 1; }
+/* A `Fold inline` (fold.tsx) is plain content from the 8-column tier of its PageGrid up: no summary row, body always shown. */
+@supports selector(::details-content) {
+  @container (min-width: 40rem) {
+    details[data-fold-inline] > summary { display: none; }
+    details[data-fold-inline]::details-content { content-visibility: visible; }
+  }
+}
 
 /* Sidebar sub-pages (Wealth → Spending…): height reveal so the rows below slide rather than jump.
    A transition, so clicking away mid-open reverses smoothly. Reduced motion keeps only the fade. */
