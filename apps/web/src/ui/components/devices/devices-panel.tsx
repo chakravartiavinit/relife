@@ -3,8 +3,8 @@
 import brand from '@relife/brand/brand.json'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, Laptop, LogOut, Pencil, Puzzle, Smartphone, X } from 'lucide-react'
-import type { DeviceListItem } from '@relife/contract'
+import { Check, LogOut, Pencil, X } from 'lucide-react'
+import type { DeviceKind, DeviceListItem } from '@relife/contract'
 import {
   deviceList, denyDevice, disconnectDevice, renameMyDevice, setRequireSignIn, waitingDevices, type WaitingDevice,
 } from '@/app/devices-actions'
@@ -78,7 +78,7 @@ export function DevicesPanel({ initial, waiting: initialWaiting, requireSignIn, 
     <div className="flex flex-col gap-8">
       {waiting.length ? (
         <section aria-labelledby="waiting-h">
-          <h2 id="waiting-h" className="mb-3 px-1 text-heading font-semibold tracking-[-0.01em] text-ink">Waiting to connect</h2>
+          <h2 id="waiting-h" className="mb-3 px-1 font-display text-heading font-medium text-ink">Waiting to connect</h2>
           <ul className="flex flex-col gap-2">
             {waiting.map((w) => (
               <li key={w.id} className="flex flex-wrap items-center gap-3.5 rounded-[20px] bg-pill-wash p-3.5 shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--pill)_25%,transparent),var(--elev-1)]">
@@ -193,19 +193,19 @@ function RenameField({ name, onSave, onCancel }: { name: string; onSave: (n: str
 
 /** Only this browser is signed in: three ways to get the app onto the other screens. */
 function GetEverywhere({ onConnect }: { onConnect: () => void }) {
-  const cards = [
-    { icon: Laptop, title: 'Mac app', text: 'Menu bar, a quick-log shortcut and reminders.', action: 'Connect the Mac app' },
-    { icon: Puzzle, title: 'Chrome extension', text: 'Today in a popup, and browsing time counted for you.', action: 'Connect the extension' },
-    { icon: Smartphone, title: 'Phone', text: `Scan a code, add ${brand.name} to your Home Screen.`, action: 'Scan to connect' },
+  const cards: { kind: DeviceKind; title: string; text: string; action: string }[] = [
+    { kind: 'mac', title: 'Mac app', text: 'Menu bar, a quick-log shortcut and reminders.', action: 'Connect the Mac app' },
+    { kind: 'extension', title: 'Chrome extension', text: 'Today in a popup, and browsing time counted for you.', action: 'Connect the extension' },
+    { kind: 'phone', title: 'Phone', text: `Scan a code, add ${brand.name} to your Home Screen.`, action: 'Scan to connect' },
   ]
   return (
     <div className="py-6">
       <h3 className="font-display text-heading font-medium tracking-[-0.015em] text-ink">Get {brand.name} everywhere</h3>
       <p className="mt-1 text-small text-ink-3">This browser is the only device so far.</p>
       <ul className="mt-4 grid gap-3 sm:grid-cols-3">
-        {cards.map(({ icon: Icon, title, text, action }) => (
+        {cards.map(({ kind, title, text, action }) => (
           <li key={title} className="flex flex-col gap-3 rounded-[16px] bg-surface-2 p-4">
-            <span aria-hidden className="grid size-9 place-items-center rounded-[10px] bg-pill-wash text-pill-ink"><Icon className="size-[18px]" strokeWidth={1.5} /></span>
+            <DeviceTile kind={kind} />
             <div className="flex-1"><p className="text-body font-semibold text-ink">{title}</p><p className="mt-0.5 text-caption leading-relaxed text-ink-3">{text}</p></div>
             <Button size="sm" onClick={onConnect}>{action}</Button>
           </li>

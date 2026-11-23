@@ -1,6 +1,6 @@
 'use client'
 
-import { STATUS, type ConnectorStatus } from './connector-status'
+import { STATUS, STATUS_WORD, type ConnectorStatus } from './connector-status'
 import { useActionState, useEffect, useId, useRef, useState, useTransition } from 'react'
 import { AtSign, Check, ChevronRight, CircleAlert, CircleCheck, Code2, Copy, Cpu, Dumbbell, ExternalLink, Gamepad2, Globe, GraduationCap, KeyRound, Lock, LogIn, Moon, Puzzle, RefreshCw, Search, Send, ShoppingBag, Timer, UtensilsCrossed, Wallet, Zap, type LucideIcon } from 'lucide-react'
 import type { Category } from '@/db/schema'
@@ -14,7 +14,8 @@ import { CenterMorphModal, CenterMorphModalContent, CenterMorphModalTrigger } fr
 import { ConnectExtension, openConnectExtension } from './devices/connect-extension'
 import { useToast } from './toast'
 import { usePeekChanged } from './peek/peek-context'
-import { AppLogo as Logo } from './app-logo'
+import { Picture } from './picture'
+import { StatusWord } from './status-word'
 import { ConnectSuccess, YourSources, SuggestedForYou, needsFix } from './connections-status'
 import { ImportButton } from './imports/import-button'
 import { PastImports, type PastImport } from './imports/import-history'
@@ -146,7 +147,7 @@ export function ConnectorMarket({ items, worker, areas, imports = [], zipMaxMb, 
         <YourSources items={items} manage={manage} />
         <PastImports imports={imports} />
         <SuggestedForYou items={items} areas={areas} manage={manage} />
-        <h2 className="-mb-4 px-1 text-heading text-ink">All apps</h2>
+        <h2 className="-mb-4 px-1 font-display text-heading text-ink">All apps</h2>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[200px_minmax(0,1fr)] xl:gap-10">
@@ -176,7 +177,7 @@ export function ConnectorMarket({ items, worker, areas, imports = [], zipMaxMb, 
                 <div className="flex min-w-0 items-center gap-3">
                   <IconChip color={g.color}><g.icon strokeWidth={2} /></IconChip>
                   <div className="min-w-0">
-                    <h2 id={`grp-${g.key}`} className="text-heading leading-tight font-medium text-ink">{g.title}</h2>
+                    <h2 id={`grp-${g.key}`} className="font-display text-heading leading-tight font-medium text-ink">{g.title}</h2>
                     <p className="truncate text-small text-ink-3">{g.hint}</p>
                   </div>
                 </div>
@@ -216,10 +217,10 @@ function useSignInResult(items: ConnectorItem[]) {
     if (!id) return
     const c = items.find((i) => i.id === id)
     const name = c?.name ?? id
-    const icon = c ? <Logo id={c.id} category={c.category} size="xs" /> : undefined
+    const picture = { of: 'connector', id: c?.id ?? id, name } as const
     const error = q.get('error')
-    if (error) toast(`Couldn’t sign in with ${name}`, 'bad', { icon, description: error })
-    else toast(`Signed in with ${name}`, 'good', { icon, description: 'Its first sync starts within a minute' })
+    if (error) toast(`Couldn’t sign in with ${name}`, 'bad', { picture, description: error })
+    else toast(`Signed in with ${name}`, 'good', { picture, description: 'Its first sync starts within a minute' })
     window.history.replaceState(null, '', window.location.pathname)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps -- once, on arrival
 }
@@ -356,7 +357,7 @@ function Tile({ c, ...props }: { c: ConnectorItem } & React.ButtonHTMLAttributes
       className={cn('group flex w-full flex-col gap-3 rounded-[18px] bg-surface p-4 text-start shadow-1 transition-[box-shadow,scale] duration-150 ease-out-quint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill', c.unavailable ? 'cursor-not-allowed opacity-60' : 'hover:shadow-2 active:scale-[0.96]')}
     >
       <span className="flex items-center gap-3">
-        <span className="transition-[scale] duration-150 ease-out-quint group-hover:scale-[1.04]"><Logo id={c.id} category={c.category} size="sm" /></span>
+        <span className="transition-[scale] duration-150 ease-out-quint group-hover:scale-[1.04]"><Picture of="connector" id={c.id} name={c.name} size={40} /></span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-heading font-medium text-ink">{c.name}</span>
           <span className="mt-0.5 flex items-center gap-1 text-caption text-ink-3">
@@ -406,7 +407,7 @@ export function SyncButton({ id, name, compact }: { id: string; name: string; /*
       variant={compact ? 'ghost' : undefined}
       aria-label={compact ? `Sync ${name} now` : undefined}
       onClick={() => start(async () => {
-        const t = toast.loading(`Syncing ${name}…`, { icon: <Logo id={id} size="xs" /> })
+        const t = toast.loading(`Syncing ${name}…`, { picture: { of: 'connector', id, name } })
         const r = await syncNow(id)
         changed()
         if (r.ok) toast.update(t, `${name} synced`, 'good', { description: r.events ? `${r.events} new` : 'Nothing new since the last sync' })
@@ -442,12 +443,10 @@ export function ConnectorDialog({ c, trigger }: { c: ConnectorItem; trigger: Rea
       >
         <div className="flex flex-col gap-5 p-6">
           <header className="flex items-center gap-4 pe-10">
-            <Logo id={c.id} category={c.category} size="lg" />
+            <Picture of="connector" id={c.id} name={c.name} size={56} />
             <div className="min-w-0">
               <h2 className="font-display text-title leading-tight font-medium text-ink">{c.name}</h2>
-              <p className="mt-1 inline-flex items-center gap-1.5 text-caption font-medium" style={{ color: c.connected ? status.color : 'var(--ink-3)' }}>
-                <span aria-hidden className="size-2 rounded-full" style={{ background: status.color }} />{c.statusLabel ?? status.label}
-              </p>
+              <StatusWord className="mt-1" {...(c.connected ? STATUS_WORD[c.status] : { tone: 'quiet' as const })}>{c.statusLabel ?? status.label}</StatusWord>
             </div>
           </header>
 
@@ -601,15 +600,15 @@ function ConnectForm({ c, onDone }: { c: ConnectorItem; onDone: () => void }) {
   const failed = !!state && !state.ok
   useEffect(() => {
     if (!state?.ok || connectedHere) return
-    const icon = <Logo id={c.id} category={c.category} size="xs" />
+    const picture = { of: 'connector', id: c.id, name: c.name } as const
     // A new or changed app needs a sign-in before anything syncs: go straight there.
     if (c.oauth && (!wasConnected.current || !c.oauth.signedIn)) {
-      toast(`Opening ${c.name} sign-in…`, 'neutral', { icon })
+      toast(`Opening ${c.name} sign-in…`, 'neutral', { picture })
       window.location.assign(`/api/oauth/${c.id}/start`)
       return
     }
-    if (wasConnected.current) { toast(`${c.name} settings saved`, 'good', { icon }); onDone(); return }
-    toast(`${c.name} connected`, 'good', { icon, description: c.sync ? 'Its first sync starts within a minute' : undefined })
+    if (wasConnected.current) { toast(`${c.name} settings saved`, 'good', { picture }); onDone(); return }
+    toast(`${c.name} connected`, 'good', { picture, description: c.sync ? 'Its first sync starts within a minute' : undefined })
     setConnectedHere(true)
   }, [state, connectedHere, c.connected, c.name, c.id, c.category, c.sync, c.oauth, onDone, toast])
 
@@ -667,7 +666,7 @@ function ConnectForm({ c, onDone }: { c: ConnectorItem; onDone: () => void }) {
             variant="danger"
             disabled={leaving || pending}
             onClick={() => startLeave(async () => {
-              try { await disconnectIntegration(c.id); toast(`${c.name} disconnected`, 'neutral', { icon: <Logo id={c.id} category={c.category} size="xs" /> }); onDone() } catch { toast.error(`Couldn’t disconnect ${c.name}`) }
+              try { await disconnectIntegration(c.id); toast(`${c.name} disconnected`, 'neutral', { picture: { of: 'connector', id: c.id, name: c.name } }); onDone() } catch { toast.error(`Couldn’t disconnect ${c.name}`) }
             })}
           >
             {leaving ? 'Disconnecting…' : 'Disconnect'}

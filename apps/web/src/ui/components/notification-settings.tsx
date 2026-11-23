@@ -1,15 +1,22 @@
 'use client'
 
 import { useRef, useState, useTransition } from 'react'
-import { BellRing, Check, Lightbulb, Loader2, Moon, Search, Swords, TriangleAlert, Trophy, type LucideIcon } from 'lucide-react'
+import { Check, Loader2, Moon } from 'lucide-react'
 import { saveNotifications } from '@/app/actions'
 import { CATEGORY_INFO, CHANNELS, DEFAULT_QUIET, NOTIFY_CATEGORIES, delivery, type Channel, type Delivery, type NotifyCategory, type NotifyPrefs } from '@/domain/notify'
 import { Switch } from '@/ui/beui/motion/switch'
 import { Input, Select } from './form'
+import { Picture } from './picture'
+import type { PictureRef } from '../picture'
 import { SettingsRow, SettingsSection } from './settings-layout'
 import { cn } from '../cn'
 
-const ICON: Record<NotifyCategory, LucideIcon> = { system: Swords, reminders: BellRing, alerts: TriangleAlert, analysis: Search, coach: Lightbulb, events: Trophy }
+// One 3D picture per category, from the same set the rest of the app uses: quests are the Plan's target, reminders Today's sunrise,
+// alerts the energy bolt, analysis the Mind brain, the morning nudge the Coach, progress the sparkles.
+const PICTURE: Record<NotifyCategory, PictureRef> = {
+  system: { of: 'nav', to: '/plan' }, reminders: { of: 'nav', to: '/' }, alerts: { of: 'routine', name: 'Energy' },
+  analysis: { of: 'routine', name: 'Analysis', area: 'mind' }, coach: { of: 'nav', to: '/coach' }, events: { of: 'hobby', name: 'Progress' },
+}
 const EVERY = [10, 15, 30, 60, 120, 240]
 const TIMES = [1, 2, 3, 5]
 const CAPS = [1, 2, 3, 5, 6, 10]
@@ -65,13 +72,12 @@ export function NotificationSettings({ initial, both = false }: { initial?: Noti
       {NOTIFY_CATEGORIES.map((c) => {
         const info = CATEGORY_INFO[c]
         const d = cats[c]
-        const Icon = ICON[c]
         const modes: { value: Delivery['mode']; label: string }[] = [
           { value: 'off', label: 'Off' }, { value: 'once', label: 'Once' },
           ...(info.repeatable ? [{ value: 'repeat' as const, label: 'Until I respond' }] : []),
         ]
         return (
-          <SettingsRow key={c} label={<span className="inline-flex items-center gap-2"><Icon className="size-4 text-ink-3" strokeWidth={1.5} />{info.label}</span>} hint={info.about}>
+          <SettingsRow key={c} label={<span className="inline-flex items-center gap-2"><Picture {...PICTURE[c]} size={20} />{info.label}</span>} hint={info.about}>
             <div className="flex flex-col gap-3">
               <div role="radiogroup" aria-label={`${info.label} delivery`} className="inline-flex w-fit rounded-md bg-surface-2 p-1">
                 {modes.map((m) => {

@@ -1,7 +1,6 @@
 'use client'
 
-import { Bookmark, Calendar, Check, CircleAlert, FileSpreadsheet, FileText, Landmark, Link2, Lock, Table2, TriangleAlert, type LucideIcon } from 'lucide-react'
-import { HeartPulse, Package } from 'lucide-react'
+import { Bookmark, Calendar, Check, CircleAlert, FileSpreadsheet, FileText, Link2, Lock, TriangleAlert, type LucideIcon } from 'lucide-react'
 import { DATE_FORMATS } from '@/domain/csv'
 import {
   KIND_LABEL, type ImportKind, type ImportSummary, type StatementPreview, type TrackerCsvPreview, type ZipPreview,
@@ -11,6 +10,8 @@ import type { StatementMapping } from '@/domain/statement'
 import type { TrackerCsvMapping } from '@/domain/tracker-csv'
 import { Capsule } from '../capsule'
 import { Loader } from '../loader'
+import { Picture } from '../picture'
+import type { PictureRef } from '../../picture'
 import { Input, Segmented, Select } from '../form'
 import { cn } from '../../cn'
 
@@ -23,25 +24,17 @@ export const fmtDay = (d?: string) => (d ? DAY.format(new Date(`${d}T00:00:00Z`)
 export const fmtSize = (bytes: number) => (bytes >= 1048576 ? `${+(bytes / 1048576).toFixed(bytes >= 1073741824 ? 0 : 1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`)
 const nf = new Intl.NumberFormat('en-US')
 
-const KIND: Record<ImportKind, { icon: LucideIcon; ext: string; blurb: string; accept: string; tint: string }> = {
-  statement: { icon: Landmark, ext: '.csv', blurb: 'Spending and income from any bank. Map the columns once.', accept: '.csv,.txt,text/csv', tint: 'var(--cat-wealth)' },
-  'apple-health': { icon: HeartPulse, ext: 'export.zip', blurb: 'Steps, sleep, heart rate and weight by day. Health app › your photo › Export All Health Data.', accept: '.zip,application/zip', tint: 'var(--cat-health)' },
-  takeout: { icon: Package, ext: '.zip', blurb: 'Google Fit daily activity and YouTube watch history.', accept: '.zip,application/zip', tint: 'var(--cat-skills)' },
-  'tracker-csv': { icon: Table2, ext: '.csv', blurb: 'Columns date, metric, value. Back-fill anything you log by hand.', accept: '.csv,.txt,text/csv', tint: 'var(--cat-mind)' },
+const KIND: Record<ImportKind, { picture: PictureRef; ext: string; blurb: string; accept: string }> = {
+  statement: { picture: { of: 'routine', name: 'Spend money' }, ext: '.csv', blurb: 'Spending and income from any bank. Map the columns once.', accept: '.csv,.txt,text/csv' },
+  'apple-health': { picture: { of: 'merchant', name: 'Apple Health' }, ext: 'export.zip', blurb: 'Steps, sleep, heart rate and weight by day. Health app › your photo › Export All Health Data.', accept: '.zip,application/zip' },
+  takeout: { picture: { of: 'merchant', name: 'Google Takeout' }, ext: '.zip', blurb: 'Google Fit daily activity and YouTube watch history.', accept: '.zip,application/zip' },
+  'tracker-csv': { picture: { of: 'routine', name: 'Journal' }, ext: '.csv', blurb: 'Columns date, metric, value. Back-fill anything you log by hand.', accept: '.csv,.txt,text/csv' },
 }
 export const ACCEPT = (k: ImportKind) => KIND[k].accept
-export const KIND_ICON = (k: ImportKind) => KIND[k].icon
-export const KIND_TINT = (k: ImportKind) => KIND[k].tint
 
-/** A tinted square with the kind's icon, like the area chips elsewhere. */
-export function KindChip({ kind, className }: { kind: ImportKind; className?: string }) {
-  const { icon: Icon, tint } = KIND[kind]
-  return (
-    <span aria-hidden className={cn('grid size-9 shrink-0 place-items-center rounded-[10px]', className)}
-      style={{ color: `color-mix(in oklch, ${tint} 80%, var(--ink))`, background: `color-mix(in oklch, ${tint} 14%, transparent)` }}>
-      <Icon className="size-[18px]" strokeWidth={1.5} />
-    </span>
-  )
+/** What the file is, as its own picture: the bank's money, Apple's or Google's logo, the journal. */
+export function KindChip({ kind }: { kind: ImportKind }) {
+  return <Picture {...KIND[kind].picture} size={32} />
 }
 
 // ── The three steps ──────────────────────────────────────────────────────────────────────────────────

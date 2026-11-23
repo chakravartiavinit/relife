@@ -7,7 +7,8 @@ import { KIND_LABEL, summaryLine, type ImportKind, type ImportSummary } from '@/
 import { useToast } from '../toast'
 import { Button } from '../button'
 import { KindChip, fmtDay } from './import-view'
-import { cn } from '../../cn'
+import { StatusWord } from '../status-word'
+import type { StatusTone } from '@/domain/status-of'
 
 // Past imports, under the sources on Connections: what each file did, and Undo for a finished one. An import that is
 // still queued or running says so. Undo asks once, inline: it removes every row the import added.
@@ -17,13 +18,10 @@ export type PastImport = {
   summary: ImportSummary; error: string | null; at: string
 }
 
-const STATUS = {
-  queued: { label: 'Queued', tone: 'text-ink-2 bg-surface-2' },
-  running: { label: 'Running', tone: 'text-pill-ink bg-pill-wash' },
-  done: { label: 'Done', tone: 'text-good bg-good/10' },
-  failed: { label: 'Failed', tone: 'text-bad bg-bad/10' },
-  undone: { label: 'Removed', tone: 'text-ink-3 bg-surface-2' },
-} as const
+const STATUS: Record<PastImport['status'], { label: string; tone: StatusTone }> = {
+  queued: { label: 'Queued', tone: 'quiet' }, running: { label: 'Running', tone: 'neutral' }, done: { label: 'Done', tone: 'good' },
+  failed: { label: 'Failed', tone: 'bad' }, undone: { label: 'Removed', tone: 'quiet' },
+}
 
 function Row({ i, onUndo }: { i: PastImport; onUndo: (id: string) => Promise<string | null> }) {
   const [ask, setAsk] = useState(false)
@@ -37,7 +35,7 @@ function Row({ i, onUndo }: { i: PastImport; onUndo: (id: string) => Promise<str
       <div className="min-w-0 flex-1 basis-56">
         <p className="flex min-w-0 items-center gap-2">
           <span className="truncate text-body font-medium text-ink">{i.fileName}</span>
-          <span className={cn('inline-flex h-5 shrink-0 items-center rounded-full px-2 text-label font-medium', st.tone)}>{st.label}</span>
+          <StatusWord tone={st.tone}>{st.label}</StatusWord>
         </p>
         <p className="truncate text-caption text-ink-3">{KIND_LABEL[i.kind]} · {fmtDay(i.at.slice(0, 10))} · {line}</p>
         {err ? <p role="alert" className="text-caption text-bad">{err}</p> : null}
@@ -72,7 +70,7 @@ export function PastImports({ imports }: { imports: PastImport[] }) {
   return (
     <section aria-labelledby="past-imports" className="flex flex-col gap-3">
       <div className="px-1">
-        <h2 id="past-imports" className="text-heading text-ink">Past imports</h2>
+        <h2 id="past-imports" className="font-display text-heading text-ink">Past imports</h2>
         <p className="text-small text-ink-3">Files you imported. Undo removes everything a file added.</p>
       </div>
       <ul className="divide-y divide-divider rounded-lg bg-surface p-2 shadow-1">

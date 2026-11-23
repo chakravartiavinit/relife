@@ -48,6 +48,6 @@ const RULES: [RegExp, string][] = [
 ]
 
 export function hobbyArt(name: string) {
-  const hit = RULES.find(([re]) => re.test(name))?.[1] ?? 'art'
+  const hit = RULES.find(([re]) => re.test(name))?.[1] ?? 'sparkles'
   return `/hobbies/${hit}.png`
 }
