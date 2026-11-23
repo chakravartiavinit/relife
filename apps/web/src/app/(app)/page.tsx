@@ -79,7 +79,7 @@ async function Today() {
         {/* The plan and the rail end on one line: the plan's card (the last in its column) grows when the rail is taller. */}
         <GridItem span={{ base: 12, lg: 8 }} className="flex flex-col gap-6 [&>:last-child]:flex-1">
           <Suspense fallback={null}><DayEnd user={user} /></Suspense>
-          <Suspense fallback={<Skeleton className="h-[820px] rounded-lg grid-lg:h-[1020px]" />}><Plan user={user} /></Suspense>
+          <Suspense fallback={<Skeleton className="h-[600px] rounded-lg grid-lg:h-[640px]" />}><Plan user={user} /></Suspense>
         </GridItem>
         {/* On a phone the rail's cards join the page's own column (`contents`), so Finish setting up can sit after Money. */}
         <Rail span={{ base: 12, lg: 4 }} pairs as="aside" aria-label="Also today" className="@max-[40rem]:contents">
@@ -249,7 +249,7 @@ function TodaySkeleton() {
     <div className="flex flex-col gap-6" aria-busy>
       <HeaderSkeleton />
       <PageGrid>
-        <GridItem span={{ base: 12, lg: 8 }}><Skeleton className="h-[820px] rounded-lg grid-lg:h-[1020px]" /></GridItem>
+        <GridItem span={{ base: 12, lg: 8 }}><Skeleton className="h-[600px] rounded-lg grid-lg:h-[640px]" /></GridItem>
         <Rail span={{ base: 12, lg: 4 }}><Skeleton className="h-[320px] rounded-lg" /><Skeleton className="h-[200px] rounded-lg" /></Rail>
       </PageGrid>
     </div>
