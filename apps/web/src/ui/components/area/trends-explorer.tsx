@@ -55,7 +55,7 @@ export function TrendsExplorer({ series, color, intro }: { series: TrendSeries[]
             <StatusRow key={x.tracker.slug} picture={x.picture} name={x.tracker.name} line={x.line} status={x.status} selected={x.tracker.slug === s.tracker.slug} onSelect={() => setSlug(x.tracker.slug)} />
           ))}
         </Card>
-        <Card aria-labelledby="chart-heading" className="flex flex-col gap-4">
+        <Card aria-labelledby="chart-heading" className="order-first flex flex-col gap-4 grid-lg:order-none">
           <CardHeader
             className="mb-0" title={<span id="chart-heading">{t.name}, last {range} {t.slug.startsWith('sleep') ? 'nights' : 'days'}</span>} description={line}
             action={<span className="flex items-center gap-3"><StatusWord status={s.status} /><PeekLink to={s.peek} className={buttonLinkClass('text-small')}>See the days</PeekLink></span>}
