@@ -14,7 +14,7 @@ import { StatusWord } from './status-word'
  * `figure` is a standalone number (`7.2 h`, `₹145`); a number in a row or column belongs in a `StatusRow` line. At most
  * one figure per card and one big number per screen.
  */
-export function StatCard({ label, color, picture, status, figure, note, peek, className }: {
+export function StatCard({ label, color, picture, status, figure, note, peek, children, bare = false, className }: {
   label: React.ReactNode
   /** The area's colour for the dot before the label (`var(--cat-health)`). Ignored with a `picture`. */
   color?: string
@@ -25,10 +25,18 @@ export function StatCard({ label, color, picture, status, figure, note, peek, cl
   /** One line: "Last night, a little under 7.5 h". */
   note?: React.ReactNode
   peek?: PeekRef
+  /** More inside the card under the note (a `Fold`); sits above the card's Peek link, so give a card with children no `peek`. */
+  children?: React.ReactNode
+  /** True: no card of its own, for a figure that leads a card that already has a title (Time's focus under its card title). */
+  bare?: boolean
   className?: string
 }) {
+  const Box = bare ? 'div' : Card
   return (
-    <Card as="div" className={cn('flex min-w-0 flex-col gap-1.5', peek && 'transition-colors duration-150 ease-out-quint hover-fine:bg-surface-2', className)}>
+    <Box
+      {...(bare ? {} : { as: 'div' as const })}
+      className={cn(bare ? 'relative -mx-2 flex min-w-0 flex-col gap-1.5 rounded-md px-2 py-2' : 'flex min-w-0 flex-col gap-1.5', peek && 'transition-colors duration-150 ease-out-quint hover-fine:bg-surface-2', className)}
+    >
       <div className="flex min-h-5 items-center justify-between gap-2">
         <span className="flex min-w-0 items-center gap-2 text-label text-ink-2">
           {picture ? <Picture {...picture} size={20} /> : <span aria-hidden className="size-1.5 shrink-0 rounded-full" style={{ background: color ?? 'var(--ink-3)' }} />}
@@ -38,13 +46,14 @@ export function StatCard({ label, color, picture, status, figure, note, peek, cl
       </div>
       <p className="font-display text-figure text-ink">{figure}</p>
       {note ? <p className="text-small text-ink-3">{note}</p> : null}
+      {children}
       {peek ? (
         <PeekLink
           to={peek}
           aria-label={`${typeof label === 'string' ? label : 'Details'}${status ? `, ${status.toLowerCase()}` : ''}: open details`}
-          className="absolute inset-0 rounded-lg focus-visible:outline-2 focus-visible:outline-pill"
+          className={cn('absolute inset-0 focus-visible:outline-2 focus-visible:outline-pill', bare ? 'rounded-md' : 'rounded-lg')}
         />
       ) : null}
-    </Card>
+    </Box>
   )
 }

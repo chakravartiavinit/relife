@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Sector, type PieSectorShapeProps } from 'recharts'
+import { Sector, usePlotArea, useYAxisScale, type PieSectorShapeProps } from 'recharts'
 import { EvilAreaChart } from '@/components/evilcharts/charts/recharts-area-chart'
 import { EvilLineChart } from '@/components/evilcharts/charts/recharts-line-chart'
 import { EvilBarChart } from '@/components/evilcharts/charts/recharts-bar-chart'
@@ -266,12 +266,47 @@ export function ShareDonut({ segments, unit, totalLabel, label, top = 3, accent 
   )
 }
 
+const END_LABEL_ROOM = 88
+
+/**
+ * The name of each series at the end of the last bar, level with its segment, so the chart needs no legend. Labels that
+ * would touch are pushed 14px apart. A child of the chart (it reads the plot area and the value scale).
+ */
+function EndLabels({ rows, names }: { rows: Row[]; names: string[] }) {
+  const plot = usePlotArea()
+  const y = useYAxisScale()
+  // The last period with anything in it (today may not have started).
+  const last = [...rows].reverse().find((r) => names.some((_, i) => Number(r[`s${i}`] ?? 0) > 0))
+  if (!plot || !y || !last) return null
+  let base = 0
+  const at = names.map((_, i) => {
+    const v = Number(last[`s${i}`] ?? 0)
+    const mid = Number(y(base + v / 2) ?? 0)
+    base += v
+    return { i, y: mid }
+  })
+  // From the top down each label sits at its segment's middle or 14px under the one above; the last one stays inside the plot.
+  const placed = [...at].sort((a, b) => a.y - b.y)
+  placed.forEach((p, k) => { if (k && p.y < placed[k - 1].y + 14) p.y = placed[k - 1].y + 14 })
+  for (let k = placed.length - 1; k >= 0; k--) {
+    const max = plot.y + plot.height - (placed.length - 1 - k) * 14
+    if (placed[k].y > max) placed[k].y = max
+  }
+  return (
+    <g aria-hidden>
+      {placed.map((p) => (
+        <text key={p.i} x={plot.x + plot.width + 8} y={p.y + 4} fontSize={12} fill={p.i === 0 ? 'var(--ink)' : 'var(--ink-3)'} className={p.i === 0 ? 'font-medium' : undefined}>{names[p.i]}</text>
+      ))}
+    </g>
+  )
+}
+
 /**
  * Several series stacked per period (spend by category per month). One series leads: `lead` (a series id) or the
  * biggest takes the accent, the next `top - 1` and Other are neutrals, and a series that is an area keeps its area
  * colour. Periods before the first activity are hidden. The legend shows at most four entries.
  */
-export function StackedBars({ categories, series, unit, height = 220, label, top = 3, lead, accent = CHART.accent, legend = true }: {
+export function StackedBars({ categories, series, unit, height = 220, label, top = 3, lead, accent = CHART.accent, legend = true, given = false, endLabels = false }: {
   categories: string[]; series: { id: string; name: string; color: string; values: (number | null)[] }[]; unit?: string; height?: number; label: string
   /** How many series keep their own colour before the rest fold into Other. */
   top?: number
@@ -280,10 +315,14 @@ export function StackedBars({ categories, series, unit, height = 220, label, top
   accent?: string
   /** False when the page lists the series itself right beside the chart (Time's By kind). */
   legend?: boolean
+  /** True: draw the series in the order and colours given (bottom to top) instead of ranking them by size, for a page whose series have a fixed meaning (Time's focus, messages, distraction). */
+  given?: boolean
+  /** True: name each series at the end of the last bar, in place of a legend. */
+  endLabels?: boolean
 }) {
   const { rows, config, axis, ranked, empty } = useMemo(() => {
     const trimmed = trimLeadingEmpty(categories, series)
-    const ranked = leadSeries(trimmed.series, top, lead).map((r) => ({ ...r, color: shade(r, accent) }))
+    const ranked = (given ? trimmed.series.map((r, i): RankedSeries => ({ ...r, rank: i + 1 })) : leadSeries(trimmed.series, top, lead).map((r) => ({ ...r, color: shade(r, accent) })))
     const keys = ranked.map((_, i) => `s${i}`)
     const rows: Row[] = trimmed.categories.map((c, j) => ({ category: c, ...Object.fromEntries(ranked.map((s, i) => [keys[i], s.values[j] ?? null])) }))
     const config: ChartConfig = Object.fromEntries(ranked.map((s, i) => [keys[i], tone(s.name, s.color)]))
@@ -292,16 +331,17 @@ export function StackedBars({ categories, series, unit, height = 220, label, top
     const hours = unit === 'min' ? niceAxis(0, peak / 60) : null
     const axis = hours ? { domain: [0, hours.domain[1] * 60] as [number, number], ticks: hours.ticks.map((h) => h * 60) } : { domain: undefined, ticks: undefined }
     return { rows, config, axis, ranked, empty: !ranked.some((s) => s.values.some((v) => v)) }
-  }, [categories, series, unit, top, lead, accent])
+  }, [categories, series, unit, top, lead, accent, given])
   if (empty) return <ChartEmpty height={height} label={label} />
   return (
     <figure aria-label={label} className="m-0">
-      <div style={{ height }}><EvilBarChart data={rows} config={config} stackType="stacked" barRadius={3} className="aspect-auto h-full w-full">
+      <div style={{ height }}><EvilBarChart data={rows} config={config} stackType="stacked" barRadius={3} className="aspect-auto h-full w-full" chartProps={endLabels ? { margin: { right: END_LABEL_ROOM } } : undefined}>
         <EvilBarChart.Grid />
         <EvilBarChart.XAxis dataKey="category" interval="preserveStartEnd" minTickGap={16} tick={axisTick} />
         <EvilBarChart.YAxis domain={axis.domain} ticks={axis.ticks} tickFormatter={unit === 'min' ? (v: number) => (v ? `${tick(v / 60)}h` : '0') : tick} tick={axisTick} />
         <EvilBarChart.Tooltip />
         {ranked.map((_, i) => <EvilBarChart.Bar key={i} dataKey={`s${i}`} />)}
+        {endLabels ? <EndLabels rows={rows} names={ranked.map((r) => r.name)} /> : null}
       </EvilBarChart></div>
       {legend ? <Legend items={ranked} /> : null}
     </figure>
