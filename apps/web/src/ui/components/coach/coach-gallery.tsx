@@ -4,6 +4,11 @@ import brand from '@relife/brand/brand.json'
 import type { RecoveryView } from '@/domain/recovery'
 import type { NeedsYouItem } from '@/domain/needs-you'
 import { Card } from '../card'
+import { Connection } from '../connection'
+import type { Change, Link, Signal } from '@/domain/patterns'
+import { ClearedToday } from './cleared-today'
+import { PatternsWeek } from './patterns-week'
+import { queuePicture } from './queue-picture'
 import { AnswerCard, QuestionBubble } from './answer-card'
 import { ConnectCoach } from './connect-coach'
 import { LocalAiDown } from './local-ai-down'
@@ -34,6 +39,10 @@ const ITEMS: NeedsYouItem[] = [
   { kind: 'nudge', id: 'f-nudge', insight: insight('f-nudge', 'nudge', 'Food delivery is up 32% this month', 'Most orders land between 21:00 and 23:00.'), at: AT },
 ]
 
+const sig = (id: string, name: string, area: string): Signal => ({ id, name, area, group: id, direction: 'up', days: new Map() })
+const LINK: Link = { a: sig('tracker:journal', 'Journal', 'mind'), b: sig('tracker:sleep', 'Sleep', 'health'), lag: 0, rho: 0.5, n: 42, high: 7.4, low: 6.6, split: 1 }
+const CHANGE: Change = { signal: sig('tracker:guitar', 'Guitar', 'hobbies'), recent: 19, usual: 39, pct: -0.51, with: [{ signal: sig('tracker:learning', 'Learning', 'skills'), pct: 0.7 }] }
+
 const SOURCES = [{ label: 'Zepto · 1–31 Oct', peek: 'merchant:Zepto' }, { label: 'Spending by merchant' }]
 
 export function CoachGallery() {
@@ -53,7 +62,7 @@ export function CoachGallery() {
         <Card className="px-0 py-0 divide-y divide-divider">
           <ResolvedItem text="Dismissed: Food delivery is up 32% this month" undo={<span className="text-small font-medium text-ink-2">Undo</span>} />
           <ResolvedItem text="Blinkit filed under Groceries · remembered" />
-          <QueueItem kind="unread" label="Bank SMS · now" title={`A message ${brand.name} couldn’t read`} busy>Trying again…</QueueItem>
+          <QueueItem kind="unread" fixed picture={queuePicture(ITEMS[6])} line="Bank SMS · now" title={`A message ${brand.name} couldn’t read`} busy>Trying again…</QueueItem>
         </Card>
       </div>
       <div className="flex flex-col gap-3">
@@ -63,6 +72,15 @@ export function CoachGallery() {
           <AnswerCard text={'You spent about ₹6,800 on Zepto in October across 23 orders, 18% more than September.\n\n14 of the orders were after 21:00.'} sources={SOURCES} />
           <AnswerCard error text="LLM error: the model took too long to answer." onRetry={() => {}} />
         </div>
+      </div>
+      <div className="flex max-w-[460px] flex-col gap-3">
+        <p className="text-small text-ink-3">A proposal’s Connection and Patterns this week, with both signals’ pictures</p>
+        <Card><Connection link={LINK} today="2026-11-12" pictures={[{ of: 'tracker', name: 'Journal' }, { of: 'tracker', name: 'Sleep' }]} /></Card>
+        <PatternsWeek patterns={{ signals: 36, links: [{ ...LINK, text: 'On days with more journal (over 1): sleep 7.4 h on average, vs 6.6 h on other days.' }], changes: [{ ...CHANGE, text: 'Guitar down 51% this week: 19 min a day vs your usual 39 min. It usually moves with learning (up 70%), which changed too.' }] }} today="2026-11-12" />
+      </div>
+      <div className="max-w-[460px]">
+        <p className="mb-3 text-small text-ink-3">Cleared today, folded</p>
+        <Card><ClearedToday timezone="Asia/Kolkata" items={[{ id: 'c1', kind: 'alert', line: 'Dismissed: Steps are down this week', at: AT, undo: true }, { id: 'c2', kind: 'plan', line: 'Wind down added to your routines', at: AT, undo: false }]} /></Card>
       </div>
       <div className="max-w-[420px] lg:col-span-2">
         <p className="mb-3 text-small text-ink-3">No model: the Connect card with what still works</p>

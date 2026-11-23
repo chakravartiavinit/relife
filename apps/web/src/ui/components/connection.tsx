@@ -1,8 +1,10 @@
 import type { Change, Link } from '@/domain/patterns'
 import { connectionView, type ConnectionView } from '@/domain/connection-view'
 import { cn } from '../cn'
+import type { PictureRef } from '../picture'
 import { buttonLinkClass } from './button'
 import { PeekLink } from './peek/peek-link'
+import { Picture } from './picture'
 import { StatusWord } from './status-word'
 
 // Two things in a life that move together, in one sentence. The sentence is `describeLink` / `describeChange` with its key
@@ -23,6 +25,15 @@ function Marks({ areas }: { areas: string[] }) {
       <path d="M10 6h10" stroke="var(--ink-3)" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="2 3" />
       <circle cx="25" cy="6" r="4" fill={color(areas[1])} />
     </svg>
+  )
+}
+
+/** Each signal's own picture (20px) side by side, in place of the area dots. */
+function Pictures({ of }: { of: PictureRef[] }) {
+  return (
+    <span aria-hidden className="flex shrink-0 items-center gap-1">
+      {of.map((p, i) => <Picture key={i} {...p} size={20} />)}
+    </span>
   )
 }
 
@@ -70,19 +81,23 @@ function Spark({ lines, names }: { lines: NonNullable<ConnectionView['lines']>; 
  *
  * Pass `link` (from `findLinks`) or `change` (from `findChanges`), never both.
  */
-export function Connection({ link, change, today, spark = false, className }: {
+export function Connection({ link, change, today, spark = false, pictures, trailing, className }: {
   link?: Link
   change?: Change
   /** The local date; required for the sparkline. */
   today?: string
   spark?: boolean
+  /** The two signals' pictures (one for a change with no partner); they replace the area dots. */
+  pictures?: PictureRef[]
+  /** Another action beside "See the days" (Coach's "Ask why"). */
+  trailing?: React.ReactNode
   className?: string
 }) {
   const v = connectionView(link ? { link } : { change: change! }, { today })
   return (
     <article className={cn('flex flex-col gap-2.5', className)} aria-label={`Connection: ${v.pair}, ${v.when}`}>
       <div className="flex items-center gap-2 text-label text-ink-2">
-        <Marks areas={v.areas} />
+        {pictures?.length ? <Pictures of={pictures} /> : <Marks areas={v.areas} />}
         <span className="truncate">{v.pair}</span>
         <span className="shrink-0 font-normal text-ink-3">· {v.when}</span>
         {v.status ? <StatusWord status={v.status} className="ml-auto" /> : null}
@@ -91,9 +106,14 @@ export function Connection({ link, change, today, spark = false, className }: {
         {v.parts.map((p, i) => (p.bold ? <b key={i} className="font-semibold">{p.text}</b> : <span key={i}>{p.text}</span>))}
       </p>
       {spark && v.lines ? <Spark lines={v.lines} names={v.names} /> : null}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <span className="text-caption text-ink-3">{v.caption}</span>
-        {v.peek ? <PeekLink to={v.peek} className={buttonLinkClass('text-small')}>See the days</PeekLink> : null}
+        {v.peek || trailing ? (
+          <span className="flex items-center gap-4">
+            {v.peek ? <PeekLink to={v.peek} className={buttonLinkClass('text-small')}>See the days</PeekLink> : null}
+            {trailing}
+          </span>
+        ) : null}
       </div>
     </article>
   )

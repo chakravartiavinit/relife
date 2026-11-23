@@ -1,11 +1,10 @@
 import type { Metadata } from 'next'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
-import { loadPatterns } from '@/core/patterns'
-import { getUser } from '@/core/user'
 import { Skeleton } from '@/ui/components/card'
 import { GridItem, PageGrid } from '@/ui/components/page-grid'
-import { PatternsCard } from '@/ui/components/patterns-card'
+import { PatternsBoard } from '@/ui/components/coach/patterns-board'
+import { coachPatterns } from '../loaders'
 
 export const metadata: Metadata = { title: 'Patterns · Coach' }
 
@@ -21,5 +20,6 @@ export default function PatternsPage() {
 
 async function Patterns() {
   await connection()
-  return <PatternsCard patterns={await loadPatterns(await getUser())} askWhy />
+  const { patterns, today } = await coachPatterns()
+  return <PatternsBoard patterns={patterns} today={today} />
 }

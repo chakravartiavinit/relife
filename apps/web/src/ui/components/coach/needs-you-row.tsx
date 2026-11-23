@@ -3,7 +3,7 @@
 import brand from '@relife/brand/brand.json'
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { Check, ChevronRight, CircleAlert, RefreshCw, Repeat } from 'lucide-react'
+import { Check, ChevronRight, CircleAlert, RefreshCw } from 'lucide-react'
 import { dismissGoalDraftAction, ignoreRawEvent, recategorize, restoreInsight, resolveInsight, retryRawEvents, undoRecategorize } from '@/app/actions'
 import { formatDay, formatTime, localDate } from '@/core/time'
 import { formatMoney } from '@/domain/money'
@@ -13,12 +13,11 @@ import { targetText } from '@/domain/goals'
 import type { InsightLite, NeedsYouItem } from '@/domain/needs-you'
 import { CATEGORY } from '../../tokens'
 import { cn } from '../../cn'
-import { AppLogo } from '../app-logo'
-import { BrandLogo } from '../brand-logo'
-import { Button, buttonClass } from '../button'
+import { Button, buttonClass, buttonLinkClass } from '../button'
 import { GoalFormButton, initialFromDraft, type GoalPickerData } from '../goals/goal-form'
 import { InsightBody } from '../insight-body'
 import { PeekLink } from '../peek/peek-link'
+import { Picture } from '../picture'
 import { ShareButton } from '../share/share-button'
 import { reviewedWeekStart } from '@/domain/share-card'
 import { Checkbox } from '@/ui/beui/motion/checkbox'
@@ -26,6 +25,7 @@ import { Select } from '../select'
 import { useToast } from '../toast'
 import { AcceptPartyDialog, declinePartyInvite } from '../party/party-dialogs'
 import { QueueItem } from './queue-item'
+import { queuePicture } from './queue-picture'
 import { RECOVERY_DONE, RecoveryChoices } from './recovery-choices'
 
 /** What a row can ask the list to do. The list owns the collapsed state, so a row that unmounts never loses its Undo. */
@@ -40,6 +40,8 @@ export type RowCtx = {
   categories: string[]
   /** What the goal form needs, present only when the queue holds a goal draft. */
   goal: { picker: GoalPickerData; today: string; activeCount: number } | null
+  /** A proposal's Connection, already drawn on the server (it stands on `findLinks` / `findChanges`), by item id. */
+  connections?: Record<string, React.ReactNode>
 }
 
 const when = (at: string, c: RowCtx) => {
@@ -51,31 +53,42 @@ const when = (at: string, c: RowCtx) => {
 /** "Why?" opens what the card was built from. */
 function Why({ id }: { id: string }) {
   return (
-    <PeekLink to={{ type: 'insight', id }} className="inline-flex min-h-10 items-center rounded-sm px-2 text-small font-medium text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">Why?</PeekLink>
+    <PeekLink to={{ type: 'insight', id }} className={buttonLinkClass('inline-flex min-h-10 items-center px-2 text-small')}>Why?</PeekLink>
   )
 }
 
-/** The exact routine or tracker a proposal would add, as one quiet row. */
+/** The first sentence of a card's text, plain, for the one line under its title. */
+const lead = (body: string) => {
+  const first = body.replace(/\*\*/g, '').split('\n').map((l) => l.trim()).find((l) => l && !l.startsWith('-')) ?? ''
+  return first.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? first
+}
+
+/** The exact routine or tracker a proposal would add, as one quiet row with its picture. */
 export function ActionPreview({ actions }: { actions: NonNullable<InsightLite['actions']> }) {
   return (
     <ul className="mt-3 flex flex-col gap-2" aria-label="What would be added">
       {actions.map((a, n) => (
-        <li key={n} className="flex items-center gap-2.5 rounded-md bg-surface-2 px-3 py-2 text-small">
-          <Repeat className="size-4 shrink-0" strokeWidth={1.5} style={{ color: CATEGORY[a.category].color }} aria-hidden />
-          <span className="font-medium text-ink">{a.name}</span>
-          <span className="truncate text-ink-3">
-            {a.type === 'schedule' ? describe(a.rrule.includes('DTSTART') ? a.rrule : `DTSTART:20260101T000000\n${a.rrule.startsWith('RRULE:') ? a.rrule : `RRULE:${a.rrule}`}`) : `New tracker${a.unit ? ` · ${a.unit}` : ''}`}
-          </span>
+        <li key={n} className="flex items-center gap-3 rounded-md bg-surface p-2 pr-3 shadow-[0_0_0_1px_var(--hairline)]">
+          <Picture of="routine" name={a.name} kind={a.kind} area={a.category} size={40} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-body font-medium text-ink">{a.name}</p>
+            <p className="truncate text-small text-ink-3">
+              {a.type === 'schedule' ? describe(a.rrule.includes('DTSTART') ? a.rrule : `DTSTART:20260101T000000\n${a.rrule.startsWith('RRULE:') ? a.rrule : `RRULE:${a.rrule}`}`) : `New tracker${a.unit ? ` · ${a.unit}` : ''}`}
+              {' · '}{CATEGORY[a.category].label}
+            </p>
+          </div>
+          <span className="shrink-0 text-small text-ink-3">New {a.type === 'schedule' ? 'routine' : 'tracker'}</span>
         </li>
       ))}
     </ul>
   )
 }
 
-/** The one line a data item folds to on a phone: what it is, and when or how much. */
-export function sortSummary(item: Extract<NeedsYouItem, { kind: 'unread' | 'categorise' }>, c: RowCtx) {
-  if (item.kind === 'categorise') return { title: item.merchant, line: `Pick a category · ${item.count} ${item.count === 1 ? 'payment' : 'payments'} · ${formatMoney(item.total, item.currency)}` }
-  return { title: `A message ${brand.name} couldn’t read`, line: `${item.summary.title} · ${when(item.at, c)} · ${item.reason.replace(/^Couldn’t read it: /, '')}` }
+/** What the To sort fold says of its items: "2 messages Zepto couldn’t read, 2 payments to categorise". */
+export function sortSummary(items: Extract<NeedsYouItem, { kind: 'unread' | 'categorise' }>[]) {
+  const unread = items.filter((i) => i.kind === 'unread').length
+  const pay = items.length - unread
+  return [unread ? `${unread} ${unread === 1 ? 'message' : 'messages'} ${brand.name} couldn’t read` : '', pay ? `${pay} ${pay === 1 ? 'payment' : 'payments'} to categorise` : ''].filter(Boolean).join(', ')
 }
 
 export function NeedsYouRow({ item, ctx }: { item: NeedsYouItem; ctx: RowCtx }) {
@@ -97,10 +110,13 @@ function InsightRow({ item, ctx }: { item: Extract<NeedsYouItem, { kind: 'alert'
   const area = i.meta?.split(' · ')[0]
   const accept = () => ctx.act(i.id, hasActions ? `${i.actions![0].name} added to your routines` : 'Noted', () => resolveInsight(i.id, 'accept'))
   const dismiss = () => ctx.act(i.id, `Dismissed: ${sentenceCase(i.title)}`, () => resolveInsight(i.id, 'dismiss'), () => restoreInsight(i.id))
+  const connection = ctx.connections?.[item.id]
   return (
     <QueueItem
-      kind={item.kind} label={<>{when(i.at, ctx)}{area ? <> <span aria-hidden>·</span> {area}</> : null}</>}
-      title={sentenceCase(i.title)}
+      kind={item.kind} picture={queuePicture(item)} title={sentenceCase(i.title)}
+      line={item.kind === 'review' ? undefined : lead(i.body) || undefined}
+      label={<>{when(i.at, ctx)}{area ? <> <span aria-hidden>·</span> {area}</> : null}</>}
+      quick={!hasActions && !goalReview && item.kind !== 'review' ? <Button size="sm" onClick={accept}>Got it</Button> : undefined}
       actions={
         <>
           {goalReview ? (
@@ -108,8 +124,9 @@ function InsightRow({ item, ctx }: { item: Extract<NeedsYouItem, { kind: 'alert'
           ) : (
             <Button size="sm" variant={hasActions ? 'primary' : 'secondary'} onClick={accept}><Check className="size-4" strokeWidth={2} aria-hidden />{hasActions ? 'Approve' : 'Got it'}</Button>
           )}
-          <Button size="sm" variant="ghost" onClick={dismiss}>{item.kind === 'review' ? 'Later' : 'Dismiss'}</Button>
+          <Button size="sm" variant="quiet" onClick={dismiss}>{item.kind === 'review' ? 'Later' : 'Dismiss'}</Button>
           {item.kind === 'review' ? <ShareButton kind="weekly" refId={reviewedWeekStart(i.reviewOn ?? localDate(new Date(i.at), ctx.timezone))} label="Share your week">Share your week</ShareButton> : <Why id={i.id} />}
+          {hasActions ? <span className="text-small text-ink-3 sm:ml-auto">Nothing changes until you approve.</span> : null}
         </>
       }
     >
@@ -121,6 +138,7 @@ function InsightRow({ item, ctx }: { item: Extract<NeedsYouItem, { kind: 'alert'
           <div className="pt-2"><InsightBody body={i.body} review={i.review} kind={i.kind} /></div>
         </details>
       ) : <InsightBody body={i.body} review={i.review} kind={i.kind} />}
+      {connection ? <div className="mt-3 rounded-md bg-surface-2 p-4">{connection}</div> : null}
       {hasActions ? <ActionPreview actions={i.actions!} /> : null}
     </QueueItem>
   )
@@ -129,7 +147,10 @@ function InsightRow({ item, ctx }: { item: Extract<NeedsYouItem, { kind: 'alert'
 function RecoveryRow({ item, ctx }: { item: Extract<NeedsYouItem, { kind: 'recovery' }>; ctx: RowCtx }) {
   const closed = !item.recovery
   return (
-    <QueueItem kind="recovery" label={closed ? 'closed' : 'closes at midnight'} title={sentenceCase(item.insight.title)}>
+    <QueueItem
+      kind="recovery" picture={queuePicture(item)} title={sentenceCase(item.insight.title)}
+      line={closed ? 'closed' : 'closes at midnight'} defaultOpen={!closed}
+    >
       {closed ? (
         <p className="text-body text-ink-2 text-pretty">This choice was for a day that has passed. It closes by itself. New quests were paused for that day only.</p>
       ) : (
@@ -148,22 +169,23 @@ function GoalDraftRow({ item, ctx }: { item: Extract<NeedsYouItem, { kind: 'goal
   const atCap = !!g && g.activeCount >= 3
   const m = d.measure
   const unit = 'tracker' in m ? null : m.unit ?? null
+  const review = g ? (
+    <GoalFormButton variant="primary" size="sm" mode={{ kind: 'draft', activeCount: g.activeCount, insightId: item.id, packName: d.origin ? d.origin.name ?? 'starter' : undefined }} initial={initialFromDraft(d, g.picker, g.today)} picker={g.picker} today={g.today} disabled={atCap}>Review draft</GoalFormButton>
+  ) : <Link href="/plan" className={buttonClass({ variant: 'primary', size: 'sm' })}>Review draft</Link>
+  const target = `${targetText({ direction: d.direction, target: d.target ?? null, rangeLow: d.rangeLow ?? null, rangeHigh: d.rangeHigh ?? null, unit })} by ${formatDay(d.targetDate, { day: 'numeric', month: 'short' })}`
   return (
     <QueueItem
-      kind="goal-draft" label={when(item.at, ctx)} title={sentenceCase(d.title)}
+      kind="goal-draft" picture={queuePicture(item)} title={sentenceCase(d.title)} line={target} label={when(item.at, ctx)}
+      quick={review}
       actions={
         <>
-          {g ? (
-            <GoalFormButton variant="primary" size="sm" mode={{ kind: 'draft', activeCount: g.activeCount, insightId: item.id, packName: d.origin ? d.origin.name ?? 'starter' : undefined }} initial={initialFromDraft(d, g.picker, g.today)} picker={g.picker} today={g.today} disabled={atCap}>Review draft</GoalFormButton>
-          ) : <Link href="/plan" className={buttonClass({ variant: 'primary', size: 'sm' })}>Review draft</Link>}
-          <Button size="sm" variant="ghost" onClick={() => ctx.act(item.id, `Dismissed: ${sentenceCase(d.title)}`, () => dismissGoalDraftAction(item.id), () => restoreInsight(item.id))}>Dismiss</Button>
+          {review}
+          <Button size="sm" variant="quiet" onClick={() => ctx.act(item.id, `Dismissed: ${sentenceCase(d.title)}`, () => dismissGoalDraftAction(item.id), () => restoreInsight(item.id))}>Dismiss</Button>
         </>
       }
     >
       <p className="text-body text-ink-2 text-pretty">{d.reason}</p>
-      <p className="mt-1 text-small text-ink-3 tabular-nums">
-        {targetText({ direction: d.direction, target: d.target ?? null, rangeLow: d.rangeLow ?? null, rangeHigh: d.rangeHigh ?? null, unit })} by {formatDay(d.targetDate, { day: 'numeric', month: 'short' })}. You set the baseline when you start it.
-      </p>
+      <p className="mt-1 text-small text-ink-3 tabular-nums">You set the baseline when you start it.</p>
       {atCap ? <p className="mt-1 text-small text-ink-3">You have 3 active goals. Pause or finish one to start this.</p> : null}
     </QueueItem>
   )
@@ -172,19 +194,21 @@ function GoalDraftRow({ item, ctx }: { item: Extract<NeedsYouItem, { kind: 'goal
 /** Someone on this server asked you into a party. Join opens the share picker (name and level only to start); nothing of theirs is shown here. */
 function PartyInviteRow({ item, ctx }: { item: Extract<NeedsYouItem, { kind: 'party-invite' }>; ctx: RowCtx }) {
   const [joining, setJoining] = useState(false)
+  const join = <Button size="sm" variant="primary" onClick={() => setJoining(true)}>Join</Button>
   return (
     <QueueItem
-      kind="party-invite" label={when(item.at, ctx)} title={`${item.from ?? 'Someone'} asked you to join ${item.party}`}
+      kind="party-invite" picture={queuePicture(item)} label={when(item.at, ctx)} title={`${item.from ?? 'Someone'} asked you to join ${item.party}`}
+      line={`${item.members} ${item.members === 1 ? 'person is' : 'people are'} in so far`}
+      quick={join}
+      extra={<AcceptPartyDialog invite={joining ? { partyId: item.id, party: item.party, from: item.from } : null} onClose={() => setJoining(false)} onAnswered={() => ctx.done(item.id, `Joined ${item.party}`)} />}
       actions={
         <>
-          <Button size="sm" variant="primary" onClick={() => setJoining(true)}>Join</Button>
-          <Button size="sm" variant="ghost" onClick={() => ctx.act(item.id, `Declined ${item.party}`, async () => { const r = await declinePartyInvite(item.id); if (!r.ok) throw new Error(r.error) })}>Decline</Button>
+          {join}
+          <Button size="sm" variant="quiet" onClick={() => ctx.act(item.id, `Declined ${item.party}`, async () => { const r = await declinePartyInvite(item.id); if (!r.ok) throw new Error(r.error) })}>Decline</Button>
         </>
       }
     >
       <p className="text-body text-ink-2 text-pretty">A party is a few people on this server who show up together. You choose what they can see, and you can leave at any time.</p>
-      <p className="mt-1 text-small text-ink-3 tabular-nums">{item.members} {item.members === 1 ? 'person is' : 'people are'} in so far.</p>
-      <AcceptPartyDialog invite={joining ? { partyId: item.id, party: item.party, from: item.from } : null} onClose={() => setJoining(false)} onAnswered={() => ctx.done(item.id, `Joined ${item.party}`)} />
     </QueueItem>
   )
 }
@@ -202,27 +226,23 @@ function UnreadRow({ item, ctx }: { item: Extract<NeedsYouItem, { kind: 'unread'
   })
   return (
     <QueueItem
-      kind="unread" label={<>{s.title}{' '}<span aria-hidden>·</span> {when(item.at, ctx)}</>} busy={pending}
+      kind="unread" fixed picture={queuePicture(item)} line={<>{s.title} <span aria-hidden>·</span> {when(item.at, ctx)}</>} busy={pending}
       title={s.amount ? <>A payment message {brand.name} couldn’t read <span className="font-normal text-ink-3 tabular-nums">· {formatMoney(s.amount.value, s.amount.currency)}</span></> : `A message ${brand.name} couldn’t read`}
       aside={
         <>
           <Button size="sm" disabled={pending} onClick={retry}><RefreshCw className={cn('size-3.5', pending && 'animate-spin motion-reduce:animate-none')} strokeWidth={1.5} aria-hidden />{pending ? 'Trying…' : 'Retry'}</Button>
-          <Button size="sm" variant="ghost" disabled={pending} onClick={() => ctx.act(item.id, 'Ignored', () => ignoreRawEvent(item.rawEventIds[0]))}>Ignore</Button>
+          <Button size="sm" variant="quiet" disabled={pending} onClick={() => ctx.act(item.id, 'Ignored', () => ignoreRawEvent(item.rawEventIds[0]))}>Ignore</Button>
         </>
       }
     >
-      {/* The app's logo goes with the items it sold; alone it only repeats the label above. */}
       {s.items?.length ? (
-        <div className="mb-2 flex items-center gap-2.5">
-          <AppLogo id={s.app} size="xs" />
-          <ul className="flex min-w-0 flex-wrap gap-1.5" aria-label="Items">
-            {s.items.map((it, n) => <li key={n} className="h-6 max-w-full truncate rounded-full bg-surface-2 px-2.5 text-caption leading-6 text-ink-2" title={it}>{it}</li>)}
-            {s.more ? <li className="flex h-6 items-center px-1 text-caption text-ink-3">+{s.more} more</li> : null}
-          </ul>
-        </div>
+        <ul className="mb-2 flex min-w-0 flex-wrap gap-1.5" aria-label="Items">
+          {s.items.map((it, n) => <li key={n} className="h-6 max-w-full truncate rounded-sm bg-surface-2 px-2.5 text-caption leading-6 text-ink-2" title={it}>{it}</li>)}
+          {s.more ? <li className="flex h-6 items-center px-1 text-caption text-ink-3">+{s.more} more</li> : null}
+        </ul>
       ) : null}
       {s.text ? <p className="truncate rounded-md bg-surface-2 px-3 py-2 font-mono text-caption text-ink-2">{s.text}</p> : null}
-      <p className="mt-2.5 flex items-start gap-1.5 text-small leading-snug text-bad"><CircleAlert className="mt-px size-3.5 shrink-0" strokeWidth={1.5} aria-hidden />{item.reason}</p>
+      <p className="mt-2.5 flex items-start gap-1.5 text-small leading-snug text-bad-ink"><CircleAlert className="mt-px size-3.5 shrink-0" strokeWidth={1.5} aria-hidden />{item.reason}</p>
       <details className="group/raw mt-1">
         <summary className="inline-flex h-8 cursor-pointer list-none items-center gap-1 rounded-sm text-small text-ink-3 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill [&::-webkit-details-marker]:hidden">
           <ChevronRight className="size-3.5 transition-[rotate] duration-150 ease-out-quint group-open/raw:rotate-90" strokeWidth={1.5} aria-hidden />Original message
@@ -252,15 +272,15 @@ function CategoriseRow({ item, ctx }: { item: Extract<NeedsYouItem, { kind: 'cat
   }
   return (
     <QueueItem
-      kind="categorise" label={when(item.at, ctx)}
-      title={<span className="inline-flex items-center gap-2.5"><BrandLogo name={item.merchant} /><span>{item.merchant}</span></span>}
+      kind="categorise" fixed picture={queuePicture(item)} title={item.merchant}
+      line={<span className="tabular-nums">{item.count} {item.count === 1 ? 'payment' : 'payments'} <span aria-hidden>·</span> {formatMoney(item.total, item.currency)} <span aria-hidden>·</span> {when(item.at, ctx)}</span>}
       actions={
         <div className="flex w-full flex-col gap-3">
           <div role="group" aria-label={`Category for ${item.merchant}`} className="flex flex-wrap gap-2">
             {top.map((c) => (
               <button
                 key={c} type="button" onClick={() => file(c)}
-                className={buttonClass({ variant: 'secondary', size: 'sm', className: 'rounded-full font-normal text-ink-2 hover:text-ink' })}
+                className={buttonClass({ variant: 'secondary', size: 'sm', className: 'font-normal text-ink-2 hover:text-ink' })}
               >{c}</button>
             ))}
             {more.length ? (
@@ -279,12 +299,6 @@ function CategoriseRow({ item, ctx }: { item: Extract<NeedsYouItem, { kind: 'cat
           />
         </div>
       }
-    >
-      <p className="text-body text-ink-2 text-pretty">
-        <span className="tabular-nums">{item.count} {item.count === 1 ? 'payment' : 'payments'} · {formatMoney(item.total, item.currency)}</span>
-      </p>
-    </QueueItem>
+    />
   )
 }
-
-

@@ -50,7 +50,8 @@ export function PageHead({ capsule, label, title, brief, summary, tabs, actions,
           <div className="min-w-0">
             {label}
             <h1 className="mt-0.5 font-display text-title text-ink grid-md:text-display">{title}</h1>
-            {brief ? <p className="mt-1 max-w-[60ch] text-body text-ink-2">{brief}</p> : null}
+            {/* A div, so the brief can be an `InsightLine` (its own paragraph) as well as a sentence. */}
+            {brief ? <div className="mt-1 max-w-[60ch] text-body text-ink-2">{brief}</div> : null}
           </div>
         </div>
         {summary ? <div className="col-span-full min-w-0 grid-md:col-[8/13] grid-md:row-start-1 grid-md:self-center grid-lg:col-[9/13]">{summary}</div> : null}
