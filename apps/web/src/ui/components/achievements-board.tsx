@@ -5,6 +5,7 @@ import { ChevronDown } from 'lucide-react'
 import { CATEGORY } from '../tokens'
 import { TIER_COLOR as TIER } from '../achievement-icons'
 import { cn } from '../cn'
+import { SHOW_LOCKED } from './all-locked-link'
 import { fmt, lockedFirst, Medallion, type BoardItem } from './achievement-parts'
 import { ShareButton } from './share/share-button'
 
@@ -19,20 +20,23 @@ const LIMIT = 8
 
 /**
  * Every badge in a four-column grid (two rows to start, the rest one click away): filters All · Unlocked · Locked, and
- * `/you#locked` (Close to unlocking's link) opens it on Locked. The head is the card's; on a phone the fold has it.
+ * `/you#locked` on load, or Close to unlocking's link (an event), opens it on Locked. The head is the card's; on a phone the fold has it.
  */
 export function AchievementsBoard({ items }: { items: BoardItem[] }) {
   const [filter, setFilter] = useState<Filter>('all')
   const [all, setAll] = useState(false)
   useEffect(() => {
-    const onHash = () => {
-      if (window.location.hash !== '#locked') return
+    // Show Locked, open the phone's fold around the board, then scroll to it.
+    const showLocked = () => {
       setFilter('locked')
-      document.getElementById('achievements')?.scrollIntoView({ block: 'start' })
+      const board = document.getElementById('achievements')
+      board?.closest('details')?.setAttribute('open', '')
+      // Two frames later: a fold that has just opened has no box yet, and a scroll to it does nothing.
+      requestAnimationFrame(() => requestAnimationFrame(() => board?.scrollIntoView({ block: 'start' })))
     }
-    onHash()
-    window.addEventListener('hashchange', onHash)
-    return () => window.removeEventListener('hashchange', onHash)
+    if (window.location.hash === '#locked') showLocked()
+    window.addEventListener(SHOW_LOCKED, showLocked)
+    return () => window.removeEventListener(SHOW_LOCKED, showLocked)
   }, [])
   const unlocked = items.filter((a) => a.unlockedAt).sort((a, b) => b.unlockedAt!.localeCompare(a.unlockedAt!))
   const locked = lockedFirst(items)

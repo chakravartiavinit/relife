@@ -1,5 +1,4 @@
-import Link from 'next/link'
-import { ChevronRight } from 'lucide-react'
+import { AllLockedLink } from './all-locked-link'
 import { Card, CardHeader } from './card'
 import { LevelBar } from './capsule'
 import { TIER_COLOR } from '../achievement-icons'
@@ -14,7 +13,7 @@ export function CloseToUnlocking({ items }: { items: BoardItem[] }) {
       <CardHeader
         title={<span id="close-to-unlocking">Close to unlocking</span>}
         description={`${close.length} of ${locked} locked achievements`}
-        action={<Link href="/you#locked" className="-my-1 inline-flex h-8 items-center gap-0.5 rounded-sm px-1.5 text-small font-medium text-ink-2 transition-colors duration-150 hover-fine:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">All locked<ChevronRight aria-hidden className="size-4" strokeWidth={1.5} /></Link>}
+        action={<AllLockedLink />}
       />
       {close.length ? (
         <ul className="flex flex-1 flex-col divide-y divide-divider">
