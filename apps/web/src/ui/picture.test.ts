@@ -24,8 +24,10 @@ test('routines, trackers and hobbies use the routine and hobby art', () => {
 
 test('categories: basket, spending and product names; an unknown name gets a letter', () => {
   assert.equal(src(spec({ of: 'category', name: 'Dairy & eggs' })), '/categories/dairy.png')
-  assert.equal(src(spec({ of: 'category', name: 'Food delivery' })), '/categories/eating-out.png')
-  assert.equal(src(spec({ of: 'category', name: 'Groceries' })), '/categories/staples.png')
+  assert.equal(src(spec({ of: 'category', name: 'Food delivery' })), '/routines/delivery.png')
+  assert.equal(src(spec({ of: 'category', name: 'Groceries' })), '/routines/salad.png')
+  assert.equal(src(spec({ of: 'category', name: 'Dining out' })), '/categories/eating-out.png')
+  assert.equal(src(spec({ of: 'category', name: 'Uncategorized' })), '/hobbies/puzzle.png')
   assert.equal(src(spec({ of: 'category', name: 'Amul Taaza Toned Milk' })), '/categories/dairy.png')
   assert.deepEqual(spec({ of: 'category', name: 'Zzyzx' }), { type: 'letter', name: 'Zzyzx' })
 })
@@ -33,7 +35,7 @@ test('categories: basket, spending and product names; an unknown name gets a let
 test('merchants use their logo; without one the category picture, else a letter', () => {
   assert.deepEqual(spec({ of: 'merchant', name: 'Swiggy Instamart' }), { type: 'logo', src: '/brands/swiggy.svg', fill: false })
   assert.deepEqual(spec({ of: 'merchant', name: 'Blinkit' }), { type: 'logo', src: '/connectors/blinkit.png', fill: true })
-  assert.equal(src(spec({ of: 'merchant', name: 'Corner Pharmacy', category: 'Health' })), '/categories/health.png')
+  assert.equal(src(spec({ of: 'merchant', name: 'Corner Pharmacy', category: 'Health' })), '/routines/pill.png')
   assert.deepEqual(spec({ of: 'merchant', name: 'Corner Pharmacy' }), { type: 'letter', name: 'Corner Pharmacy' })
 })
 

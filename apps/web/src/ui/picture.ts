@@ -57,18 +57,22 @@ export const ITEM_ART: Record<ItemCategory, string> = {
   'Electronics & appliances': 'electronics', Books: 'books', 'Sports & fitness': 'fitness', 'Eating out': 'eating-out', 'Home & lifestyle': 'home', Other: 'other',
 }
 
-// Spending categories (core/categorize.ts) → the closest shipped picture.
+// Spending categories (core/categorize.ts) → the closest shipped picture. Order matters: the first match wins.
 const SPEND: [RegExp, string][] = [
-  [/food delivery|eating out|dining|restaurant|cafe/i, '/categories/eating-out.png'],
-  [/grocer/i, '/categories/staples.png'],
+  [/food delivery|delivery/i, '/routines/delivery.png'],
+  [/eating out|dining|restaurant|cafe/i, '/categories/eating-out.png'],
+  [/grocer/i, '/routines/salad.png'],
   [/personal care/i, '/categories/personal.png'],
-  [/health|pharmac|medical/i, '/categories/health.png'],
+  [/health|pharmac|medical/i, '/routines/pill.png'],
   [/rent|home|house|utilit/i, '/categories/home.png'],
   [/shopping|electronics/i, '/categories/electronics.png'],
-  [/subscription|bill|recharge|insurance/i, '/routines/card.png'],
+  [/subscription|insurance/i, '/routines/card.png'],
+  [/bill|recharge/i, '/routines/phone.png'],
   [/transfer|invest|saving|income|salary|money/i, '/routines/money.png'],
   [/travel|transport|fuel|cab|commute/i, '/hobbies/travel.png'],
   [/entertain|movie|stream/i, '/hobbies/film.png'],
+  [/education|learn/i, '/routines/learn.png'],
+  [/uncategori/i, '/hobbies/puzzle.png'],
 ]
 
 const PROVIDERS: [RegExp, string][] = [
