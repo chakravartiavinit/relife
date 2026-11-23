@@ -8,7 +8,7 @@ import { loadDayPlan } from '@/core/day-plan'
 import { loadAreaLevels, loadHubBriefs, loadHubSparks, loadLifeWeek } from '@/core/life-week'
 import { formatDay, localDate } from '@/core/time'
 import { getUser } from '@/core/user'
-import { Card, Skeleton, SystemLabel } from '@/ui/components/card'
+import { PageHeader, Skeleton } from '@/ui/components/card'
 import { AreaTile, TileSkeleton } from '@/ui/components/life/area-tile'
 import { TimeTile } from '@/ui/components/life/time-tile'
 import { WeekTable } from '@/ui/components/life/week-table'
@@ -30,17 +30,16 @@ export default function LifePage() {
 /** The date and the day's brief. The brief streams in; until then the card holds the same height. */
 function HubHeader({ date, brief }: { date?: string; brief?: string }) {
   return (
-    <Card className="p-5 sm:p-6">
-      <SystemLabel>Life{date ? ` · ${date}` : ''}</SystemLabel>
-      <h1 className="mt-0.5 font-display text-title text-ink sm:text-display">{date ?? 'Your life'}</h1>
-      <p className="mt-1.5 max-w-[64ch] text-body text-ink-2">
-        {brief ? (
-          <>
-            {brief}{' '}<PeekLink to={{ type: 'brief', id: 'today' }} className="rounded-xs font-medium whitespace-nowrap text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-pill">Why?</PeekLink>
-          </>
-        ) : 'All six areas and your laptop time, one click each.'}
-      </p>
-    </Card>
+    <PageHeader
+      className="mb-0"
+      eyebrow={`Life${date ? ` · ${date}` : ''}`}
+      title={date ?? 'Your life'}
+      description={brief ? (
+        <>
+          {brief}{' '}<PeekLink to={{ type: 'brief', id: 'today' }} className="rounded-xs font-medium whitespace-nowrap text-pill-ink hover-fine:underline focus-visible:outline-2 focus-visible:outline-pill">Why?</PeekLink>
+        </>
+      ) : 'All six areas and your laptop time, one click each.'}
+    />
   )
 }
 

@@ -13,15 +13,15 @@ const TABS: SegmentTab[] = [
   { href: '/plan/review', label: 'Review' },
 ]
 
-/** Header and tab row stay mounted while a tab changes; only the tab body below re-renders. */
+/** Head and tab row stay mounted while a tab changes; only the tab body below re-renders. */
 export default function PlanLayout({ children }: LayoutProps<'/plan'>) {
   return (
     <>
       <PageHeader
-        eyebrow="Plan" title="Plan"
+        title="Plan"
         description="Up to 3 outcomes you want to change, the routines that serve them, the numbers you count, and your weekly review."
+        tabs={<Suspense fallback={<PlanTabs />}><PlanTabsWithDot /></Suspense>}
       />
-      <Suspense fallback={<PlanTabs />}><PlanTabsWithDot /></Suspense>
       {children}
     </>
   )
@@ -33,7 +33,7 @@ function PlanTabs({ due = 0, today }: { due?: number; today?: { done: number; to
     : t.href === '/plan/routines' && today?.total
       ? { ...t, label: <span className="inline-flex items-center gap-1.5">Routines<span className="text-caption font-normal text-ink-3 tabular-nums">{today.done}/{today.total}</span></span> }
       : t)
-  return <RouteTabs tabs={tabs} label="Plan" className="mb-6" />
+  return <RouteTabs variant="underline" tabs={tabs} label="Plan" />
 }
 
 /** The dot on Review and today's count on Routines need the database, so they stream in. The row itself is already there. */

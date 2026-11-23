@@ -12,7 +12,6 @@ import { getUser } from '@/core/user'
 import { Card, Skeleton } from '@/ui/components/card'
 import { AskThread } from '@/ui/components/coach/ask-thread'
 import { CoachPanes } from '@/ui/components/coach/coach-panes'
-import { CoachTabs } from '@/ui/components/coach/coach-tabs'
 import { isDemo } from '@/core/demo'
 import { ConnectCoach } from '@/ui/components/coach/connect-coach'
 import { LocalAiDown } from '@/ui/components/coach/local-ai-down'
@@ -61,7 +60,6 @@ async function Coach({ searchParams }: { searchParams: PageProps<'/coach'>['sear
       ask={
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <CoachTabs className="max-lg:hidden" />
             <span className="inline-flex h-7 items-center gap-1.5 rounded-full bg-surface px-3 text-caption font-medium text-ink-2 shadow-1 max-lg:ml-auto">
               <span aria-hidden className={aiOn ? 'size-1.5 rounded-full bg-good' : down ? 'size-1.5 rounded-full bg-warn' : 'size-1.5 rounded-full bg-ink-3'} />
               {aiOn ? 'Chat model ready' : down ? <span className="text-warn">Local AI not running</span> : 'No model connected'}

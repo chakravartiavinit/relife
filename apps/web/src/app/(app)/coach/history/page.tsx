@@ -14,7 +14,6 @@ import { cn } from '@/ui/cn'
 import { AppLogo } from '@/ui/components/app-logo'
 import { buttonClass } from '@/ui/components/button'
 import { Badge, Card, IconChip, Skeleton } from '@/ui/components/card'
-import { CoachTabs } from '@/ui/components/coach/coach-tabs'
 import { QUEUE_KIND } from '@/ui/components/coach/kinds'
 import { STATUS } from '@/ui/components/insight-kinds'
 import { PeekLink } from '@/ui/components/peek/peek-link'
@@ -27,7 +26,6 @@ const SHOW = [{ key: null, label: 'All' }, { key: 'decisions', label: 'Decisions
 export default function HistoryPage({ searchParams }: PageProps<'/coach/history'>) {
   return (
     <div className="flex max-w-[52rem] flex-col gap-4">
-      <CoachTabs />
       <Suspense fallback={<Skeleton className="h-[420px] rounded-lg" />}><History searchParams={searchParams} /></Suspense>
     </div>
   )

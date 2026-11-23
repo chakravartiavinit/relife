@@ -11,14 +11,14 @@ const LOG_LABEL: Record<string, string> = {
   health: 'Log health', mind: 'Log mind', skills: 'Log practice', wealth: 'Log spend', hobbies: 'Log practice', people: 'Log catch-up',
 }
 
-/** The tab row of an area (`/health`, `/health/trends`...) with the area's log button beside it. The counts stream in. */
+/** The tab row of an area (`/health`, `/health/trends`...), the underline kind for under `AreaHeader`. The counts stream in. */
 export function AreaTabs({ def }: { def: AreaDef }) {
-  return (
-    <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-      <Suspense fallback={<Row def={def} />}><RowWithCounts def={def} /></Suspense>
-      {LOG_LABEL[def.slug] ? <LogButton label={LOG_LABEL[def.slug]} /> : null}
-    </div>
-  )
+  return <Suspense fallback={<Row def={def} />}><RowWithCounts def={def} /></Suspense>
+}
+
+/** The area's log button ("Log health"), for the head's actions: opens Capture. Nothing for an area without one. */
+export function AreaLog({ def }: { def: AreaDef }) {
+  return LOG_LABEL[def.slug] ? <LogButton label={LOG_LABEL[def.slug]} /> : null
 }
 
 function Row({ def, counts = {} }: { def: AreaDef; counts?: Record<string, number> }) {
@@ -26,7 +26,7 @@ function Row({ def, counts = {} }: { def: AreaDef; counts?: Record<string, numbe
     href: areaHref(def, t.segment),
     label: counts[t.segment ?? ''] ? <span className="inline-flex items-baseline gap-1.5">{t.label}<span className="text-caption text-ink-3 tabular-nums">{counts[t.segment!]}</span></span> : t.label,
   }))
-  return <RouteTabs tabs={tabs} label={def.title} />
+  return <RouteTabs variant="underline" tabs={tabs} label={def.title} />
 }
 
 /** Routines (active ones of this area) and sources (connected connectors of this area), two counts in two queries. */

@@ -5,18 +5,17 @@ import { getUser } from '@/core/user'
 import { KpiStrip, Skeleton, type Kpi } from '../card'
 import { Ticker } from '../ticker'
 import { AreaHeader } from './area-header'
-import { AreaTabs } from './area-tabs'
+import { AreaLog, AreaTabs } from './area-tabs'
 
 /**
- * The area template: header → tabs → headline numbers → the tab body. It lives in a layout, so a tab change only
+ * The area template: the compact head with its tab row and Log button → headline numbers → the tab body. It lives in a layout, so a tab change only
  * re-renders the body. Every headline number opens a Peek (its metric, or the area's summary when it has none).
  * Wealth keeps its numbers per tab (`kpis={false}`: Overview, Spending and Portfolio each have their own).
  */
 export function AreaLayout({ def, children, kpis = true, right }: { def: AreaDef; children: React.ReactNode; kpis?: boolean; right?: React.ReactNode }) {
   return (
     <>
-      <AreaHeader def={def} right={right} />
-      {def.tabs.length > 1 ? <AreaTabs def={def} /> : null}
+      <AreaHeader def={def} right={right} tabs={def.tabs.length > 1 ? <AreaTabs def={def} /> : undefined} actions={def.tabs.length > 1 ? <AreaLog def={def} /> : undefined} />
       <div className="flex flex-col gap-6">
         {kpis ? <Suspense fallback={<KpiSkeleton />}><AreaKpis def={def} /></Suspense> : null}
         {children}
