@@ -110,7 +110,6 @@ async function Header({ user }: { user: User }) {
       greeting: greeting(hour), name: user.name.split(' ')[0],
       line: complete ? recapLine({ total: plan.total, tomorrow }) : stored ?? (firstDay ? `Day one. Check things off as you go and ${brand.name} learns your rhythm; connect a source or two to fill in the rest.` : planLine({ total: plan.total, done: plan.done, next: plan.next })),
       why: !complete && !!stored,
-      level: { level: xp.level, title: xp.title, total: xp.total, toNext: xp.next - xp.total, progress: xp.progress },
       streak, freezes: quests.freezes, xpToday: xp.today, firstDay, complete,
     }} />
   )

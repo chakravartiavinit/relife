@@ -17,19 +17,16 @@ const spark = (v: number[]) => v.map((value, i) => ({ date: `2026-11-${String(6 
 export const HEADER: HeaderData = {
   date: 'Thursday · 12 November', greeting: 'Good afternoon', name: 'Avinit', why: true,
   line: 'Short night, so keep today light: 6 of 16 done, water is 500 ml behind, and spending is on a usual day.',
-  level: { level: 14, title: 'Pathfinder', total: 6420, toNext: 380, progress: 0.62 },
   streak: { current: 18, doneToday: true }, freezes: 1, xpToday: 85,
 }
 export const HEADER_FIRST_DAY: HeaderData = {
   date: 'Thursday · 12 November', greeting: 'Good morning', name: 'Avinit', why: false, firstDay: true,
   line: `Day one. Check things off as you go and ${brand.name} learns your rhythm; connect a source or two to fill in the rest.`,
-  level: { level: 1, title: 'Awakened', total: 0, toNext: 100, progress: 0 },
   streak: { current: 0, doneToday: false }, freezes: 0, xpToday: 0,
 }
 export const HEADER_DONE: HeaderData = {
   date: 'Thursday · 12 November', greeting: 'Good night', name: 'Avinit', why: false, complete: true,
   line: 'All 16 done. Tomorrow starts with Gym at 07:00.',
-  level: { level: 14, title: 'Pathfinder', total: 6500, toNext: 300, progress: 0.72 },
   streak: { current: 19, doneToday: true }, freezes: 1, xpToday: 165,
 }
 

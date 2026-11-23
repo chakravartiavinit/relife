@@ -1,7 +1,6 @@
-// Pure rules for the app shell: the sync dot, the area dots and the level ring.
+// Pure rules for the app shell: the sync dot, today's and each area's progress, and the nav status.
 
 import type { Category } from '@/db/schema'
-import { CATEGORIES } from '@/domain/categories'
 
 export type SyncTone = 'good' | 'warn' | 'bad'
 
@@ -39,10 +38,6 @@ export type AreaToday = 'done' | 'due' | 'none'
 
 export function progressState({ done, total }: Progress): AreaToday {
   return total === 0 ? 'none' : done >= total ? 'done' : 'due'
-}
-
-export function areaToday(byCat: Record<Category, Progress>): Record<Category, AreaToday> {
-  return Object.fromEntries(CATEGORIES.map((c) => [c, progressState(byCat[c])])) as Record<Category, AreaToday>
 }
 
 /** What the sidebar and the phone tab bar show next to each destination: today's plan, each area's, and the Coach count. */

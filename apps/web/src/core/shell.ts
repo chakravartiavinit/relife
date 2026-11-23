@@ -2,7 +2,7 @@ import { cache } from 'react'
 import { sql } from 'drizzle-orm'
 import { db } from '@/db'
 import { needsYou, type NeedsYou } from '@/domain/needs-you'
-import { areaToday, syncTone, workerAlive, type AreaToday, type Progress, type SyncTone } from '@/domain/shell'
+import { syncTone, workerAlive, type Progress, type SyncTone } from '@/domain/shell'
 import type { Category } from '@/db/schema'
 import { loadDayPlan } from './day-plan'
 import { integration } from './integrations'
@@ -14,7 +14,6 @@ export type ShellStatus = {
   needsYou: NeedsYou
   sync: { tone: SyncTone; workerAlive: boolean; failing: string[]; lastSyncAt: Date | null }
   level: { level: number; progress: number; title: string }
-  areaToday: Record<Category, AreaToday>
   /** Today's plan: routines and goals checked off out of those due. */
   today: Progress
   /** The same counts per area (the sidebar's "3 left"). */
@@ -53,7 +52,6 @@ export const loadShellStatus = cache(async (user: User): Promise<ShellStatus> =>
     needsYou: needsYou(r.decisions, r.unread, r.merchants),
     sync: { tone: syncTone(alive, failing.length), workerAlive: alive, failing, lastSyncAt: date(r.last_sync) },
     level,
-    areaToday: areaToday(plan.byCat),
     today: { done: plan.done, total: plan.total },
     areaCounts: plan.byCat,
   }

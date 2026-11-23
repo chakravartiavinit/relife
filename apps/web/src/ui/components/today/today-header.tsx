@@ -14,8 +14,6 @@ export type HeaderData = {
   line: string
   /** Opens the brief's Peek (the facts behind the line). Hidden when the line is not a stored brief. */
   why: boolean
-  /** Not drawn here any more: the level and its XP bar live in the sidebar's You card (each number once). */
-  level?: { level: number; title: string; total: number; toNext: number; progress: number }
   streak: { current: number; doneToday: boolean }
   freezes: number
   xpToday: number
