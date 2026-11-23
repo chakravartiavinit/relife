@@ -8,7 +8,7 @@ import { useDelayedShow } from '../use-delayed-show'
 import './loader.css'
 
 /**
- * The ReLife logo loader: the real capsule from the logo fills along its tilt like a stat bar (see loader.css).
+ * The app's logo loader: the real capsule from the logo fills along its tilt like a stat bar (see loader.css).
  *   splash  the wordmark, for the cold start
  *   page    a 40px capsule, for a page that waits as a whole (loading.tsx)
  *   inline  20px (16px with `px`), for buttons and rows

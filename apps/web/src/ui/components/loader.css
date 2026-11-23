@@ -1,5 +1,5 @@
 /*
- * The ReLife logo loader (concept C1, "Fill"): the real capsule from the logo fills along its own tilt like a stat bar.
+ * The app's logo loader (concept C1, "Fill"): the real capsule from the logo fills along its own tilt like a stat bar.
  * The art is the capsule cut that packages/brand/build.mjs writes; it is clipped, never redrawn. The geometry (tilt,
  * clip box, columns in the wordmark) comes from the build as custom properties set by loader.tsx.
  * Motion values: .plans/designs/loader/ld-c1.html. Easing tokens are the ones in tokens.css.
