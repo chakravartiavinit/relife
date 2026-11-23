@@ -25,7 +25,11 @@ import { PeekLink } from './peek/peek-link'
 import { SegmentTabs } from './segment-tabs'
 import { Sheet } from './sheet'
 import { AvatarRing } from './shell/avatar-ring'
-import { CoachBell, CountPill } from './shell/coach-bell'
+import { CountPill } from './shell/coach-bell'
+import { NavRows } from './shell/sidebar'
+import { SidebarProfile } from './shell/sidebar-profile'
+import { TabBarView } from './shell/tab-bar'
+import type { NavStatus } from '@/domain/shell'
 import { SyncDot } from './shell/sync-dot'
 
 /** A labelled cell, so every sample says what it is. */
@@ -137,39 +141,91 @@ export function PeekLinkDemo() {
   )
 }
 
-/** The shell's status pieces in each state: the sync dot, the Coach count, the level avatar and an area dot. */
-export function ShellDemo() {
-  const dot = (status: 'done' | 'due' | 'none') => (
-    <span aria-hidden className={`size-1.5 rounded-full ${status === 'none' ? 'opacity-30' : ''}`} style={{ background: status === 'due' ? 'transparent' : 'var(--cat-health)', boxShadow: status === 'due' ? 'inset 0 0 0 1.5px var(--cat-health)' : undefined }} />
-  )
+const NAV_STATUS: NavStatus = {
+  today: { done: 5, total: 11 },
+  areas: { health: { done: 0, total: 3 }, mind: { done: 0, total: 3 }, skills: { done: 2, total: 2 }, wealth: { done: 0, total: 0 }, hobbies: { done: 0, total: 0 }, relationships: { done: 0, total: 0 } },
+  coach: 8,
+}
+const NAV_ALL_DONE: NavStatus = { ...NAV_STATUS, today: { done: 11, total: 11 }, areas: { ...NAV_STATUS.areas, health: { done: 3, total: 3 }, mind: { done: 3, total: 3 } }, coach: 0 }
+const LEVEL = { level: 25, title: 'Ascendant', progress: 0.64 }
+
+/** The real sidebar rows and You card in a box: `rail` draws the 72px rail (the page's own sidebar follows ⌘\ separately). */
+function SidebarBox({ status, rail, dark, path = '/' }: { status?: NavStatus; rail?: boolean; dark?: boolean; path?: string }) {
   return (
-    <Grid>
-      <Demo title="SyncDot (good, warn, bad, loading)">
-        <div className="flex flex-wrap items-center gap-2">
-          <SyncDot tone="good" label="Synced 2 min ago" />
-          <SyncDot tone="warn" label="2 need a fix" />
-          <SyncDot tone="bad" label="Sync paused 2 h" />
-          <SyncDot tone="loading" />
+    <div data-theme={dark ? 'dark' : undefined} data-sidebar-rail={rail ? '' : undefined} className={`flex flex-col gap-3 rounded-lg bg-bg p-3 shadow-1 ${rail ? 'w-[72px] px-0' : 'w-60'}`}>
+      <NavRows path={path} status={status} />
+      <SidebarProfile name="Aarav Shah" level={status ? LEVEL : undefined} />
+    </div>
+  )
+}
+
+/** The phone tab bar inside a 390 x 520 box, with the Life tray closed or open. */
+function PhoneBox({ status, open, dark, path = '/' }: { status?: NavStatus; open?: boolean; dark?: boolean; path?: string }) {
+  return (
+    <div data-theme={dark ? 'dark' : undefined} style={{ '--tabbar-h': '84px' } as React.CSSProperties} className="relative h-[520px] w-[390px] max-w-full overflow-hidden rounded-lg bg-bg text-ink shadow-1">
+      <TabBarView path={path} status={status} demo={{ open }} />
+    </div>
+  )
+}
+
+/** The shell: the sidebar expanded, as the 72px rail, and with nothing loaded yet, the phone tab bar with its Life tray, and the status pieces. */
+export function ShellDemo() {
+  return (
+    <div className="flex flex-col gap-10">
+      <Demo title="Sidebar rows, light and dark: expanded (Health open, 3 left), all done, loading (names only)">
+        <div className="flex flex-wrap items-start gap-6">
+          <SidebarBox status={NAV_STATUS} path="/health" />
+          <SidebarBox status={NAV_STATUS} path="/health" dark />
+          <SidebarBox status={NAV_ALL_DONE} path="/" />
+          <SidebarBox />
         </div>
       </Demo>
-      <Demo title="CoachBell and CountPill (0, 4, 120)">
-        <div className="flex items-center gap-4">
-          <CoachBell /><CoachBell count={4} /><CoachBell count={120} />
-          <CountPill n={4} /><CountPill n={120} />
+      <Demo title="72px rail, light and dark: ring = something due, check = done, count = Coach (hover or Tab to a picture for its tooltip)">
+        <div className="flex flex-wrap items-start gap-6">
+          <SidebarBox status={NAV_STATUS} path="/health" rail />
+          <SidebarBox status={NAV_STATUS} path="/health" rail dark />
+          <SidebarBox status={NAV_ALL_DONE} path="/" rail />
+          <SidebarBox rail />
         </div>
       </Demo>
-      <Demo title="AvatarRing (loading, level 1, level 12 at 62%, level 24 at 100%)">
-        <div className="flex items-center gap-4">
-          <AvatarRing initial="R" />
-          <AvatarRing initial="A" level={1} progress={0.02} />
-          <AvatarRing initial="A" level={12} progress={0.62} />
-          <AvatarRing initial="A" level={24} progress={1} />
+      <Demo title="Phone tab bar and Life tray, light and dark: closed on Today, tray open on Health, tray open on Today (all done), loading">
+        <div className="flex flex-wrap items-start gap-6">
+          <PhoneBox status={NAV_STATUS} />
+          <PhoneBox status={NAV_STATUS} open path="/health" />
+          <PhoneBox status={NAV_STATUS} open path="/health" dark />
+          <PhoneBox status={NAV_ALL_DONE} open />
+          <PhoneBox />
         </div>
       </Demo>
-      <Demo title="Area dot (filled: all done, ring: something due, faint: nothing due)">
-        <div className="flex items-center gap-4 text-small text-ink-2"><span className="flex items-center gap-2">{dot('done')}Health</span><span className="flex items-center gap-2">{dot('due')}Mind</span><span className="flex items-center gap-2">{dot('none')}Wealth</span></div>
-      </Demo>
-    </Grid>
+      <Grid>
+        <Demo title="SyncDot (good, warn, bad, loading)">
+          <div className="flex flex-wrap items-center gap-2">
+            <SyncDot tone="good" label="Synced 2 min ago" />
+            <SyncDot tone="warn" label="2 need a fix" />
+            <SyncDot tone="bad" label="Sync paused 2 h" />
+            <SyncDot tone="loading" />
+          </div>
+        </Demo>
+        <Demo title="SyncDot labelled, as in the sidebar foot (good, warn, bad)">
+          <div className="flex flex-wrap items-center gap-2">
+            <SyncDot tone="good" label="Synced 2 min ago" labelled />
+            <SyncDot tone="warn" label="2 need a fix" labelled />
+            <SyncDot tone="bad" label="Sync paused 2 h" labelled />
+          </div>
+        </Demo>
+        <Demo title="CountPill (4, 120)">
+          <div className="flex items-center gap-4"><CountPill n={4} /><CountPill n={120} /></div>
+        </Demo>
+        <Demo title="AvatarRing (loading, level 1, level 12 at 62%, level 24 at 100%)">
+          <div className="flex items-center gap-4">
+            <AvatarRing initial="R" />
+            <AvatarRing initial="A" level={1} progress={0.02} />
+            <AvatarRing initial="A" level={12} progress={0.62} />
+            <AvatarRing initial="A" level={24} progress={1} />
+          </div>
+        </Demo>
+      </Grid>
+    </div>
   )
 }
 

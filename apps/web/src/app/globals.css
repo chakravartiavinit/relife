@@ -7,7 +7,15 @@
 /* A wide but short window (a 13" laptop): onboarding tightens its spacing here so each step still fits. */
 @custom-variant short (@media (min-width: 64rem) and (max-height: 52.5rem));
 /* The shell's saved sidebar state, on <html> before first paint (shell/sidebar-script.ts): no layout flash. */
-@custom-variant rail (html[data-sidebar="rail"] &);
+@custom-variant rail (:is(html[data-sidebar="rail"], [data-sidebar-rail]) &);
+/* `group-hover:` for fine pointers only (see hover-fine). */
+@custom-variant group-hover-fine {
+  @media (hover: hover) and (pointer: fine) {
+    &:is(:where(.group):hover *) {
+      @slot;
+    }
+  }
+}
 /* Hover only where a mouse or trackpad exists, so a tap on a phone never leaves a stuck hover state. Use `hover-fine:` in new code. */
 @custom-variant hover-fine {
   @media (hover: hover) and (pointer: fine) {
@@ -20,7 +28,6 @@
    72px rail both get the right column count: 1 column below 40rem, 8 columns from 40rem, 12 columns from 60rem. */
 @custom-variant grid-md (@container (min-width: 40rem));
 @custom-variant grid-lg (@container (min-width: 60rem));
-
 
 /*
  * ReLife design tokens: the ReLIFE capsule. Ink black, flat warm grey and capsule blue, light-first,
@@ -323,11 +330,22 @@ details[open]::details-content { opacity: 1; }
 :root { --sheet-top: 12px; --topbar-h: 72px; --tabbar-h: calc(64px + max(20px, env(safe-area-inset-bottom))); }
 @media (min-width: 1024px) { :root { --sheet-top: calc(var(--topbar-h) + 12px); } }
 
-/* Sidebar, before hydration: a saved rail is drawn at once from <html data-sidebar>, ignoring the width and label
-   state React has not caught up with yet. `data-sidebar-ready` (set shortly after load) hands control back to
-   the spring so collapsing animates. */
-html[data-sidebar="rail"]:not([data-sidebar-ready]) aside[data-slot="sidebar"] { width: var(--sidebar-width-icon) !important; }
-html[data-sidebar="rail"]:not([data-sidebar-ready]) [data-slot="sidebar-label"] { opacity: 0 !important; }
+/* Sidebar: the saved state is on <html data-sidebar> before first paint and CSS (the `rail:` variant) lays it out, so a
+   saved rail never flashes open. ⌘\ switches at once; only the collapse button sets `data-sidebar-animate`
+   (sidebar.tsx) to ease the width. Reduced motion shows the final width. */
+html[data-sidebar-animate] [data-sidebar-panel] { transition: width 200ms var(--ease-out-quint); }
+@media (prefers-reduced-motion: reduce) {
+  html[data-sidebar-animate] [data-sidebar-panel] { transition: none; }
+}
+/* The rail tooltip grows from its left edge; the phone Life tray grows from the Life tab. Reduced motion shows them
+   in place. */
+@keyframes tip-in { from { opacity: 0; transform: scale(0.97); } }
+@keyframes tray-in { from { opacity: 0; transform: translateY(8px) scale(0.97); } }
+.tip-in { transform-origin: left center; animation: tip-in 125ms var(--ease-out-strong) both; }
+.tray-in { transform-origin: 30% 100%; animation: tray-in 200ms var(--ease-out-strong) both; }
+@media (prefers-reduced-motion: reduce) {
+  .tip-in, .tray-in { animation: none; }
+}
 
 /* The Life group's area list unfolds with a height reveal so the rows below slide rather than jump. */
-html[data-life="closed"] .nav-sub[data-open] { grid-template-rows: 0fr; opacity: 0; }
+html[data-life="closed"]:not([data-sidebar="rail"]) .nav-sub[data-open] { grid-template-rows: 0fr; opacity: 0; }

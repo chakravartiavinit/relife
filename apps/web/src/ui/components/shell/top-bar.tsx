@@ -10,19 +10,19 @@ import { Breadcrumb, BreadcrumbEllipsis, BreadcrumbItem, BreadcrumbLink, Breadcr
 import { openCapture, prefetchCapture } from '../capture/capture-data'
 import { Wordmark } from '../logo'
 
-// Top bar. Laptop (≥ lg): sticky, 72px, left the breadcrumb, centre the Capture field, right the status trio
-// (sync, Coach bell, level avatar). Phone: 56px, wordmark and the two status pieces; it scrolls away.
-// Columns share the room 1.2 : 2 : 1 (Capture stops at 520px, the status trio never goes under its own width), so the breadcrumb gets a column
-// to itself and never runs into the Capture field; what does not fit it folds (see Crumbs).
-// Status pieces arrive as slots, each in its own Suspense island (shell-status.tsx).
+// Top bar. Laptop (≥ lg): sticky, 72px, left the breadcrumb, centre the Capture field. The sync dot, Coach count and level
+// avatar live in the sidebar there, so the right column is empty room that keeps Capture centred. Phone: 56px, wordmark
+// and the two status pieces (sync, avatar); it scrolls away.
+// Columns share the room 1.2 : 2 : 1 (Capture stops at 520px), so the breadcrumb gets a column to itself and never runs
+// into the Capture field; what does not fit it folds (see Crumbs).
 
 /** Stays 72px (`--topbar-h`, which also sets where the Sheet panel starts). */
-export function TopBar({ date, sync, bell, avatar }: { date: ReactNode; sync: ReactNode; bell: ReactNode; avatar: ReactNode }) {
+export function TopBar({ date }: { date: ReactNode }) {
   return (
-    <header className="sticky top-0 z-30 hidden h-[var(--topbar-h)] grid-cols-[minmax(0,1.2fr)_minmax(200px,2fr)_minmax(min-content,1fr)] items-center gap-6 bg-[color-mix(in_oklch,var(--bg)_86%,transparent)] pr-10 pl-7 backdrop-blur-md lg:grid">
+    <header className="sticky top-0 z-30 hidden h-[var(--topbar-h)] grid-cols-[minmax(0,1.2fr)_minmax(200px,2fr)_minmax(0,1fr)] items-center gap-6 bg-[color-mix(in_oklch,var(--bg)_86%,transparent)] pr-10 pl-7 backdrop-blur-md lg:grid">
       <Suspense fallback={null}><Crumbs date={date} /></Suspense>
       <div className="flex min-w-0 justify-center"><CaptureField /></div>
-      <div className="flex items-center justify-end gap-1">{sync}{bell}{avatar}</div>
+      <div aria-hidden />
     </header>
   )
 }

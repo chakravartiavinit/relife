@@ -10,7 +10,7 @@ const MAX_ARBITRARY_TEXT_SIZES = 238
 
 // Files fully on the scale. They must stay at zero.
 // The shell (sidebar, top bar, tab bar and their status pieces) is fully on the scale.
-const SHELL = ['sidebar', 'top-bar', 'tab-bar', 'sync-dot', 'coach-bell', 'avatar-ring', 'shell-status'].map((f) => `src/ui/components/shell/${f}.tsx`)
+const SHELL = ['sidebar', 'top-bar', 'tab-bar', 'sync-dot', 'coach-bell', 'avatar-ring', 'shell-status', 'sidebar-profile'].map((f) => `src/ui/components/shell/${f}.tsx`)
 // Capture (phase 4) is fully on the scale too.
 const CAPTURE = ['capture.tsx', 'capture-view.tsx', 'capture-gallery.tsx'].map((f) => `src/ui/components/capture/${f}`)
 // Peek (phase 5) is fully on the scale too: every file under peek/ is checked below.

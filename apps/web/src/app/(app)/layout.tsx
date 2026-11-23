@@ -1,16 +1,15 @@
 import { RootHtml, rootMetadata, rootViewport } from '@/ui/root-html'
 import brand from '@relife/brand/brand.json'
 import { Suspense } from 'react'
-import { cn } from '@/ui/cn'
 import { Capture } from '@/ui/components/capture/capture'
 import { PeekHost } from '@/ui/components/peek/peek-host'
-import { Sidebar, SidebarProvider, AreaLinksPlaceholder } from '@/ui/components/shell/sidebar'
+import { Sidebar, SidebarNavFallback, SidebarProvider } from '@/ui/components/shell/sidebar'
 import { PhoneTopBar, TopBar } from '@/ui/components/shell/top-bar'
-import { TabBar } from '@/ui/components/shell/tab-bar'
+import { TabBarFallback } from '@/ui/components/shell/tab-bar'
 import { SIDEBAR_SCRIPT } from '@/ui/components/shell/sidebar-script'
-import { Avatar, CoachBellStatus, CoachCount, SidebarAreas, SyncStatus, TodayDate } from '@/ui/components/shell/shell-status'
+import { Avatar, SidebarRows, SidebarYou, SyncStatus, TabBarRows, TodayDate } from '@/ui/components/shell/shell-status'
+import { SidebarProfile } from '@/ui/components/shell/sidebar-profile'
 import { SyncDot } from '@/ui/components/shell/sync-dot'
-import { CoachBell } from '@/ui/components/shell/coach-bell'
 import { AvatarRing } from '@/ui/components/shell/avatar-ring'
 import { Tour } from '@/ui/components/tour/tour'
 import { ThemeFromServer } from '@/ui/components/theme-sync'
@@ -34,17 +33,13 @@ export const viewport = rootViewport
 /** Always visible in mock mode so random data is never mistaken for yours. The demo has its own (DemoBanner). */
 function MockBadge({ wide = false }: { wide?: boolean }) {
   if (process.env.RELIFE_MOCK !== '1' || isDemo()) return null
+  const title = 'Random data from the relife_mock database. Your real data is untouched.'
+  // In the sidebar it is a plain line with a dot; on the phone a small chip in the top bar.
+  if (wide) return <span title={title} className="flex items-center gap-2 px-2 text-caption text-ink-2"><span aria-hidden className="size-1.5 rounded-full bg-warn" />Mock mode · random data</span>
   return (
-    <span
-      title="Random data from the relife_mock database. Your real data is untouched."
-      className={cn(
-        'inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-caption font-medium whitespace-nowrap text-warn shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--warn)_35%,transparent)]',
-        wide && '-mt-1 h-8 w-full justify-center rounded-md text-caption',
-      )}
-      style={{ background: 'color-mix(in oklch, var(--warn) 14%, transparent)' }}
-    >
+    <span title={title} className="inline-flex h-6 items-center gap-1.5 rounded-full bg-surface-2 px-2 text-caption whitespace-nowrap text-ink-2">
       <span aria-hidden className="size-1.5 rounded-full bg-warn" />
-      {wide ? 'Mock mode · random data' : 'Mock'}
+      Mock
     </span>
   )
 }
@@ -83,19 +78,14 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
           <SidebarProvider>
             {/* Each status piece is its own Suspense island; they share one `loadShellStatus` per request. */}
             <Sidebar
-              coachBadge={<Suspense fallback={null}><CoachCount /></Suspense>}
-              coachDot={<Suspense fallback={null}><CoachCount variant="dot" /></Suspense>}
-              areas={<Suspense fallback={<AreaLinksPlaceholder />}><SidebarAreas /></Suspense>}
+              nav={<Suspense fallback={<SidebarNavFallback />}><SidebarRows /></Suspense>}
+              you={<Suspense fallback={<SidebarProfile />}><SidebarYou /></Suspense>}
+              sync={<Suspense fallback={<SyncDot tone="loading" labelled />}><SyncStatus labelled /></Suspense>}
               mock={<><MockBadge wide /><Suspense fallback={null}><DemoSidebarBadge /></Suspense></>}
             />
             <main className="min-w-0 flex-1">
               <Suspense fallback={null}><DemoBanner className="max-lg:hidden" /></Suspense>
-              <TopBar
-                date={<Suspense fallback={null}><TodayDate /></Suspense>}
-                sync={<Suspense fallback={<SyncDot tone="loading" />}><SyncStatus /></Suspense>}
-                bell={<Suspense fallback={<CoachBell />}><CoachBellStatus /></Suspense>}
-                avatar={<Suspense fallback={<AvatarRing initial="R" />}><Avatar /></Suspense>}
-              />
+              <TopBar date={<Suspense fallback={null}><TodayDate /></Suspense>} />
               <div className="px-5 pb-[calc(var(--tabbar-h)+16px)] sm:px-8 lg:pt-2 lg:pr-10 lg:pb-9 lg:pl-7">
                 <PhoneTopBar
                   extra={<MockBadge />}
@@ -107,7 +97,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
               </div>
             </main>
           </SidebarProvider>
-          <TabBar coachBadge={<Suspense fallback={null}><CoachCount className="h-[18px] min-w-[18px] px-1 text-label shadow-[0_0_0_2px_var(--surface)]" /></Suspense>} />
+          <Suspense fallback={<TabBarFallback />}><TabBarRows /></Suspense>
           <Suspense fallback={null}><DemoMount /></Suspense>
           <Capture />
           {/* useSearchParams needs a Suspense boundary under Cache Components; nothing to show while it resolves. */}

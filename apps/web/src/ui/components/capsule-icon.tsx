@@ -9,7 +9,8 @@ import { cn } from '../cn'
 export const AREA_ICON: Record<Category, LucideIcon> = { health: HeartPulse, mind: Brain, skills: Code, wealth: Wallet, hobbies: Palette, relationships: Users }
 
 const SIZE = {
-  xs: { box: 'h-[23px] w-[14px]', icon: 'size-2', text: 'text-[7px]' },
+  // The sidebar's You card and the level ring: a letter inside a 22 x 34 capsule.
+  nav: { box: 'h-[34px] w-[22px]', icon: 'size-3', text: 'text-caption' },
   sm: { box: 'h-12 w-[30px]', icon: 'size-3.5', text: 'text-small' },
   md: { box: 'h-[60px] w-[38px]', icon: 'size-[18px]', text: 'text-heading' },
   lg: { box: 'h-[72px] w-[46px]', icon: 'size-5', text: 'text-title' },

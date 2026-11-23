@@ -37,12 +37,17 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
   `/relationships`, ...) redirect (307) through `LEGACY_REDIRECTS` in `apps/web/src/domain/routes.ts`; never link to them.
   Navigation data (`NAV`, `isActive`) lives in `apps/web/src/ui/components/nav.tsx`; the shell is in `apps/web/src/ui/components/shell/`: a
   collapsible desktop `Sidebar` (240px, or a 72px icon rail; the choice is stored in `localStorage` `relife:sidebar`
-  and put on `<html data-sidebar>` before paint by `sidebar-script.ts`, ⌘\ toggles it), the desktop `TopBar`
-  (breadcrumb from `trail()`, Capture field, sync dot, Coach bell, level avatar), the phone `PhoneTopBar` and
-  `TabBar` (a raised `+`; both open Capture). Everything the shell shows besides the page
-  (Coach count, sync dot, level ring, area dots) comes from `loadShellStatus` in `apps/web/src/core/shell.ts`: one SQL
-  statement plus `xpLevel` and `buildDayPlan`, wrapped in React `cache`, read by each piece in its own Suspense
-  island (`shell-status.tsx`). The needs-you rules (merchant grouping, nudges expire after 3 days) are in
+  and put on `<html data-sidebar>` before paint by `sidebar-script.ts`; the `rail:` variant lays the same elements out as a rail,
+  ⌘\ toggles it with no animation and the collapse button eases the width). Each destination is one 34px row with its 3D
+  picture (`NavItem.picture`, Fluent 3D emoji in `public/routines`) and today's status from `rowStatus` (`nav-status.ts`): Today
+  "5 of 11", areas "N left" or a check, Coach the count; the rail shows a ring or check on the picture and a tooltip. The foot has the You
+  card (`sidebar-profile.tsx`, segmented XP `LevelBar`), the labelled sync line, the theme toggle and the collapse button.
+  The phone has the `PhoneTopBar` (wordmark, sync dot, level avatar) and `TabBar` (pictures, a raised `+` that opens Capture,
+  Life opens a tray of the areas with today's state). The desktop `TopBar` is the breadcrumb from `trail()` and the Capture field only.
+  Everything the shell shows besides the page (Coach count, sync, level, `today` and per-area `areaCounts`) comes from
+  `loadShellStatus` in `apps/web/src/core/shell.ts`: one SQL statement plus `xpLevel` and `buildDayPlan`, wrapped in React `cache`,
+  read by each piece in its own Suspense island (`shell-status.tsx`; rows render without status while it loads). The needs-you
+  rules (merchant grouping, nudges expire after 3 days) are in
   `apps/web/src/domain/needs-you.ts`. The game look comes from three banners: `CharacterBanner`
   (`hud.tsx`, Progress on You only; Today has the lighter `TodayHeader`), `AreaHeader` (`area/area-header.tsx`, every area page) and `PageHeader` (everything else). Routine
   pictures come from `apps/web/src/ui/routine-icons.ts`.

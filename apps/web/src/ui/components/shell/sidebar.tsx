@@ -3,24 +3,25 @@
 import brand from '@relife/brand/brand.json'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Suspense, useEffect, type ReactNode } from 'react'
-import { ChevronDown, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
-import {
-  AnimatedSidebar, AnimatedSidebarMenu, AnimatedSidebarMenuButton, AnimatedSidebarMenuItem, AnimatedSidebarProvider, useAnimatedSidebar,
-} from '@/ui/beui/motion/animated-sidebar'
-import type { Category } from '@/db/schema'
-import type { AreaToday } from '@/domain/shell'
+import { useEffect, type ReactNode } from 'react'
+import { Check, ChevronDown, CircleCheck, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import type { NavStatus } from '@/domain/shell'
 import { cn } from '../../cn'
 import { CapsuleMark, Wordmark } from '../logo'
 import { ThemeToggle } from '../theme-toggle'
-import { AREA_HREF, isActive, LIFE_CHILDREN, LIFE_HUB, NAV, visibleLifeChildren, type NavItem } from '../nav'
+import { isActive, LIFE_HUB, NAV, visibleLifeChildren, type NavItem } from '../nav'
+import { CountPill } from './coach-bell'
+import { rowStatus } from './nav-status'
 import { useLifeOpen, useSidebarRail } from './sidebar-state'
 
-// Desktop sidebar (≥ lg): 240px, or a 72px icon rail. The choice is remembered (shell/sidebar-state.ts) and drawn from
-// <html data-sidebar> before paint. Built on beUI animated-sidebar; the phone has the tab bar instead.
-// The status pieces (Coach count, area dots) arrive as slots, each in its own Suspense island from shell-status.tsx.
+// Desktop sidebar (≥ lg): 240px, or a 72px rail. One list of 34px rows, each a 3D picture, the name and its status for
+// today ("5 of 11", "3 left", a check, the Coach count); at the foot the You card (sidebar-profile.tsx), the sync line,
+// the theme toggle and the collapse button. The choice is remembered (shell/sidebar-state.ts) and drawn from
+// <html data-sidebar> before paint by the `rail:` variant: the same elements switch layout, nothing is rendered twice.
+// The phone has the tab bar instead. The status arrives as `NavStatus` from a Suspense island (shell-status.tsx); until
+// it does the rows are just names.
 
-/** Wraps the page: holds the collapsed state, ⌘\ toggles it. */
+/** Wraps the page; ⌘\ toggles the rail with no animation (the collapse button eases the width, see SidebarFoot). */
 export function SidebarProvider({ children }: { children: ReactNode }) {
   const [rail, setRail] = useSidebarRail()
   useEffect(() => {
@@ -30,123 +31,99 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [rail, setRail])
-  // Once the first load has settled, hand the width back to the spring (see "Sidebar, before hydration" in globals.css).
-  useEffect(() => {
-    const t = setTimeout(() => { document.documentElement.dataset.sidebarReady = '' }, 800)
-    return () => clearTimeout(t)
-  }, [])
-  return (
-    <AnimatedSidebarProvider
-      open={!rail}
-      onOpenChange={(open) => setRail(!open)}
-      className="mx-auto min-h-dvh max-w-[1480px]"
-      style={{ '--sidebar-width': '240px', '--sidebar-width-icon': '72px' }}
-    >
-      {children}
-    </AnimatedSidebarProvider>
-  )
+  return <div className="mx-auto flex min-h-dvh w-full max-w-[1480px] min-w-0">{children}</div>
 }
 
 type Slots = {
-  /** Shown in the Coach row when expanded: the count pill. */
-  coachBadge: ReactNode
-  /** Shown on the Coach icon in the rail: a dot instead of the number. */
-  coachDot: ReactNode
-  /** The Life group's children: the area list and, in the rail, the stacked dots. */
-  areas: ReactNode
+  /** The rows: `SidebarNav` inside its Suspense island (names alone while the status loads). */
+  nav: ReactNode
+  /** The You card (expanded) or level ring (rail). */
+  you: ReactNode
+  /** The sync line (expanded) or dot (rail). */
+  sync: ReactNode
   /** The Mock-mode badge, only present in mock mode. */
   mock?: ReactNode
 }
 
-export function Sidebar(slots: Slots) {
+export function Sidebar({ nav, you, sync, mock }: Slots) {
   return (
     // `lg:flex` so the aside stretches to the page's height and its sticky panel can stay in view while the page scrolls.
     <div className="hidden shrink-0 lg:flex">
-      <AnimatedSidebar mobile={false} collapsible="icon" ariaLabel="Main" panelClassName="bg-transparent p-3">
-        {/* Flat panel: radius 16 with 12px padding, so rows inside use 8. */}
-        <div className="flex h-full min-h-0 flex-col gap-4 rounded-xl bg-surface px-3 py-4 shadow-1 rail:px-1">
+      <aside aria-label="Sidebar" data-sidebar-panel className="relative z-20 w-60 shrink-0 rail:w-[72px]">
+        <div className="sticky top-0 flex h-svh flex-col overflow-hidden border-r border-divider px-3 pt-5 pb-3 rail:items-center rail:overflow-visible rail:px-0">
           <div className="flex h-10 shrink-0 items-center px-2 rail:justify-center rail:px-0">
             <Link href="/" aria-label={`${brand.name}, Today`} className="relative rounded-sm after:absolute after:inset-[-4px] after:content-[''] focus-visible:outline-2 focus-visible:outline-pill">
               <Wordmark className="h-[30px] rail:hidden" />
               <CapsuleMark className="hidden size-9 rail:block" />
             </Link>
           </div>
-          {slots.mock ? <div className="rail:hidden">{slots.mock}</div> : null}
-          <div className="scroll-fade -mx-1 -my-2 min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-1 py-2">
-            {/* Active states read the pathname, so the first paint is the same rows with nothing marked. */}
-            <Suspense fallback={<SidebarNav {...slots} path="" />}><SidebarNavLive {...slots} /></Suspense>
+          {mock ? <div className="mt-1 rail:hidden">{mock}</div> : null}
+          <div className="scroll-fade -mx-1 mt-2 -mb-2 min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-1 py-2 rail:mx-0 rail:w-full rail:overflow-visible rail:mask-none rail:px-0">
+            {nav}
           </div>
-          <SidebarFoot />
+          <div className="mt-3 w-full shrink-0">{you}</div>
+          <SidebarFoot sync={sync} />
         </div>
-      </AnimatedSidebar>
+      </aside>
     </div>
   )
 }
 
-function SidebarNavLive(slots: Slots) {
-  return <SidebarNav {...slots} path={usePathname()} />
+/** The rows with the status, reading the pathname. Goes in a Suspense island whose fallback is `SidebarNavFallback`. */
+export function SidebarNav(props: { areas?: string[]; status?: NavStatus }) {
+  return <NavRows {...props} path={usePathname()} />
 }
 
-const rowClass = (active: boolean, here = false) =>
-  cn('min-h-10 gap-3 px-2.5 text-body', active ? 'font-medium text-ink' : here ? 'text-ink' : 'text-ink-2 hover:text-ink')
+/** The same rows with nothing marked and no status, for Suspense fallbacks. */
+export function SidebarNavFallback() {
+  return <NavRows path="" />
+}
 
-function SidebarNav({ coachBadge, coachDot, areas, path }: Slots & { path: string }) {
+/** The rows for a given path and status (the live ones above read the pathname; /dev/ui draws them directly). */
+export function NavRows({ areas, status, path }: { areas?: string[]; status?: NavStatus; path: string }) {
   const item = (href: string) => NAV.flatMap((g) => g.items).find((i) => i.href === href)!
-  const [today, plan, coach, you] = ['/', '/plan', '/coach', '/you'].map(item)
-  const onLifeChild = LIFE_CHILDREN.some((c) => isActive(path, c.href))
-  const row = (i: NavItem, badge?: ReactNode) => {
-    const active = isActive(path, i.href)
-    return (
-      <AnimatedSidebarMenuButton
-        href={i.href}
-        isActive={active}
-        icon={<i.icon className={cn('size-5', active && 'text-pill-ink')} strokeWidth={1.5} />}
-        badge={badge}
-        className={rowClass(active)}
-      >
-        {i.label}
-      </AnimatedSidebarMenuButton>
-    )
-  }
+  const [open] = useLifeOpen()
+  const [rail] = useSidebarRail()
+  const row = (i: NavItem, tour?: string) => <Row key={i.href} item={i} path={path} status={status} tour={tour} />
   return (
-    <nav aria-label="Main" className="w-full">
-      <AnimatedSidebarMenu>
-        <AnimatedSidebarMenuItem data-tour="/" className="rounded-md">{row(today)}</AnimatedSidebarMenuItem>
-        <AnimatedSidebarMenuItem data-tour="areas" className="rounded-md">
-          <LifeRow path={path} here={onLifeChild} />
-          {areas}
-        </AnimatedSidebarMenuItem>
-        <AnimatedSidebarMenuItem className="rounded-md">{row(plan)}</AnimatedSidebarMenuItem>
-        <AnimatedSidebarMenuItem className="rounded-md">
-          {row(coach, coachBadge)}
-          <span className="pointer-events-none absolute top-1.5 right-2 z-20 hidden rail:block">{coachDot}</span>
-        </AnimatedSidebarMenuItem>
-        <AnimatedSidebarMenuItem data-tour="/you" className="rounded-md">{row(you)}</AnimatedSidebarMenuItem>
-      </AnimatedSidebarMenu>
+    <nav aria-label="Main" className="flex w-full flex-col gap-0.5">
+      {row(item('/'), '/')}
+      <LifeFold />
+      <Rule className="hidden rail:block" />
+      <div role="group" aria-labelledby="life-label" data-tour="areas" className="flex flex-col gap-0.5">
+        {row(LIFE_HUB)}
+        <div className="nav-sub grid" data-open>
+          <div className="min-h-0 overflow-hidden rail:overflow-visible">
+            <ul inert={!open && !rail} className="flex flex-col gap-0.5">
+              {visibleLifeChildren(areas, path).map((k) => <li key={k.href}>{row(k)}</li>)}
+            </ul>
+          </div>
+        </div>
+      </div>
+      <Rule className="h-3 rail:h-px" />
+      {row(item('/plan'))}
+      {row(item('/coach'))}
     </nav>
   )
 }
 
-/** Life opens the hub; the chevron folds the area list underneath (remembered). Hidden in the rail. */
-function LifeRow({ path, here }: { path: string; here: boolean }) {
+/** A hairline in the rail, plain space when expanded. */
+function Rule({ className }: { className?: string }) {
+  return <span aria-hidden className={cn('rail:mx-auto rail:my-[7px] rail:h-px rail:w-6 rail:bg-divider', className)} />
+}
+
+/** The "Life" group label with its fold button (remembered). Hidden in the rail, where the group is always open. */
+function LifeFold() {
   const [open, setOpen] = useLifeOpen()
-  const active = path === LIFE_HUB.href
   return (
-    <div className="relative">
-      <AnimatedSidebarMenuButton
-        href={LIFE_HUB.href}
-        isActive={active}
-        icon={<LIFE_HUB.icon className={cn('size-5', active && 'text-pill-ink')} strokeWidth={1.5} />}
-        className={cn(rowClass(active, here), 'pr-11')}
-      >
-        Life
-      </AnimatedSidebarMenuButton>
+    <div className="mt-3 mb-0.5 flex h-7 items-center justify-between pr-1 pl-2.5 text-small font-medium text-ink-3 rail:hidden">
+      <span id="life-label">Life</span>
       <button
         type="button"
         aria-expanded={open}
         aria-label={open ? 'Hide the areas under Life' : 'Show the areas under Life'}
         onClick={() => setOpen(!open)}
-        className="absolute top-0 right-0 z-20 grid size-10 place-items-center rounded-md text-ink-3 transition-[color,scale] duration-150 ease-out-quint hover:text-ink active:scale-96 focus-visible:outline-2 focus-visible:outline-pill rail:hidden"
+        className="relative grid size-7 place-items-center rounded-sm text-ink-3 transition-[color,scale] duration-150 ease-out-quint after:absolute after:-inset-1 after:content-[''] hover-fine:text-ink active:scale-96 focus-visible:outline-2 focus-visible:outline-pill"
       >
         <ChevronDown className={cn('size-4 transition-transform duration-150 ease-out-quint', !open && '-rotate-90')} strokeWidth={1.5} aria-hidden />
       </button>
@@ -154,101 +131,69 @@ function LifeRow({ path, here }: { path: string; here: boolean }) {
   )
 }
 
-const CATEGORY_OF: Record<string, Category> = Object.fromEntries(Object.entries(AREA_HREF).map(([c, h]) => [h, c as Category]))
-
-const STATUS_TEXT: Record<AreaToday, string> = { done: 'done today', due: 'something due today', none: 'nothing due today' }
-
-/** One 6px dot in the area's colour: filled = all due done, ring = something due, faint = nothing due today. */
-function AreaDot({ color, status }: { color?: string; status?: AreaToday }) {
+/**
+ * One destination: picture, name, status. Colour is the only thing that changes between states (150ms); the active row
+ * lifts onto a surface with a hairline. In the rail the row is a 48 x 40 cell: the name goes to screen readers only, the
+ * status becomes a ring or check on the picture (the Coach count stays a pill), and a tooltip grows from its left edge on
+ * hover (fine pointers) or keyboard focus.
+ */
+function Row({ item, path, status, tour }: { item: NavItem; path: string; status?: NavStatus; tour?: string }) {
+  const active = isActive(path, item.href)
+  const st = rowStatus(item.href, status)
   return (
-    <>
-      <span
-        aria-hidden
-        className={cn('size-1.5 shrink-0 rounded-full', status === 'none' && 'opacity-30')}
-        style={{ '--c': color, background: status === 'due' ? 'transparent' : 'var(--c)', boxShadow: status === 'due' ? 'inset 0 0 0 1.5px var(--c)' : undefined } as React.CSSProperties}
-      />
-      {status ? <span className="sr-only">, {STATUS_TEXT[status]}</span> : null}
-    </>
+    <Link
+      href={item.href}
+      aria-current={active ? 'page' : undefined}
+      data-tour={tour}
+      className={cn(
+        'group relative grid h-[34px] grid-cols-[24px_minmax(0,1fr)_auto] items-center gap-x-2.5 rounded-md pr-2.5 pl-2 text-body transition-colors duration-150 ease-out-quint focus-visible:outline-2 focus-visible:outline-pill',
+        'rail:mx-auto rail:h-10 rail:w-12 rail:grid-cols-1 rail:place-items-center rail:p-0',
+        active ? 'bg-surface font-medium text-ink shadow-[inset_0_0_0_1px_var(--hairline)] [--halo:var(--surface)]' : 'text-ink-2 [--halo:var(--bg)] hover-fine:bg-surface-2 hover-fine:text-ink',
+      )}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element -- small local PNG */}
+      <span className="grid size-6 place-items-center">{item.picture ? <img src={item.picture} alt="" width={20} height={20} className="size-5 outline-none" /> : null}</span>
+      <span className="truncate rail:sr-only">{item.label}</span>
+      {st.text || st.done ? (
+        <span className={cn('flex items-center gap-1 text-caption tabular-nums rail:hidden', st.done ? 'text-good' : 'text-ink-3')}>
+          {st.text}
+          {st.done ? <CircleCheck className="size-4" strokeWidth={1.5} aria-hidden /> : null}
+        </span>
+      ) : null}
+      {st.count ? <CountPill n={st.count} className="rail:absolute rail:top-px rail:right-[3px] rail:h-4 rail:min-w-4 rail:px-1 rail:shadow-[0_0_0_2px_var(--halo)]" /> : null}
+      {st.mark === 'due' ? <span aria-hidden className="absolute right-[9px] bottom-1.5 hidden size-[9px] rounded-full bg-(--halo) shadow-[inset_0_0_0_1.5px_var(--ink-2),0_0_0_2px_var(--halo)] rail:block" /> : null}
+      {st.mark === 'done' ? <span aria-hidden className="absolute right-2 bottom-[5px] hidden size-3 place-items-center rounded-full bg-good text-bg shadow-[0_0_0_2px_var(--halo)] rail:grid"><Check className="size-2" strokeWidth={3} /></span> : null}
+      <span className="sr-only">{st.sr}</span>
+      <span aria-hidden className="tip-in pointer-events-none absolute left-16 z-50 hidden h-8 items-center gap-2 rounded-md bg-ink px-2.5 text-small whitespace-nowrap text-bg shadow-3 rail:group-focus-visible:flex rail:group-hover-fine:flex">
+        {item.label}
+        {st.tip ? <span className="opacity-70">· {st.tip}</span> : null}
+      </span>
+    </Link>
   )
 }
 
-/** The areas under Life (and Time): a list when expanded, stacked dots in the rail. Reads the pathname. */
-export function AreaLinks(props: { areas?: string[]; today?: Record<Category, AreaToday> }) {
-  return <AreaLinksView {...props} path={usePathname()} />
-}
-
-/** The same links with nothing marked and no status, for Suspense fallbacks. */
-export function AreaLinksPlaceholder() {
-  return <AreaLinksView path="" />
-}
-
-function AreaLinksView({ areas, today, path }: { areas?: string[]; today?: Record<Category, AreaToday>; path: string }) {
-  const [open] = useLifeOpen()
-  const { open: expanded } = useAnimatedSidebar()
-  const kids = visibleLifeChildren(areas, path)
-  const status = (href: string) => (CATEGORY_OF[href] ? today?.[CATEGORY_OF[href]] : undefined)
+/** Sync, theme and collapse. The button eases the width (200ms); ⌘\ does not (see globals.css, `data-sidebar-animate`). */
+function SidebarFoot({ sync }: { sync: ReactNode }) {
+  const [rail, setRail] = useSidebarRail()
+  const toggle = () => {
+    const html = document.documentElement
+    html.dataset.sidebarAnimate = ''
+    setRail(!rail)
+    setTimeout(() => { delete html.dataset.sidebarAnimate }, 260)
+  }
   return (
-    <>
-      <div className="nav-sub grid rail:hidden" data-open>
-        <div className="min-h-0 overflow-hidden">
-          <ul inert={!open || !expanded} className="mt-0.5 mb-1.5 ml-[21px] flex flex-col border-l border-divider pl-3">
-            {kids.map((k) => {
-              const active = isActive(path, k.href)
-              return (
-                <li key={k.href}>
-                  <Link
-                    href={k.href}
-                    aria-current={path === k.href ? 'page' : undefined}
-                    className={cn(
-                      'relative flex h-8 items-center gap-2.5 rounded-sm px-2.5 text-small transition-[background-color,color] duration-150 ease-out-quint after:absolute after:inset-x-0 after:-inset-y-1 after:content-[""] focus-visible:outline-2 focus-visible:outline-pill',
-                      active ? 'bg-surface-2 font-medium text-ink' : 'text-ink-2 hover:bg-surface-2 hover:text-ink',
-                    )}
-                  >
-                    <AreaDot color={k.color} status={status(k.href)} />
-                    {k.label}
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
-        </div>
-      </div>
-      {/* Rail: the same destinations as dots under the Life icon, each a link (name on hover). */}
-      <div className="mb-1 hidden flex-col items-center pt-1 rail:flex">
-        {kids.map((k) => (
-          <Link
-            key={k.href}
-            href={k.href}
-            title={k.label}
-            aria-current={path === k.href ? 'page' : undefined}
-            className={cn(
-              'grid size-10 place-items-center rounded-md transition-[background-color] duration-150 ease-out-quint focus-visible:outline-2 focus-visible:outline-pill',
-              isActive(path, k.href) ? 'bg-surface-2' : 'hover:bg-surface-2',
-            )}
-          >
-            <AreaDot color={k.color} status={status(k.href)} />
-            <span className="sr-only">{k.label}</span>
-          </Link>
-        ))}
-      </div>
-    </>
-  )
-}
-
-function SidebarFoot() {
-  const { open, toggleSidebar } = useAnimatedSidebar()
-  return (
-    <div className="flex shrink-0 items-center justify-between px-0.5 rail:flex-col rail:gap-1 rail:px-0">
+    <div className="mt-2 flex shrink-0 items-center gap-0.5 rail:flex-col rail:gap-1">
+      <div className="mr-auto min-w-0 rail:mr-0">{sync}</div>
       <ThemeToggle />
       <button
         type="button"
-        onClick={toggleSidebar}
-        aria-label={open ? 'Collapse sidebar' : 'Expand sidebar'}
+        onClick={toggle}
+        aria-label={rail ? 'Expand sidebar' : 'Collapse sidebar'}
         aria-keyshortcuts="Control+\ Meta+\"
-        title={`${open ? 'Collapse' : 'Expand'} sidebar (⌘\\)`}
-        className="relative grid size-8 place-items-center rounded-md text-ink-2 transition-[background-color,color,scale] duration-150 ease-out-quint after:absolute after:inset-[-4px] after:content-[''] hover:bg-surface-2 hover:text-ink active:scale-96 focus-visible:outline-2 focus-visible:outline-pill"
+        title={`${rail ? 'Expand' : 'Collapse'} sidebar (⌘\\)`}
+        className="relative grid size-8 place-items-center rounded-sm text-ink-2 transition-[background-color,color,scale] duration-150 ease-out-quint after:absolute after:inset-[-4px] after:content-[''] hover-fine:bg-ink/[0.05] hover-fine:text-ink active:scale-96 focus-visible:outline-2 focus-visible:outline-pill"
       >
-        {open ? <PanelLeftClose className="size-[18px]" strokeWidth={1.5} /> : <PanelLeftOpen className="size-[18px]" strokeWidth={1.5} />}
+        {rail ? <PanelLeftOpen className="size-[18px]" strokeWidth={1.5} /> : <PanelLeftClose className="size-[18px]" strokeWidth={1.5} />}
       </button>
     </div>
   )
