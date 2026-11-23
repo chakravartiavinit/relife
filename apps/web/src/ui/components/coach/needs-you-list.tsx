@@ -13,7 +13,8 @@ import { QUEUE_KIND } from './kinds'
 import { NeedsYouRow, sortSummary, type RowCtx } from './needs-you-row'
 import { ResolvedItem } from './queue-item'
 
-type Resolved = { text: string; index: number; undo?: () => Promise<unknown>; undoing?: boolean }
+/** `data`: the item was a data item (To sort), kept here because `items` loses it on the next refresh. */
+type Resolved = { text: string; index: number; data: boolean; undo?: () => Promise<unknown>; undoing?: boolean }
 
 /**
  * The queue. An action collapses its row in place to "✓ what happened · Undo" at once (a static cue, no motion needed)
@@ -30,7 +31,10 @@ export function NeedsYouList({ items, timezone, today, categories, goal }: Pick<
   const rows: ({ item: NeedsYouItem } | { id: string; r: Resolved })[] = live.map((item) => ({ item }))
   for (const [id, r] of [...resolved].sort((a, b) => a[1].index - b[1].index)) rows.splice(Math.min(r.index, rows.length), 0, { id, r })
 
-  const put = (id: string, r: Omit<Resolved, 'index'>) => setResolved((m) => new Map(m).set(id, { ...r, index: Math.max(0, items.findIndex((i) => i.id === id)) }))
+  const put = (id: string, r: Omit<Resolved, 'index' | 'data'>) => {
+    const index = items.findIndex((i) => i.id === id)
+    setResolved((m) => new Map(m).set(id, { ...r, index: Math.max(0, index), data: index >= 0 && isDataItem(items[index]) }))
+  }
   const drop = (id: string) => setResolved((m) => { const n = new Map(m); n.delete(id); return n })
 
   const undo = async (id: string, fn: () => Promise<unknown>) => {
@@ -59,9 +63,9 @@ export function NeedsYouList({ items, timezone, today, categories, goal }: Pick<
   }
 
   const unread = items.filter((i): i is Extract<NeedsYouItem, { kind: 'unread' }> => i.kind === 'unread' && !resolved.has(i.id))
-  const kindOf = (id: string) => items.find((i) => i.id === id)
-  const decisions = rows.filter((r) => { const i = 'item' in r ? r.item : kindOf(r.id); return !i || !isDataItem(i) })
-  const toSort = rows.filter((r) => { const i = 'item' in r ? r.item : kindOf(r.id); return !!i && isDataItem(i) })
+  const isData = (r: typeof rows[number]) => 'item' in r ? isDataItem(r.item) : r.r.data
+  const decisions = rows.filter((r) => !isData(r))
+  const toSort = rows.filter(isData)
   const open = (r: typeof rows[number]) => 'item' in r
 
   const resolvedRow = (r: { id: string; r: Resolved }) => (
