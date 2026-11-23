@@ -76,8 +76,8 @@ async function Today() {
       <Suspense fallback={<HeaderSkeleton />}><Header user={user} /></Suspense>
       <PageGrid>
         <Suspense fallback={null}><Setup user={user} /></Suspense>
-        {/* The plan and the rail end on one line: the plan's card (the last in its column) grows when the rail is taller. */}
-        <GridItem span={{ base: 12, lg: 8 }} className="flex flex-col gap-6 [&>:last-child]:flex-1">
+        {/* The plan card keeps its own height: stretching it to a taller rail left an empty band under the routines. */}
+        <GridItem span={{ base: 12, lg: 8 }} className="flex flex-col gap-6 self-start">
           <Suspense fallback={null}><DayEnd user={user} /></Suspense>
           <Suspense fallback={<Skeleton className="h-[600px] rounded-lg grid-lg:h-[640px]" />}><Plan user={user} /></Suspense>
         </GridItem>
