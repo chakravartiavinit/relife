@@ -31,12 +31,19 @@ export function agoShort(ms: number): string {
   return h < 48 ? `${h} h` : `${Math.round(h / 24)} d`
 }
 
+/** Routines and goals checked off out of those due. */
+export type Progress = { done: number; total: number }
+
 /** done: all due items are done; due: something is still due; none: nothing is due today. */
 export type AreaToday = 'done' | 'due' | 'none'
 
-export function areaToday(byCat: Record<Category, { done: number; total: number }>): Record<Category, AreaToday> {
-  return Object.fromEntries(CATEGORIES.map((c) => {
-    const { done, total } = byCat[c]
-    return [c, total === 0 ? 'none' : done >= total ? 'done' : 'due']
-  })) as Record<Category, AreaToday>
+export function progressState({ done, total }: Progress): AreaToday {
+  return total === 0 ? 'none' : done >= total ? 'done' : 'due'
 }
+
+export function areaToday(byCat: Record<Category, Progress>): Record<Category, AreaToday> {
+  return Object.fromEntries(CATEGORIES.map((c) => [c, progressState(byCat[c])])) as Record<Category, AreaToday>
+}
+
+/** What the sidebar and the phone tab bar show next to each destination: today's plan, each area's, and the Coach count. */
+export type NavStatus = { today: Progress; areas: Record<Category, Progress>; coach: number }

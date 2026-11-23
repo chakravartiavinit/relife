@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { agoShort, areaToday, syncLabel, syncTone, workerAlive } from './shell'
+import { agoShort, areaToday, progressState, syncLabel, syncTone, workerAlive } from './shell'
 import { needsYou } from './needs-you'
 
 const empty = { health: { done: 0, total: 0 }, mind: { done: 0, total: 0 }, skills: { done: 0, total: 0 }, wealth: { done: 0, total: 0 }, hobbies: { done: 0, total: 0 }, relationships: { done: 0, total: 0 } }
@@ -39,4 +39,10 @@ test('area status from the day plan', () => {
   assert.equal(r.mind, 'due')
   assert.equal(r.wealth, 'due')
   assert.equal(r.skills, 'none')
+})
+
+test('one area or the whole day: done, due or nothing due', () => {
+  assert.equal(progressState({ done: 5, total: 11 }), 'due')
+  assert.equal(progressState({ done: 11, total: 11 }), 'done')
+  assert.equal(progressState({ done: 0, total: 0 }), 'none')
 })
