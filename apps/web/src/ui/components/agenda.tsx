@@ -289,7 +289,8 @@ function CheckButton({ r, onToggle, size = 'md', forceDone }: { r: AgendaRow; on
       type="button"
       onClick={onToggle}
       aria-pressed={done}
-      aria-label={done || skipped ? `Undo ${r.name}` : `Mark ${r.name} done`}
+      // The time keeps two routines with one name (Omega-3 at 09:00 and 21:00) apart for screen readers.
+      aria-label={`${done || skipped ? 'Undo' : 'Mark'} ${r.name}${/^\d/.test(r.time) ? ` at ${r.time}` : ''}${done || skipped ? '' : ' done'}`}
       className={cn('group/check relative grid shrink-0 place-items-center rounded-full transition-[scale] duration-150 ease-out-quint active:scale-[0.96] after:absolute after:inset-[-9px] after:content-[""] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill', box)}
       style={{ '--c': r.status === 'missed' ? 'var(--bad)' : r.color } as React.CSSProperties}
     >
@@ -416,9 +417,8 @@ function DoneRow({ r, onUndo }: { r: AgendaRow; onUndo: () => void }) {
       <RoutineArt name={r.name} kind={r.kind} area={r.area} className="size-5 shrink-0 opacity-70 grayscale-[0.5]" />
       <span className="min-w-0 flex-1 truncate text-body text-ink-3 line-through decoration-ink-3/40">{r.name}</span>
       {skipped ? <span className="text-caption text-ink-3">Skipped</span> : null}
-      <Button variant="ghost" size="icon-sm" onClick={onUndo} aria-label={`Undo ${r.name}`} className="opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100">
-        <RotateCcw className="size-3.5" strokeWidth={1.5} />
-      </Button>
+      {/* Hover hint only: the check button beside it is the one control (and the one name) for Undo. */}
+      <RotateCcw aria-hidden className="size-3.5 text-ink-3 opacity-0 transition-opacity duration-150 group-hover/row:opacity-100" strokeWidth={1.5} />
       <span className="w-12 shrink-0 text-end text-caption text-ink-3 tabular-nums">{r.time}</span>
       <CheckButton r={r} onToggle={onUndo} size="sm" />
     </div>
