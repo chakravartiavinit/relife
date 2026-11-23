@@ -8,6 +8,7 @@ import { fillDays } from '@/domain/series'
 import { Card } from '../card'
 import { PatternsCard } from '../patterns-card'
 import { TrendsGrid, type TrendSeries } from './trends-grid'
+import { AreaKpiStrip } from './area-layout'
 
 /**
  * The Trends tab: every tracker of the area as a small multiple over 7, 28 or 90 days (same order as All metrics),
@@ -35,6 +36,7 @@ export async function AreaTrends({ user, def, today }: { user: User; def: AreaDe
   }
   return (
     <div className="flex flex-col gap-6">
+      <AreaKpiStrip def={def} />
       {series.length ? <TrendsGrid series={series} color={def.color} /> : <Card><p className="text-small text-ink-3">Nothing to chart yet. Numbers show up here as soon as they are logged or synced.</p></Card>}
       <PatternsCard patterns={mine} title={`Patterns in ${def.title}`} />
     </div>

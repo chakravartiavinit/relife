@@ -5,10 +5,11 @@ import { localDate } from '@/core/time'
 import { getUser } from '@/core/user'
 import { AreaTrends } from '@/ui/components/area/area-trends'
 import { CategorySkeleton } from '@/ui/components/category/skeleton'
+import { KpiSkeleton } from '@/ui/components/area/area-layout'
 
 export default function AreaTrendsPage({ params }: PageProps<'/[area]/trends'>) {
   return (
-    <Suspense fallback={<CategorySkeleton cards={4} />}>
+    <Suspense fallback={<div aria-busy className="flex flex-col gap-6"><KpiSkeleton /><CategorySkeleton cards={4} /></div>}>
       <Trends params={params} />
     </Suspense>
   )

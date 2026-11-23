@@ -6,25 +6,26 @@ import { KpiStrip, Skeleton, type Kpi } from '../card'
 import { Ticker } from '../ticker'
 import { AreaHeader } from './area-header'
 import { AreaLog, AreaTabs } from './area-tabs'
-import { OnTabs } from './kpis-on-tabs'
 
 /**
  * The area template: the compact head with its tab row and Log button → headline numbers → the tab body. It lives in a layout, so a tab change only
  * re-renders the body. Every headline number opens a Peek (its metric, or the area's summary when it has none).
- * The strip shows on the tabs after Overview: the Overview carries the same numbers in its targets table. Wealth keeps its
- * numbers per tab (`kpis={false}`: Overview, Spending and Portfolio each have their own), and Time puts its in the head (`summary`).
+ * The headline numbers (`AreaKpiStrip`) are drawn by the tabs after Overview, so the Overview, which carries the same
+ * numbers in its targets table, never reads them. Wealth keeps its numbers per tab, and Time puts its in the head (`summary`).
  */
-export function AreaLayout({ def, children, kpis = true, right, summary }: { def: AreaDef; children: React.ReactNode; kpis?: boolean; right?: React.ReactNode; summary?: React.ReactNode }) {
+export function AreaLayout({ def, children, right, summary }: { def: AreaDef; children: React.ReactNode; right?: React.ReactNode; summary?: React.ReactNode }) {
   return (
     <>
       <AreaHeader def={def} right={right} summary={summary} tabs={def.tabs.length > 1 ? <AreaTabs def={def} /> : undefined} actions={def.tabs.length > 1 ? <AreaLog def={def} /> : undefined} />
       <div className="@container flex flex-col gap-6">
-        {kpis ? <OnTabs><Suspense fallback={<KpiSkeleton />}><AreaKpis def={def} /></Suspense></OnTabs> : null}
         {children}
       </div>
     </>
   )
 }
+
+/** The strip with its own Suspense: the first block of every template tab after Overview. */
+export const AreaKpiStrip = ({ def }: { def: AreaDef }) => <Suspense fallback={<KpiSkeleton />}><AreaKpis def={def} /></Suspense>
 
 export const KpiSkeleton = () => <Skeleton className="h-[124px] rounded-lg" />
 

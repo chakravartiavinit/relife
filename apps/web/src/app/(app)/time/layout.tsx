@@ -7,5 +7,5 @@ import { TimeSummary } from '@/ui/components/area/time-summary'
  * stand where the level is) and the one page, so no tab row.
  */
 export default function TimeLayout({ children }: LayoutProps<'/time'>) {
-  return <AreaLayout def={AREAS.time} kpis={false} summary={<TimeSummary />}>{children}</AreaLayout>
+  return <AreaLayout def={AREAS.time} summary={<TimeSummary />}>{children}</AreaLayout>
 }

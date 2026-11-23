@@ -7,6 +7,7 @@ import { Agenda, Goals } from '../agenda'
 import { Card, CardHeader } from '../card'
 import { NewScheduleButton } from '../forms/schedule-form'
 import { RoutinesCard } from '../category/routines-card'
+import { AreaKpiStrip } from './area-layout'
 
 /**
  * Today's routines of one area with the check-off right here: quantity goals first (water +250), then the rows
@@ -44,6 +45,7 @@ export async function TodayRoutines({ user, def, title = 'Today’s routines', f
 export async function AreaRoutines({ user, def, today }: { user: User; def: AreaDef; today: string }) {
   return (
     <div className="flex flex-col gap-6">
+      <AreaKpiStrip def={def} />
       <div className="flex justify-end"><NewScheduleButton today={today} category={def.category!} /></div>
       <TodayRoutines user={user} def={def} title="Today" />
       <RoutinesCard user={user} category={def.category!} title="All routines & medicines" />

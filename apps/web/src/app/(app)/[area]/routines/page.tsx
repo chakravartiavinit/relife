@@ -5,10 +5,11 @@ import { localDate } from '@/core/time'
 import { getUser } from '@/core/user'
 import { AreaRoutines } from '@/ui/components/area/area-routines'
 import { Skeleton } from '@/ui/components/card'
+import { KpiSkeleton } from '@/ui/components/area/area-layout'
 
 export default function AreaRoutinesPage({ params }: PageProps<'/[area]/routines'>) {
   return (
-    <Suspense fallback={<div aria-busy className="flex flex-col gap-6"><Skeleton className="h-[200px] rounded-lg" /><Skeleton className="h-[320px] rounded-lg" /></div>}>
+    <Suspense fallback={<div aria-busy className="flex flex-col gap-6"><KpiSkeleton /><Skeleton className="h-[200px] rounded-lg" /><Skeleton className="h-[320px] rounded-lg" /></div>}>
       <Routines params={params} />
     </Suspense>
   )

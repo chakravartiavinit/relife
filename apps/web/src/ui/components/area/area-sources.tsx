@@ -14,6 +14,7 @@ import { STATUS } from '../connector-status'
 import type { ConnectorItem } from '../connector-market'
 import { PeekLink } from '../peek/peek-link'
 import Link from 'next/link'
+import { AreaKpiStrip } from './area-layout'
 
 const SOURCE_LABEL: Record<string, string> = { manual: 'Typed in', telegram: 'Telegram', shortcut: 'iPhone Shortcut', sleep: 'Sleep Focus shortcut', 'apple-health': 'Apple Health shortcut' }
 const sourceLabel = (s: string) => SOURCE_LABEL[s] ?? s.replace(/[-.]/g, ' ').replace(/^./, (c) => c.toUpperCase())
@@ -41,6 +42,7 @@ export async function AreaSources({ user, def, today }: { user: User; def: AreaD
   const trackerCount = await trackersWithData(user, def, from)
   return (
     <div className="flex flex-col gap-6">
+      <AreaKpiStrip def={def} />
       <Card>
         <CardHeader
           title="Connected" icon={<Cable strokeWidth={2} />} color={def.color}
