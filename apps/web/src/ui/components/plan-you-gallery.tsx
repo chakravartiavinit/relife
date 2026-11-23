@@ -5,9 +5,7 @@ import type { ConnectorItem } from './connector-market'
 import { NotificationChannel } from './notification-channel'
 import { PushRow } from './push-row'
 import { ReviewDueCard } from './goals/goal-card'
-import { CloseToUnlocking } from './close-to-unlocking'
-import type { BoardItem } from './achievement-parts'
-import { XpMix } from './xp-blocks'
+import { YouGallery } from './you-gallery'
 
 // /dev/ui: the Plan and You pieces from fixtures. Actions on fixture ids fail soft, as in the other galleries.
 
@@ -34,13 +32,6 @@ const SUGGESTED: ConnectorItem[] = [
   { ...base, id: 'binance', name: 'Binance', category: 'wealth', connected: false, status: 'off', detail: '', provides: ['Balances', 'Trades'], description: 'Read-only balances and trades.', fields: [{ env: 'BINANCE_KEY', label: 'API key', secret: true, saved: false, fromEnv: false }] },
 ]
 
-const CLOSE: BoardItem[] = [
-  { key: 'lean-week', name: 'Lean Week', description: 'Spend less than usual 5 days in a row.', tier: 'silver', area: 'wealth', xp: 150, unlockedAt: null, unlockedOn: null, progress: { value: 4, target: 5 } },
-  { key: 'rested', name: 'Rested', description: 'Sleep 7 hours or more 14 nights in a row.', tier: 'silver', area: 'health', xp: 200, unlockedAt: null, unlockedOn: null, progress: { value: 8, target: 14 } },
-  { key: 'perfect-week', name: 'Perfect Week', description: 'Finish your whole plan 7 days in a row.', tier: 'gold', area: 'general', xp: 500, unlockedAt: null, unlockedOn: null, progress: { value: 1, target: 7 } },
-]
-const MIX = { total: 11415, byKind: [{ kind: 'consistency', n: 3200 }, { kind: 'standard', n: 2050 }, { kind: 'bonus', n: 2590 }, { kind: 'achievement', n: 3575 }] }
-
 const Sub = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <div className="min-w-0"><p className="mb-2 text-small font-medium text-ink-3">{title}</p>{children}</div>
 )
@@ -59,10 +50,7 @@ export function PlanYouGallery() {
         </Sub>
         <Sub title="Connect: success step"><div className="rounded-lg bg-surface p-5 shadow-1"><ConnectSuccess c={{ ...SOURCES[2], statusLabel: 'First sync running…' }} onDone={() => {}} /></div></Sub>
       </div>
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Sub title="Close to unlocking (Progress lead)"><CloseToUnlocking items={CLOSE} /></Sub>
-        <Sub title="Where XP comes from (stacked bar and legend)"><div className="@container"><XpMix mix={MIX} /></div></Sub>
-      </div>
+      <YouGallery />
       <Sub title="Your sources: two fixes pinned, healthy rows, a first sync"><YourSources items={SOURCES} manage={manage} /></Sub>
       <Sub title="Suggested for your areas (username apps connect inline)"><SuggestedForYou items={SUGGESTED} manage={manage} /></Sub>
       <div className="grid gap-6 lg:grid-cols-2">

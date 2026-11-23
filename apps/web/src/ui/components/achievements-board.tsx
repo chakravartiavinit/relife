@@ -6,7 +6,9 @@ import { CATEGORY } from '../tokens'
 import { TIER_COLOR as TIER } from '../achievement-icons'
 import { cn } from '../cn'
 import { SHOW_LOCKED } from './all-locked-link'
-import { fmt, lockedFirst, Medallion, type BoardItem } from './achievement-parts'
+import { fmt, lockedFirst, type BoardItem } from './achievement-parts'
+import { Chip } from './chip'
+import { Picture } from './picture'
 import { ShareButton } from './share/share-button'
 
 export type { BoardItem } from './achievement-parts'
@@ -20,7 +22,7 @@ const LIMIT = 8
 
 /**
  * Every badge in a four-column grid (two rows to start, the rest one click away): filters All · Unlocked · Locked, and
- * `/you#locked` on load, or Close to unlocking's link (an event), opens it on Locked. The head is the card's; on a phone the fold has it.
+ * `/you#locked` on load, or Next unlocks' link (an event), opens it on Locked. Its fold (the page's) has the title and the count.
  */
 export function AchievementsBoard({ items }: { items: BoardItem[] }) {
   const [filter, setFilter] = useState<Filter>('all')
@@ -42,31 +44,13 @@ export function AchievementsBoard({ items }: { items: BoardItem[] }) {
   const locked = lockedFirst(items)
   const list = filter === 'unlocked' ? unlocked : filter === 'locked' ? locked : [...unlocked, ...locked]
   const visible = all ? list : list.slice(0, LIMIT)
-  const xpEarned = unlocked.reduce((s, a) => s + a.xp, 0)
 
   return (
     <div id="achievements" className="scroll-mt-6">
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
-        <div className="@max-[39.99rem]:hidden">
-          <h2 className="text-heading text-ink">Achievements</h2>
-          <p className="mt-0.5 text-small text-ink-3 tabular-nums">{unlocked.length} of {items.length} unlocked · {fmt(xpEarned)} XP from achievements</p>
-        </div>
-        <div role="group" aria-label="Show" className="inline-flex rounded-full bg-surface-2 p-1 shadow-[inset_0_0_0_1px_var(--hairline)]">
-          {([['all', 'All', items.length], ['unlocked', 'Unlocked', unlocked.length], ['locked', 'Locked', locked.length]] as const).map(([k, label, n]) => (
-            <button
-              key={k}
-              type="button"
-              aria-pressed={filter === k}
-              onClick={() => setFilter(k)}
-              className={cn(
-                'inline-flex h-8 items-center gap-1.5 rounded-full px-3.5 text-small font-medium transition-[background-color,color,box-shadow,scale] duration-150 ease-out-quint active:scale-96 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill',
-                filter === k ? 'bg-surface text-ink shadow-1' : 'text-ink-3 hover-fine:text-ink',
-              )}
-            >
-              {label}<span className="text-ink-3 tabular-nums">{n}</span>
-            </button>
-          ))}
-        </div>
+      <div role="group" aria-label="Show" className="mb-4 flex flex-wrap gap-2">
+        {([['all', 'All', items.length], ['unlocked', 'Unlocked', unlocked.length], ['locked', 'Locked', locked.length]] as const).map(([k, label, n]) => (
+          <Chip key={k} selected={filter === k} count={n} onClick={() => setFilter(k)}>{label}</Chip>
+        ))}
       </div>
       {list.length ? (
         // The grid is 1px wider than the card, so the last column's right rule is clipped.
@@ -98,7 +82,7 @@ function Tile({ a }: { a: BoardItem }) {
   const area = a.area !== 'general' ? CATEGORY[a.area] : null
   return (
     <li className={cn('relative flex gap-3 border-r border-b border-divider px-5 py-4', !done && 'bg-surface-2/40')}>
-      <Medallion a={a} size={48} />
+      <Picture of="achievement" id={a.key} tier={a.tier} unlocked={done} size={40} />
       <div className="min-w-0 flex-1 pe-6">
         <h3 className={cn('text-body font-medium', done ? 'text-ink' : 'text-ink-2')}>{a.name}</h3>
         <p className="mt-0.5 line-clamp-2 text-small text-ink-3">{a.description}</p>

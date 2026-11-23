@@ -1,16 +1,14 @@
-import { ChartPie, ChevronRight, CircleDot, Flame, Footprints, Gift, GitCommitHorizontal, GitPullRequest, GraduationCap, HeartHandshake, History, Moon, PiggyBank, Shapes, Smile, Trophy, Waves, type LucideIcon } from 'lucide-react'
+import { ChevronRight, CircleDot, Flame, Footprints, Gift, GitCommitHorizontal, GitPullRequest, GraduationCap, HeartHandshake, Moon, PiggyBank, Shapes, Smile, Trophy, Waves, type LucideIcon } from 'lucide-react'
 import type { Category } from '@/db/schema'
 import type { recentXp } from '@/core/xp'
 import { addDays, formatDay } from '@/core/time'
 import { formatNumber } from '@/domain/money'
 import { ACHIEVEMENT_ICON, TIER_COLOR } from '../achievement-icons'
 import { AREA_ICON } from './capsule-icon'
-import { Fold } from './fold'
-import { ProgressBlock } from './progress-block'
 import { CATEGORY } from '../tokens'
 
-// The three XP blocks of Progress: where it comes from (a stacked bar with its legend), how it is scored, and what
-// earned it lately. Server components.
+// The three XP blocks of Progress, as the bodies of its folds: where XP comes from (a stacked bar with its legend), how
+// it is scored, and what earned it lately. Server components; the page gives each its fold and its summary line.
 
 const KIND = [
   { kind: 'consistency', label: 'Your plan', color: 'var(--pill)' },
@@ -19,12 +17,21 @@ const KIND = [
   { kind: 'achievement', label: 'Achievements', color: 'var(--medal-sakura)' },
 ] as const
 
-/** Last 30 days of XP split by kind: one stacked bar, and the legend beside it with each kind's XP and share. */
-export function XpMix({ mix }: { mix: { total: number; byKind: { kind: string; n: number }[] } }) {
-  const parts = KIND.map((k) => ({ ...k, n: mix.byKind.find((r) => r.kind === k.kind)?.n ?? 0 }))
+type Mix = { total: number; byKind: { kind: string; n: number }[] }
+const kindParts = (mix: Mix) => KIND.map((k) => ({ ...k, n: mix.byKind.find((r) => r.kind === k.kind)?.n ?? 0 }))
+
+/** The fold's line: the three biggest sources and their share. */
+export function xpMixSummary(mix: Mix) {
+  if (!mix.total) return 'No XP yet'
+  return kindParts(mix).filter((p) => p.n > 0).sort((a, b) => b.n - a.n).slice(0, 3).map((p) => `${p.label} ${Math.round((p.n / mix.total) * 100)}%`).join(', ')
+}
+
+/** Last 30 days of XP split by kind: one stacked bar, and the legend under it with each kind's XP and share. */
+export function XpMix({ mix }: { mix: Mix }) {
+  const parts = kindParts(mix)
   const pct = (n: number) => Math.round((n / mix.total) * 100)
   return (
-    <ProgressBlock title="Where XP comes from" icon={<ChartPie strokeWidth={2} />} color="var(--pill)" description={mix.total ? `Last 30 days · ${formatNumber(mix.total)} XP` : 'Last 30 days'} summary={mix.total ? `${formatNumber(mix.total)} XP in 30 days` : 'No XP yet'}>
+    <>
       {mix.total ? (
         <>
           <div role="img" aria-label={`XP by kind, last 30 days: ${parts.map((p) => `${p.label} ${pct(p.n)}%`).join(', ')}`} className="flex h-3 gap-0.5 overflow-hidden rounded-xs">
@@ -42,7 +49,7 @@ export function XpMix({ mix }: { mix: { total: number; byKind: { kind: string; n
           </ul>
         </>
       ) : <p className="text-small text-ink-3">No XP in the last 30 days yet.</p>}
-    </ProgressBlock>
+    </>
   )
 }
 
@@ -55,10 +62,10 @@ function Rule({ color, title, children }: { color: string; title: string; childr
   )
 }
 
-/** The scoring rules, folded on every width (the rail's last card). */
+/** The scoring rules (the body of the "How XP works" fold). */
 export function HowXpWorks() {
   return (
-    <Fold card title="How XP works" summary="Your plan, measures, bonuses, quests">
+    <>
       <ul className="flex flex-col gap-3 text-small text-ink-2">
         <Rule color="var(--pill)" title="Your plan">Up to 100 XP a day, split across what was due. More routines don’t raise the ceiling.</Rule>
         <Rule color="var(--good)" title="Fixed measures">7h sleep, 8k steps, a commit, a catch-up and more. The same for everyone.</Rule>
@@ -67,7 +74,7 @@ export function HowXpWorks() {
         <Rule color="var(--medal-sakura)" title="Quests and chests">Two daily quests and one weekly quest, picked from your areas. Each one finished earns a chest, and every new level earns an epic one. Chests hold XP and sometimes a streak freeze.</Rule>
         <Rule color="var(--ink-3)" title="Fair play">New routines pay from the next day, and days older than yesterday are final.</Rule>
       </ul>
-    </Fold>
+    </>
   )
 }
 
@@ -113,10 +120,7 @@ export function RecentXp({ feed, days, today, tierOf }: { feed: Awaited<ReturnTy
     )
   }
   return (
-    <ProgressBlock
-      title="Recent XP" icon={<History strokeWidth={1.5} />} color="var(--medal-gold)" description="What earned XP on your last active days"
-      summary={days.length ? `${dayName(days[0], today)} +${formatNumber(total(days[0]))} XP` : 'Nothing yet'}
-    >
+    <>
       {days.length ? (
         <ol className="flex flex-col">
           {days.map((d, i) => i === 0 ? (
@@ -138,6 +142,14 @@ export function RecentXp({ feed, days, today, tierOf }: { feed: Awaited<ReturnTy
           ))}
         </ol>
       ) : <p className="text-small text-ink-3">Check off a routine and its XP shows up here.</p>}
-    </ProgressBlock>
+    </>
   )
+}
+
+/** The fold's line: the newest day's total and what earned the most that day. */
+export function recentXpSummary(feed: Awaited<ReturnType<typeof recentXp>>, days: string[], today: string) {
+  if (!days.length) return 'Nothing yet'
+  const items = feed.filter((e) => e.d === days[0])
+  const top = items.slice(0, 2).map((e) => (e.reason ?? '').replace(/^Achievement: /, '')).filter(Boolean).join(', ')
+  return `${dayName(days[0], today)} +${formatNumber(items.reduce((a, e) => a + e.amount, 0))} XP${top ? ` · ${top}${items.length > 2 ? ` and ${items.length - 2} more` : ''}` : ''}`
 }

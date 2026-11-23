@@ -59,7 +59,8 @@ export async function showUpStreak(user: User, today: string) {
   return { ...streaks(active, today), doneToday: active.has(today), active }
 }
 
-export async function LifeKpis({ user, now }: { user: User; now: Date }) {
+/** `bare` returns just the tiles (no card or fold around them), for a fold of the page's own. */
+export async function LifeKpis({ user, now, bare = false }: { user: User; now: Date; bare?: boolean }) {
   const today = localDate(now, user.timezone)
   const from14 = addDays(today, -13)
   const week = (s: Point[]) => [s.slice(0, 7), s.slice(7)] as const
@@ -189,6 +190,13 @@ export async function LifeKpis({ user, now }: { user: User; now: Date }) {
   const summary = tiles.flatMap((t) => (t.short ? [t.short] : [])).slice(0, 3).join(' · ')
 
   // The daily streak with this week's check-ins is on the character sheet: one streak on the page.
+  if (bare) {
+    return (
+      <ul className="mt-1 grid grid-cols-2 gap-px overflow-hidden rounded-md border border-divider bg-divider grid-md:grid-cols-3 grid-lg:grid-cols-6">
+        {tiles.map((t) => <li key={t.cat} className="flex min-w-0 *:flex-1"><KpiTile tile={t} /></li>)}
+      </ul>
+    )
+  }
   return (
     <ProgressBlock title="This week, area by area" description="The last 7 days, and how they compare with the 7 before" summary={summary || 'Nothing logged yet'}>
       <ul className="-mx-5 -mb-5 mt-1 grid grid-cols-2 gap-px overflow-hidden rounded-b-lg border-t border-divider bg-divider grid-md:grid-cols-3 grid-lg:grid-cols-6">
