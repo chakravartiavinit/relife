@@ -14,7 +14,7 @@ export function SiteKind({ domain, kind }: { domain: string; kind: ActivityKind 
   const toast = useToast()
   return (
     <Select
-      variant="pill" aria-label={`${domain} counts as`} value={value} disabled={pending} className="w-[10.5rem] shrink-0"
+      variant="quiet" aria-label={`${domain} counts as`} value={value} disabled={pending} className="max-w-[11rem] shrink-0"
       onChange={(e) => {
         const k = e.target.value as ActivityKind
         setValue(k)
@@ -29,11 +29,10 @@ export function SiteKind({ domain, kind }: { domain: string; kind: ActivityKind 
   )
 }
 
-/** The same tag, read-only: Mac apps are sorted automatically. */
+/** The same text, read-only: Mac apps are sorted automatically. */
 export function KindTag({ kind }: { kind: ActivityKind }) {
   return (
-    <span className="inline-flex h-8 w-[10.5rem] shrink-0 items-center gap-2 rounded-full bg-surface-2 ps-3 pe-3 text-[12px] font-medium text-ink-2" title="Mac apps are sorted automatically">
-      <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: KIND_COLOR[kind] }} />
+    <span className="inline-flex h-8 max-w-[11rem] shrink-0 items-center ps-2 pe-7 text-small text-ink-2" title="Mac apps are sorted automatically">
       <span className="truncate">{KIND_INFO[kind].label}</span>
     </span>
   )

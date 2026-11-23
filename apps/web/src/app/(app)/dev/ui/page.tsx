@@ -14,6 +14,7 @@ import { EmptyState } from '@/ui/components/empty'
 import { CapsuleMark, Wordmark } from '@/ui/components/logo'
 import { DailyBars, RankedBars, ShareDonut, Sparkline, StackedBars, TrendArea } from '@/ui/components/charts'
 import { CalmGallery } from '@/ui/components/calm-gallery'
+import { TimeGallery } from '@/ui/components/time-gallery'
 import { LoaderGallery } from '@/ui/components/loader-gallery'
 import { BeuiGallery } from '@/ui/components/gallery-beui'
 import { PositionCard } from '@/ui/components/wealth/position-card'
@@ -102,6 +103,10 @@ export default function UiGallery() {
 
       <Section title="Calm system: status words, stat card, status row, pictures, connection, insight line, fold, empty state, lead chart, routine row, buttons, tabs, chips">
         <CalmGallery />
+      </Section>
+
+      <Section title="Time: focus today over the last 7 days, its legend rows, the connection, library, By kind and top sites, from fixtures">
+        <Suspense fallback={<div className="h-96 rounded-xl bg-surface-2" />}><TimeGallery /></Suspense>
       </Section>
 
       <Section title="Buttons">

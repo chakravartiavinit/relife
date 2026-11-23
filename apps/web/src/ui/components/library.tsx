@@ -7,9 +7,13 @@ import { formatMoney } from '@/domain/money'
 import { getUser } from '@/core/user'
 import { KIND_COLOR } from '../activity-colors'
 import { BrandLogo } from './brand-logo'
+import { buttonLinkClass } from './button'
 import { Capsule } from './capsule'
+import { Fold } from './fold'
 import { LearningActions } from './forms/learning-forms'
 import { LibraryMenu } from './library-menu'
+import { Picture } from './picture'
+import { StatusWord } from './status-word'
 import { cn } from '../cn'
 import { isWebUrl } from '@/domain/text'
 
@@ -29,18 +33,29 @@ function ago(d: Date | null) {
   return m < 2 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`
 }
 
-/** `compact` draws each item as one row (Time's library, beside the top sites) instead of a cover card. */
-export async function LibraryGrid({ items, empty, compact = false }: { items: Item[]; empty?: React.ReactNode; compact?: boolean }) {
+/**
+ * `compact` draws each item as one row (Time's library, beside the top sites) instead of a cover card: the cover, the
+ * name, where you are in it and a status word, opening to its numbers and actions. `limit` shows that many rows and
+ * folds the rest away.
+ */
+export async function LibraryGrid({ items, empty, compact = false, limit }: { items: Item[]; empty?: React.ReactNode; compact?: boolean; limit?: number }) {
   if (!items.length) return <>{empty ?? null}</>
   const { timezone } = await getUser()
   const eps = await db.select().from(tables.libraryEpisodes).where(inArray(tables.libraryEpisodes.itemId, items.map((i) => i.id))).orderBy(desc(tables.libraryEpisodes.lastAt))
   const byItem = new Map<string, Episode[]>()
   for (const e of eps) byItem.set(e.itemId, [...(byItem.get(e.itemId) ?? []), e])
   if (compact) {
+    const rows = (list: Item[]) => list.map((i) => <LibraryRow key={i.id} item={i} episodes={byItem.get(i.id) ?? []} timeZone={timezone} />)
+    const rest = limit == null ? [] : items.slice(limit)
     return (
-      <ul className="flex flex-col divide-y divide-divider border-t border-divider">
-        {items.map((i) => <LibraryRow key={i.id} item={i} episodes={byItem.get(i.id) ?? []} timeZone={timezone} />)}
-      </ul>
+      <div>
+        <div className="flex flex-col">{rows(limit == null ? items : items.slice(0, limit))}</div>
+        {rest.length ? (
+          <Fold title={`${rest.length} more`} summary={rest.map((i) => i.title).join(', ')} className="shadow-[0_-1px_0_var(--divider)]">
+            <div className="flex flex-col">{rows(rest)}</div>
+          </Fold>
+        ) : null}
+      </div>
     )
   }
   return (
@@ -133,36 +148,59 @@ function LibraryCard({ item: i, episodes, timeZone }: { item: Item; episodes: Ep
   )
 }
 
-/** One library item as a row: logo, title, where it is from and the time spent, how far along, and the one-tap actions. */
-function LibraryRow({ item: i, episodes, timeZone }: { item: Item; episodes: Episode[]; timeZone: string }) {
+/** A library item is Steady while you open it, Quiet once a week has passed (or you never have). */
+const WEEK_MS = 7 * 24 * 60 * 60_000
+const libraryStatus = (i: Item) => (i.lastActiveAt && Date.now() - i.lastActiveAt.getTime() < WEEK_MS ? 'Steady' : 'Quiet') as 'Steady' | 'Quiet'
+
+/** "34 of 120 lessons", "Book, 6 of 12 chapters", or where it is from and the time spent when it has no total. */
+function rowLine(i: Item) {
+  const kind = i.kind as LibraryKind
+  const lead = kind === 'course' ? null : LIBRARY[kind].label
+  if (i.progressTotal) return [lead, `${i.progressDone} of ${i.progressTotal} ${UNIT[kind]}`, i.progressDone === 0 && !i.lastActiveAt ? 'not started' : null].filter(Boolean).join(', ')
+  return [i.provider ?? lead, i.minutesLogged ? `${hm(i.minutesLogged)} spent` : 'not started'].filter(Boolean).join(', ')
+}
+
+/**
+ * One library item as a row of Time's library: cover, name, one line, status word and a chevron; open it for the time
+ * spent, the progress bar, the one-tap actions (+1 module, +15 min), edit and the watch log.
+ */
+export function LibraryRow({ item: i, episodes, timeZone }: { item: Item; episodes: Episode[]; timeZone: string }) {
   const kind = i.kind as LibraryKind
   const color = KIND_COLOR[LIBRARY[kind].counts]
   const last = ago(i.lastActiveAt)
+  const perHour = i.cost && i.currency && i.minutesLogged >= 60 ? formatMoney(i.cost / (i.minutesLogged / 60), i.currency) : null
   return (
-    <li className={cn('py-3', i.status === 'done' && 'opacity-70')}>
-      <div className="flex items-start gap-3">
-        <BrandLogo name={i.provider ?? i.title} size="md" />
-        <div className="min-w-0 flex-1">
-          <h3 className="truncate text-body font-medium text-ink">
-            {isWebUrl(i.url) ? <a href={i.url} target="_blank" rel="noreferrer" className="rounded-sm hover-fine:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">{i.title}</a> : i.title}
-          </h3>
-          <p className="truncate text-caption text-ink-3 tabular-nums">
-            {[i.provider, `${hm(i.minutesLogged)} spent${last ? ` · ${last}` : ''}`, i.cost && i.currency && i.minutesLogged >= 60 ? `${formatMoney(i.cost / (i.minutesLogged / 60), i.currency)}/h` : null].filter(Boolean).join(' · ')}
-          </p>
-          {i.progressTotal ? (
-            <div className="mt-2 flex items-center gap-3">
-              <Capsule size="sm" value={i.progressDone} max={i.progressTotal} color={color} label={`${i.title}: ${i.progressDone} of ${i.progressTotal} ${UNIT[kind]}`} />
-              <span className="shrink-0 text-caption text-ink-3 tabular-nums">{i.progressDone}/{i.progressTotal} {UNIT[kind]}</span>
-            </div>
-          ) : null}
+    <details className={cn('group/row -mx-2 rounded-md [&+&]:shadow-[0_-1px_0_var(--divider)]', i.status === 'done' && 'opacity-70')}>
+      <summary
+        aria-label={`${i.title}, ${libraryStatus(i).toLowerCase()}. Show details`}
+        className="grid min-h-14 cursor-pointer list-none grid-cols-[40px_minmax(0,1fr)_auto_16px] items-center gap-x-3 rounded-md px-2 py-2 select-none transition-colors duration-150 ease-out-quint hover-fine:bg-surface-2 focus-visible:outline-2 focus-visible:outline-pill [&::-webkit-details-marker]:hidden"
+      >
+        <Picture of="library" id={i.id} title={i.title} provider={i.provider} image={!!i.image} iconOnly={!!(i.meta as { iconOnly?: boolean }).iconOnly} size={40} />
+        <span className="min-w-0">
+          <span className="block text-body font-medium text-ink max-sm:line-clamp-2 sm:truncate">{i.title}</span>
+          <span className="block text-small text-ink-3 tabular-nums max-sm:line-clamp-2 sm:truncate">{rowLine(i)}</span>
+        </span>
+        <StatusWord status={libraryStatus(i)} />
+        <ChevronRight aria-hidden strokeWidth={1.5} className="size-4 text-ink-3 transition-transform duration-200 ease-out-quint group-open/row:rotate-90 motion-reduce:transition-none" />
+      </summary>
+      <div className="flex flex-col gap-3 pb-3 ps-[52px] pe-2">
+        <p className="text-small text-ink-3 tabular-nums">
+          {[i.provider, `${hm(i.minutesLogged)} spent`, last ? `opened ${last}` : null, perHour ? `${perHour}/h` : null].filter(Boolean).join(' · ')}
+        </p>
+        {i.progressTotal ? (
+          <div className="flex items-center gap-3">
+            <Capsule size="sm" value={i.progressDone} max={i.progressTotal} color={color} label={`${i.title}: ${i.progressDone} of ${i.progressTotal} ${UNIT[kind]}`} />
+            <span className="shrink-0 text-caption text-ink-3 tabular-nums">{i.progressDone}/{i.progressTotal} {UNIT[kind]}</span>
+          </div>
+        ) : null}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <LearningActions id={i.id} title={i.title} hasModules={!!i.progressTotal && i.status !== 'done'} />
+          {isWebUrl(i.url) ? <a href={i.url} target="_blank" rel="noreferrer" className={buttonLinkClass('text-small')}>Open</a> : null}
+          <span className="ms-auto"><LibraryMenu item={{ id: i.id, title: i.title, kind, progressTotal: i.progressTotal, status: i.status }} /></span>
         </div>
-        <LibraryMenu item={{ id: i.id, title: i.title, kind, progressTotal: i.progressTotal, status: i.status }} />
+        {episodes.length ? <EpisodeLog episodes={episodes} unit={UNIT[kind]} color={color} timeZone={timeZone} /> : null}
       </div>
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 ps-[52px]">
-        <LearningActions id={i.id} title={i.title} hasModules={!!i.progressTotal && i.status !== 'done'} />
-      </div>
-      {episodes.length ? <div className="ps-[52px]"><EpisodeLog episodes={episodes} unit={UNIT[kind]} color={color} timeZone={timeZone} /></div> : null}
-    </li>
+    </details>
   )
 }
 
