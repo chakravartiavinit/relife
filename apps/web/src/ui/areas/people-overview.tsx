@@ -1,14 +1,10 @@
 import { Users } from 'lucide-react'
-import { AREAS } from '@/core/areas'
 import { loadPeople } from '@/core/areas/people'
 import type { User } from '@/core/user'
-import { AllMetrics } from '../components/area/all-metrics'
 import { PeekLink } from '../components/peek/peek-link'
 import { Badge, Card, CardHeader } from '../components/card'
 import { EmptyState } from '../components/empty'
 import { ContactedButton, NewPersonButton } from '../components/forms/people-forms'
-
-const def = AREAS.people
 
 function ago(days: number) {
   if (days <= 0) return 'Today'
@@ -25,7 +21,7 @@ export async function PeopleOverview({ user, today }: { user: User; today: strin
   return (
     <>
       <Card>
-        <CardHeader title="Keep in touch" icon={<Users strokeWidth={2} />} color="var(--cat-relationships)" description={rows.length ? `${rows.filter((r) => r.overdue).length} overdue` : 'Who you talk to, and how often'} />
+        <CardHeader title="Keep in touch" description={rows.length ? `${rows.filter((r) => r.overdue).length} overdue` : 'Who you talk to, and how often'} />
         {rows.length ? (
           <ul className="-my-2 divide-y divide-divider">
             {rows.map(({ p, since, overdue }) => (
@@ -56,7 +52,6 @@ export async function PeopleOverview({ user, today }: { user: User; today: strin
           <EmptyState title="Add the people you want to stay close to" icon={Users} color="var(--cat-relationships)" description="Add family and old friends, set how often you want to talk (say every 7 days), and see who you’ve drifted from." action={<NewPersonButton />} />
         )}
       </Card>
-      <AllMetrics user={user} def={def} today={today} />
     </>
   )
 }

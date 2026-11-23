@@ -54,14 +54,23 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
   Skills, Wealth, Hobbies, People (`/people`, DB category `relationships`) and Time: title, colour, tabs, pinned metrics,
   connector ids and the four headline numbers (`kpis`, shared by the area header, the Life tiles, the brief's facts and Today).
   Health, Mind, Skills, Hobbies and People share the `apps/web/src/app/(app)/[area]/` template (`layout.tsx` → `AreaLayout`: `AreaHeader` →
-  `AreaTabs` (Overview · Trends · Routines · Sources; counts stream in) → `AreaKpis` → the tab body; an unknown slug is a
-  `notFound()`, because Cache Components does not allow `dynamicParams = false`). Each area's own Overview cards live in
-  `apps/web/src/ui/areas/` (`OVERVIEWS`) inside `OverviewShell`; Trends, Routines and Sources are the shared `area-*.tsx` in
-  `apps/web/src/ui/components/area/`. `AllMetrics` draws a `MetricTile` for every tracker of the area from every source (nothing is
+  `AreaTabs` (Overview · Trends · Routines · Sources; counts stream in) → the tab body (`AreaKpis`, the strip of the four headline numbers, shows
+  on the tabs after Overview through `OnTabs`; the Overview carries the same numbers in its targets table); an unknown slug is a
+  `notFound()`, because Cache Components does not allow `dynamicParams = false`). The Overview is `OverviewShell` on the page grid: main 8 columns is
+  `TargetTable` (`category/target-table.tsx`, "Against your targets": one row per headline number, pinned tracker and tracker with a target, with the
+  28-day average, a `Bullet` bar against the target, days on target and a 28-day trend; the rows come from the pure `targetRows` in
+  `apps/web/src/domain/target-rows.ts`, the trackers from `loadAreaTrackers`, and each row opens its Peek) and then the area's own cards from
+  `apps/web/src/ui/areas/` (`OVERVIEWS`; Health's lead chart is `TargetTrend`, sleep against its target with direct labels); the rail is
+  today's routines (check-offs; on a phone the next two, the rest folded) with the sources line at its foot; All metrics runs full width in 6
+  columns (a fold on a phone). Trends, Routines and Sources are the shared `area-*.tsx` in `apps/web/src/ui/components/area/`. `AllMetrics` draws a `MetricTile` for every tracker of the area from every source (nothing is
   filtered by slug, so connector metrics like HRV or readiness show up on their own); `summarizeTracker` in
   `apps/web/src/domain/metric-tile.ts` is the tested maths. Wealth (`apps/web/src/app/(app)/wealth/`: Overview · Spending · Portfolio ·
   Subscriptions · Sources) and Time (`apps/web/src/app/(app)/time/`) have their own folders on the same `AreaLayout` (Wealth with
-  `kpis={false}`: each tab keeps its numbers). Every KPI item, tile and "Why?" opens a Peek: a metric where the number has
+  `kpis={false}`: each tab keeps its numbers; Time with `kpis={false}` and `summary`: Today, Focus and Distraction stand in its head where the other areas have the level).
+  The Wealth Overview (`ui/components/wealth/overview.tsx`, `WealthOverviewView`) is the month so far with its pace bar and the month bars (`activeMonths` in
+  `core/wealth-overview.ts` gives the "in N months" average), where it went as a ranked list with a month / all time switch (`CategoryList`), net worth,
+  subscriptions, merchants, and what ReLife noticed / bought again; its other tabs keep their own numbers on the same grid. Time's page is the Each day
+  chart with By kind as its legend, top sites with "What you spent it on" as its footer, and the library (`LibraryGrid compact`). Every KPI item, tile and "Why?" opens a Peek: a metric where the number has
   one, else `brief:<scope>` (`KpiStrip` items take `peek`, `peekAll` sets one for a whole strip).
 - Briefs: one line per scope (`today`, each category, `time`) in the `briefs` table, written by the `ai:area-briefs` job
   (`apps/web/src/ai/jobs/area-briefs.ts`, daily 06:30 and on `data.changed`). The rules in `apps/web/src/domain/briefs.ts` (pure, tested) write

@@ -8,7 +8,7 @@ import { monthlyCost, upcomingPayments } from './schedules'
 import { loadPortfolio, contractCoin } from './portfolio'
 import { snapshotNetWorth, netWorthHistory } from './net-worth'
 import { addDays, localDate } from './time'
-import { monthPace, monthRange, oneOffs, repeatBuys, shiftMonth, usualMonth } from '@/domain/wealth'
+import { activeMonths, monthPace, monthRange, oneOffs, repeatBuys, shiftMonth, usualMonth } from '@/domain/wealth'
 import { toLiquidation } from '@/domain/watch'
 
 // Everything the Wealth overview shows, in one read: spending (month pace, 12 months by category, apps,
@@ -109,7 +109,7 @@ export async function loadWealthOverview(user: User, now = new Date()) {
   const history = await netWorthHistory(user, 90, now)
 
   return {
-    base, today, month, months, categories, byMonthCat, byMonth, year, pace, thisMonthCats,
+    base, today, month, months, activeMonths: activeMonths(months, byMonth), categories, byMonthCat, byMonth, year, pace, thisMonthCats,
     apps: appList, allTime, repeat: repeatBuys(lines),
     subs: { monthly: subsMonthly, count: subs.length, next, top: monthlyBase.sort((a, b) => b.monthly - a.monthly) },
     invest: {

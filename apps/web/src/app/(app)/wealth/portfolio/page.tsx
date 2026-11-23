@@ -10,6 +10,7 @@ import { coinInfo } from '@/core/coin-logos'
 import { contractCoin, loadPortfolio, type ActivityRow, type Position } from '@/core/portfolio'
 import { timeAgo } from '@/domain/wealth'
 import { CoinLogo } from '@/ui/components/coin-logo'
+import { GridItem, PageGrid } from '@/ui/components/page-grid'
 import { Badge, Card, CardHeader, KpiStrip, Skeleton, peekAll } from '@/ui/components/card'
 import { EmptyState } from '@/ui/components/empty'
 import { buttonClass } from '@/ui/components/button'
@@ -19,7 +20,6 @@ import { ShareDonut } from '@/ui/components/charts'
 import { PositionCard, usd } from '@/ui/components/wealth/position-card'
 
 // Five coin hues; futures margin is ink and other coins grey, so no slice shares a colour.
-const ASSET_COLORS = ['var(--cat-wealth)', 'var(--pill)', 'var(--cat-mind)', 'var(--cat-relationships)', 'var(--cat-health)']
 const TABS = [
   { key: 'all', label: 'All' }, { key: 'trades', label: 'Trades' }, { key: 'p2p', label: 'P2P' },
   { key: 'transfers', label: 'Transfers & rewards' }, { key: 'futures', label: 'Futures' },
@@ -105,139 +105,147 @@ async function Portfolio({ searchParams }: { searchParams: PageProps<'/wealth/po
                 )
               })}
             </ul>
-          ) : <p className="px-5 pb-3 text-[13px] text-ink-3">No open futures positions.</p>}
+          ) : <p className="px-5 pb-3 text-small text-ink-3">No open futures positions.</p>}
         </Card>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <Card className="px-0 pb-2">
-          <CardHeader title="Spot holdings" icon={<Coins strokeWidth={2} />} color="var(--cat-wealth)" description="Prices in USD · cost from your trades and deposits" className="px-5" />
-          {p.rows.length ? (
-            <div role="table" aria-label="Spot holdings" className="text-[13px]">
-              <div role="row" className="hidden grid-cols-[minmax(0,1fr)_5.5rem_5.5rem_7rem_6.5rem] gap-4 border-b border-divider px-5 pb-2 text-[12px] font-medium text-ink-3 md:grid">
-                <span role="columnheader">Coin</span>
-                <span role="columnheader" className="text-right">Price</span>
-                <span role="columnheader" className="text-right">Avg cost</span>
-                <span role="columnheader" className="text-right">Value</span>
-                <span role="columnheader" className="text-right">Profit / loss</span>
-              </div>
-              {p.rows.map((h, i) => {
-                const share = h.usd / (heldUsd || 1)
-                return (
-                  <div role="row" key={h.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 border-b border-divider px-5 py-3.5 transition-[background-color] duration-150 last:border-b-0 hover:bg-ink/[0.02] md:grid-cols-[minmax(0,1fr)_5.5rem_5.5rem_7rem_6.5rem] dark:hover:bg-white/[0.03]">
-                    <span role="cell" className="flex min-w-0 items-center gap-3">
-                      <CoinLogo symbol={h.asset} logo={coin(h.asset).logo} />
-                      <span className="min-w-0 flex-1">
-                        <span className="flex items-baseline gap-2">
-                          <span className="font-semibold text-ink">{h.asset}</span>
-                          <span className="truncate text-[12px] text-ink-3">{coin(h.asset).name ?? ''}</span>
-                        </span>
-                        <span className="mt-1 flex items-center gap-2">
-                          <span className="block h-1.5 w-full max-w-20 min-w-8 overflow-hidden rounded-full bg-surface-2" aria-hidden>
-                            <span className="reveal-fill block h-full rounded-full" style={{ width: '100%', '--fill': `${share * 100}%`, '--i': i, background: 'var(--cat-wealth)' } as React.CSSProperties} />
+      <PageGrid>
+        <GridItem span={{ base: 12, lg: 8 }} className="[&>*]:h-full">
+          <Card className="px-0 pb-2">
+            <CardHeader title="Spot holdings" icon={<Coins strokeWidth={2} />} color="var(--cat-wealth)" description="Prices in USD · cost from your trades and deposits" className="px-5" />
+            {p.rows.length ? (
+              <div role="table" aria-label="Spot holdings" className="text-small">
+                <div role="row" className="hidden grid-cols-[minmax(0,1fr)_5.5rem_5.5rem_7rem_6.5rem] gap-4 border-b border-divider px-5 pb-2 text-caption font-medium text-ink-3 md:grid">
+                  <span role="columnheader">Coin</span>
+                  <span role="columnheader" className="text-right">Price</span>
+                  <span role="columnheader" className="text-right">Avg cost</span>
+                  <span role="columnheader" className="text-right">Value</span>
+                  <span role="columnheader" className="text-right">Profit / loss</span>
+                </div>
+                {p.rows.map((h, i) => {
+                  const share = h.usd / (heldUsd || 1)
+                  return (
+                    <div role="row" key={h.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 border-b border-divider px-5 py-3.5 transition-[background-color] duration-150 last:border-b-0 hover:bg-ink/[0.02] md:grid-cols-[minmax(0,1fr)_5.5rem_5.5rem_7rem_6.5rem] dark:hover:bg-white/[0.03]">
+                      <span role="cell" className="flex min-w-0 items-center gap-3">
+                        <CoinLogo symbol={h.asset} logo={coin(h.asset).logo} />
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-baseline gap-2">
+                            <span className="font-medium text-ink">{h.asset}</span>
+                            <span className="truncate text-caption text-ink-3">{coin(h.asset).name ?? ''}</span>
                           </span>
-                          <span className="text-[11.5px] whitespace-nowrap text-ink-3 tabular-nums">{formatNumber(share * 100, 1)}% · {formatNumber(h.qty, h.qty < 1 ? 6 : h.qty < 100 ? 3 : 1)}</span>
+                          <span className="mt-1 flex items-center gap-2">
+                            <span className="block h-1.5 w-full max-w-20 min-w-8 overflow-hidden rounded-full bg-surface-2" aria-hidden>
+                              <span className="reveal-fill block h-full rounded-full" style={{ width: '100%', '--fill': `${share * 100}%`, '--i': i, background: 'var(--cat-wealth)' } as React.CSSProperties} />
+                            </span>
+                            <span className="text-caption whitespace-nowrap text-ink-3 tabular-nums">{formatNumber(share * 100, 1)}% · {formatNumber(h.qty, h.qty < 1 ? 6 : h.qty < 100 ? 3 : 1)}</span>
+                          </span>
                         </span>
                       </span>
-                    </span>
-                    <span role="cell" className="hidden text-right text-ink-2 tabular-nums md:block">{usd(h.price)}</span>
-                    <span role="cell" className="hidden text-right text-ink-2 tabular-nums md:block" title={h.partial ? 'Covers only the part your synced history explains' : undefined}>{h.avg != null ? `${usd(h.avg)}${h.partial ? '*' : ''}` : '–'}</span>
-                    <span role="cell" className="text-right tabular-nums">
-                      <span className="block font-semibold text-ink">{money(h.usd)}</span>
-                      <span className="block text-[12px] text-ink-3">{formatMoney(h.usd, 'USD')}</span>
-                    </span>
-                    <span role="cell" className="col-span-2 text-right tabular-nums md:col-span-1">
-                      {h.gain != null ? (
-                        <>
-                          <span className={cn('block font-medium', signCls(h.gain))}>{money(h.gain, { sign: true })}</span>
-                          {h.pct != null ? <span className={cn('block text-[12px]', signCls(h.gain))}>{h.gain >= 0 ? '▲' : '▼'} {formatNumber(Math.abs(h.pct) * 100, 1)}%</span> : null}
-                        </>
-                      ) : <span className="text-ink-3">–</span>}
-                    </span>
-                  </div>
+                      <span role="cell" className="hidden text-right text-ink-2 tabular-nums md:block">{usd(h.price)}</span>
+                      <span role="cell" className="hidden text-right text-ink-2 tabular-nums md:block" title={h.partial ? 'Covers only the part your synced history explains' : undefined}>{h.avg != null ? `${usd(h.avg)}${h.partial ? '*' : ''}` : '–'}</span>
+                      <span role="cell" className="text-right tabular-nums">
+                        <span className="block font-medium text-ink">{money(h.usd)}</span>
+                        <span className="block text-caption text-ink-3">{formatMoney(h.usd, 'USD')}</span>
+                      </span>
+                      <span role="cell" className="col-span-2 text-right tabular-nums md:col-span-1">
+                        {h.gain != null ? (
+                          <>
+                            <span className={cn('block font-medium', signCls(h.gain))}>{money(h.gain, { sign: true })}</span>
+                            {h.pct != null ? <span className={cn('block text-caption', signCls(h.gain))}>{h.gain >= 0 ? '▲' : '▼'} {formatNumber(Math.abs(h.pct) * 100, 1)}%</span> : null}
+                          </>
+                        ) : <span className="text-ink-3">–</span>}
+                      </span>
+                    </div>
+                  )
+                })}
+                {p.dust.length ? (
+                  <p className="px-5 pt-3 pb-1 text-caption text-ink-3">
+                    {p.dust.length} small balance{p.dust.length === 1 ? '' : 's'} under $1 hidden ({p.dust.map((d) => d.asset).join(', ')}, {formatMoney(p.dust.reduce((s, d) => s + d.usd, 0), 'USD')} in all).
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              <p className="px-5 pb-3 text-small text-ink-3">No spot holdings worth $1 or more.</p>
+            )}
+          </Card>
+        </GridItem>
+
+        <GridItem span={{ base: 12, lg: 4 }} className="[&>*]:h-full">
+          <Card>
+            <CardHeader title="Allocation" icon={<ChartPie strokeWidth={2} />} color="var(--cat-wealth)" description="What the account holds now" />
+            <ShareDonut accent="var(--cat-wealth)"
+              label="Account by holding" unit={base === 'INR' ? '₹' : base} totalLabel="Worth now"
+              segments={[
+                ...p.held.slice(0, 5).map((h, i) => ({ id: h.asset, name: h.asset, color: 'var(--ink-3)', value: h.usd * p.usdToBase })),
+                ...(p.held.length > 5 ? [{ id: 'other', name: 'Other coins', color: 'var(--ink-3)', value: p.held.slice(5).reduce((s, h) => s + h.usd * p.usdToBase, 0) }] : []),
+                ...(p.futuresUsd > 0 ? [{ id: 'futures', name: 'Futures margin', color: 'var(--ink)', value: p.futuresUsd * p.usdToBase }] : []),
+              ]}
+            />
+          </Card>
+        </GridItem>
+      </PageGrid>
+
+      <PageGrid>
+        {/* Where the all-time number comes from: grouped by market, each with its subtotal. Bars grow from the zero line. */}
+        <GridItem span={{ base: 12, lg: 8 }} className="[&>*]:h-full">
+          <Card>
+            <CardHeader title="Where the profit and loss came from" icon={<Scale strokeWidth={2} />} color="var(--cat-wealth)" description="From spot and futures orders only. Each part adds up to the total." />
+            <div className="flex flex-col gap-5">
+              {p.breakdown.map((g, gi) => {
+                const Icon = GROUP_ICON[g.key]
+                return (
+                  <section key={g.key} aria-label={g.label}>
+                    <div className="mb-2 flex items-center gap-2.5">
+                      <span aria-hidden className="grid size-7 place-items-center rounded-[8px] bg-surface-2 text-ink-2"><Icon className="size-4" strokeWidth={2} /></span>
+                      <h3 className="flex-1 text-small font-medium text-ink">{g.label}</h3>
+                      <span className={cn('text-body font-medium tabular-nums', signCls(g.total))}>{money(g.total, { sign: true })}</span>
+                    </div>
+                    <ul className="flex flex-col gap-1">
+                      {g.items.map((it, ii) => (
+                        <li key={it.label} className="grid grid-cols-[minmax(0,15rem)_minmax(0,1fr)_7rem] items-center gap-4 rounded-[8px] py-1.5 ps-9 text-small max-sm:grid-cols-[minmax(0,1fr)_7rem]">
+                          <span className="min-w-0">
+                            <span className="block truncate text-ink">{it.label}</span>
+                            <span className="block text-caption leading-snug text-ink-3 text-pretty">{it.hint}</span>
+                          </span>
+                          <span aria-hidden className="relative h-2 rounded-full bg-surface-2 max-sm:hidden">
+                            <span className="absolute inset-y-0 left-1/2 w-px bg-ink/15 dark:bg-white/20" />
+                            <span
+                              className={cn('reveal-hbar absolute inset-y-0', it.usd >= 0 ? 'left-1/2 rounded-e-full bg-good' : 'right-1/2 rounded-s-full bg-bad')}
+                              style={{ width: `${(Math.abs(it.usd) / maxBreak) * 50}%`, transformOrigin: it.usd >= 0 ? 'left' : 'right', '--i': gi * 3 + ii } as React.CSSProperties}
+                            />
+                          </span>
+                          <span className={cn('text-right font-medium tabular-nums', signCls(it.usd))}>{money(it.usd, { sign: true })}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
                 )
               })}
-              {p.dust.length ? (
-                <p className="px-5 pt-3 pb-1 text-[12px] text-ink-3">
-                  {p.dust.length} small balance{p.dust.length === 1 ? '' : 's'} under $1 hidden ({p.dust.map((d) => d.asset).join(', ')}, {formatMoney(p.dust.reduce((s, d) => s + d.usd, 0), 'USD')} in all).
-                </p>
-              ) : null}
+              <div className="flex items-baseline justify-between border-t border-divider pt-4">
+                <span className="text-body font-medium text-ink">Total</span>
+                <span className={cn('font-display text-title font-medium tabular-nums', signCls(p.trading.total))}>{money(p.trading.total, { sign: true })}</span>
+              </div>
             </div>
-          ) : (
-            <p className="px-5 pb-3 text-[13px] text-ink-3">No spot holdings worth $1 or more.</p>
-          )}
-        </Card>
+          </Card>
+        </GridItem>
 
-        <Card>
-          <CardHeader title="Allocation" icon={<ChartPie strokeWidth={2} />} color="var(--cat-wealth)" description="What the account holds now" />
-          <ShareDonut
-            label="Account by holding" unit={base === 'INR' ? '₹' : base} totalLabel="Worth now"
-            segments={[
-              ...p.held.slice(0, 5).map((h, i) => ({ id: h.asset, name: h.asset, color: ASSET_COLORS[i], value: h.usd * p.usdToBase })),
-              ...(p.held.length > 5 ? [{ id: 'other', name: 'Other coins', color: 'var(--ink-3)', value: p.held.slice(5).reduce((s, h) => s + h.usd * p.usdToBase, 0) }] : []),
-              ...(p.futuresUsd > 0 ? [{ id: 'futures', name: 'Futures margin', color: 'var(--ink)', value: p.futuresUsd * p.usdToBase }] : []),
-            ]}
-          />
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        {/* Where the all-time number comes from: grouped by market, each with its subtotal. Bars grow from the zero line. */}
-        <Card>
-          <CardHeader title="Where the profit and loss came from" icon={<Scale strokeWidth={2} />} color="var(--cat-wealth)" description="From spot and futures orders only. Each part adds up to the total." />
-          <div className="flex flex-col gap-5">
-            {p.breakdown.map((g, gi) => {
-              const Icon = GROUP_ICON[g.key]
-              return (
-                <section key={g.key} aria-label={g.label}>
-                  <div className="mb-2 flex items-center gap-2.5">
-                    <span aria-hidden className="grid size-7 place-items-center rounded-[8px] bg-surface-2 text-ink-2"><Icon className="size-4" strokeWidth={2} /></span>
-                    <h3 className="flex-1 text-[13.5px] font-semibold text-ink">{g.label}</h3>
-                    <span className={cn('text-[14px] font-semibold tabular-nums', signCls(g.total))}>{money(g.total, { sign: true })}</span>
-                  </div>
-                  <ul className="flex flex-col gap-1">
-                    {g.items.map((it, ii) => (
-                      <li key={it.label} className="grid grid-cols-[minmax(0,15rem)_minmax(0,1fr)_7rem] items-center gap-4 rounded-[8px] py-1.5 ps-9 text-[13px] max-sm:grid-cols-[minmax(0,1fr)_7rem]">
-                        <span className="min-w-0">
-                          <span className="block truncate text-ink">{it.label}</span>
-                          <span className="block text-[11.5px] leading-snug text-ink-3 text-pretty">{it.hint}</span>
-                        </span>
-                        <span aria-hidden className="relative h-2 rounded-full bg-surface-2 max-sm:hidden">
-                          <span className="absolute inset-y-0 left-1/2 w-px bg-ink/15 dark:bg-white/20" />
-                          <span
-                            className={cn('reveal-hbar absolute inset-y-0', it.usd >= 0 ? 'left-1/2 rounded-e-full bg-good' : 'right-1/2 rounded-s-full bg-bad')}
-                            style={{ width: `${(Math.abs(it.usd) / maxBreak) * 50}%`, transformOrigin: it.usd >= 0 ? 'left' : 'right', '--i': gi * 3 + ii } as React.CSSProperties}
-                          />
-                        </span>
-                        <span className={cn('text-right font-medium tabular-nums', signCls(it.usd))}>{money(it.usd, { sign: true })}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              )
-            })}
-            <div className="flex items-baseline justify-between border-t border-divider pt-4">
-              <span className="text-[14px] font-semibold text-ink">Total</span>
-              <span className={cn('font-display text-[20px] font-medium tabular-nums', signCls(p.trading.total))}>{money(p.trading.total, { sign: true })}</span>
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <CardHeader title="Money in and out" icon={<ListOrdered strokeWidth={2} />} color="var(--cat-wealth)" description="Deposits, withdrawals and P2P. Not part of profit and loss." />
-          <dl className="flex flex-col gap-2.5 text-[13px]">
-            <Line label="Put in" value={money(p.money.invested)} />
-            <Line label="Taken out" value={money(p.money.withdrawn)} />
-            <Line label="Worth now" value={money(totalUsd)} strong />
-          </dl>
-          <dl className="mt-4 flex flex-col gap-2 border-t border-divider pt-4 text-[12.5px]">
-            {[
-              ['Spot trades', p.counts.trades], ['P2P orders', p.counts.p2p], ['Deposits', p.counts.deposits],
-              ['Withdrawals', p.counts.withdrawals], ['Futures entries', p.counts.futures],
-            ].map(([label, n]) => <Line key={label} label={String(label)} value={formatNumber(Number(n))} muted />)}
-          </dl>
-        </Card>
-      </div>
+        <GridItem span={{ base: 12, lg: 4 }} className="[&>*]:h-full">
+          <Card>
+            <CardHeader title="Money in and out" icon={<ListOrdered strokeWidth={2} />} color="var(--cat-wealth)" description="Deposits, withdrawals and P2P. Not part of profit and loss." />
+            <dl className="flex flex-col gap-2.5 text-small">
+              <Line label="Put in" value={money(p.money.invested)} />
+              <Line label="Taken out" value={money(p.money.withdrawn)} />
+              <Line label="Worth now" value={money(totalUsd)} strong />
+            </dl>
+            <dl className="mt-4 flex flex-col gap-2 border-t border-divider pt-4 text-caption">
+              {[
+                ['Spot trades', p.counts.trades], ['P2P orders', p.counts.p2p], ['Deposits', p.counts.deposits],
+                ['Withdrawals', p.counts.withdrawals], ['Futures entries', p.counts.futures],
+              ].map(([label, n]) => <Line key={label} label={String(label)} value={formatNumber(Number(n))} muted />)}
+            </dl>
+          </Card>
+        </GridItem>
+      </PageGrid>
 
       <div className={cn('grid grid-cols-1 gap-6', p.futures && 'lg:grid-cols-2')}>
         <Card>
@@ -247,13 +255,13 @@ async function Portfolio({ searchParams }: { searchParams: PageProps<'/wealth/po
               <li key={c.asset} className="flex h-10 items-center gap-3">
                 <CoinLogo symbol={c.asset} logo={coin(c.asset).logo} size="sm" />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[13px] font-medium text-ink">{c.asset}</span>
-                  <span className="block text-[11.5px] text-ink-3 tabular-nums">{c.sells} sale{c.sells === 1 ? '' : 's'}</span>
+                  <span className="block text-small font-medium text-ink">{c.asset}</span>
+                  <span className="block text-caption text-ink-3 tabular-nums">{c.sells} sale{c.sells === 1 ? '' : 's'}</span>
                 </span>
-                <span className={cn('text-[13px] font-semibold tabular-nums', signCls(c.gain))}>{money(c.gain, { sign: true, decimals: 0 })}</span>
+                <span className={cn('text-small font-medium tabular-nums', signCls(c.gain))}>{money(c.gain, { sign: true, decimals: 0 })}</span>
               </li>
             ))} />
-          ) : <p className="text-[13px] text-ink-3">Nothing sold yet.</p>}
+          ) : <p className="text-small text-ink-3">Nothing sold yet.</p>}
         </Card>
         {p.futures ? (
           <Card>
@@ -264,12 +272,12 @@ async function Portfolio({ searchParams }: { searchParams: PageProps<'/wealth/po
                 return (
                   <li key={s.symbol} className="flex h-10 items-center gap-3">
                     <CoinLogo symbol={c} logo={coin(c).logo} size="sm" />
-                    <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink">{s.symbol}</span>
-                    <span className={cn('text-[13px] font-semibold tabular-nums', signCls(s.usd))}>{money(s.usd, { sign: true })}</span>
+                    <span className="min-w-0 flex-1 truncate text-small font-medium text-ink">{s.symbol}</span>
+                    <span className={cn('text-small font-medium tabular-nums', signCls(s.usd))}>{money(s.usd, { sign: true })}</span>
                   </li>
                 )
               })} />
-            ) : <p className="text-[13px] text-ink-3">No closed futures trades yet.</p>}
+            ) : <p className="text-small text-ink-3">No closed futures trades yet.</p>}
           </Card>
         ) : null}
       </div>
@@ -283,10 +291,10 @@ async function Portfolio({ searchParams }: { searchParams: PageProps<'/wealth/po
           ))}
         </nav>
         {page.length ? (
-          <ul className="text-[13px]">
+          <ul className="text-small">
             {page.map((a, i) => <ActivityItem key={i} a={a} logo={coin(a.asset).logo} tz={user.timezone} money={money} />)}
           </ul>
-        ) : <p className="px-5 pb-3 text-[13px] text-ink-3">Nothing here yet.</p>}
+        ) : <p className="px-5 pb-3 text-small text-ink-3">Nothing here yet.</p>}
       </Card>
     </div>
   )
@@ -302,7 +310,7 @@ function Capped({ rows, limit = 10 }: { rows: React.ReactNode[]; limit?: number 
       <ul className="flex flex-col gap-1.5">{rows.slice(0, limit)}</ul>
       {rows.length > limit ? (
         <details className="group mt-1.5">
-          <summary className="flex h-9 cursor-pointer list-none items-center gap-1.5 text-[12.5px] font-medium text-ink-3 select-none hover:text-ink-2 [&::-webkit-details-marker]:hidden">
+          <summary className="flex h-9 cursor-pointer list-none items-center gap-1.5 text-caption font-medium text-ink-3 select-none hover:text-ink-2 [&::-webkit-details-marker]:hidden">
             <ChevronRight className="size-3.5 transition-[rotate] duration-150 ease-out-quint group-open:rotate-90" strokeWidth={2} aria-hidden />
             <span className="group-open:hidden">Show {rows.length - limit} more</span><span className="hidden group-open:inline">Show fewer</span>
           </summary>
@@ -317,7 +325,7 @@ function Line({ label, value, strong, muted }: { label: string; value: string; s
   return (
     <div className="flex items-baseline justify-between gap-3">
       <dt className={muted ? 'text-ink-3' : 'text-ink-2'}>{label}</dt>
-      <dd className={cn('tabular-nums', strong ? 'font-display text-[17px] font-medium text-ink' : muted ? 'text-ink-2' : 'font-medium text-ink')}>{value}</dd>
+      <dd className={cn('tabular-nums', strong ? 'font-display text-heading font-medium text-ink' : muted ? 'text-ink-2' : 'font-medium text-ink')}>{value}</dd>
     </div>
   )
 }
@@ -329,7 +337,7 @@ function ActivityItem({ a, logo, tz, money }: { a: ActivityRow; logo?: boolean; 
   const Arrow = a.kind === 'deposit' ? ArrowDownLeft : a.kind === 'withdrawal' ? ArrowUpRight : a.kind === 'reward' ? Gift : null
   return (
     <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 border-b border-divider px-5 py-3 last:border-b-0 md:grid-cols-[8.5rem_minmax(0,1fr)_9rem_8rem]">
-      <span className="col-span-2 text-[12px] text-ink-3 tabular-nums md:col-span-1 md:text-[13px]">
+      <span className="col-span-2 text-caption text-ink-3 tabular-nums md:col-span-1 md:text-small">
         {formatDay(localDate(a.at, tz), { day: 'numeric', month: 'short', year: '2-digit' })} · {formatTime(a.at, tz)}
       </span>
       <span className="flex min-w-0 items-center gap-3">
@@ -342,7 +350,7 @@ function ActivityItem({ a, logo, tz, money }: { a: ActivityRow; logo?: boolean; 
             <span className="truncate font-medium text-ink">{a.title}</span>
             <Badge>{KIND_LABEL[a.kind]}</Badge>
           </span>
-          {a.detail ? <span className="block truncate text-[12px] text-ink-3">{a.detail}</span> : null}
+          {a.detail ? <span className="block truncate text-caption text-ink-3">{a.detail}</span> : null}
         </span>
       </span>
       <span className="hidden text-right text-ink-2 tabular-nums md:block">{a.kind === 'futures' ? '' : `${formatNumber(a.amount, a.amount < 1 ? 6 : a.amount < 1000 ? 4 : 2)} ${a.amountAsset}`}</span>

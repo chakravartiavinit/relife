@@ -287,7 +287,8 @@ details[open]::details-content { opacity: 1; }
 @supports selector(::details-content) {
   @container (min-width: 40rem) {
     details[data-fold-inline] > summary { display: none; }
-    details[data-fold-inline]::details-content { content-visibility: visible; }
+    /* Opacity too: the unlayered `details::details-content { opacity: 0 }` above beats the Fold's own utility class. */
+    details[data-fold-inline]::details-content { content-visibility: visible; opacity: 1; }
   }
 }
 

@@ -1,13 +1,12 @@
 import brand from '@relife/brand/brand.json'
 import Link from 'next/link'
-import { ChartColumn, Flame, Hourglass, Tv } from 'lucide-react'
+import { Flame, Hourglass } from 'lucide-react'
 import { AREAS } from '@/core/areas'
 import { hoursText, loadHobbies } from '@/core/areas/hobbies'
 import { addDays, formatDay } from '@/core/time'
 import type { User } from '@/core/user'
 import { fillDays } from '@/domain/series'
 import { formatNumber } from '@/domain/money'
-import { AllMetrics } from '../components/area/all-metrics'
 import { BrandLogo } from '../components/brand-logo'
 import { Capsule } from '../components/capsule'
 import { Card, CardHeader } from '../components/card'
@@ -20,18 +19,17 @@ import { PeekLink } from '../components/peek/peek-link'
 
 const def = AREAS.hobbies
 
-/** Practice bars, one card per hobby with one-tap practice, shows you watch, then every metric (listening, chess ratings, playtime). */
+/** Practice bars, one card per hobby with one-tap practice and the shows you watch. Every metric (listening, chess ratings, playtime) is under All metrics. */
 export async function HobbiesOverview({ user, today }: { user: User; today: string }) {
   const { from, cards, shows, all } = await loadHobbies(user, today)
   const color = def.color
   // Shows and anime you track from the browser extension.
   const watching = shows.length ? (
     <Card>
-      <CardHeader title="Watching" icon={<Tv strokeWidth={2} />} color="var(--cat-health)" description={`Shows and anime you track with the ${brand.name} extension. Time on them counts as entertainment.`} />
+      <CardHeader title="Watching" description={`Shows and anime you track with the ${brand.name} extension. Time on them counts as entertainment.`} />
       <LibraryGrid items={shows} />
     </Card>
   ) : null
-  const metrics = <AllMetrics user={user} def={def} today={today} />
 
   if (!cards.length) {
     return (
@@ -44,7 +42,6 @@ export async function HobbiesOverview({ user, today }: { user: User; today: stri
           />
         </Card>
         {watching}
-        {metrics}
       </>
     )
   }
@@ -52,7 +49,7 @@ export async function HobbiesOverview({ user, today }: { user: User; today: stri
   return (
     <>
       <Card>
-        <CardHeader title="Practice, last 4 weeks" icon={<ChartColumn strokeWidth={2} />} color={color} description="Minutes a day across every hobby." />
+        <CardHeader title="Practice, last 4 weeks" description="Minutes a day across every hobby." />
         <DailyBars data={fillDays(all, addDays(today, -27), today, 0)} color={color} unit="min" label="Practice minutes per day" />
       </Card>
 
@@ -83,14 +80,14 @@ export async function HobbiesOverview({ user, today }: { user: User; today: stri
               <ul className="flex flex-wrap gap-2" aria-label={`${c.t.name} stats`}>
                 {c.games != null ? (
                   <li className="flex h-9 items-center gap-2 rounded-md bg-surface-2 px-2.5 text-small tabular-nums">
-                    <span className="font-semibold text-ink">{c.games}</span><span className="text-ink-3">games this week</span>
+                    <span className="font-medium text-ink">{c.games}</span><span className="text-ink-3">games this week</span>
                     {c.games && c.wins != null ? <span className="font-medium text-good">· {Math.round((c.wins / c.games) * 100)}% won</span> : null}
                   </li>
                 ) : null}
                 {c.ratings.map((r) => (
                   <li key={r.name} className="flex h-9 items-center gap-2 rounded-md bg-surface-2 ps-1 pe-2.5 text-small tabular-nums">
                     <BrandLogo name={r.name} className="size-7 rounded-sm" />
-                    <span className="font-semibold text-ink">{formatNumber(r.value)}</span>
+                    <span className="font-medium text-ink">{formatNumber(r.value)}</span>
                     {r.change ? <span className={r.change > 0 ? 'font-medium text-good' : 'font-medium text-bad'}>{r.change > 0 ? '▲' : '▼'} {formatNumber(Math.abs(r.change))}</span> : null}
                     <span className="text-ink-3">30 days</span>
                   </li>
@@ -111,7 +108,6 @@ export async function HobbiesOverview({ user, today }: { user: User; today: stri
       </section>
 
       {watching}
-      {metrics}
       <p className="px-1 text-small text-ink-3">Tip: type “{cards[0].t.slug.replace(/-/g, ' ')} 30” in ⌘K or Telegram to log 30 minutes. Totals since {formatDay(from, { day: 'numeric', month: 'short', year: 'numeric' })}.</p>
     </>
   )

@@ -19,7 +19,7 @@ import { MedalDisc } from '../xp'
 // The tab row and the Log button sit under it. The title and the static description render at once; the brief and the
 // level stream in (they need the database).
 
-export function AreaHeader({ def, right, tabs, actions }: { def: AreaDef; right?: React.ReactNode; tabs?: React.ReactNode; actions?: React.ReactNode }) {
+export function AreaHeader({ def, right, tabs, actions, summary }: { def: AreaDef; right?: React.ReactNode; tabs?: React.ReactNode; actions?: React.ReactNode; /** Replaces the level bar (Time, which has no level, shows today's numbers). */ summary?: React.ReactNode }) {
   const Icon = def.category ? AREA_ICON[def.category] : MonitorSmartphone
   return (
     <PageHead
@@ -29,7 +29,7 @@ export function AreaHeader({ def, right, tabs, actions }: { def: AreaDef; right?
       title={def.title}
       // The static description holds the space until the brief arrives, so the header never jumps.
       brief={<Suspense fallback={def.description}><AreaBrief def={def} /></Suspense>}
-      summary={def.category ? <Suspense fallback={<div className="h-[52px] w-full rounded-md bg-surface-2" />}><AreaLevel def={def} /></Suspense> : undefined}
+      summary={summary ?? (def.category ? <Suspense fallback={<div className="h-[52px] w-full rounded-md bg-surface-2" />}><AreaLevel def={def} /></Suspense> : undefined)}
       tabs={tabs}
       actions={right || actions ? <>{right}{actions}</> : undefined}
     />

@@ -11,3 +11,17 @@ export function CategorySkeleton({ cards = 4 }: { cards?: number }) {
     </div>
   )
 }
+
+/** An area Overview while the page loads: the targets table and the rail side by side, then All metrics (a closed fold on a phone). */
+export function OverviewSkeleton() {
+  return (
+    <div className="@container" aria-busy>
+      <div className="grid grid-cols-1 gap-6 grid-md:grid-cols-8 grid-lg:grid-cols-12">
+        <Skeleton className="h-[540px] rounded-lg col-span-full grid-lg:col-span-8" />
+        <Skeleton className="h-[640px] rounded-lg col-span-full grid-lg:col-span-4 grid-lg:row-span-2" />
+        <Skeleton className="h-[360px] rounded-lg col-span-full grid-lg:col-span-8" />
+        <Skeleton className="h-[68px] rounded-lg col-span-full grid-md:h-[360px]" />
+      </div>
+    </div>
+  )
+}

@@ -25,7 +25,7 @@ export async function peopleKpis(user: User, today: string): Promise<AreaKpi[]> 
   const overdue = tracked.filter((r) => r.overdue)
   const longest = rows.reduce<{ name: string; since: number } | null>((m, r) => (r.since != null && (!m || r.since > m.since) ? { name: r.p.name, since: r.since } : m), null)
   return [
-    { label: 'In touch', value: tracked.length ? `${tracked.length - overdue.length}/${tracked.length}` : '–', sub: tracked.length ? 'within their rhythm' : 'Add people with a rhythm' },
+    { label: 'In touch', value: tracked.length ? `${tracked.length - overdue.length}/${tracked.length}` : '–', sub: tracked.length ? 'within their rhythm' : 'Add people with a rhythm', ratio: tracked.length ? (tracked.length - overdue.length) / tracked.length : undefined },
     { label: 'Overdue', value: String(overdue.length), sub: overdue[0] ? `Start with ${overdue[0].p.name}` : 'Nobody waiting', tone: overdue.length ? 'bad' : undefined },
     { label: 'Catch-ups, 30 days', value: String(catchUps), peek: { type: 'metric', id: 'people.contacts' } },
     { label: 'Longest gap', value: longest ? `${longest.since}d` : '–', sub: longest?.name },

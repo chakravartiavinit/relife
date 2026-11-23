@@ -23,6 +23,7 @@ import { PeekGallery } from '@/ui/components/peek/peek-gallery'
 import { CoachGallery } from '@/ui/components/coach/coach-gallery'
 import { PartyGallery } from '@/ui/components/party/party-gallery'
 import { AreaGallery } from '@/ui/components/area/area-gallery'
+import { OverviewGallery } from '@/ui/components/area/overview-gallery'
 import { TodayGallery } from '@/ui/components/today/today-gallery'
 import { PlanYouGallery } from '@/ui/components/plan-you-gallery'
 import { OnboardingGallery } from '@/ui/components/onboarding-gallery'
@@ -229,6 +230,10 @@ export default function UiGallery() {
 
       <Section title="Area template and Life hub">
         <Suspense fallback={<Skeleton className="h-[420px]" />}><AreaGallery /></Suspense>
+      </Section>
+
+      <Section title="Area Overview: targets table, sleep chart, Wealth Overview">
+        <Suspense fallback={<Skeleton className="h-[420px]" />}><OverviewGallery /></Suspense>
       </Section>
 
       <Section title="Coach: Needs you, Ask and no model">

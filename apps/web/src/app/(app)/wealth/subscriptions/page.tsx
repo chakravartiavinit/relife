@@ -11,6 +11,7 @@ import { localDate, localDayRange } from '@/core/time'
 import { nextOccurrence, parseSimple } from '@/domain/recurrence'
 import { formatMoney } from '@/domain/money'
 import { dueLabel } from '@/domain/wealth'
+import { GridItem, PageGrid } from '@/ui/components/page-grid'
 import { Badge, Card, CardHeader, KpiStrip, Skeleton, peekAll } from '@/ui/components/card'
 import { EmptyState } from '@/ui/components/empty'
 import { Button } from '@/ui/components/button'
@@ -26,7 +27,6 @@ export const metadata: Metadata = { title: 'Subscriptions' }
 const KIND_LABEL = { subscription: 'Subscription', bill: 'Bill', renewal: 'Renewal' } as const
 const FREQ_LABEL = { monthly: 'Monthly', yearly: 'Yearly', weekly: 'Weekly', daily: 'Daily' } as const
 const PERIOD_DAYS = { daily: 1, weekly: 7, monthly: 30.44, yearly: 365.25 } as const
-const SHARE_COLORS = ['var(--cat-wealth)', 'var(--pill)', 'var(--cat-mind)', 'var(--cat-relationships)', 'var(--cat-health)']
 const SOON_DAYS = 3
 const UPCOMING_DAYS = 30
 
@@ -117,44 +117,48 @@ async function Subscriptions() {
         { label: 'Next charge', value: next ? dueLabel(next.daysLeft!) : '–', sub: next ? `${next.s.name}${next.s.amount ? ` · ${formatMoney(next.s.amount, next.cur)}` : ''}` : 'Nothing scheduled' },
       ], { type: 'brief', id: 'wealth' })} />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <PageGrid>
         {/* What charges next, as a dated timeline. */}
-        <Card className="px-0 pb-2">
-          <CardHeader title="Coming up" icon={<CalendarClock strokeWidth={2} />} color="var(--cat-wealth)" description={`Charges in the next ${UPCOMING_DAYS} days`} className="px-5" />
-          {upcoming.length ? (
-            <ol>
-              {upcoming.map(({ s, due, daysLeft, cur }) => {
-                const soon = daysLeft! <= SOON_DAYS
-                return (
-                  <li key={s.id} className="flex items-center gap-4 border-t border-divider px-5 py-3 first:border-t-0">
-                    <div className={cn('grid w-12 shrink-0 place-items-center rounded-[10px] py-1.5 text-center leading-none tabular-nums', soon ? 'bg-[color-mix(in_oklch,var(--warn)_14%,transparent)] text-warn' : 'bg-surface-2 text-ink-2')}>
-                      <span className="text-heading font-medium">{dayMonth.format(due!).split(' ')[0]}</span>
-                      <span className="mt-1 text-caption font-medium">{dayMonth.format(due!).split(' ')[1]}</span>
-                    </div>
-                    <BrandLogo name={s.name} size="sm" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-body font-medium text-ink">{s.name}</p>
-                      <p className={cn('text-caption', soon ? 'font-medium text-warn' : 'text-ink-3')}>{dueLabel(daysLeft!)} · {weekday.format(due!)}</p>
-                    </div>
-                    <p className="shrink-0 text-body font-medium text-ink tabular-nums">{s.amount ? formatMoney(s.amount, cur) : '–'}</p>
-                  </li>
-                )
-              })}
-            </ol>
-          ) : <p className="px-5 pb-4 text-small text-ink-3">Nothing charges in the next {UPCOMING_DAYS} days.</p>}
-        </Card>
+        <GridItem span={{ base: 12, lg: 8 }} className="[&>*]:h-full">
+          <Card className="px-0 pb-2">
+            <CardHeader title="Coming up" icon={<CalendarClock strokeWidth={2} />} color="var(--cat-wealth)" description={`Charges in the next ${UPCOMING_DAYS} days`} className="px-5" />
+            {upcoming.length ? (
+              <ol>
+                {upcoming.map(({ s, due, daysLeft, cur }) => {
+                  const soon = daysLeft! <= SOON_DAYS
+                  return (
+                    <li key={s.id} className="flex items-center gap-4 border-t border-divider px-5 py-3 first:border-t-0">
+                      <div className={cn('grid w-12 shrink-0 place-items-center rounded-[10px] py-1.5 text-center leading-none tabular-nums', soon ? 'bg-[color-mix(in_oklch,var(--warn)_14%,transparent)] text-warn' : 'bg-surface-2 text-ink-2')}>
+                        <span className="text-heading font-medium">{dayMonth.format(due!).split(' ')[0]}</span>
+                        <span className="mt-1 text-caption font-medium">{dayMonth.format(due!).split(' ')[1]}</span>
+                      </div>
+                      <BrandLogo name={s.name} size="sm" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-body font-medium text-ink">{s.name}</p>
+                        <p className={cn('text-caption', soon ? 'font-medium text-warn' : 'text-ink-3')}>{dueLabel(daysLeft!)} · {weekday.format(due!)}</p>
+                      </div>
+                      <p className="shrink-0 text-body font-medium text-ink tabular-nums">{s.amount ? formatMoney(s.amount, cur) : '–'}</p>
+                    </li>
+                  )
+                })}
+              </ol>
+            ) : <p className="px-5 pb-4 text-small text-ink-3">Nothing charges in the next {UPCOMING_DAYS} days.</p>}
+          </Card>
+        </GridItem>
 
-        <Card>
-          <CardHeader title="Where it goes" icon={<ChartPie strokeWidth={2} />} color="var(--cat-wealth)" description="Monthly cost by service" />
-          <ShareDonut
-            label="Monthly cost by service" unit={base === 'INR' ? '₹' : base} totalLabel="Per month"
-            segments={[
-              ...slices.map((i, n) => ({ id: i.s.id, name: i.s.name, color: SHARE_COLORS[n], value: i.monthlyBase })),
-              ...(folded.length ? [{ id: 'other', name: 'Everything else', color: 'var(--ink-3)', value: folded.reduce((s, i) => s + i.monthlyBase, 0) }] : []),
-            ]}
-          />
-        </Card>
-      </div>
+        <GridItem span={{ base: 12, lg: 4 }} className="[&>*]:h-full">
+          <Card>
+            <CardHeader title="Where it goes" icon={<ChartPie strokeWidth={2} />} color="var(--cat-wealth)" description="Monthly cost by service" />
+            <ShareDonut accent="var(--cat-wealth)"
+              label="Monthly cost by service" unit={base === 'INR' ? '₹' : base} totalLabel="Per month"
+              segments={[
+                ...slices.map((i, n) => ({ id: i.s.id, name: i.s.name, color: 'var(--ink-3)', value: i.monthlyBase })),
+                ...(folded.length ? [{ id: 'other', name: 'Everything else', color: 'var(--ink-3)', value: folded.reduce((s, i) => s + i.monthlyBase, 0) }] : []),
+              ]}
+            />
+          </Card>
+        </GridItem>
+      </PageGrid>
 
       <section aria-labelledby="all-subs">
         <div className="mb-3 flex items-center gap-2 px-1">

@@ -25,7 +25,7 @@ const SUB_TONE = { good: 'text-good', bad: 'text-bad', warn: 'text-warn', neutra
  * One tracker as a tile: name, where it comes from, the latest number, a 28-day trend and one line of context.
  * The whole tile opens the metric's Peek. Every connector metric of an area gets one (`AllMetrics`).
  */
-export function MetricTile({ t, color, className }: { t: TileSummary; color: string; className?: string }) {
+export function MetricTile({ t, color, className, flat = false }: { t: TileSummary; color: string; className?: string; /** A cell of a table (All metrics): no well of its own, square, a little roomier. */ flat?: boolean }) {
   const tag = sourceTag(t.sources)
   const v = t.latest == null ? null : formatTileValue(t.latest, t.unit)
   const avg = t.avg7 == null ? null : (() => { const a = formatTileValue(t.avg7, t.unit); return a.unit ? `${a.text} ${a.unit}` : a.text })()
@@ -35,7 +35,8 @@ export function MetricTile({ t, color, className }: { t: TileSummary; color: str
       to={{ type: 'metric', id: t.slug }}
       aria-label={`${t.name}: open details`}
       className={cn(
-        'group flex min-h-[132px] min-w-0 flex-col rounded-md bg-surface-2 p-3 transition-[background-color,transform] duration-150 ease-out-quint hover:bg-surface-3 active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill',
+        'group flex min-h-[132px] min-w-0 flex-col transition-[background-color,transform] duration-150 ease-out-quint active:scale-96 focus-visible:outline-2 focus-visible:outline-pill',
+        flat ? 'bg-surface p-4 hover-fine:bg-surface-2 focus-visible:-outline-offset-2' : 'rounded-md bg-surface-2 p-3 hover-fine:bg-surface-3 focus-visible:outline-offset-2',
         className,
       )}
     >

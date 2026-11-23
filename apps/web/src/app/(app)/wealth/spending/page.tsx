@@ -12,6 +12,7 @@ import { formatDay, formatTime, localDate, localHour } from '@/core/time'
 import { formatMoney } from '@/domain/money'
 import { fillDays } from '@/domain/series'
 import { QUICK_COMMERCE, monthLabel, monthRange, shiftMonth } from '@/domain/wealth'
+import { GridItem, PageGrid } from '@/ui/components/page-grid'
 import { Badge, Card, CardHeader, Skeleton, Stat } from '@/ui/components/card'
 import { DailyBars, RankedBars } from '@/ui/components/charts'
 import { EmptyState } from '@/ui/components/empty'
@@ -148,34 +149,38 @@ async function Spending({ searchParams }: { searchParams: PageProps<'/wealth/spe
             <DailyBars data={fillDays(perDay, from, monthEnd, 0)} color="var(--cat-wealth)" unit="₹" label={`Daily spending in ${monthLabel(m)}`} />
           </Card>
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <Card>
-              <CardHeader title="By category" icon={<ChartPie strokeWidth={2} />} color="var(--cat-wealth)" />
-              {cats.length ? <RankedBars data={cats} color="var(--cat-wealth)" unit="₹" label="Spending by category" /> : <p className="text-[13px] text-ink-3">No spending this month.</p>}
-            </Card>
-            <Card>
-              <CardHeader title="Paid to most" icon={<HandCoins strokeWidth={2} />} color="var(--cat-wealth)" description="Apps, shops and people" />
-              {merchants.length ? (
-                <ul className="flex flex-col gap-3">
-                  {merchants.map((mm) => (
-                    <li key={mm.label} className="flex items-center gap-3">
-                      <BrandLogo name={mm.label} />
-                      <span className="min-w-0 flex-1 truncate text-sm text-ink">{mm.label}</span>
-                      <span className="text-[12px] text-ink-3 tabular-nums">{mm.count} payment{mm.count === 1 ? '' : 's'}</span>
-                      <span className="w-24 text-right text-sm font-medium text-ink tabular-nums">{formatMoney(mm.value, base, { decimals: 0 })}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : <p className="text-[13px] text-ink-3">No payments yet.</p>}
-            </Card>
-          </div>
+          <PageGrid>
+            <GridItem span={{ base: 12, lg: 6 }} className="[&>*]:h-full">
+              <Card>
+                <CardHeader title="By category" icon={<ChartPie strokeWidth={2} />} color="var(--cat-wealth)" />
+                {cats.length ? <RankedBars data={cats} color="var(--cat-wealth)" unit="₹" label="Spending by category" /> : <p className="text-small text-ink-3">No spending this month.</p>}
+              </Card>
+            </GridItem>
+            <GridItem span={{ base: 12, lg: 6 }} className="[&>*]:h-full">
+              <Card>
+                <CardHeader title="Paid to most" icon={<HandCoins strokeWidth={2} />} color="var(--cat-wealth)" description="Apps, shops and people" />
+                {merchants.length ? (
+                  <ul className="flex flex-col gap-3">
+                    {merchants.map((mm) => (
+                      <li key={mm.label} className="flex items-center gap-3">
+                        <BrandLogo name={mm.label} />
+                        <span className="min-w-0 flex-1 truncate text-sm text-ink">{mm.label}</span>
+                        <span className="text-caption text-ink-3 tabular-nums">{mm.count} payment{mm.count === 1 ? '' : 's'}</span>
+                        <span className="w-24 text-right text-sm font-medium text-ink tabular-nums">{formatMoney(mm.value, base, { decimals: 0 })}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : <p className="text-small text-ink-3">No payments yet.</p>}
+              </Card>
+            </GridItem>
+          </PageGrid>
 
           <BasketSections b={basket} month={m} base={base} />
 
           <Card className="px-0 pb-2">
             <CardHeader title="Transactions" icon={<ReceiptText strokeWidth={2} />} color="var(--cat-wealth)" description={`${txns.length} in ${monthLabel(m)} · change a category once and it sticks for that name`} className="px-5" />
             <div role="table" aria-label="Transactions" className="text-sm">
-              <div role="row" className="hidden grid-cols-[7rem_minmax(0,1fr)_11rem_7rem_7.5rem] gap-4 border-b border-divider px-5 pb-2 text-[12px] font-medium text-ink-3 sm:grid">
+              <div role="row" className="hidden grid-cols-[7rem_minmax(0,1fr)_11rem_7rem_7.5rem] gap-4 border-b border-divider px-5 pb-2 text-caption font-medium text-ink-3 sm:grid">
                 <span role="columnheader">Date</span>
                 <span role="columnheader">To or from</span>
                 <span role="columnheader">Category</span>
@@ -188,14 +193,14 @@ async function Spending({ searchParams }: { searchParams: PageProps<'/wealth/spe
                   key={t.id}
                   className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 border-b border-divider px-5 py-3 last:border-b-0 sm:grid-cols-[7rem_minmax(0,1fr)_11rem_7rem_7.5rem]"
                 >
-                  <span role="cell" className="col-span-2 text-[12px] text-ink-3 tabular-nums sm:col-span-1 sm:text-[13px]">
+                  <span role="cell" className="col-span-2 text-caption text-ink-3 tabular-nums sm:col-span-1 sm:text-small">
                     {formatDay(t.localDate, { day: 'numeric', month: 'short' })} · {formatTime(t.at, user.timezone)}
                   </span>
                   <span role="cell" className="flex min-w-0 items-center gap-3">
                     <BrandLogo name={t.merchant ?? t.upiId ?? '?'} />
                     <span className="min-w-0">
                       <span className="block truncate text-ink">{t.merchant ?? t.upiId ?? 'Unknown'}</span>
-                      {t.upiId && t.upiId !== t.merchant ? <span className="block truncate text-[12px] text-ink-3">{t.upiId}</span> : null}
+                      {t.upiId && t.upiId !== t.merchant ? <span className="block truncate text-caption text-ink-3">{t.upiId}</span> : null}
                     </span>
                   </span>
                   <span role="cell" className="order-last col-span-2 flex items-center gap-2 sm:order-none sm:col-span-1">
@@ -205,7 +210,7 @@ async function Spending({ searchParams }: { searchParams: PageProps<'/wealth/spe
                   <span role="cell" className="hidden sm:block"><Badge>{t.source}</Badge></span>
                   <span role="cell" className={cn('text-right font-medium tabular-nums', t.amount > 0 ? 'text-good' : 'text-ink')}>
                     {formatMoney(t.amount, t.currency, { sign: t.amount > 0, decimals: 0 })}
-                    {t.currency !== base ? <span className="block text-[12px] font-normal text-ink-3">{formatMoney(t.base, base, { decimals: 0 })}</span> : null}
+                    {t.currency !== base ? <span className="block text-caption font-normal text-ink-3">{formatMoney(t.base, base, { decimals: 0 })}</span> : null}
                   </span>
                 </div>
               ))}

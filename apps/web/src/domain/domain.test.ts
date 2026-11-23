@@ -186,3 +186,11 @@ test('runway: entry, price and liquidation on one track, in profit or in loss', 
   const long = runway({ side: 'long', entry: 100, mark: 110, liquidation: 80 })
   assert.ok(long.mark < long.entry && long.favour > 0)
 })
+
+test('activeMonths counts from the first month with spending to the last', async () => {
+  const { activeMonths } = await import('./wealth')
+  const months = ['2026-08', '2026-09', '2026-10', '2026-11']
+  assert.equal(activeMonths(months, new Map([['2026-09', 10], ['2026-11', 5]])), 3)
+  assert.equal(activeMonths(months, new Map([['2026-08', 1]])), 4)
+  assert.equal(activeMonths(months, new Map()), 0)
+})

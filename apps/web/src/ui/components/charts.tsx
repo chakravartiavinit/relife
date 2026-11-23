@@ -242,13 +242,15 @@ export function ShareDonut({ segments, unit, totalLabel, label, top = 3, accent 
  * biggest takes the accent, the next `top - 1` and Other are neutrals, and a series that is an area keeps its area
  * colour. Periods before the first activity are hidden. The legend shows at most four entries.
  */
-export function StackedBars({ categories, series, unit, height = 220, label, top = 3, lead, accent = CHART.accent }: {
+export function StackedBars({ categories, series, unit, height = 220, label, top = 3, lead, accent = CHART.accent, legend = true }: {
   categories: string[]; series: { id: string; name: string; color: string; values: (number | null)[] }[]; unit?: string; height?: number; label: string
   /** How many series keep their own colour before the rest fold into Other. */
   top?: number
   /** The id of the series to lead with, when it is not simply the biggest. */
   lead?: string
   accent?: string
+  /** False when the page lists the series itself right beside the chart (Time's By kind). */
+  legend?: boolean
 }) {
   const { rows, config, axis, ranked, empty } = useMemo(() => {
     const trimmed = trimLeadingEmpty(categories, series)
@@ -272,7 +274,7 @@ export function StackedBars({ categories, series, unit, height = 220, label, top
         <EvilBarChart.Tooltip />
         {ranked.map((_, i) => <EvilBarChart.Bar key={i} dataKey={`s${i}`} />)}
       </EvilBarChart></div>
-      <Legend items={ranked} />
+      {legend ? <Legend items={ranked} /> : null}
     </figure>
   )
 }

@@ -60,7 +60,7 @@ export async function hobbiesKpis(user: User, today: string): Promise<AreaKpi[]>
   const bestStreak = Math.max(0, ...cards.map((c) => c.streak))
   return [
     { label: 'Practice, 7 days', value: hoursText(weekTotal), sub: lastTotal || weekTotal ? `${diff >= 0 ? '+' : '−'}${hoursText(Math.abs(diff))} vs last week` : undefined, tone: diff > 0 ? 'good' : diff < 0 ? 'bad' : undefined },
-    { label: 'Hobbies practised', value: `${active} / ${cards.length}`, sub: 'this week' },
+    { label: 'Hobbies practised', value: `${active} / ${cards.length}`, sub: 'this week', ratio: active / cards.length },
     { label: 'Longest streak now', value: bestStreak ? `${bestStreak} ${bestStreak === 1 ? 'day' : 'days'}` : '–' },
     { label: 'Hours, last 12 months', value: hoursText(cards.reduce((s, c) => s + c.total, 0)) },
   ]

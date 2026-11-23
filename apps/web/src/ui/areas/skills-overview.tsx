@@ -1,10 +1,9 @@
 import brand from '@relife/brand/brand.json'
-import { Activity, Code, GitCommitHorizontal, GraduationCap, Keyboard, Languages, Laptop, Terminal } from 'lucide-react'
+import { Code, GitCommitHorizontal, GraduationCap, Keyboard, Languages, Laptop, Terminal } from 'lucide-react'
 import { AREAS } from '@/core/areas'
 import { hm, loadSkills, sumLast } from '@/core/areas/skills'
 import type { User } from '@/core/user'
 import { formatNumber } from '@/domain/money'
-import { AllMetrics } from '../components/area/all-metrics'
 import { Card, CardHeader } from '../components/card'
 import { EmptyState } from '../components/empty'
 import { NewLearningButton } from '../components/forms/learning-forms'
@@ -13,7 +12,7 @@ import { TrainingLog, type Stream } from '../components/training-log'
 
 const def = AREAS.skills
 
-/** The training log and the learning library, then every metric (judge ratings, typing speed, WakaTime and the rest). */
+/** The training log and the learning library. Every metric (judge ratings, typing speed, WakaTime and the rest) is under All metrics. */
 export async function SkillsOverview({ user, today }: { user: User; today: string }) {
   const s = await loadSkills(user, today)
   // Row totals cover the same 8 weeks the training log draws.
@@ -31,12 +30,12 @@ export async function SkillsOverview({ user, today }: { user: User; today: strin
   return (
     <>
       <Card>
-        <CardHeader title="Training log" icon={<Activity strokeWidth={2} />} color={def.color} description={`Every way you practise on one timeline, ${LOG_WEEKS} weeks. Taller means more, compared with that row’s busiest day.`} />
+        <CardHeader title="Training log" description={`Every way you practise on one timeline, ${LOG_WEEKS} weeks. Taller means more, compared with that row’s busiest day.`} />
         <TrainingLog streams={streams} today={today} weeks={LOG_WEEKS} streak={s.streak} />
       </Card>
       <Card>
         <CardHeader
-          title="Learning" icon={<GraduationCap strokeWidth={2} />} color={def.color}
+          title="Learning"
           description={`${formatNumber(sumLast(s.learningMin, today, 28) / 60, 1)} h in the last 28 days`}
           action={<NewLearningButton />}
         />
@@ -46,7 +45,6 @@ export async function SkillsOverview({ user, today }: { user: User; today: strin
         />
         {s.finished.length ? <p className="mt-4 text-small text-ink-3">{s.finished.length} finished</p> : null}
       </Card>
-      <AllMetrics user={user} def={def} today={today} />
     </>
   )
 }
