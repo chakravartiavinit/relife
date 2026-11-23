@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { agoShort, progressState, syncLabel, syncTone, workerAlive } from './shell'
+import { agoShort, closed, left, progressState, syncLabel, syncTone, workerAlive } from './shell'
 import { needsYou } from './needs-you'
 
 test('needsYou adds decisions to data', () => {
@@ -32,7 +32,12 @@ test('sync labels', () => {
 })
 
 test('one area or the whole day: done, due or nothing due', () => {
-  assert.equal(progressState({ done: 5, total: 11 }), 'due')
-  assert.equal(progressState({ done: 11, total: 11 }), 'done')
-  assert.equal(progressState({ done: 0, total: 0 }), 'none')
+  assert.equal(progressState({ done: 5, total: 11, skipped: 0 }), 'due')
+  assert.equal(progressState({ done: 11, total: 11, skipped: 0 }), 'done')
+  assert.equal(progressState({ done: 0, total: 0, skipped: 0 }), 'none')
+  // Skipped is closed for the day, like done.
+  assert.equal(progressState({ done: 9, total: 11, skipped: 2 }), 'done')
+  assert.equal(progressState({ done: 9, total: 11, skipped: 1 }), 'due')
+  assert.equal(closed({ done: 9, total: 11, skipped: 1 }), 10)
+  assert.equal(left({ done: 9, total: 11, skipped: 1 }), 1)
 })

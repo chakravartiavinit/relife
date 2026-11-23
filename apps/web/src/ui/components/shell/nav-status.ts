@@ -1,5 +1,5 @@
 import type { Category } from '@/db/schema'
-import { progressState, type NavStatus } from '@/domain/shell'
+import { closed, left, progressState, type NavStatus } from '@/domain/shell'
 import { AREA_HREF } from '../nav'
 
 // What the sidebar rows and the phone Life tray say about each destination, from one NavStatus. Status is never colour
@@ -26,9 +26,12 @@ const CATEGORY_OF: Record<string, Category> = Object.fromEntries(Object.entries(
 export function rowStatus(href: string, status?: NavStatus): RowStatus {
   if (!status) return { sr: '' }
   if (href === '/') {
-    const { done, total } = status.today
+    const { today } = status
+    const { total } = today
     if (!total) return { sr: '' }
-    return { text: `${done} of ${total}`, done: done >= total, sr: `, ${done} of ${total} done today`, tip: `${done} of ${total}` }
+    // A skipped routine is closed for the day, so it counts toward the N of M and the check.
+    const n = closed(today)
+    return { text: `${n} of ${total}`, done: n >= total, sr: `, ${n} of ${total} ${today.skipped ? 'done or skipped' : 'done'} today`, tip: `${n} of ${total}` }
   }
   if (href === '/coach') return status.coach ? { count: status.coach, sr: `, ${status.coach} need you`, tip: `${status.coach} need you` } : { sr: '' }
   const category = CATEGORY_OF[href]
@@ -37,6 +40,6 @@ export function rowStatus(href: string, status?: NavStatus): RowStatus {
   const state = progressState(p)
   if (state === 'none') return { sr: ', nothing due today' }
   if (state === 'done') return { done: true, mark: 'done', tip: 'Done', sr: ', done today' }
-  const left = p.total - p.done
-  return { text: `${left} left`, mark: 'due', tip: `${left} left`, sr: `, ${left} left today` }
+  const open = left(p)
+  return { text: `${open} left`, mark: 'due', tip: `${open} left`, sr: `, ${open} left today` }
 }

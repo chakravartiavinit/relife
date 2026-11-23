@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { CircleCheck, Plus } from 'lucide-react'
-import type { NavStatus } from '@/domain/shell'
+import { closed, type NavStatus } from '@/domain/shell'
 import { cn } from '../../cn'
 import { openCapture, prefetchCapture } from '../capture/capture-data'
 import { isActive, LIFE_CHILDREN, LIFE_HUB, NAV, visibleLifeChildren, type NavItem } from '../nav'
@@ -166,7 +166,7 @@ function LifeTray({ ref, path, areas, status, onNavigate, pin }: { ref: React.Re
     <div ref={ref} id="life-tray" role="region" aria-label="Life" className={cn(pin, 'tray-in inset-x-3 bottom-[calc(var(--tabbar-h)+16px)] z-40 rounded-xl bg-surface p-1.5 shadow-3')}>
       <div className="flex h-9 items-center justify-between px-3 text-small font-medium text-ink-3">
         <span>Life</span>
-        {today?.total ? <span className="font-normal tabular-nums">{today.done} of {today.total} done today</span> : null}
+        {today?.total ? <span className="font-normal tabular-nums">{closed(today)} of {today.total} {today.skipped ? 'done or skipped' : 'done'} today</span> : null}
       </div>
       {row(LIFE_HUB)}
       {rule}

@@ -52,7 +52,7 @@ export const loadShellStatus = cache(async (user: User): Promise<ShellStatus> =>
     needsYou: needsYou(r.decisions, r.unread, r.merchants),
     sync: { tone: syncTone(alive, failing.length), workerAlive: alive, failing, lastSyncAt: date(r.last_sync) },
     level,
-    today: { done: plan.done, total: plan.total },
+    today: { done: plan.done, total: plan.total, skipped: plan.skipped },
     areaCounts: plan.byCat,
   }
 })

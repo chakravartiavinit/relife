@@ -142,11 +142,11 @@ export function PeekLinkDemo() {
 }
 
 const NAV_STATUS: NavStatus = {
-  today: { done: 5, total: 11 },
-  areas: { health: { done: 0, total: 3 }, mind: { done: 0, total: 3 }, skills: { done: 2, total: 2 }, wealth: { done: 0, total: 0 }, hobbies: { done: 0, total: 0 }, relationships: { done: 0, total: 0 } },
+  today: { done: 5, total: 11, skipped: 0 },
+  areas: { health: { done: 0, total: 3, skipped: 0 }, mind: { done: 0, total: 3, skipped: 0 }, skills: { done: 2, total: 2, skipped: 0 }, wealth: { done: 0, total: 0, skipped: 0 }, hobbies: { done: 0, total: 0, skipped: 0 }, relationships: { done: 0, total: 0, skipped: 0 } },
   coach: 8,
 }
-const NAV_ALL_DONE: NavStatus = { ...NAV_STATUS, today: { done: 11, total: 11 }, areas: { ...NAV_STATUS.areas, health: { done: 3, total: 3 }, mind: { done: 3, total: 3 } }, coach: 0 }
+const NAV_ALL_DONE: NavStatus = { ...NAV_STATUS, today: { done: 11, total: 11, skipped: 0 }, areas: { ...NAV_STATUS.areas, health: { done: 3, total: 3, skipped: 0 }, mind: { done: 3, total: 3, skipped: 0 } }, coach: 0 }
 const LEVEL = { level: 25, title: 'Ascendant', progress: 0.64 }
 
 /** The real sidebar rows and You card in a box: `rail` draws the 72px rail (the page's own sidebar follows ⌘\ separately). */
