@@ -19,7 +19,7 @@ export function PatternsWeek({ patterns: p }: { patterns: Patterns }) {
           <h2 id="patterns-week" className="text-heading text-ink">Patterns this week {p.changes.length ? <span className="ml-1 font-normal text-ink-3 tabular-nums">{p.changes.length}</span> : null}</h2>
           <p className="mt-0.5 text-small text-ink-3">{p.signals ? `From ${p.signals} daily numbers. Patterns, not proof.` : 'Patterns appear once two or more things have about two weeks of data.'}</p>
         </div>
-        <Link href="/coach/patterns" className="-my-1 inline-flex h-8 shrink-0 items-center gap-0.5 rounded-sm px-1.5 text-small font-medium text-ink-2 transition-colors duration-150 hover-fine:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">
+        <Link href="/coach/patterns" className="relative -my-1 inline-flex h-8 shrink-0 items-center gap-0.5 rounded-sm px-1.5 text-small font-medium text-ink-2 transition-colors duration-150 after:absolute after:inset-x-0 after:-inset-y-1.5 after:content-[''] hover-fine:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">
           All<ChevronRight aria-hidden className="size-4" strokeWidth={1.5} />
         </Link>
       </header>
