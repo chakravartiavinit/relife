@@ -1,3 +1,4 @@
+import brand from '@relife/brand/brand.json'
 import { BellRing } from 'lucide-react'
 import type { loadWealthOverview } from '@/core/wealth-overview'
 import { formatMoney } from '@/domain/money'
@@ -17,7 +18,7 @@ import { CategoryList } from './category-list'
 // The Wealth Overview on the page grid, as presentational pieces (`/dev/ui` draws them from a fixture):
 //   Row 1  November so far (the pace bar, then the month bars) 8 | where it went, a ranked list 4
 //   Row 2  net worth 6 | subscriptions 6
-//   Row 3  where you order from 8 | what ReLife noticed and bought again 4
+//   Row 3  where you order from 8 | what the app noticed and bought again 4
 // Each number is shown once: the head's brief carries the pace sentence, these cards carry the figures. On a phone each
 // card shows its first rows and folds the rest ("7 more categories"), and the two small cards at the end are folds.
 
@@ -245,10 +246,10 @@ function Merchants({ o, money }: { o: WealthOverview; money: Money }) {
   )
 }
 
-/** The latest money nudges ReLife sent, and what it keeps an eye on. */
+/** The latest money nudges the app sent, and what it keeps an eye on. */
 function Noticed({ o }: { o: WealthOverview }) {
   return (
-    <FoldCard title="What ReLife noticed" description="Money nudges sent to Telegram, last 30 days" summary={o.nudges.length ? `${o.nudges.length} in the last 30 days` : 'All quiet so far · last 30 days'} action={<CardLink href="/coach">All</CardLink>}>
+    <FoldCard title={`What ${brand.name} noticed`} description="Money nudges sent to Telegram, last 30 days" summary={o.nudges.length ? `${o.nudges.length} in the last 30 days` : 'All quiet so far · last 30 days'} action={<CardLink href="/coach">All</CardLink>}>
       {o.nudges.length ? (
         <ul className="flex flex-col gap-1">
           {o.nudges.map((n) => (
