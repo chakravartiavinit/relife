@@ -8,7 +8,7 @@ import type { NavStatus } from '@/domain/shell'
 import { cn } from '../../cn'
 import { openCapture, prefetchCapture } from '../capture/capture-data'
 import { isActive, LIFE_CHILDREN, LIFE_HUB, NAV, visibleLifeChildren, type NavItem } from '../nav'
-import { CountPill } from './coach-bell'
+import { CountPill } from './count-pill'
 import { rowStatus } from './nav-status'
 
 // Phone tab bar: Today, Life, a raised ink + (Capture), Plan, Coach with its count; each a 3D picture over its name. Life

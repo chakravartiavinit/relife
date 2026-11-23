@@ -10,7 +10,7 @@ import { cn } from '../../cn'
 import { CapsuleMark, Wordmark } from '../logo'
 import { ThemeToggle } from '../theme-toggle'
 import { isActive, LIFE_HUB, NAV, visibleLifeChildren, type NavItem } from '../nav'
-import { CountPill } from './coach-bell'
+import { CountPill } from './count-pill'
 import { rowStatus } from './nav-status'
 import { useLifeOpen, useSidebarRail } from './sidebar-state'
 
