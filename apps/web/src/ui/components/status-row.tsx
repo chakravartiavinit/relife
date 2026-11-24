@@ -41,7 +41,9 @@ export function StatusRow({ picture, pictureSize = 32, name, line, status, value
   onSelect?: () => void
   className?: string
 }) {
-  const label = typeof name === 'string' ? `${name}${status ? `, ${status.toLowerCase()}` : ''}${peek || href ? '. Open details' : onSelect ? '. Show its chart' : ''}` : undefined
+  // No aria-label: it would replace the row's own text (its line, figure and bar). Screen readers read the visible
+  // name, line and status word, then this hint.
+  const hint = peek || href ? '. Open details' : onSelect ? '. Show its chart' : ''
   const box = cn(
     '-mx-2 grid min-h-14 items-center gap-x-3 rounded-md px-2 py-2 [&+&]:shadow-[0_-1px_0_var(--divider)]',
     pictureSize === 40 ? 'grid-cols-[40px_minmax(0,1fr)_auto_auto]' : 'grid-cols-[32px_minmax(0,1fr)_auto_auto]',
@@ -62,10 +64,12 @@ export function StatusRow({ picture, pictureSize = 32, name, line, status, value
       <span className={cn('justify-self-end', !status && 'text-body font-medium text-ink tabular-nums')}>{status ? <StatusWord status={status} /> : value}</span>
       {trailing ?? ((peek || href || onSelect) ? <ChevronRight aria-hidden strokeWidth={1.5} className="size-4 text-ink-3" /> : <span aria-hidden />)}
       {under ? <div className={cn('mt-1.5 block min-w-0 col-end-[-1]', picture ? 'col-start-2' : 'col-start-1', underClass)}>{under}</div> : null}
+      {/* Last, so it is read after the status word; sr-only is absolute, so it takes no grid cell. */}
+      {hint ? <span className="sr-only">{hint}</span> : null}
     </>
   )
-  if (onSelect) return <button type="button" aria-pressed={selected} aria-label={label} onClick={onSelect} className={cn(box, 'w-[calc(100%+1rem)] text-start')}>{body}</button>
-  if (peek) return <PeekLink to={peek} aria-label={label} className={box}>{body}</PeekLink>
-  if (href) return <Link href={href} aria-label={label} className={box}>{body}</Link>
+  if (onSelect) return <button type="button" aria-pressed={selected} onClick={onSelect} className={cn(box, 'w-[calc(100%+1rem)] text-start')}>{body}</button>
+  if (peek) return <PeekLink to={peek} className={box}>{body}</PeekLink>
+  if (href) return <Link href={href} className={box}>{body}</Link>
   return <div className={box}>{body}</div>
 }
