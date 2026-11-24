@@ -345,7 +345,7 @@ function Row({ r, onToggle, onSkip, compact = false }: { r: AgendaRow; onToggle:
           <p className="mt-0.5 flex min-w-0 items-center gap-1 text-small text-ink-3 tabular-nums">
             {missed ? <span className="shrink-0 font-medium text-bad-ink">Overdue</span> : null}
             {r.chips?.map((c) => (
-              <span key={c.text} className={cn('shrink-0', c.warn && 'font-medium text-warn-ink')}>{missed || r.chips?.[0] !== c ? '· ' : ''}{c.text}</span>
+              <span key={c.text} className={cn('min-w-0 truncate', c.warn && 'font-medium text-warn-ink')}>{missed || r.chips?.[0] !== c ? '· ' : ''}{c.text}</span>
             ))}
             {r.detail ? <span className="min-w-0 truncate">{missed || r.chips?.length ? '· ' : ''}{r.detail}</span> : null}
           </p>
@@ -527,7 +527,7 @@ export function Goals({ rows, compact }: { rows: GoalRow[]; /** Today's "All day
                   {WATER_TARGETS.map((t) => (
                     <button
                       key={t} type="button" role="radio" aria-checked={g.target === t} onClick={() => g.target !== t && retarget(g, t)}
-                      className="h-7 rounded-full px-2.5 text-caption font-medium text-ink-3 tabular-nums transition-[background-color,color] duration-150 hover:text-ink aria-checked:bg-surface aria-checked:text-ink aria-checked:shadow-1 focus-visible:outline-2 focus-visible:outline-pill"
+                      className="relative h-7 rounded-full px-2.5 text-caption font-medium text-ink-3 tabular-nums transition-[background-color,color] duration-150 after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] hover-fine:text-ink aria-checked:bg-surface aria-checked:text-ink aria-checked:shadow-1 focus-visible:outline-2 focus-visible:outline-pill"
                     >
                       {t / 1000}L
                     </button>
