@@ -18,7 +18,7 @@ export function FoldLink({ target, children, className }: { target: string; chil
         fold.open = true
         el.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
       }}
-      className={buttonLinkClass(className)}
+      className={buttonLinkClass(className, { target: true })}
     >
       {children}
     </a>

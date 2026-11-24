@@ -110,7 +110,7 @@ export function Connection({ link, change, today, spark = false, pictures, trail
         <span className="text-caption text-ink-3">{v.caption}</span>
         {v.peek || trailing ? (
           <span className="flex items-center gap-4">
-            {v.peek ? <PeekLink to={v.peek} className={buttonLinkClass('text-small')}>See the days</PeekLink> : null}
+            {v.peek ? <PeekLink to={v.peek} className={buttonLinkClass('text-small', { target: true })}>See the days</PeekLink> : null}
             {trailing}
           </span>
         ) : null}

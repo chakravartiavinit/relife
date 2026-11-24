@@ -42,9 +42,14 @@ export function Button({ variant, size, static: isStatic, className, type = 'but
 }
 
 /** The one link look: text with a quiet underline that darkens on hover. For "Why?", "See the days", "Edit in Plan". */
-export function buttonLinkClass(className?: string) {
+/**
+ * Pass `{ target: true }` for a link that stands on its own (a card header's "Open Life", "See the days"): it gets a
+ * 32px box with an invisible hit area that reaches 44px, the phone tap size. Links inside a sentence stay inline.
+ */
+export function buttonLinkClass(className?: string, { target = false }: { target?: boolean } = {}) {
   return cn(
     'rounded-xs font-medium text-ink-2 underline decoration-1 decoration-ink/30 underline-offset-4',
+    target && "relative inline-flex min-h-8 items-center after:absolute after:inset-x-0 after:-inset-y-1.5 after:content-['']",
     'transition-[color,text-decoration-color] duration-150 ease-out-quint focus-visible:outline-2 focus-visible:outline-pill',
     'hover-fine:text-ink hover-fine:decoration-current',
     className,

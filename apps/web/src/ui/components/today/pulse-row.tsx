@@ -16,7 +16,7 @@ export function PulseCard({ tiles, connection, className }: { tiles: PulseTile[]
     <Card aria-labelledby="life-pulse" className={className}>
       <header className="mb-4 flex items-start justify-between gap-4">
         <h2 id="life-pulse" className="font-display text-heading text-ink">Life pulse</h2>
-        <Link href="/life" className={buttonLinkClass('inline-flex h-8 items-center text-small')}>Open Life</Link>
+        <Link href="/life" className={buttonLinkClass('text-small', { target: true })}>Open Life</Link>
       </header>
       {connection ? <div className="mb-3 rounded-lg bg-surface-2 p-4">{connection}</div> : null}
       <ul className="grid grid-cols-1 gap-x-10 grid-md:grid-cols-2">

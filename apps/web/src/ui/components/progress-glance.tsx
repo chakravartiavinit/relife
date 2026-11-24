@@ -93,7 +93,7 @@ export function ConsistencyGlance({ data }: { data: ConsistencyData }) {
         </ol>
       }
       note={has ? `Most routines done on ${most} of 14 days` : 'Add a routine in Plan and its days fill in here.'}
-      link={has ? <FoldLink target="consistency-fold">By area</FoldLink> : <Link href="/plan/routines" className={buttonLinkClass()}>Routines</Link>}
+      link={has ? <FoldLink target="consistency-fold">By area</FoldLink> : <Link href="/plan/routines" className={buttonLinkClass(undefined, { target: true })}>Routines</Link>}
     />
   )
 }

@@ -91,7 +91,7 @@ export function TimeBoard({ t, today, link, library }: { t: TimeData; today: str
         <Card aria-labelledby={`${id}-library`} className={spanClass({ base: 12, lg: 4 }) + ' order-4 pb-3'}>
           <header className="flex items-start justify-between gap-4">
             <h2 id={`${id}-library`} className="font-display text-heading text-ink">Library</h2>
-            <Link href="/you/connections" className={buttonLinkClass('text-small')}>How to track</Link>
+            <Link href="/you/connections" className={buttonLinkClass('text-small', { target: true })}>How to track</Link>
           </header>
           <p className="mt-1 mb-2 text-small text-ink-3">Courses, shows and series from the extension. Log a module or minutes from a row.</p>
           {library}

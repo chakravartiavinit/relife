@@ -145,7 +145,7 @@ function FeedWell({ g, feed, color }: { g: GoalViewData; feed?: GoalFeed; color:
       ) : sentence ? <p className="pt-1 text-body text-ink">{sentence}</p> : null}
       <div className="flex items-center justify-between gap-3">
         <span className="text-caption text-ink-3">{feed?.change ? feed.change.caption : 'Moving together, not proof'}</span>
-        <PeekLink to={seeDays} className={buttonLinkClass('text-small')}>See the days</PeekLink>
+        <PeekLink to={seeDays} className={buttonLinkClass('text-small', { target: true })}>See the days</PeekLink>
       </div>
     </section>
   )

@@ -30,7 +30,7 @@ export function GoalsCard({ goals, due, className }: { goals: PaceGoal[]; due: n
     <Card aria-labelledby="goals-h" className={cn('flex flex-col', className)}>
       <header className="mb-3 flex items-start justify-between gap-4">
         <h2 id="goals-h" className="font-display text-heading text-ink">Goals</h2>
-        <Link href="/plan" className={buttonLinkClass('inline-flex h-8 items-center text-small')}>Plan</Link>
+        <Link href="/plan" className={buttonLinkClass('text-small', { target: true })}>Plan</Link>
       </header>
       {due ? <StatusRow picture={{ of: 'nav', to: '/plan' }} name="Weekly review is due" line={`${due} ${due === 1 ? 'goal' : 'goals'} to review`} href="/plan/review" /> : null}
       {goals.length ? (

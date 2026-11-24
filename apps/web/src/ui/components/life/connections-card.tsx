@@ -11,7 +11,7 @@ export function ConnectionsCard({ items, today }: { items: Connected[]; today: s
     <Card aria-labelledby="connect-h">
       <header className="mb-4 flex items-start justify-between gap-4">
         <h2 id="connect-h" className="font-display text-heading text-ink">How they connect</h2>
-        <Link href="/coach/patterns" className={buttonLinkClass('inline-flex h-8 items-center text-small')}>More in Coach</Link>
+        <Link href="/coach/patterns" className={buttonLinkClass('text-small', { target: true })}>More in Coach</Link>
       </header>
       <div className="flex flex-col gap-5">
         {items.map((c, i) => (
