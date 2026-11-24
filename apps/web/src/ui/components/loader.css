@@ -203,18 +203,30 @@
     transition-delay: 300ms;
   }
 
-  /* Cold-start splash: plain background first, the wordmark after 300ms, gone when the app has hydrated. */
+  /*
+   * Cold-start splash: only when the app is launched as an installed app (standalone), never over a page in a browser
+   * tab. Plain background first, the wordmark after 300ms, gone when the app has hydrated. If the scripts never run
+   * (a failed chunk), the failsafe below clears it after 2.5s anyway, so the page is never covered for good.
+   */
   .ld-splash {
     position: fixed;
     inset: 0;
     z-index: 100;
-    display: grid;
+    display: none;
     place-items: center;
     background: var(--bg);
     transition: opacity 240ms var(--ease-out-strong) 300ms, visibility 0s linear 540ms;
+    animation: ld-splash-failsafe 240ms var(--ease-out-strong) 2500ms forwards;
+  }
+  @media (display-mode: standalone) {
+    .ld-splash { display: grid; }
   }
   .ld-splash[data-state='done'] {
     opacity: 0;
     visibility: hidden;
   }
+}
+
+@keyframes ld-splash-failsafe {
+  to { opacity: 0; visibility: hidden; }
 }

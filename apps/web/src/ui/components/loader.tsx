@@ -148,8 +148,9 @@ export function LoaderSwap({
 }
 
 /**
- * The cold-start splash, over the page until the app has hydrated: plain background first, the wordmark after 300ms.
- * A start faster than that never shows the wordmark and the splash is gone at once.
+ * The cold-start splash for the installed app (display-mode standalone; loader.css hides it in a browser tab), over the
+ * page until the app has hydrated: plain background first, the wordmark after 300ms. A start faster than that never
+ * shows the wordmark and the splash is gone at once. A CSS failsafe clears it after 2.5s if the scripts never run.
  */
 export function ColdStartSplash() {
   const [state, setState] = useState<'loading' | 'done' | 'gone'>('loading')
