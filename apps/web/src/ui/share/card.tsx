@@ -91,11 +91,11 @@ function faceOf(m: CardModel): Face {
         : null
       return {
         ...base, title: hero ? `${hero}-day streak` : 'Streak', badge: { icon: FLAME_LINE }, type: 'Streak',
-        serial: hero ? `Day ${hero}` : null, stats: m.stats.filter((s) => s.id !== 'best' || !meter), meter,
+        stats: m.stats.filter((s) => s.id !== 'best' || !meter), meter,
       }
     }
     case 'achievement':
-      return { ...base, title: hero ?? 'Achievement', badge: { icon: TROPHY }, type: 'Achievement unlocked', typeRight: m.caption }
+      return { ...base, title: hero ?? 'Achievement', badge: { icon: TROPHY }, type: 'Achievement', typeRight: m.caption }
     case 'weekly': {
       const [week, dates] = (m.range ?? '').split(' · ')
       return {
@@ -144,18 +144,42 @@ function CapsuleObject({ w, value, c }: { w: number; value: number; c: C }) {
   )
 }
 
-/** A flame in the same sticker style: gold outside, sakura inside, an ink outline. */
+/** A flame in the same sticker style: bronze tips into a gold base, a sakura heart and a white core, an ink outline. */
 function FlameObject({ size, c }: { size: number; c: C }) {
-  const outer = 'M52 4 C56 24 70 32 80 48 C88 60 88 74 84 84 C78 98 66 106 50 106 C32 106 18 96 16 78 C14 62 22 50 30 42 C30 52 34 58 40 60 C38 44 42 22 52 4 Z'
-  const inner = 'M52 52 C58 64 68 72 68 86 C68 97 60 104 50 104 C40 104 32 97 32 87 C32 78 38 72 42 66 C44 72 48 74 51 74 C49 66 49 60 52 52 Z'
+  const outer = 'M50 4 C55 22 68 30 77 44 C80 36 79 28 76 22 C88 32 94 48 92 64 C90 92 72 114 50 114 C28 114 10 96 10 72 C10 56 18 46 26 38 C26 48 29 55 35 59 C32 40 38 20 50 4 Z'
+  const heart = 'M52 50 C58 62 70 70 70 86 C70 100 61 108 50 108 C39 108 30 100 30 88 C30 78 36 72 41 66 C43 73 47 76 51 76 C48 68 48 60 52 50 Z'
+  const core = 'M50 80 C54 86 58 90 58 97 C58 103 54 106 50 106 C46 106 42 103 42 97 C42 91 47 87 50 80 Z'
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size * 1.1} viewBox="0 0 100 110">
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={Math.round(size * 1.18)} viewBox="0 0 100 118">
       <defs>
-        <linearGradient id="flame" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={og.light['medal-gold']} /><stop offset="1" stopColor={og.light['medal-bronze']} /></linearGradient>
+        <linearGradient id="flame" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={og.light['medal-bronze']} /><stop offset="0.75" stopColor={og.light['medal-gold']} /></linearGradient>
       </defs>
       <path d={outer} fill="url(#flame)" stroke={ON_COLOUR} strokeWidth={4} strokeLinejoin="round" />
-      <path d={inner} fill={c.sakura} stroke={ON_COLOUR} strokeWidth={3} strokeLinejoin="round" />
-      <path d="M60 30 C66 38 72 44 74 54" fill="none" stroke="#ffffff" strokeOpacity={0.6} strokeWidth={4} strokeLinecap="round" />
+      <path d={heart} fill={c.sakura} stroke={ON_COLOUR} strokeWidth={3.2} strokeLinejoin="round" />
+      <path d={core} fill="#ffffff" />
+      <path d="M58 26 C64 34 70 40 73 50" fill="none" stroke="#ffffff" strokeOpacity={0.65} strokeWidth={4.5} strokeLinecap="round" />
+    </svg>
+  )
+}
+
+/**
+ * The art window's sky: sun rays from where the object stands, clouds along the bottom, and in the night sky a few
+ * stars. Drawn under the object and the petals; the rays are the only light in the card.
+ */
+function ArtSky({ w, h, dark, c }: { w: number; h: number; dark: boolean; c: C }) {
+  const cx = w / 2, cy = h * 0.46, R = Math.hypot(w, h)
+  const rays = Array.from({ length: 12 }, (_, i) => {
+    const a0 = (i * 30 - 6) * (Math.PI / 180), a1 = (i * 30 + 6) * (Math.PI / 180)
+    return `M${cx} ${cy} L${(cx + R * Math.cos(a0)).toFixed(1)} ${(cy + R * Math.sin(a0)).toFixed(1)} L${(cx + R * Math.cos(a1)).toFixed(1)} ${(cy + R * Math.sin(a1)).toFixed(1)} Z`
+  })
+  const cloud = dark ? c['sky-soft'] : '#ffffff'
+  const puffs = [[0.04, 0.98, 0.16], [0.2, 1.02, 0.14], [0.36, 1.0, 0.12], [0.62, 1.03, 0.15], [0.82, 0.98, 0.17], [0.98, 1.02, 0.13]]
+  const stars = [[0.14, 0.14], [0.3, 0.3], [0.72, 0.12], [0.9, 0.36], [0.56, 0.24], [0.1, 0.5]]
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ position: 'absolute', top: 0, left: 0 }}>
+      {rays.map((d) => <path key={d} d={d} fill="#ffffff" fillOpacity={dark ? 0.05 : 0.22} />)}
+      {dark ? stars.map(([x, y]) => <circle key={`${x}:${y}`} cx={x * w} cy={y * h} r={Math.max(2, w * 0.005)} fill="#ffffff" fillOpacity={0.7} />) : null}
+      {puffs.map(([x, y, r]) => <circle key={`${x}:${y}`} cx={x * w} cy={y * h} r={r * w} fill={cloud} fillOpacity={dark ? 0.9 : 0.95} />)}
     </svg>
   )
 }
@@ -183,9 +207,9 @@ function WeekObject({ m, w, h, c, k }: { m: CardModel; w: number; h: number; c: 
   const xp = m.hero
   const days = m.days
   const gap = Math.round(14 * k)
-  const pw = Math.min(Math.floor((w * 0.86 - gap * 6) / 7), Math.round(h * (xp ? 0.22 : 0.3)))
-  const ph = Math.round(pw * 2.1)
-  const size = xp ? fit(`${xp.value} ${xp.unit ?? ''}`, w * 0.86, Math.round(h * (days ? 0.3 : 0.42)), 0.62) : 0
+  const pw = Math.min(Math.floor((w * 0.9 - gap * 6) / 7), Math.round(h * (xp ? 0.2 : 0.28)))
+  const ph = Math.round(pw * 2.2)
+  const size = xp ? fit(`${xp.value} ${xp.unit ?? ''}`, w * 0.9, Math.round(h * (days ? 0.26 : 0.42)), 0.6) : 0
   return (
     <Col style={{ alignItems: 'center', gap: Math.round(28 * k) }}>
       {xp ? (
@@ -225,15 +249,15 @@ function Meter({ value, width, height, c }: { value: number; width: number; heig
 }
 
 function Wordmark({ brand, c, k }: { brand: CardBrand; c: C; k: number }) {
-  if (brand.logo) return <img src={brand.logo} alt="" height={Math.round(34 * k)} style={{ height: Math.round(34 * k) }} />
+  if (brand.logo) return <img src={brand.logo} alt="" height={Math.round(38 * k)} style={{ height: Math.round(38 * k) }} />
   return (
     <Row style={{ alignItems: 'center', gap: Math.round(10 * k) }}>
       {/* The capsule: a tilted pill, blue over white, ringed in ink. A plain shape, not the logo. */}
-      <div style={{ display: 'flex', width: Math.round(32 * k), height: Math.round(16 * k), borderRadius: 999, border: `${Math.round(3 * k)}px solid ${c.ink}`, overflow: 'hidden', transform: 'rotate(-32deg)' }}>
+      <div style={{ display: 'flex', width: Math.round(36 * k), height: Math.round(18 * k), borderRadius: 999, border: `${Math.round(3 * k)}px solid ${c.ink}`, overflow: 'hidden', transform: 'rotate(-32deg)' }}>
         <div style={{ display: 'flex', flex: 1, background: c.pill }} />
         <div style={{ display: 'flex', flex: 1, background: c.surface }} />
       </div>
-      <Text font={DISPLAY} weight={800} size={Math.round(28 * k)} color={c.ink}>{brand.name}</Text>
+      <Text font={DISPLAY} weight={800} size={Math.round(32 * k)} color={c.ink}>{brand.name}</Text>
     </Row>
   )
 }
@@ -250,29 +274,35 @@ export function ShareCard({ model: m, theme, size, brand }: { model: CardModel; 
 
   const f = faceOf(m)
   const frame = frameOf(c, tierOf(m))
-  const cw = story ? 880 : 712, ch = story ? 1600 : 968
-  const framePad = px(18), facePad = px(26), gap = px(18)
-  const inner = cw - (framePad + facePad) * 2
+  const cw = story ? 900 : 744, ch = story ? 1640 : 980
+  const framePad = px(18), facePad = px(28), gap = px(18)
+  const inner = cw - (framePad + facePad) * 2 - 6
 
   // Every block has a fixed height, so the art window gets exactly what is left and its object can be sized to it.
-  const headerH = px(108), typeH = px(52), footerH = px(40), rowH = px(46), meterH = px(70)
+  const headerH = px(116), typeH = px(56), footerH = px(44), rowH = px(50), meterH = px(80)
   const cols = f.stats.length > 1 ? 2 : 1
   const statRows = Math.ceil(f.stats.length / cols)
   const blocks = [headerH, typeH, footerH, statRows ? statRows * rowH : 0, f.meter ? meterH : 0].filter(Boolean)
   const artH = ch - (framePad + facePad) * 2 - blocks.reduce((a, b) => a + b, 0) - gap * blocks.length
   const artW = inner - 6
 
-  const badgeD = px(100)
-  const titleRoom = inner - (f.badge ? badgeD + px(16) : 0)
-  const oneLine = fit(f.title, titleRoom, px(f.sub ? 54 : 62), 0.58)
-  const titleSize = m.kind === 'achievement' && oneLine < px(44) ? Math.min(px(48), fit(f.title, titleRoom * 1.85, px(48), 0.58)) : oneLine
+  // Stat labels share one size, the largest that lets the longest label and value fit a column on one line.
+  const colW = (inner - px(28)) / cols
+  const value = (s: CardStat) => (s.n != null && m.kind === 'level' ? String(s.n) : s.value)
+  const longest = Math.max(1, ...f.stats.map((s) => s.label.length))
+  const valueW = Math.max(0, ...f.stats.map((s) => value(s).length)) * 0.6 * px(30)
+  const labelSize = Math.max(px(22), Math.min(px(28), Math.floor((colW - valueW - px(36)) / (longest * 0.54))))
+  const badgeD = px(112)
+  const titleRoom = inner - (f.badge ? badgeD + px(20) : 0)
+  const oneLine = fit(f.title, titleRoom, px(f.sub ? 60 : 68), 0.56)
+  const titleSize = m.kind === 'achievement' && oneLine < px(46) ? Math.min(px(50), fit(f.title, titleRoom * 1.85, px(50), 0.56)) : oneLine
 
   const art = (() => {
     switch (m.kind) {
-      case 'level': return <div style={{ display: 'flex', transform: 'rotate(-24deg)' }}><CapsuleObject w={Math.round(Math.min(artW * 0.8, artH * 1.15))} value={m.progress?.value ?? 1} c={c} /></div>
-      case 'streak': return <FlameObject size={Math.round(Math.min(artH * 0.72, artW * 0.66))} c={c} />
+      case 'level': return <div style={{ display: 'flex', transform: 'rotate(-24deg)', marginBottom: Math.round(artH * 0.08) }}><CapsuleObject w={Math.round(Math.min(artW * 0.78, artH * 0.95))} value={m.progress?.value ?? 1} c={c} /></div>
+      case 'streak': return <FlameObject size={Math.round(Math.min(artH * 0.66, artW * 0.6))} c={c} />
       case 'achievement': return <MedalObject d={Math.round(Math.min(artH * 0.68, artW * 0.6))} colour={m.tier ? frame : c.pill} c={c} />
-      case 'weekly': return m.hero || m.days ? <WeekObject m={m} w={artW} h={artH} c={c} k={k} /> : <div style={{ display: 'flex', transform: 'rotate(-24deg)' }}><CapsuleObject w={Math.round(Math.min(artW * 0.8, artH * 1.15))} value={1} c={c} /></div>
+      case 'weekly': return m.hero || m.days ? <WeekObject m={m} w={artW} h={artH} c={c} k={k} /> : <div style={{ display: 'flex', transform: 'rotate(-24deg)' }}><CapsuleObject w={Math.round(Math.min(artW * 0.78, artH * 0.95))} value={1} c={c} /></div>
     }
   })()
 
@@ -287,34 +317,39 @@ export function ShareCard({ model: m, theme, size, brand }: { model: CardModel; 
       <Petals color={c.sakura} w={width} h={height} at={outside} />
       <div style={{
         display: 'flex', width: cw, height: ch, padding: framePad, borderRadius: px(40), transform: `rotate(${story ? -2 : -3}deg)`,
-        backgroundColor: frame, backgroundImage: `linear-gradient(150deg, ${frame} 0%, ${frame} 50%, rgba(0, 0, 0, 0.35) 140%)`,
+        backgroundColor: frame,
+        // Foil: a light band across the frame over a shade toward the bottom corner.
+        backgroundImage: `linear-gradient(120deg, rgba(255, 255, 255, 0) 28%, rgba(255, 255, 255, 0.45) 40%, rgba(255, 255, 255, 0) 52%), linear-gradient(150deg, ${frame} 0%, ${frame} 50%, rgba(0, 0, 0, 0.35) 140%)`,
         boxShadow: '0 40px 80px rgba(0, 0, 0, 0.28)',
       }}>
-        <Col style={{ flex: 1, borderRadius: px(24), background: c.surface, padding: facePad, gap }}>
+        <Col style={{ flex: 1, borderRadius: px(24), background: c.surface, border: '3px solid rgba(255, 255, 255, 0.55)', padding: facePad, gap }}>
           <Row style={{ height: headerH, alignItems: 'center', justifyContent: 'space-between', gap: px(16) }}>
             <Col style={{ width: titleRoom, gap: px(6) }}>
               <Text font={DISPLAY} weight={800} size={titleSize} color={c.ink}>{f.title}</Text>
-              {f.sub ? <Text size={px(24)} color={c['ink-3']}>{f.sub}</Text> : null}
+              {f.sub ? <Text size={px(26)} color={c['ink-2']}>{f.sub}</Text> : null}
             </Col>
             {f.badge ? (
               <Col style={{ width: badgeD, height: badgeD, borderRadius: 999, background: frame, border: `${px(4)}px solid ${ON_COLOUR}`, alignItems: 'center', justifyContent: 'center' }}>
-                {'icon' in f.badge ? <Icon paths={f.badge.icon} size={px(48)} color={ON_COLOUR} /> : [
-                  <Text key="top" weight={600} size={px(18)} color={ON_COLOUR}>{f.badge.top}</Text>,
-                  <Text key="value" font={DISPLAY} weight={800} size={fit(f.badge.value, badgeD * 0.7, px(46), 0.62)} color={ON_COLOUR}>{f.badge.value}</Text>,
+                {'icon' in f.badge ? <Icon paths={f.badge.icon} size={px(52)} color={ON_COLOUR} /> : [
+                  <Text key="top" weight={600} size={px(20)} color={ON_COLOUR}>{f.badge.top}</Text>,
+                  <Text key="value" font={DISPLAY} weight={800} size={fit(f.badge.value, badgeD * 0.7, px(50), 0.62)} color={ON_COLOUR}>{f.badge.value}</Text>,
                 ]}
               </Col>
             ) : null}
           </Row>
 
           <div style={{ display: 'flex', height: artH, borderRadius: px(16), position: 'relative', overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundImage: artSky, border: `3px solid ${frame}` }}>
+            <ArtSky w={artW} h={artH} dark={dark} c={c} />
             <Petals color={c.sakura} w={artW} h={artH} at={[[artW * 0.12, artH * 0.18, 1.2 * k, 20], [artW * 0.86, artH * 0.2, 0.9 * k, -40], [artW * 0.8, artH * 0.78, 1.1 * k, 70], [artW * 0.18, artH * 0.82, 0.8 * k, 120]]} />
             {art}
-            {f.serial ? <Text font={MONO} weight={600} size={px(20)} color={dark ? c['ink-2'] : og.dark.surface} style={{ position: 'absolute', left: px(16), bottom: px(12) }}>{f.serial}</Text> : null}
+            {f.serial ? (
+              <Text font={MONO} weight={600} size={px(22)} color={og.light.ink} style={{ position: 'absolute', left: px(14), top: px(14), padding: `${px(4)}px ${px(12)}px`, borderRadius: 999, background: 'rgba(255, 255, 255, 0.8)' }}>{f.serial}</Text>
+            ) : null}
           </div>
 
           <Row style={{ height: typeH, justifyContent: 'space-between', alignItems: 'center', gap: px(16), borderBottom: `2px solid ${c.divider}` }}>
-            <Text weight={600} size={px(26)} color={c['ink-2']}>{f.type}</Text>
-            {f.typeRight ? <Text size={px(24)} color={c['ink-3']}>{f.typeRight}</Text> : null}
+            <Text weight={600} size={px(30)} color={c.ink} style={{ whiteSpace: 'nowrap' }}>{f.type}</Text>
+            {f.typeRight ? <Text size={px(28)} color={c['ink-2']} style={{ whiteSpace: 'nowrap' }}>{f.typeRight}</Text> : null}
           </Row>
 
           {statRows ? (
@@ -322,10 +357,10 @@ export function ShareCard({ model: m, theme, size, brand }: { model: CardModel; 
               {f.stats.map((s) => {
                 const tone = s.tone ? (c as Record<string, string>)[`cat-${s.tone}`] : null
                 return (
-                  <Row key={s.id} style={{ width: (inner - px(28)) / cols, height: rowH, alignItems: 'center', gap: px(10) }}>
-                    {tone ? <div style={{ display: 'flex', width: px(14), height: px(14), borderRadius: 999, background: tone }} /> : null}
-                    <Text size={px(24)} color={c['ink-2']} style={{ flex: 1 }}>{s.label}</Text>
-                    <Text font={DISPLAY} weight={800} size={px(34)} color={c.ink}>{s.n != null && m.kind === 'level' ? String(s.n) : s.value}</Text>
+                  <Row key={s.id} style={{ width: colW, height: rowH, alignItems: 'center', gap: px(10) }}>
+                    {tone ? <div style={{ display: 'flex', width: px(16), height: px(16), borderRadius: 999, background: tone }} /> : null}
+                    <Text size={labelSize} color={c['ink-2']} style={{ flex: 1, whiteSpace: 'nowrap' }}>{s.label}</Text>
+                    <Text weight={600} size={px(30)} color={c.ink} style={{ whiteSpace: 'nowrap' }}>{value(s)}</Text>
                   </Row>
                 )
               })}
@@ -334,10 +369,10 @@ export function ShareCard({ model: m, theme, size, brand }: { model: CardModel; 
 
           {f.meter ? (
             <Col style={{ height: meterH, justifyContent: 'center', gap: px(10) }}>
-              <Meter value={f.meter.value} width={inner} height={px(24)} c={c} />
+              <Meter value={f.meter.value} width={inner} height={px(26)} c={c} />
               <Row style={{ justifyContent: 'space-between' }}>
-                <Text weight={600} size={px(22)} color={c['ink-2']}>{f.meter.left}</Text>
-                {f.meter.right ? <Text size={px(22)} color={c['ink-3']}>{f.meter.right}</Text> : null}
+                <Text weight={600} size={px(26)} color={c.ink}>{f.meter.left}</Text>
+                {f.meter.right ? <Text size={px(26)} color={c['ink-2']}>{f.meter.right}</Text> : null}
               </Row>
             </Col>
           ) : null}
@@ -345,8 +380,8 @@ export function ShareCard({ model: m, theme, size, brand }: { model: CardModel; 
           <Row style={{ height: footerH, justifyContent: 'space-between', alignItems: 'center' }}>
             <Wordmark brand={brand} c={c} k={k} />
             {m.name
-              ? <Text weight={600} size={px(24)} color={c.ink} style={{ maxWidth: px(260), overflow: 'hidden', whiteSpace: 'nowrap' }}>{m.name.length > 16 ? `${m.name.slice(0, 15)}…` : m.name}</Text>
-              : <Text size={px(20)} color={c['ink-3']}>runs on my own machine</Text>}
+              ? <Text weight={600} size={px(28)} color={c.ink} style={{ maxWidth: px(280), overflow: 'hidden', whiteSpace: 'nowrap' }}>{m.name.length > 16 ? `${m.name.slice(0, 15)}…` : m.name}</Text>
+              : <Text size={px(24)} color={c['ink-3']}>Runs on my own machine</Text>}
           </Row>
         </Col>
       </div>
