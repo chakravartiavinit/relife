@@ -17,6 +17,7 @@ import { Ticker } from '../ticker'
 import { CategoryList } from './category-list'
 import { PaceChart } from './pace-chart'
 import { HabitBlock, type WealthHabits } from './weekly-quest'
+import { joinNames } from '@/domain/life-status'
 
 // The Wealth Overview in the calm system, on the page grid, as presentational pieces (`/dev/ui` draws them from a fixture):
 //   left   Spent so far (one figure over the pace line, with a usual month dashed) · Where it went (the top three
@@ -35,7 +36,6 @@ const MONTH_YEAR = new Intl.DateTimeFormat('en-IN', { month: 'short', year: 'num
 const TOP_CATEGORIES = 3
 const SHOWN_APPS = 8
 
-const joinNames = (names: string[]) => (names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : (names[0] ?? ''))
 
 /** The month so far: one figure with its status word, the pace line, and how the pace is worked out. */
 function MonthCard({ o, money }: { o: WealthOverview; money: Money }) {

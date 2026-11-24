@@ -11,6 +11,7 @@ import { CardLink } from './card-link'
 import { Connection } from '../connection'
 import { areaPatterns, explaining, patternKey } from './area-patterns'
 import { TrendsExplorer, type TrendSeries } from './trends-explorer'
+import { joinNames } from '@/domain/life-status'
 
 const SHOWN_PATTERNS = 3
 
@@ -21,7 +22,7 @@ function sourceNames(sources: Set<string>) {
   const names = [...sources].filter((s) => s !== 'manual').map(name)
   const unique = [...new Set(names)]
   if (sources.has('manual')) unique.push('you')
-  return unique.length > 1 ? `${unique.slice(0, -1).join(', ')} and ${unique.at(-1)}` : unique[0] ?? ''
+  return joinNames(unique)
 }
 
 /**

@@ -30,13 +30,13 @@ import { Transactions, type TxnRow } from '@/ui/components/wealth/transactions'
 import { HabitBlock } from '@/ui/components/wealth/weekly-quest'
 import { cn } from '@/ui/cn'
 import { wealthHabits } from '../wealth-habits'
+import { joinNames } from '@/domain/life-status'
 
 export const metadata: Metadata = { title: 'Spending' }
 
 const ACCENT = 'var(--cat-wealth)'
 const PRIOR_MONTHS = 3
 const PAYEES_SHOWN = 3
-const names = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}` : (xs[0] ?? ''))
 
 export default function SpendingPage({ searchParams }: PageProps<'/wealth/spending'>) {
   return (
@@ -137,7 +137,7 @@ async function Spending({ searchParams }: { searchParams: PageProps<'/wealth/spe
   )
 
   const sentence = `${spend.length} payment${spend.length === 1 ? '' : 's'} ${m === current ? 'so far this month' : `in ${monthLabel(m)}`}.${
-    pace.usual == null ? '' : above.length ? ` ${names(above.map((c, i) => (i ? c.category.toLowerCase() : c.category)))} ${above.length === 1 ? 'is' : 'are'} above usual; the rest is at or under it.` : ' Nothing is above your usual.'}`
+    pace.usual == null ? '' : above.length ? ` ${joinNames(above.map((c, i) => (i ? c.category.toLowerCase() : c.category)))} ${above.length === 1 ? 'is' : 'are'} above usual; the rest is at or under it.` : ' Nothing is above your usual.'}`
 
   return (
     <>
@@ -230,7 +230,7 @@ async function Spending({ searchParams }: { searchParams: PageProps<'/wealth/spe
                   <>
                     <Payees list={merchants.slice(0, PAYEES_SHOWN)} money={money} />
                     {merchants.length > PAYEES_SHOWN ? (
-                      <Fold title={`${merchants.length - PAYEES_SHOWN} more`} summary={names(merchants.slice(PAYEES_SHOWN, PAYEES_SHOWN + 4).map((x) => x.label))} className="mt-1">
+                      <Fold title={`${merchants.length - PAYEES_SHOWN} more`} summary={joinNames(merchants.slice(PAYEES_SHOWN, PAYEES_SHOWN + 4).map((x) => x.label))} className="mt-1">
                         <Payees list={merchants.slice(PAYEES_SHOWN)} money={money} />
                       </Fold>
                     ) : null}

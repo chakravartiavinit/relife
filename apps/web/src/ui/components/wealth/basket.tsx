@@ -6,6 +6,7 @@ import { Card, CardHeader } from '../card'
 import { StackedBars } from '../charts'
 import { Fold } from '../fold'
 import { StatusRow } from '../status-row'
+import { joinNames } from '@/domain/life-status'
 
 // What's inside your shopping-app orders, folded: where you are above usual, what you bought against your 3-month usual,
 // the months, your regulars, the top items and the order habits in numbers. One card in the Spending rail; each part is a
@@ -33,7 +34,6 @@ export const ITEM_COLOR: Record<ItemCategory, string> = {
   Other: 'var(--ink-3)',
 }
 const monthShort = (m: string) => new Intl.DateTimeFormat('en-GB', { month: 'short', timeZone: 'UTC' }).format(new Date(`${m}-01T00:00:00Z`))
-const names = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}` : (xs[0] ?? ''))
 
 export function BasketSections({ b, month, base }: { b: Basket; month: string; base: string }) {
   if (!b.hasItems) return null
@@ -92,7 +92,7 @@ export function BasketSections({ b, month, base }: { b: Basket; month: string; b
           series={[...b.top, 'Other' as const].map((c) => ({ id: c, name: c, color: ITEM_COLOR[c], values: b.monthly.map((m) => Math.round(m.row[c] ?? 0) || null) }))}
         />
       </Fold>
-      <Fold title="Bought most often" summary={names(b.usual.slice(0, 3).map((it) => it.name))}>
+      <Fold title="Bought most often" summary={joinNames(b.usual.slice(0, 3).map((it) => it.name))}>
         <div>
           {b.usual.map((it) => (
             <StatusRow key={it.name} picture={{ of: 'category', name: it.category }} name={it.name} line={`${it.times} times, ${it.category}`} value={money(it.spend)} />
