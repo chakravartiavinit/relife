@@ -105,16 +105,15 @@ function Columns<T>({ items, cols, gap, render }: { items: T[]; cols: number; ga
 /** Level: the number and the title side by side, the capsule toward the next level, the areas as a ranked bar list. */
 function LevelBody({ m, c, story }: { m: CardModel; c: C; story: boolean }) {
   const xp = m.stats.find((s) => s.id === 'xp')
-  const areas = m.stats.filter((s) => s.n != null).sort((a, b) => b.n! - a.n!)
-  const top = Math.max(1, ...areas.map((a) => a.n!))
+  const areas = m.stats.filter((s) => s.n != null)
   const num = m.hero?.value ?? null
   const title = m.caption
   const p = m.progress
   const roomy = story || areas.length === 0
-  const numSize = num ? fit(num, W * 0.62, story ? 400 : roomy ? 360 : 200, 0.62) : 0
+  const numSize = num ? fit(num, W * 0.62, story ? 400 : roomy ? 360 : 176, 0.62) : 0
   const numW = num ? Math.ceil(num.length * 0.62 * numSize) : 0
   // The title sits beside the number while it can stay large; on a story, or when it would shrink too far, under it.
-  const besideSize = title && num && !story ? fit(title, W - numW - 56, roomy ? 112 : 88) : 0
+  const besideSize = title && num && !story ? fit(title, W - numW - 56, roomy ? 112 : 80) : 0
   const beside = besideSize >= 64
   const titleSize = title ? (beside ? besideSize : fit(title, W, story ? 136 : 112)) : 0
   // Beside the number the column is narrow, so the next title goes under the capsule (the goal of the bar) and the
@@ -125,7 +124,7 @@ function LevelBody({ m, c, story }: { m: CardModel; c: C; story: boolean }) {
   const total = xp ? <Text size={size} color={c['ink-3']}>{xp.value} XP in all</Text> : null
   const underTitle = nextUnderBar ? total : next
   return (
-    <Col style={{ gap: story ? 88 : roomy ? 64 : 40 }}>
+    <Col style={{ gap: story ? 80 : roomy ? 64 : 36 }}>
       <Col style={{ gap: story ? 40 : 28 }}>
         <Row style={{ alignItems: 'flex-end', gap: 56 }}>
           {num ? (
@@ -165,24 +164,52 @@ function LevelBody({ m, c, story }: { m: CardModel; c: C; story: boolean }) {
         </Row>
       ) : null}
 
-      {areas.length ? (
-        <Col style={{ gap: story ? 28 : 20 }}>
-          <Text weight={600} size={30} color={c['ink-3']}>Area levels</Text>
-          <Columns items={areas} cols={story ? 1 : 2} gap={56} render={(a, width) => {
-            const tone = (a.tone && (c as Record<string, string>)[`cat-${a.tone}`]) || c.pill
-            const label = story ? 200 : 136, value = story ? 72 : 56, gap = 20
-            // One line per area: its name, a bar as long as its level against the highest, the level.
-            return (
-              <Row key={a.id} style={{ width, alignItems: 'center', gap, height: story ? 76 : 56 }}>
-                <Text size={story ? 36 : 30} color={c['ink-2']} style={{ width: label }}>{a.label}</Text>
-                <Capsule value={a.n! / top} width={width - label - value - gap * 2} height={story ? 20 : 16} c={c} fill={tone} outline={false} />
-                <Text font={DISPLAY} weight={800} size={story ? 48 : 40} color={c.ink} style={{ width: value, justifyContent: 'flex-end' }}>{a.n}</Text>
-              </Row>
-            )
-          }} />
-        </Col>
-      ) : null}
+      {areas.length ? <AreaStats areas={areas} c={c} story={story} /> : null}
     </Col>
+  )
+}
+
+const toneOf = (c: C, tone?: string) => (tone && (c as Record<string, string>)[`cat-${tone}`]) || c.pill
+
+/**
+ * The character sheet's stat hexagon: one axis per area (clockwise from the top, in the app's area order), three quiet
+ * rings, the shape of this person's levels filled in capsule blue, and a dot in each area's colour at its level.
+ * Scaled to the highest area, so the shape shows the balance. Beside it, the same areas in the same order as figures
+ * in their colours, so each dot has its name and number.
+ */
+function AreaStats({ areas, c, story }: { areas: CardStat[]; c: C; story: boolean }) {
+  const H = story ? 400 : 336
+  const cols = story ? 2 : 3
+  const dot = story ? 13 : 10
+  const R = H / 2 - dot - 4
+  const top = Math.max(1, ...areas.map((a) => a.n!))
+  const n = areas.length
+  const at = (i: number, r: number) => {
+    const a = (-90 + (360 / n) * i) * (Math.PI / 180)
+    return [H / 2 + r * Math.cos(a), H / 2 + r * Math.sin(a)] as const
+  }
+  const ring = (f: number) => areas.map((_, i) => at(i, R * f).map((v) => v.toFixed(1)).join(',')).join(' ')
+  const pts = areas.map((a, i) => at(i, R * Math.max(0.1, a.n! / top)))
+  return (
+    <Row style={{ gap: story ? 56 : 64, alignItems: 'center' }}>
+      {n >= 3 ? (
+        <svg xmlns="http://www.w3.org/2000/svg" width={H} height={H} viewBox={`0 0 ${H} ${H}`}>
+          {[1, 2 / 3, 1 / 3].map((f) => <polygon key={f} points={ring(f)} fill={f === 1 ? c['surface-2'] : 'none'} stroke={c['surface-3']} strokeWidth={2} />)}
+          {areas.map((a, i) => { const [x, y] = at(i, R); return <line key={a.id} x1={H / 2} y1={H / 2} x2={x} y2={y} stroke={c['surface-3']} strokeWidth={2} /> })}
+          <polygon points={pts.map((p) => p.map((v) => v.toFixed(1)).join(',')).join(' ')} fill={c.pill} fillOpacity={0.32} stroke={c.pill} strokeWidth={story ? 5 : 4} strokeLinejoin="round" />
+          {areas.map((a, i) => <circle key={a.id} cx={pts[i][0]} cy={pts[i][1]} r={dot} fill={toneOf(c, a.tone)} stroke={c.bg} strokeWidth={story ? 5 : 4} />)}
+        </svg>
+      ) : null}
+      {/* The levels as a grid of figures, each in its area's colour (the dot it matches on the hexagon). */}
+      <Row style={{ flex: 1, flexWrap: 'wrap', rowGap: story ? 40 : 28 }}>
+        {areas.map((a) => (
+          <Col key={a.id} style={{ width: `${100 / cols}%`, gap: 4 }}>
+            <Text font={DISPLAY} weight={800} size={story ? 88 : 68} color={toneOf(c, a.tone)}>{a.n}</Text>
+            <Text size={story ? 34 : 28} color={c['ink-2']}>{a.label}</Text>
+          </Col>
+        ))}
+      </Row>
+    </Row>
   )
 }
 
