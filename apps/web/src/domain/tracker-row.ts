@@ -34,7 +34,8 @@ export function trackerLine(t: TileTracker, tile: TileSummary): string {
 
 /** Needs a look first: Behind, Slipping, then the rest, Quiet last; equal words keep the area's own order. */
 const RANK: Record<Status, number> = { Behind: 0, Slipping: 1, Steady: 2, 'On track': 2, Ahead: 2, Quiet: 3 }
-export const needsLookFirst = <T extends { status: Status }>(rows: T[]): T[] => rows.map((r, i) => [r, i] as const).sort((a, b) => RANK[a[0].status] - RANK[b[0].status] || a[1] - b[1]).map(([r]) => r)
+// A row with no status word (nothing to judge it against) sits with the steady ones.
+export const needsLookFirst = <T extends { status?: Status }>(rows: T[]): T[] => rows.map((r, i) => [r, i] as const).sort((a, b) => (a[0].status ? RANK[a[0].status] : 2) - (b[0].status ? RANK[b[0].status] : 2) || a[1] - b[1]).map(([r]) => r)
 
 type Pt = { date: string; value: number | null }
 

@@ -3,7 +3,7 @@ import { loadAreaTrackers } from '@/core/areas/trackers'
 import type { User } from '@/core/user'
 import { orderTiles } from '@/domain/metric-tile'
 import type { PeekRef } from '@/domain/peek'
-import { statusOf, type Status } from '@/domain/status-of'
+import type { Status } from '@/domain/status-of'
 import { needsLookFirst, trackerLine, trackerStatus } from '@/domain/tracker-row'
 import type { PictureRef } from '../../picture'
 import { Card, CardHeader } from '../card'
@@ -14,7 +14,7 @@ import { StatusRow } from '../status-row'
 /** More than this many rows fold behind "N more". */
 const SHOWN = 6
 
-type Row = { key: string; name: string; line: string; status: Status; picture: PictureRef; peek: PeekRef }
+type Row = { key: string; name: string; line: string; status?: Status; picture: PictureRef; peek: PeekRef }
 
 /** The rows from the area's trackers, plus any headline number that is not one of them (medicines kept, people in touch). */
 export async function areaTrackerRows(user: User, def: AreaDef, today: string): Promise<Row[]> {
@@ -29,7 +29,8 @@ export async function areaTrackerRows(user: User, def: AreaDef, today: string): 
   const own = kpis.filter((k) => !(k.peek?.type === 'metric' && bySlug.has(k.peek.id)))
   const extra: Row[] = own.map((k) => ({
     key: `kpi:${k.label}`, name: k.label, line: [k.value, k.sub].filter(Boolean).join(', '),
-    status: k.ratio == null ? 'Steady' : statusOf({ from: 'target', value: k.ratio, target: 0.8, direction: 'up' }).word,
+    // No status word: these headline numbers have no target rule to judge them against, and inventing one would mislead.
+    status: undefined,
     picture: { of: 'tracker', name: k.label, area: def.category ?? undefined }, peek: k.peek ?? fallback,
   }))
   return needsLookFirst([...extra, ...rows])
