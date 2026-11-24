@@ -73,8 +73,10 @@ export async function loadPatterns(user: User, now = new Date()) {
   return patternsFrom(signals, today)
 }
 
-/** The same, read once per request: Today, Life and the week's changes share it. */
-export const patternsFor = cache((user: User) => loadPatterns(user))
+/** The same, read once per request: Today, Life, the area pages and the week's changes share it. Keyed by id, as two reads of
+ *  the user in one request may not return the same object. */
+const patternsById = cache((_userId: string, user: User) => loadPatterns(user))
+export const patternsFor = (user: User) => patternsById(user.id, user)
 
 export function patternsFrom(signals: Signal[], today: string) {
   const links = findLinks(signals)

@@ -1,6 +1,5 @@
-import { cache } from 'react'
 import type { AreaDef } from '@/core/areas'
-import { loadPatterns } from '@/core/patterns'
+import { patternsFor } from '@/core/patterns'
 import type { User } from '@/core/user'
 import type { Change, Link } from '@/domain/patterns'
 
@@ -9,13 +8,11 @@ import type { Change, Link } from '@/domain/patterns'
 
 export type Pattern = { link: Link } | { change: Change }
 
-const read = cache((_userId: string, user: User) => loadPatterns(user))
-
 const involves = (p: Pattern, signalId: string) => ('change' in p ? p.change.signal.id === signalId : p.link.a.id === signalId || p.link.b.id === signalId)
 
 /** The patterns that belong to an area: its own changes this week, then links where either side is one of its signals. */
 export async function areaPatterns(user: User, def: AreaDef): Promise<Pattern[]> {
-  const p = await read(user.id, user)
+  const p = await patternsFor(user)
   return [
     ...p.changes.filter((c) => c.signal.area === def.category).map((change) => ({ change })),
     ...p.links.filter((l) => l.a.area === def.category || l.b.area === def.category).map((link) => ({ link })),
