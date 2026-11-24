@@ -49,20 +49,24 @@ const MIN_RHO = 0.35
 // fluke can slip through. Switch to Benjamini–Hochberg if findings look noisy.
 const MIN_T = 3.5
 
-/** Spearman rank correlation: robust to outliers and to scales like 1–5 mood. */
 /** Sources that carry many unrelated measures (a phone health hub, things you type in): pairing two of their trackers is fine. */
 const HUB_SOURCES = new Set(['manual', 'user', 'browser', 'system', 'apple-health', 'health-connect', 'import', 'statement'])
 
 /**
- * The pairing group of a tracker. Two numbers from the same app (Last.fm minutes and songs played, GitHub commits and
- * pull requests, Duolingo XP and streak) always move together, so a "link" between them says nothing: they share a
- * group and are never paired. A tracker fed by one hub source, or by several sources, keeps a group of its own.
+ * The pairing group of a tracker. Two counts of one thing from one app (Last.fm minutes and songs played, GitHub
+ * commits and pull requests, Duolingo XP and streak) always move together, so a "link" between them says nothing:
+ * trackers from the same single app whose slugs share a family (`listening`, `listening.songs`; `github.*`) share a
+ * group and are never paired. Different measures from one device (a ring's steps and its sleep) keep their own
+ * family, so they can still pair. A tracker fed by a hub source, or by several sources, keeps a group of its own.
  */
 export function signalGroup(slug: string, sources: string[]): string {
-  const own = [...new Set(sources)].filter((s) => !HUB_SOURCES.has(s))
-  return own.length === 1 && own.length === new Set(sources).size ? `source:${own[0]}` : `tracker:${slug}`
+  const all = new Set(sources)
+  const own = [...all].filter((s) => !HUB_SOURCES.has(s))
+  const family = slug.split('.')[0]
+  return own.length === 1 && all.size === 1 ? `source:${own[0]}:${family}` : `tracker:${slug}`
 }
 
+/** Spearman rank correlation: robust to outliers and to scales like 1–5 mood. */
 export function spearman(xs: number[], ys: number[]) {
   const rx = ranks(xs)
   const ry = ranks(ys)

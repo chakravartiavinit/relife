@@ -59,8 +59,11 @@ test('findChanges flags this week and names partners that moved with it', () => 
 })
 
 test('two numbers from one app share a group and are never paired; hubs and mixed sources do not', () => {
-  assert.equal(signalGroup('listening', ['lastfm']), 'source:lastfm')
-  assert.equal(signalGroup('listening.songs', ['lastfm']), 'source:lastfm')
+  assert.equal(signalGroup('listening', ['lastfm']), signalGroup('listening.songs', ['lastfm']))
+  assert.equal(signalGroup('duolingo.xp', ['duolingo']), signalGroup('duolingo.streak', ['duolingo']))
+  // Different measures from one ring still pair: steps and sleep are not the same count.
+  assert.notEqual(signalGroup('steps', ['oura']), signalGroup('sleep.hours', ['oura']))
+  assert.notEqual(signalGroup('hrv', ['oura']), signalGroup('oura.readiness', ['oura']))
   assert.equal(signalGroup('github.prs', ['github']), signalGroup('github.commits', ['github']))
   assert.equal(signalGroup('steps', ['apple-health']), 'tracker:steps')
   assert.equal(signalGroup('mood', ['manual']), 'tracker:mood')
