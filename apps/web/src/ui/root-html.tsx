@@ -12,7 +12,7 @@ import '@/app/globals.css'
 const hanken = Hanken_Grotesk({ variable: '--font-hanken', subsets: ['latin'], weight: ['400', '500', '600'], display: 'swap' })
 // Page titles, card titles and a single standalone figure (`font-display`). Variable: weight 400-500, optical size follows
 // the text size, and `globals.css` sets SOFT 50 and WONK 0 on `.font-display`. It has no tabular figures.
-const fraunces = Fraunces({ variable: '--font-fraunces', subsets: ['latin'], axes: ['opsz', 'SOFT', 'WONK'], display: 'swap' })
+const fraunces = Fraunces({ variable: '--font-fraunces', subsets: ['latin'], axes: ['opsz', 'SOFT'], display: 'swap' })
 
 export const rootMetadata: Metadata = {
   title: { default: brand.name, template: `%s · ${brand.name}` },
