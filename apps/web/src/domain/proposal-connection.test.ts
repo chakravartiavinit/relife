@@ -35,3 +35,12 @@ test('a generic word such as routine never counts as naming Routines done', () =
 test('no links and no changes show nothing', () => {
   assert.equal(connectionForText(TEXT, [], []), null)
 })
+
+test('a money nudge does not pick up a link it only half names', () => {
+  const deep = sig('tracker:deep', 'Deep work', 'skills')
+  const delivery = sig('spend:apps', 'Delivery app spending', 'wealth')
+  const nudge = 'Food delivery spending is up 32% this month. Try a 9pm cut-off on work nights.'
+  assert.equal(connectionForText(nudge, [link(deep, delivery)], []), null)
+  // Naming every word of both still matches.
+  assert.ok(connectionForText('Deep work drops on days with more delivery app spending.', [link(deep, delivery)], []))
+})

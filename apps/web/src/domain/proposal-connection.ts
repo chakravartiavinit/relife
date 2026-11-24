@@ -11,12 +11,15 @@ const GENERIC = new Set(['done', 'routine', 'routines', 'total', 'daily', 'count
 const stem = (w: string) => (w.length > 4 ? w.replace(/(ing|ed|es|s)$/, '') : w)
 const words = (text: string) => text.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean)
 
-/** A signal is mentioned when at least half of its name's own words (4+ letters, not generic) appear in the text. */
+/**
+ * A signal is mentioned when every word of its name that says something (4+ letters, not generic) appears in the text,
+ * compared by stem. "Delivery app spending" needs both "delivery" and "spending"; "work" alone never names "Deep work".
+ */
 function mentions(text: Set<string>, s: Signal): boolean {
   const own = words(s.name).filter((w) => w.length >= 4 && !GENERIC.has(w))
   if (!own.length) return false
-  const hit = own.filter((w) => [...text].some((t) => t.startsWith(stem(w)) || stem(t) === stem(w))).length
-  return hit * 2 >= own.length
+  const stems = new Set([...text].map(stem))
+  return own.every((w) => stems.has(stem(w)))
 }
 
 export type ProposalConnection = { link: Link } | { change: Change }
