@@ -92,7 +92,7 @@ async function Today() {
           <Suspense fallback={null}><Attention user={user} /></Suspense>
           <Suspense fallback={null}><Worth user={user} /></Suspense>
           <Suspense fallback={null}><Goal user={user} /></Suspense>
-          <Suspense fallback={null}><Money user={user} /></Suspense>
+          <Suspense fallback={<Skeleton className="h-[140px] rounded-lg @max-[40rem]:order-2" />}><Money user={user} /></Suspense>
           <Suspense fallback={<Skeleton className="h-[260px] rounded-lg @max-[40rem]:order-2" />}><QuestsRail user={user} /></Suspense>
           <Suspense fallback={null}><SetupCompact user={user} /></Suspense>
         </Rail>
@@ -188,7 +188,7 @@ async function Plan({ user }: { user: User }) {
     <Card id="quest-log" className="flex scroll-mt-6 flex-col p-5 grid-md:p-6">
       <CardHeader
         title="Today’s plan" className="mb-3"
-        action={<Link href="/plan/routines" className={buttonLinkClass('inline-flex h-8 items-center text-small')}>Edit in Plan</Link>}
+        action={<Link href="/plan/routines" className={buttonLinkClass('text-small', { target: true })}>Edit in Plan</Link>}
       />
       {total ? <Bar value={done} max={total} label={`Today’s plan: ${done} of ${total} done`} className="mb-5" /> : null}
       {rows.length ? (

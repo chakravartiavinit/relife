@@ -27,7 +27,8 @@ export default function LifePage() {
           <Suspense fallback={<LedgerSkeleton />}><Areas /></Suspense>
         </GridItem>
         <Rail span={{ base: 12, lg: 4 }} pairs as="aside" aria-label="This week across areas" className="self-start">
-          <Suspense fallback={<Skeleton className="h-[330px] rounded-lg" />}><Connections /></Suspense>
+          {/* No skeleton: most weeks no cross-area connection qualifies and the card is left out, so a placeholder would jump. */}
+          <Suspense fallback={null}><Connections /></Suspense>
           <Suspense fallback={<Skeleton className="h-[250px] rounded-lg" />}><Balance /></Suspense>
         </Rail>
       </PageGrid>
