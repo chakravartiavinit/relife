@@ -96,7 +96,13 @@ export type ShareData =
     stepsAvg: number | null; sleepAvgHours: number | null; spend: 'less' | 'more' | 'same' | null
   }
 
-export type CardStat = { id: string; label: string; value: string; /** A category key: the level card colours its area tiles. */ tone?: string }
+export type CardStat = {
+  id: string; label: string; value: string
+  /** A category key: the level card colours an area's bar with it. */
+  tone?: string
+  /** The number behind `value`, for a bar: an area's level, the best streak. */
+  n?: number
+}
 export type CardModel = {
   kind: ShareKind
   /** The mono label above the headline: LEVEL UP, STREAK, ACHIEVEMENT, WEEKLY RECAP. */
@@ -160,7 +166,7 @@ export function cardModel(data: ShareData, show: readonly string[]): CardModel {
     case 'level': {
       const stats: CardStat[] = []
       if (on('xp')) stats.push({ id: 'xp', label: 'Total XP', value: data.totalXp.toLocaleString('en-US') })
-      if (on('areas')) for (const a of data.areas) stats.push({ id: `area:${a.label}`, label: a.label, value: `Level ${a.level}`, ...(a.area ? { tone: a.area } : {}) })
+      if (on('areas')) for (const a of data.areas) stats.push({ id: `area:${a.label}`, label: a.label, value: `Level ${a.level}`, n: a.level, ...(a.area ? { tone: a.area } : {}) })
       const n = data.next
       const progress = on('progress') && n ? {
         value: Math.max(0, Math.min(1, n.progress)),
@@ -171,7 +177,7 @@ export function cardModel(data: ShareData, show: readonly string[]): CardModel {
     }
     case 'streak': {
       const stats: CardStat[] = []
-      if (on('best')) stats.push({ id: 'best', label: 'Best streak', value: plural(data.best, 'day') })
+      if (on('best')) stats.push({ id: 'best', label: 'Best streak', value: plural(data.best, 'day'), n: data.best })
       if (on('freezes')) stats.push({ id: 'freezes', label: 'Freezes used', value: String(data.freezesUsed) })
       return clean({ ...base, kind: 'streak', label: 'Streak', hero: on('streak') ? { value: String(data.days) } : null, caption: on('streak') ? `${data.days === 1 ? 'day' : 'days'} in a row` : null, stats })
     }
