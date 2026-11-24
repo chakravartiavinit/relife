@@ -11,7 +11,7 @@ import { PeekSkeleton } from './peek-parts'
 
 function Frame({ title, children, heading }: { title: string; heading?: PeekHeading; children: React.ReactNode }) {
   return (
-    <div>
+    <div className="min-w-0">
       <div className="mb-2 text-small text-ink-2">{title}</div>
       <div className="w-full max-w-[440px] overflow-hidden rounded-lg bg-surface shadow-2">
         {heading ? (

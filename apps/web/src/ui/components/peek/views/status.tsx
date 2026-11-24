@@ -65,7 +65,7 @@ export function SyncPeekView({ data: d }: { data: SyncPeek }) {
 const scopeName = (scope: string) => (scope === 'today' ? 'Today' : scope === 'time' ? 'Time' : (CATEGORY[scope as keyof typeof CATEGORY]?.label ?? scope))
 
 export function briefHeading(d: BriefPeek) {
-  return { title: `Why this summary`, description: scopeName(d.scope), icon: <PeekIcon icon={FileText} /> }
+  return { title: `Why this summary`, description: scopeName(d.scope), picture: { of: 'area', to: d.scope } as const }
 }
 
 /** The numbers behind a one-line summary; a number that has its own Peek links to it. With no summary written yet it says so and offers Coach. */

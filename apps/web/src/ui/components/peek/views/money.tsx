@@ -12,7 +12,6 @@ import { Badge } from '../../card'
 import { Button } from '../../button'
 import { useToast } from '../../toast'
 import { usePeekChanged } from '../peek-context'
-import { BrandLogo } from '../../brand-logo'
 import { CategorySelect } from '../../wealth/category-select'
 import { PeekLink } from '../peek-link'
 import { PeekFooter, PeekNote, PeekOpen, PeekRow, PeekSection } from '../peek-parts'
@@ -22,11 +21,11 @@ const LINK = 'rounded-xs font-medium text-pill-ink underline-offset-2 hover:unde
 const name = (d: { merchant: string | null; upiId: string | null }) => d.merchant ?? d.upiId ?? 'Payment'
 
 export function txnHeading(d: TxnPeek) {
-  return { title: name(d), description: `Wealth · payment · ${d.when}`, icon: <BrandLogo name={name(d)} size="md" /> }
+  return { title: name(d), description: `Wealth · payment · ${d.when}`, picture: { of: 'merchant', name: name(d), category: d.category ?? undefined } as const }
 }
 
 export function merchantHeading(d: MerchantPeek) {
-  return { title: d.name, description: 'Wealth · merchant', icon: <BrandLogo name={d.name} size="md" /> }
+  return { title: d.name, description: 'Wealth · merchant', picture: { of: 'merchant', name: d.name, category: d.category ?? undefined } as const }
 }
 
 /** "Change once, the app remembers it" with the picker, and what is already remembered. */

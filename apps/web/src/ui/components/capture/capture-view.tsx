@@ -2,15 +2,16 @@
 
 import { Command } from 'cmdk'
 import { useState } from 'react'
-import { ArrowRight, ArrowUpRight, Frown, Laugh, LoaderCircle, Meh, Annoyed, MessagesSquare, Plus, Smile, Wallet, type LucideIcon } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, Frown, Laugh, LoaderCircle, Meh, Annoyed, Plus, Smile, Wallet, type LucideIcon } from 'lucide-react'
 import { amountText, previewQuickLog, type Bucket, type CapturePayload } from '@/domain/capture'
 import { formatMoney } from '@/domain/money'
 import { parseQuickLog } from '@/domain/quicklog'
 import { cn } from '../../cn'
-import { routineIcon } from '../../routine-icons'
+import { pictureSpec, type PictureRef } from '../../picture'
 import { CATEGORY } from '../../tokens'
 import { Skeleton } from '../card'
-import { PAGES } from './pages'
+import { Picture } from '../picture'
+import { PAGES, type Page } from './pages'
 
 // What Capture shows, with no state of its own besides the spent form: the same view fills the desktop palette
 // and the phone sheet (`layout`), and /dev/ui renders it from fixtures. Doing things is the caller's job
@@ -117,9 +118,9 @@ export function CaptureView({ layout, data, status, value, onValue, actions, onC
         {typed ? (
           <Command.Group heading="Ask" className={groupClass}>
             {aiOff ? (
-              <Row value={`ask ${typed}`} onSelect={() => actions.go('/you/connections#ai')} icon={<MessagesSquare />} color="var(--cat-mind)" title="Choose a model to ask your coach" sub="Connect an AI model in You › Connections" trail={<ArrowRight className="size-4 text-ink-3" aria-hidden />} enter={false} />
+              <Row value={`ask ${typed}`} onSelect={() => actions.go('/you/connections#ai')} mark={<Picture of="nav" to="/coach" size={40} />} title="Choose a model to ask your coach" sub="Connect an AI model in You › Connections" trail={<ArrowRight className="size-4 text-ink-3" aria-hidden />} enter={false} />
             ) : (
-              <Row value={`ask ${typed}`} onSelect={() => actions.ask(typed)} icon={<MessagesSquare />} color="var(--cat-mind)" title={<>Ask your coach: “<span className="text-ink">{typed}</span>”</>} sub="Answers from your data, in Coach" trail={<Kbd>⌘↵</Kbd>} enter={false} />
+              <Row value={`ask ${typed}`} onSelect={() => actions.ask(typed)} mark={<Picture of="nav" to="/coach" size={40} />} title={<>Ask your coach: “<span className="text-ink">{typed}</span>”</>} sub="Answers from your data, in Coach" trail={<Kbd>⌘↵</Kbd>} enter={false} />
             )}
           </Command.Group>
         ) : null}
@@ -168,7 +169,7 @@ function EmptyRows({ data, status, actions, sheet }: { data: CapturePayload | nu
               <Row
                 key={`${r.scheduleId}|${r.occurrence}`} value={`due ${r.name} ${r.occurrence}`} disabled={!!busy}
                 onSelect={() => actions.checkOff(r)}
-                icon={<RowIcon name={r.name} kind={r.kind} area={r.area} />} color={CATEGORY[r.area].color}
+                mark={<Picture of="routine" name={r.name} kind={r.kind} area={r.area} size={40} />}
                 title={r.name} sub={missed ? `Overdue since ${r.time}` : `Due ${r.time}`} subTone={missed ? 'bad' : undefined}
                 trail={
                   <>
@@ -191,14 +192,14 @@ function EmptyRows({ data, status, actions, sheet }: { data: CapturePayload | nu
           {data.goals.map((g) => (
             <Pill
               key={g.scheduleId} value={`goal ${g.name}`} disabled={!!busy} busy={busy === `goal:${g.scheduleId}`} onSelect={() => actions.addStep(g)}
-              icon={<RowIcon name={g.name} kind="routine" area={g.area} />} color={g.slug === 'water' ? 'var(--pill)' : CATEGORY[g.area].color}
+              mark={<Picture of="tracker" name={g.name} kind="routine" area={g.area} size={20} />}
               label={`${g.name} +${amountText(g.step, g.unit)}`} detail={`${amountText(g.value, g.unit)} of ${amountText(g.target, g.unit)}`}
             />
           ))}
           {data.frequent.map((f) => (
             <Pill
               key={f.slug} value={`frequent ${f.name}`} disabled={!!busy} busy={busy === `log:${f.slug}`} onSelect={() => actions.log(`${f.slug} ${f.typical}`, `log:${f.slug}`)}
-              icon={<RowIcon name={f.name} kind="routine" area={f.area} />} color={CATEGORY[f.area].color}
+              mark={<Picture of="tracker" name={f.name} kind="routine" area={f.area} size={20} />}
               label={`${f.name} +${amountText(f.typical, f.unit)}`}
             />
           ))}
@@ -226,7 +227,7 @@ function EmptyRows({ data, status, actions, sheet }: { data: CapturePayload | nu
 
       {sheet && data.ai ? (
         <Command.Group heading="Ask" className={groupClass}>
-          <Row value="ask suggested" onSelect={() => actions.ask(ASK_SUGGESTION[data.bucket])} icon={<MessagesSquare />} color="var(--cat-mind)" title={ASK_SUGGESTION[data.bucket]} sub="Suggested from today · answers in Coach" trail={<ArrowRight className="size-4 text-ink-3" aria-hidden />} enter={false} />
+          <Row value="ask suggested" onSelect={() => actions.ask(ASK_SUGGESTION[data.bucket])} mark={<Picture of="nav" to="/coach" size={40} />} title={ASK_SUGGESTION[data.bucket]} sub="Suggested from today · answers in Coach" trail={<ArrowRight className="size-4 text-ink-3" aria-hidden />} enter={false} />
         </Command.Group>
       ) : null}
     </>
@@ -245,7 +246,7 @@ function TypedRows({ value, q, data, actions }: { value: string; q: ReturnType<t
         <Command.Group heading="Log" className={groupClass}>
           <Row
             value={`log ${value}`} disabled={!!busy} onSelect={() => actions.log(value, 'typed')}
-            icon={q.type === 'spend' ? <Wallet /> : <Plus />} color={q.type === 'spend' ? 'var(--cat-wealth)' : 'var(--pill)'}
+            mark={q.type === 'spend' ? <Tile color="var(--cat-wealth)"><Wallet /></Tile> : tracker ? <Picture of="tracker" name={tracker.name} size={40} /> : <Tile color="var(--pill)"><Plus /></Tile>}
             title={preview.title} sub={busy === 'typed' ? 'Saving…' : preview.sub}
             trail={busy === 'typed' ? <LoaderCircle className="size-4 animate-spin text-ink-3" aria-hidden /> : undefined}
           />
@@ -256,7 +257,7 @@ function TypedRows({ value, q, data, actions }: { value: string; q: ReturnType<t
           {due.map((r) => (
             <Row
               key={`${r.scheduleId}|${r.occurrence}`} value={`due ${r.name} ${r.occurrence}`} disabled={!!busy} onSelect={() => actions.checkOff(r)}
-              icon={<RowIcon name={r.name} kind={r.kind} area={r.area} />} color={CATEGORY[r.area].color}
+              mark={<Picture of="routine" name={r.name} kind={r.kind} area={r.area} size={40} />}
               title={r.name} sub={r.status === 'missed' ? `Overdue since ${r.time}` : `Due ${r.time}`} subTone={r.status === 'missed' ? 'bad' : undefined}
               trail={r.xp ? <XpChip xp={r.xp} /> : undefined}
             />
@@ -265,7 +266,7 @@ function TypedRows({ value, q, data, actions }: { value: string; q: ReturnType<t
       ) : null}
       {tracker ? (
         <Command.Group heading="Open" className={groupClass}>
-          <Row value={`open ${tracker.slug}`} onSelect={() => actions.go(`/plan/trackers/${encodeURIComponent(tracker.slug)}`)} icon={<ArrowUpRight />} title={tracker.name} sub="Tracker · trend, log and target" trail={<ArrowUpRight className="size-4 text-ink-3" aria-hidden />} enter={false} />
+          <Row value={`open ${tracker.slug}`} onSelect={() => actions.go(`/plan/trackers/${encodeURIComponent(tracker.slug)}`)} mark={<Picture of="tracker" name={tracker.name} size={40} />} title={tracker.name} sub="Tracker · trend, log and target" trail={<ArrowUpRight className="size-4 text-ink-3" aria-hidden />} enter={false} />
         </Command.Group>
       ) : null}
     </>
@@ -280,7 +281,7 @@ function GoTo({ typed, actions }: { typed: string; actions: CaptureActions }) {
       {pages.map((p) => (
         <Row
           key={p.href} value={`go ${p.parent ?? ''} ${p.label}`} onSelect={() => actions.go(p.href)}
-          icon={<p.icon />} color={p.color}
+          mark={goMark(p)}
           title={p.parent ? <><span className="text-ink-3">{p.parent} ›</span> {p.label}</> : p.label} sub={p.sub}
         />
       ))}
@@ -336,7 +337,7 @@ function SpendForm({ data, actions }: { data: CapturePayload; actions: CaptureAc
               onClick={() => actions.log(`spent ${s.amount}${s.currency === 'INR' ? '' : ` ${s.currency}`} ${s.note}`, `spend:${s.note}`)}
               className={pillClass}
             >
-              <span aria-hidden className="grid size-6 shrink-0 place-items-center rounded-full bg-surface-3 text-ink-2 [&_svg]:size-3.5"><Wallet strokeWidth={1.75} /></span>
+              <MerchantMark note={s.note} />
               {busy === `spend:${s.note}` ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
               <span className="font-medium text-ink">{s.note}</span>
               <span className="text-ink-3 tabular-nums">{formatMoney(s.amount, s.currency, { decimals: 0 })}</span>
@@ -380,13 +381,21 @@ function Tile({ color, children }: { color?: string; children: React.ReactNode }
   )
 }
 
-function RowIcon({ name, kind, area }: { name: string; kind: string; area: string }) {
-  const Icon = routineIcon(name, kind, area)
-  return <Icon />
+/** A destination's 3D picture; You and its pages have none, so they keep the line icon in a neutral tile. */
+function goMark(p: Page) {
+  const ref: PictureRef = { of: 'nav', to: p.parent ?? p.href }
+  return pictureSpec(ref).type === 'letter' ? <Tile color={p.color}><p.icon /></Tile> : <Picture {...ref} size={40} />
 }
 
-function Row({ value, onSelect, disabled, icon, color, title, sub, subTone, trail, enter = true, label }: {
-  value: string; onSelect: () => void; disabled?: boolean; icon: React.ReactNode; color?: string
+/** A Spent shortcut's logo when its note names a merchant (Swiggy, Uber); other notes keep the wallet. */
+function MerchantMark({ note }: { note: string }) {
+  const ref: PictureRef = { of: 'merchant', name: note }
+  if (pictureSpec(ref).type !== 'letter') return <Picture {...ref} size={20} />
+  return <span aria-hidden className="grid size-5 shrink-0 place-items-center rounded-sm bg-surface-3 text-ink-2 [&_svg]:size-3"><Wallet strokeWidth={1.75} /></span>
+}
+
+function Row({ value, onSelect, disabled, mark, title, sub, subTone, trail, enter = true, label }: {
+  value: string; onSelect: () => void; disabled?: boolean; mark: React.ReactNode
   title: React.ReactNode; sub?: string; subTone?: 'bad'; trail?: React.ReactNode
   /** Show ↵ on the highlighted row (a keyboard hint). */
   enter?: boolean; label?: string
@@ -396,7 +405,7 @@ function Row({ value, onSelect, disabled, icon, color, title, sub, subTone, trai
       value={value} onSelect={onSelect} disabled={disabled} aria-label={label}
       className="group/item flex min-h-14 cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 data-[disabled=true]:opacity-50 group-data-[armed=true]/cap:data-[selected=true]:bg-surface-2"
     >
-      <Tile color={color}>{icon}</Tile>
+      {mark}
       <span className="min-w-0 flex-1">
         <span className="block truncate text-body font-medium text-ink">{title}</span>
         {sub ? <span className={cn('block truncate text-caption', subTone === 'bad' ? 'text-bad' : 'text-ink-3')}>{sub}</span> : null}
@@ -407,17 +416,12 @@ function Row({ value, onSelect, disabled, icon, color, title, sub, subTone, trai
   )
 }
 
-function Pill({ value, onSelect, disabled, busy, icon, color, label, detail }: {
-  value: string; onSelect: () => void; disabled?: boolean; busy?: boolean; icon: React.ReactNode; color: string; label: string; detail?: string
+function Pill({ value, onSelect, disabled, busy, mark, label, detail }: {
+  value: string; onSelect: () => void; disabled?: boolean; busy?: boolean; mark: React.ReactNode; label: string; detail?: string
 }) {
   return (
     <Command.Item value={value} onSelect={onSelect} disabled={disabled} className={cn(pillClass, 'cursor-pointer data-[disabled=true]:opacity-50 group-data-[armed=true]/cap:data-[selected=true]:bg-surface-3')}>
-      <span
-        aria-hidden className="grid size-6 shrink-0 place-items-center rounded-full [&_svg]:size-3.5 [&_svg]:stroke-[1.75]"
-        style={{ color: `color-mix(in oklch, ${color} 80%, var(--ink))`, background: `color-mix(in oklch, ${color} 15%, transparent)` }}
-      >
-        {busy ? <LoaderCircle className="animate-spin" /> : icon}
-      </span>
+      {busy ? <LoaderCircle className="size-5 shrink-0 animate-spin text-ink-3" aria-hidden /> : mark}
       <span className="font-medium text-ink">{label}</span>
       {detail ? <span className="text-ink-3 tabular-nums">{detail}</span> : null}
     </Command.Item>

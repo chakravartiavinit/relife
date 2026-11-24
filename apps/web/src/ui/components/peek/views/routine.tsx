@@ -6,7 +6,6 @@ import { addToGoal, setScheduleActive, toggleCheck, undoGoalStep } from '@/app/a
 import type { RoutinePeek } from '@/core/peek/types'
 import { amountText } from '@/domain/capture'
 import { CATEGORY } from '@/ui/tokens'
-import { routineIcon } from '@/ui/routine-icons'
 import { Badge } from '../../card'
 import { Button } from '../../button'
 import { Capsule } from '../../capsule'
@@ -14,13 +13,13 @@ import { AdherenceLegend, AdherenceStrip } from '../../category/adherence-strip'
 import { ScheduleDialog } from '../../forms/schedule-form'
 import { announceXp, useToast } from '../../toast'
 import { usePeekChanged } from '../peek-context'
-import { PeekIcon, PeekNote, PeekRow, PeekSection, PeekStats } from '../peek-parts'
+import { PeekNote, PeekRow, PeekSection, PeekStats } from '../peek-parts'
 
 const KIND = { routine: 'Routine', medicine: 'Medicine', subscription: 'Subscription', bill: 'Bill', renewal: 'Renewal' } as const
 const STATUS = { done: 'Done', skipped: 'Skipped', missed: 'Missed', pending: 'Due' } as const
 
 export function routineHeading(d: RoutinePeek) {
-  return { title: d.name, description: `${CATEGORY[d.category].label} · ${KIND[d.kind].toLowerCase()} · ${d.when}`, icon: <PeekIcon icon={routineIcon(d.name, d.kind, d.category)} color={CATEGORY[d.category].color} /> }
+  return { title: d.name, description: `${CATEGORY[d.category].label} · ${KIND[d.kind].toLowerCase()} · ${d.when}`, picture: { of: 'routine', name: d.name, kind: d.kind, area: d.category } as const }
 }
 
 /** A routine or medicine: today's check-off, the last 14 days, and edit / pause. */
@@ -33,7 +32,7 @@ export function RoutinePeekView({ data: r }: { data: RoutinePeek }) {
   const run = (fn: () => Promise<void>) => start(async () => { try { await fn(); changed() } catch { toast.error() } })
   const check = (iso: string, status: 'done' | 'skipped' | null) => run(async () => {
     announceXp(toast, await toggleCheck(r.id, iso, status))
-    if (status) toast(`${r.name} ${status === 'done' ? 'done' : 'skipped'}`, status === 'done' ? 'good' : 'neutral')
+    if (status) toast(`${r.name} ${status === 'done' ? 'done' : 'skipped'}`, status === 'done' ? 'good' : 'neutral', { picture: { of: 'routine', name: r.name, kind: r.kind, area: r.category } })
   })
   const quantity = r.trackerSlug && r.target ? { value: r.value ?? 0, target: r.target, step: r.step ?? Math.max(1, Math.round(r.target / 8)) } : null
   const rate = r.rate == null ? '–' : `${Math.round(r.rate * 100)}%`

@@ -9,13 +9,14 @@ import { buttonClass } from '../../button'
 import { Badge } from '../../card'
 import { InsightBody } from '../../insight-body'
 import { InsightActions } from '../../insight-ui'
+import { kindPicture } from '../../coach/queue-picture'
 import { KIND, STATUS } from '../../insight-kinds'
 import { RecoveryPanel } from '../../system-quests'
-import { PeekFooter, PeekIcon, PeekOpen, PeekSection } from '../peek-parts'
+import { PeekFooter, PeekOpen, PeekSection } from '../peek-parts'
 
 export function insightHeading(d: InsightPeek) {
   const k = KIND[d.kind]
-  return { title: sentenceCase(d.title), description: `${k.label} · ${d.when}${d.meta ? ` · ${d.meta.split(' · ')[0]}` : ''}`, icon: <PeekIcon icon={k.icon} color={k.color} /> }
+  return { title: sentenceCase(d.title), description: `${k.label} · ${d.when}${d.meta ? ` · ${d.meta.split(' · ')[0]}` : ''}`, picture: kindPicture(d.goalDraft ? 'goal-draft' : d.recovery ? 'recovery' : d.kind, d.title, { meta: d.meta ?? undefined }) }
 }
 
 /** A Coach item: its text, what it proposes, and the one way to act on it (or what was decided). */

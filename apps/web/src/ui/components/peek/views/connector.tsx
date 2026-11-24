@@ -1,6 +1,7 @@
 'use client'
 
 import type { ConnectorPeek } from '@/core/peek/types'
+import { pictureSpec } from '../../../picture'
 import { AppLogo } from '../../app-logo'
 import { ConnectorBody, STATUS } from '../../connector-market'
 import { usePeekChanged } from '../peek-context'
@@ -8,7 +9,9 @@ import { PeekFooter, PeekOpen } from '../peek-parts'
 
 export function connectorHeading(d: ConnectorPeek) {
   const c = d.item
-  return { title: c.name, description: c.statusLabel ?? STATUS[c.status].label, icon: <AppLogo id={c.id} category={c.category} size="md" /> }
+  const picture = { of: 'connector', id: c.id, name: c.name } as const
+  // A connector with no shipped logo keeps its category tile instead of a letter.
+  return { title: c.name, description: c.statusLabel ?? STATUS[c.status].label, ...(pictureSpec(picture).type === 'letter' ? { icon: <AppLogo id={c.id} category={c.category} size="md" /> } : { picture }) }
 }
 
 /** One connector: status and recent syncs when connected, the connect form when not. */

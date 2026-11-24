@@ -10,7 +10,6 @@ import { CATEGORY } from '@/ui/tokens'
 import { Badge, Card, CardHeader } from '../../card'
 import { Button } from '../../button'
 import { Capsule } from '../../capsule'
-import { AREA_ICON } from '../../capsule-icon'
 import { DailyBars, TrendArea } from '../../charts'
 import { Input, Segmented } from '../../form'
 import { GridItem, PageGrid } from '../../page-grid'
@@ -18,7 +17,7 @@ import { Rail } from '../../rail'
 import { QuickLog } from '../../forms/tracker-forms'
 import { useToast } from '../../toast'
 import { usePeekChanged } from '../peek-context'
-import { PeekFooter, PeekIcon, PeekOpen, PeekSection, PeekStats } from '../peek-parts'
+import { PeekFooter, PeekOpen, PeekSection, PeekStats } from '../peek-parts'
 
 const RANGES = [{ value: '7', label: '7D' }, { value: '28', label: '28D' }, { value: '90', label: '90D' }]
 
@@ -38,7 +37,7 @@ export function metricHeading(d: MetricPeek) {
   return {
     title: d.name,
     description: `${c.label} · tracker${d.target ? ` · daily target ${metricValue(d, d.target)}` : ''}`,
-    icon: <PeekIcon icon={AREA_ICON[d.category]} color={c.color} />,
+    picture: { of: 'tracker', name: d.name, area: d.category } as const,
   }
 }
 
