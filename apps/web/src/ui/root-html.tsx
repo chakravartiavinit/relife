@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Fraunces, Hanken_Grotesk } from 'next/font/google'
 import brand from '@relife/brand/brand.json'
 import { THEME_SCRIPT } from '@/ui/components/theme-toggle'
+import { BRAND } from './brand-files'
 import '@/app/globals.css'
 
 // The <html> shell shared by the two root layouts: the dashboard's (app/(app)/layout.tsx, with its sidebar and the
@@ -34,6 +35,8 @@ export function RootHtml({ children, head }: { children: React.ReactNode; head?:
     <html lang="en" className={`${hanken.variable} ${fraunces.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        {/* The loader's capsule, so an inline wait on a slow network shows the picture, not only its text. */}
+        <link rel="preload" as="image" href={BRAND.capsule} />
         {head}
       </head>
       <body className="min-h-dvh">{children}</body>
