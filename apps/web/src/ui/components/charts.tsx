@@ -16,7 +16,6 @@ import { TargetTrend } from './category/target-trend'
 // One rule per kind of number:
 //   a measure over time (sleep, mood, weight)     → TrendArea   (gradient area; with a goal, a line chart with a dashed goal line)
 //   a count per day (steps, commits, spend, XP)   → DailyBars   (bars; days that met the goal stand out)
-//   a ranking (spending by category)              → RankedBars  (horizontal bars, sorted)
 //   shares of a whole (XP by kind, holdings)      → ShareDonut  (pie chart as a ring, with its legend)
 //   several series per period (spend by month)    → StackedBars  (the lead series in the accent, the rest in neutrals)
 //   the one lead chart of a screen                (LeadChart: a line with its dashed reference and its last value written on it)
@@ -202,24 +201,6 @@ function useHasSize<T extends HTMLElement>() {
     return () => ro.disconnect()
   }, [])
   return [ref, shown] as const
-}
-
-/** Ranked horizontal bars (magnitude by category), largest first. */
-export function RankedBars({ data, color = CHART.accent, unit, label }: {
-  data: { label: string; value: number }[]; color?: string; unit?: string; label: string
-}) {
-  const rows = useMemo(() => [...data].sort((a, b) => b.value - a.value), [data])
-  return (
-    <figure aria-label={label} className="m-0">
-        <div style={{ height: rows.length * 34 + 16 }}><EvilBarChart data={rows} config={{ value: tone(named(seriesName(label), unit), color) }} layout="horizontal" barRadius={4} className="aspect-auto h-full w-full">
-          {/* Headroom on the right for each bar's value label. */}
-          <EvilBarChart.XAxis type="number" hide domain={[0, (max: number) => max * 1.2]} />
-          <EvilBarChart.YAxis type="category" dataKey="label" width={120} tick={{ fontSize: 12 }} />
-          <EvilBarChart.Tooltip />
-          <EvilBarChart.Bar dataKey="value" barProps={{ dataKey: 'value', label: { position: 'right', fontSize: 12, fill: 'var(--ink-2)', formatter: (v: unknown) => (typeof v === 'number' ? fmt(Math.round(v), unit) : '') } }} />
-        </EvilBarChart></div>
-      </figure>
-  )
 }
 
 /**

@@ -12,7 +12,7 @@ import { CapsuleIcon } from '@/ui/components/capsule-icon'
 import { Field, Input, Segmented, Select } from '@/ui/components/form'
 import { EmptyState } from '@/ui/components/empty'
 import { CapsuleMark, Wordmark } from '@/ui/components/logo'
-import { DailyBars, RankedBars, ShareDonut, Sparkline, StackedBars, TrendArea } from '@/ui/components/charts'
+import { DailyBars, ShareDonut, Sparkline, StackedBars, TrendArea } from '@/ui/components/charts'
 import { CalmGallery } from '@/ui/components/calm-gallery'
 import { TimeGallery } from '@/ui/components/time-gallery'
 import { LoaderGallery } from '@/ui/components/loader-gallery'
@@ -384,7 +384,6 @@ async function ChartSamples() {
     <div className="grid gap-6 lg:grid-cols-2">
       <div><div className="mb-2 text-[13px] text-ink-2">Daily bars with target</div><DailyBars data={days} target={7} unit="h" label="Daily bars sample" color={CATEGORY.skills.color} /></div>
       <div><div className="mb-2 text-[13px] text-ink-2">Trend with gap</div><TrendArea data={days} target={7} unit="h" label="Trend sample" color={CATEGORY.health.color} /></div>
-      <div><div className="mb-2 text-[13px] text-ink-2">Ranked</div><RankedBars label="Ranked sample" unit="₹" data={[{ label: 'Food delivery', value: 6120 }, { label: 'Groceries', value: 4380 }, { label: 'Transport', value: 1920 }]} color={CATEGORY.wealth.color} /></div>
       <div><div className="mb-2 text-small text-ink-2">Sparkline, drawn only when hasTrend ({String(hasTrend(days))}); two points: {String(hasTrend(days.slice(0, 2)))}</div><div className="w-40"><Sparkline data={days} color={CATEGORY.mind.color} /></div></div>
       <div className="lg:col-span-2"><div className="mb-2 text-small text-ink-2">Stacked bars: 11 series, 4 empty leading months. The lead in the accent, two neutrals, the rest as Other; the legend stops at four</div><StackedBars label="Stacked sample" unit="₹" height={260} categories={MONTHS} series={SPEND_SAMPLE} /></div>
       <div><div className="mb-2 text-small text-ink-2">Stacked bars with a single series</div><StackedBars label="One series" unit="₹" height={160} categories={MONTHS} series={SPEND_SAMPLE.slice(0, 1)} /></div>

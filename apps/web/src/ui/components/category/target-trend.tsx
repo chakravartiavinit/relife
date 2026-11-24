@@ -5,7 +5,6 @@ import { EvilLineChart } from '@/components/evilcharts/charts/recharts-line-char
 import type { ChartConfig } from '@/components/evilcharts/ui/recharts-chart'
 import { interpolateGaps, niceAxis } from '@/domain/series'
 import { formatNumber } from '@/domain/money'
-import { cn } from '../../cn'
 import type { Point } from '../charts'
 
 // A measure against its target over time, labelled on the chart itself: a filled dot is a day on target, a hollow one a
@@ -18,17 +17,6 @@ const axisTick = { fontSize: 12, fill: 'var(--ink-3)' }
 type Row = Record<string, string | number | null>
 type Dot = { cx?: number; cy?: number; payload?: { real: number; value: number }; index?: number }
 type Lab = { x?: number | string; y?: number | string; index?: number }
-
-/** What the dots and the dashed line mean, for the head of the card. */
-export function TargetTrendLegend({ target, unit, color, className }: { target: number; unit?: string; color: string; className?: string }) {
-  return (
-    <ul aria-label="Legend" className={cn('flex flex-wrap justify-end gap-x-4 gap-y-1 text-caption text-ink-2', className)}>
-      <li className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2 rounded-full" style={{ background: color }} />On target</li>
-      <li className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2 rounded-full border-[1.5px] bg-surface" style={{ borderColor: color }} />Under</li>
-      <li className="inline-flex items-center gap-1.5"><span aria-hidden className="h-0 w-3.5 border-t border-dashed border-ink-2" />Target {withUnit(target, unit)}</li>
-    </ul>
-  )
-}
 
 export function TargetTrend({ data, target, unit, color, label, direction = 'up', height = 260, targetLabel = 'Target' }: {
   data: Point[]; target: number; unit?: string; color: string; label: string; direction?: 'up' | 'down'; height?: number

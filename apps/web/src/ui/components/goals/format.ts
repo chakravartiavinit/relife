@@ -27,12 +27,6 @@ export const STATUS_LABEL: Record<OutcomeStatus, string> = {
   met: 'Target reached', toward: 'Toward target', flat: 'No change yet', away: 'Moving away', not_enough_data: 'Not enough data',
 }
 
-/** Badge colour. Sensitive measures stay neutral whatever the direction. */
-export function statusColor(status: OutcomeStatus, sensitive: boolean) {
-  if (sensitive || status === 'flat' || status === 'not_enough_data') return undefined
-  return status === 'met' ? 'var(--good)' : status === 'toward' ? 'var(--pill)' : 'var(--warn)'
-}
-
 export const day = (d: string) => formatDay(d, { day: 'numeric', month: 'short' })
 export const dayYear = (d: string) => formatDay(d, { day: 'numeric', month: 'short', year: 'numeric' })
 export const weekday = (d: string) => formatDay(d, { weekday: 'short', day: 'numeric', month: 'short' })
@@ -77,14 +71,6 @@ export function coverageLine(g: GoalViewData) {
     return `${o.observations} ${word}${o.observations === 1 ? '' : 's'} recorded, ${o.needed} needed for a status`
   }
   return g.measureKind === 'check_in' ? `Latest check-in ${day(o.latestCheckIn!.localDate)}` : `${o.observations} of ${g.snapshot!.window.days} days recorded`
-}
-
-/** How a linked action went in the goal's window: "6 of 6 days this week", "recorded 6 of 7 days". */
-export function actionNumbers(a: ActionSnapshot) {
-  if (!a.available) return 'Action no longer available'
-  const span = a.windowDays === 7 ? 'this week' : `in ${a.windowDays} days`
-  if (a.kind === 'schedule') return a.due ? `${a.done} of ${a.due} days ${span}` : `Nothing due ${span}`
-  return a.recordedDays ? `recorded ${a.recordedDays} of ${a.windowDays} days${a.metDays != null ? `, target met on ${a.metDays}` : ''}` : `no record ${span}`
 }
 
 /** The goal's picture: its tracker's. A check-in goal ("Play Blackbird") borrows the picture of its first linked tracker (Guitar). */
