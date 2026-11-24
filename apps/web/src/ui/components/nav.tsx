@@ -1,30 +1,32 @@
 import type { Category } from '@/db/schema'
-import { Brain, Code, HeartPulse, LayoutGrid, MonitorSmartphone, Palette, Sparkles, Sunrise, Target, UserRound, Users, Wallet, type LucideIcon } from 'lucide-react'
+import { Brain, Code, HeartPulse, LayoutGrid, MonitorSmartphone, MessagesSquare, Palette, Sunrise, Target, UserRound, Users, Wallet, type LucideIcon } from 'lucide-react'
 
 // The destinations, as data. The sidebar, the tab bar and the Go-to list read it (`src/ui/components/shell/`).
+// `picture` is the 3D picture the sidebar and the tab bar draw (Fluent 3D emoji, MIT, in public/routines); You has none
+// because it shows the user's capsule. `icon` stays for the Go-to list and small spots.
 
-export type NavItem = { href: string; label: string; icon: LucideIcon; color?: string }
+export type NavItem = { href: string; label: string; icon: LucideIcon; picture?: string; color?: string }
 
 // Today · Life (hub, six areas, Time) · Plan, Coach, You. Plan, Coach and You hold their own tabs.
 export const NAV: { label?: string; items: NavItem[] }[] = [
-  { items: [{ href: '/', label: 'Today', icon: Sunrise }] },
+  { items: [{ href: '/', label: 'Today', icon: Sunrise, picture: '/routines/sunrise.png' }] },
   {
     label: 'Life',
     items: [
-      { href: '/life', label: 'Overview', icon: LayoutGrid },
-      { href: '/health', label: 'Health', icon: HeartPulse, color: 'var(--cat-health)' },
-      { href: '/mind', label: 'Mind', icon: Brain, color: 'var(--cat-mind)' },
-      { href: '/skills', label: 'Skills', icon: Code, color: 'var(--cat-skills)' },
-      { href: '/wealth', label: 'Wealth', icon: Wallet, color: 'var(--cat-wealth)' },
-      { href: '/hobbies', label: 'Hobbies', icon: Palette, color: 'var(--cat-hobbies)' },
-      { href: '/people', label: 'People', icon: Users, color: 'var(--cat-relationships)' },
-      { href: '/time', label: 'Time', icon: MonitorSmartphone, color: 'var(--line-blue)' },
+      { href: '/life', label: 'Overview', icon: LayoutGrid, picture: '/routines/plant.png' },
+      { href: '/health', label: 'Health', icon: HeartPulse, picture: '/routines/heart.png', color: 'var(--cat-health)' },
+      { href: '/mind', label: 'Mind', icon: Brain, picture: '/routines/brain.png', color: 'var(--cat-mind)' },
+      { href: '/skills', label: 'Skills', icon: Code, picture: '/routines/code.png', color: 'var(--cat-skills)' },
+      { href: '/wealth', label: 'Wealth', icon: Wallet, picture: '/routines/money.png', color: 'var(--cat-wealth)' },
+      { href: '/hobbies', label: 'Hobbies', icon: Palette, picture: '/routines/art.png', color: 'var(--cat-hobbies)' },
+      { href: '/people', label: 'People', icon: Users, picture: '/routines/people.png', color: 'var(--cat-relationships)' },
+      { href: '/time', label: 'Time', icon: MonitorSmartphone, picture: '/routines/phone.png', color: 'var(--line-blue)' },
     ],
   },
   {
     items: [
-      { href: '/plan', label: 'Plan', icon: Target },
-      { href: '/coach', label: 'Coach', icon: Sparkles },
+      { href: '/plan', label: 'Plan', icon: Target, picture: '/routines/target.png' },
+      { href: '/coach', label: 'Coach', icon: MessagesSquare, picture: '/routines/mood.png' },
       { href: '/you', label: 'You', icon: UserRound },
     ],
   },

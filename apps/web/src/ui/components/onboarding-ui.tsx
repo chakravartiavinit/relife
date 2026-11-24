@@ -58,7 +58,7 @@ export function radioKeys(e: React.KeyboardEvent<HTMLElement>) {
 export function Title({ step, title, body }: { step: number; title: string; body?: string }) {
   return (
     <div className="mb-6 short:mb-5">
-      <motion.p variants={item} className="font-mono text-label text-pill-ink uppercase before:me-2 before:inline-block before:h-3 before:w-0.5 before:rounded-full before:bg-pill before:align-[-1px] before:content-['']">
+      <motion.p variants={item} className="text-small font-medium text-pill-ink">
         Step {step + 1} of {STEPS.length}
       </motion.p>
       <motion.h1 variants={item} className="mt-2 font-display text-title text-balance text-ink sm:text-display">{title}</motion.h1>
@@ -72,7 +72,7 @@ export function Group({ label, aside, children, className }: { label: string; as
   return (
     <motion.div variants={item} className={cn('not-first:mt-6 short:not-first:mt-5', className)}>
       <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-small font-semibold text-ink">{label}</h2>
+        <h2 className="text-small font-medium text-ink">{label}</h2>
         {aside ? <p className="text-caption text-ink-3 tabular-nums">{aside}</p> : null}
       </div>
       <div className="mt-3">{children}</div>

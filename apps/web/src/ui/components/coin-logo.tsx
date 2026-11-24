@@ -5,7 +5,7 @@ import { cn } from '../cn'
 
 const SIZE = { sm: 'size-6 text-[9px]', md: 'size-9 text-[11px]', lg: 'size-11 text-[13px]' }
 
-export function CoinLogo({ symbol, logo, size = 'md', className }: { symbol: string; logo?: boolean; size?: keyof typeof SIZE; className?: string }) {
+export function CoinLogo({ symbol, logo, size = 'md', letters = 3, className }: { symbol: string; logo?: boolean; size?: keyof typeof SIZE; /** How many letters the fallback shows (a small slot shows one). */ letters?: number; className?: string }) {
   if (logo) {
     return (
       // v=2 in the URL: the 250px logos, past a week-old browser cache.
@@ -17,10 +17,10 @@ export function CoinLogo({ symbol, logo, size = 'md', className }: { symbol: str
   return (
     <span
       aria-hidden
-      className={cn('grid shrink-0 place-items-center rounded-full font-display font-bold tracking-tight text-[oklch(0.42_0.11_var(--h))] bg-[oklch(0.93_0.045_var(--h))] dark:text-[oklch(0.85_0.08_var(--h))] dark:bg-[oklch(0.33_0.06_var(--h))]', SIZE[size], className)}
+      className={cn('grid shrink-0 place-items-center rounded-full font-display font-medium tracking-tight text-[oklch(0.42_0.11_var(--h))] bg-[oklch(0.93_0.045_var(--h))] dark:text-[oklch(0.85_0.08_var(--h))] dark:bg-[oklch(0.33_0.06_var(--h))]', SIZE[size], className)}
       style={{ '--h': h } as React.CSSProperties}
     >
-      {symbol.slice(0, 3)}
+      {symbol.slice(0, letters)}
     </span>
   )
 }

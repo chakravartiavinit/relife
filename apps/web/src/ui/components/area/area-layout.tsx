@@ -5,25 +5,27 @@ import { getUser } from '@/core/user'
 import { KpiStrip, Skeleton, type Kpi } from '../card'
 import { Ticker } from '../ticker'
 import { AreaHeader } from './area-header'
-import { AreaTabs } from './area-tabs'
+import { AreaLog, AreaTabs } from './area-tabs'
 
 /**
- * The area template: header → tabs → headline numbers → the tab body. It lives in a layout, so a tab change only
+ * The area template: the compact head with its tab row and Log button → headline numbers → the tab body. It lives in a layout, so a tab change only
  * re-renders the body. Every headline number opens a Peek (its metric, or the area's summary when it has none).
- * Wealth keeps its numbers per tab (`kpis={false}`: Overview, Spending and Portfolio each have their own).
+ * The headline numbers (`AreaKpiStrip`) are drawn by the tabs after Overview, so the Overview, which carries the same
+ * numbers in its targets table, never reads them. Wealth keeps its numbers per tab, and Time puts its in the head (`summary`).
  */
-export function AreaLayout({ def, children, kpis = true, right }: { def: AreaDef; children: React.ReactNode; kpis?: boolean; right?: React.ReactNode }) {
+export function AreaLayout({ def, children, right, summary, eyebrow }: { def: AreaDef; children: React.ReactNode; right?: React.ReactNode; summary?: React.ReactNode; /** The line above the title; default "Life · Health". */ eyebrow?: React.ReactNode }) {
   return (
     <>
-      <AreaHeader def={def} right={right} />
-      {def.tabs.length > 1 ? <AreaTabs def={def} /> : null}
-      <div className="flex flex-col gap-6">
-        {kpis ? <Suspense fallback={<KpiSkeleton />}><AreaKpis def={def} /></Suspense> : null}
+      <AreaHeader def={def} right={right} summary={summary} eyebrow={eyebrow} tabs={def.tabs.length > 1 ? <AreaTabs def={def} /> : undefined} actions={def.tabs.length > 1 ? <AreaLog def={def} /> : undefined} />
+      <div className="@container flex flex-col gap-6">
         {children}
       </div>
     </>
   )
 }
+
+/** The strip with its own Suspense: the first block of every template tab after Overview. */
+export const AreaKpiStrip = ({ def }: { def: AreaDef }) => <Suspense fallback={<KpiSkeleton />}><AreaKpis def={def} /></Suspense>
 
 export const KpiSkeleton = () => <Skeleton className="h-[124px] rounded-lg" />
 

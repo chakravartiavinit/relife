@@ -6,5 +6,5 @@ import { AreaLayout } from '@/ui/components/area/area-layout'
  * mounted while a tab changes. Each tab has its own numbers, so the layout draws no strip (`kpis={false}`).
  */
 export default function WealthLayout({ children }: LayoutProps<'/wealth'>) {
-  return <AreaLayout def={AREAS.wealth} kpis={false}>{children}</AreaLayout>
+  return <AreaLayout def={AREAS.wealth}>{children}</AreaLayout>
 }

@@ -1,6 +1,5 @@
 'use client'
 
-import { Flag, Users } from 'lucide-react'
 import type { PersonPeek, QuestPeek } from '@/core/peek/types'
 import { formatNumber } from '@/domain/money'
 import { CATEGORY } from '@/ui/tokens'
@@ -9,11 +8,11 @@ import { Capsule } from '../../capsule'
 import { ContactedButton } from '../../forms/people-forms'
 import { RANK_COLOR } from '../../system-quests'
 import { PeekLink } from '../peek-link'
-import { PeekFooter, PeekIcon, PeekOpen, PeekRow, PeekSection, PeekStats } from '../peek-parts'
+import { PeekFooter, PeekOpen, PeekRow, PeekSection, PeekStats } from '../peek-parts'
 import type { Rank } from '@/domain/system'
 
 export function personHeading(d: PersonPeek) {
-  return { title: d.name, description: `People · ${d.relation ?? 'keep in touch'}`, icon: <PeekIcon icon={Users} color={CATEGORY.relationships.color} /> }
+  return { title: d.name, description: `People · ${d.relation ?? 'keep in touch'}`, picture: { of: 'area', to: 'relationships' } as const }
 }
 
 const rhythm = (n: number | null) => (n == null ? 'No rhythm set' : n === 1 ? 'Every day' : n % 7 === 0 ? (n === 7 ? 'Every week' : `Every ${n / 7} weeks`) : `Every ${n} days`)
@@ -42,7 +41,7 @@ export function PersonPeekView({ data: d }: { data: PersonPeek }) {
 
 export function questHeading(d: QuestPeek) {
   const area = d.area in CATEGORY ? CATEGORY[d.area as keyof typeof CATEGORY] : null
-  return { title: d.title, description: d.period, icon: <PeekIcon icon={Flag} color={area?.color ?? 'var(--pill)'} /> }
+  return { title: d.title, description: d.period, picture: area ? { of: 'area', to: d.area } as const : { of: 'nav', to: '/plan' } as const }
 }
 
 const STATE = { active: 'In progress', cleared: 'Cleared', failed: 'Missed', unverified: 'No data', cancelled: 'Cancelled', expired: 'Expired' } as const

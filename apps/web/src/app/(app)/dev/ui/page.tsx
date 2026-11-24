@@ -1,16 +1,21 @@
 import type { Metadata } from 'next'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
-import { Plus } from 'lucide-react'
+import { Brain, Droplets, HeartPulse, Plus, Wallet } from 'lucide-react'
 import { CATEGORIES } from '@/db/schema'
+import { hasTrend } from '@/domain/series'
 import { CATEGORY } from '@/ui/tokens'
 import { Button } from '@/ui/components/button'
-import { Badge, Card, CardHeader, PageHeader, Skeleton, Stat } from '@/ui/components/card'
-import { Capsule, CapsuleGauge } from '@/ui/components/capsule'
+import { Badge, Card, CardHeader, IconChip, PageHeader, SectionLabel, Skeleton, Stat, SystemLabel } from '@/ui/components/card'
+import { Capsule, CapsuleGauge, LevelBar } from '@/ui/components/capsule'
+import { CapsuleIcon } from '@/ui/components/capsule-icon'
 import { Field, Input, Segmented, Select } from '@/ui/components/form'
 import { EmptyState } from '@/ui/components/empty'
 import { CapsuleMark, Wordmark } from '@/ui/components/logo'
-import { DailyBars, RankedBars, Sparkline, TrendArea } from '@/ui/components/charts'
+import { DailyBars, ShareDonut, Sparkline, StackedBars, TrendArea } from '@/ui/components/charts'
+import { CalmGallery } from '@/ui/components/calm-gallery'
+import { TimeGallery } from '@/ui/components/time-gallery'
+import { LoaderGallery } from '@/ui/components/loader-gallery'
 import { BeuiGallery } from '@/ui/components/gallery-beui'
 import { PositionCard } from '@/ui/components/wealth/position-card'
 import { IlloGallery } from '@/ui/components/tour/illos'
@@ -21,6 +26,8 @@ import { PeekGallery } from '@/ui/components/peek/peek-gallery'
 import { CoachGallery } from '@/ui/components/coach/coach-gallery'
 import { PartyGallery } from '@/ui/components/party/party-gallery'
 import { AreaGallery } from '@/ui/components/area/area-gallery'
+import { OverviewGallery } from '@/ui/components/area/overview-gallery'
+import { WealthGallery } from '@/ui/components/wealth/wealth-gallery'
 import { TodayGallery } from '@/ui/components/today/today-gallery'
 import { PlanYouGallery } from '@/ui/components/plan-you-gallery'
 import { OnboardingGallery } from '@/ui/components/onboarding-gallery'
@@ -29,11 +36,12 @@ import { ShareGallery } from '@/ui/components/share/share-gallery'
 import { TemplatesGallery } from '@/ui/components/templates/templates-gallery'
 import { builtInPacks } from '@/core/packs'
 import { TEMPLATES } from '@/core/onboarding'
+import { FoldDemo, PageGridDemo, PageHeaderDemo, PageHeaderPlainDemo, RailDemo } from '@/ui/components/layout-gallery'
 import { InstalledBeuiGallery, PeekLinkDemo, SegmentTabsDemo, SheetDemo, ShellDemo, TypeScale } from '@/ui/components/gallery-foundations'
 import { RecoveryPanel, SystemQuests } from '@/ui/components/system-quests'
 import type { RecoveryView } from '@/domain/recovery'
 import { GOAL_FOOTNOTE, goalSnapshot } from '@/domain/goals'
-import { OutcomeGoalCard, PausedFinishedList } from '@/ui/components/goals/goal-card'
+import { GoalFolds, GoalsBoard } from '@/ui/components/goals/goal-card'
 import { DevicesGallery } from '@/ui/components/devices/gallery'
 import { DataGallery } from '@/ui/components/data/data-gallery'
 import { PhoneGallery } from '@/ui/components/devices/phone-gallery'
@@ -50,6 +58,14 @@ const days = Array.from({ length: 21 }, (_, i) => {
   const d = new Date(Date.UTC(2026, 9, 10 + i))
   return { date: d.toISOString().slice(0, 10), value: i === 6 ? null : Math.round(5 + 3 * Math.sin(i / 2) + (i % 3)) }
 })
+
+const MONTHS = ['Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov']
+// Eleven categories whose spending starts in April: the first four months are empty.
+const SPEND_SAMPLE = ['Food delivery', 'Groceries', 'Shopping', 'Transport', 'Bills', 'Health', 'Travel', 'Fun', 'Gifts', 'Fees', 'Misc'].map((name, i) => ({
+  id: name.toLowerCase(), name, color: 'var(--sky)',
+  values: MONTHS.map((_, j) => (j < 4 ? null : Math.round((12 - i) * 900 + ((j * 7 + i * 3) % 5) * 700))),
+}))
+const SHARE_SAMPLE = ['Gold', 'Ether', 'Index fund', 'Bitcoin', 'Bonds', 'Cash', 'Silver', 'Other'].map((name, i) => ({ id: name, name, color: 'var(--pill)', value: 9000 - i * 1100 }))
 
 const recoverySample: RecoveryView = {
   id: '00000000-0000-4000-8000-000000000000', version: 1, localDate: '2026-11-11', choice: null, questId: null,
@@ -76,10 +92,22 @@ export default function UiGallery() {
           {['ink', 'pill', 'pill-ink', 'line-blue', 'sky', 'sakura', 'cardigan', 'night'].map((c) => (
             <div key={c} className="flex flex-col gap-1.5">
               <div className="h-12 rounded-md shadow-1" style={{ background: `var(--${c})` }} />
-              <code className="text-[11px] text-ink-3">--{c}</code>
+              <code className="text-caption text-ink-3">--{c}</code>
             </div>
           ))}
         </div>
+      </Section>
+
+      <Section title="Loader: splash, page and inline, progress, reduced motion, Finish runs the hand-off">
+        <LoaderGallery />
+      </Section>
+
+      <Section title="Calm system: status words, stat card, status row, pictures, connection, insight line, fold, empty state, lead chart, routine row, buttons, tabs, chips">
+        <CalmGallery />
+      </Section>
+
+      <Section title="Time: focus today over the last 7 days, its legend rows, the connection, library, By kind and top sites, from fixtures">
+        <Suspense fallback={<div className="h-96 rounded-xl bg-surface-2" />}><TimeGallery /></Suspense>
       </Section>
 
       <Section title="Buttons">
@@ -101,19 +129,40 @@ export default function UiGallery() {
         <div className="grid gap-5 sm:grid-cols-2">
           {CATEGORIES.map((c, i) => (
             <div key={c}>
-              <div className="mb-2 flex justify-between text-[13px]"><span className="text-ink">{CATEGORY[c].label}</span><span className="text-ink-3 tabular-nums">{(i + 1) * 20}%</span></div>
+              <div className="mb-2 flex justify-between text-small"><span className="text-ink">{CATEGORY[c].label}</span><span className="text-ink-3 tabular-nums">{(i + 1) * 20}%</span></div>
               <Capsule value={(i + 1) * 20} max={100} color={CATEGORY[c].color} label={CATEGORY[c].label} />
             </div>
           ))}
-          <div><div className="mb-2 text-[13px] text-ink">Empty</div><Capsule value={0} label="Empty" /></div>
-          <div><div className="mb-2 text-[13px] text-ink">Sizes</div><div className="flex flex-col gap-2"><Capsule value={3} max={5} size="sm" label="sm" /><Capsule value={3} max={5} size="lg" label="lg" /></div></div>
+          <div><div className="mb-2 text-small text-ink">Empty</div><Capsule value={0} label="Empty" /></div>
+          <div><div className="mb-2 text-small text-ink">Sizes</div><div className="flex flex-col gap-2"><Capsule value={3} max={5} size="sm" label="sm" /><Capsule value={3} max={5} size="lg" label="lg" /></div></div>
         </div>
-        <div className="mt-6 flex items-end gap-4 rounded-lg p-4" style={{ background: 'linear-gradient(180deg, var(--sky-soft), var(--surface-2))' }}>
+        <div className="mt-6 flex items-end gap-4 rounded-lg bg-surface-2 p-4">
           {CATEGORIES.map((c, i) => <CapsuleGauge key={c} value={i} max={4} color={CATEGORY[c].color} label={CATEGORY[c].label} />)}
+        </div>
+        <div className="mt-8 mb-3 text-small text-ink-3">LevelBar: the segmented stat bar for XP, level and goal progress (10 segments, the last one by its fraction)</div>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div><div className="mb-2 flex justify-between text-small"><span className="text-ink">XP to Lv 26</span><span className="text-ink-3 tabular-nums">64%</span></div><LevelBar value={64} max={100} size="lg" label="XP to Lv 26" /></div>
+          {CATEGORIES.slice(0, 3).map((c, i) => (
+            <div key={c}><div className="mb-2 flex justify-between text-small"><span className="text-ink">{CATEGORY[c].label}</span><span className="text-ink-3 tabular-nums">{[12, 55, 100][i]}%</span></div><LevelBar value={[12, 55, 100][i]} max={100} color={CATEGORY[c].color} label={CATEGORY[c].label} /></div>
+          ))}
+          <div><div className="mb-2 text-small text-ink">Empty, and sm with 12 segments</div><div className="flex flex-col gap-2"><LevelBar value={0} label="Empty" /><LevelBar value={7} max={12} size="sm" segments={12} label="sm" /></div></div>
+        </div>
+        <div className="mt-8 mb-3 text-small text-ink-3">CapsuleIcon: flat top, ink outline</div>
+        <div className="flex items-end gap-5">
+          <CapsuleIcon size="sm" letter="A" /><CapsuleIcon size="md" letter="A" /><CapsuleIcon size="lg" letter="A" />
+          <CapsuleIcon size="lg" icon={HeartPulse} color={CATEGORY.health.color} /><CapsuleIcon size="lg" icon={Brain} color={CATEGORY.mind.color} /><CapsuleIcon size="lg" icon={Wallet} color={CATEGORY.wealth.color} />
         </div>
       </Section>
 
       <Section title="Stats & badges">
+        <div className="mb-6 flex flex-col gap-4">
+          <div className="flex flex-wrap items-center gap-6"><SystemLabel>Monday · 23 November</SystemLabel><SystemLabel color={CATEGORY.health.color}>Health</SystemLabel><span className="text-small text-ink-3">SystemLabel: banners only</span></div>
+          <SectionLabel rule action={<a href="#" className="text-small font-medium text-ink-2 hover:text-ink">Open Life</a>}>Life pulse (SectionLabel with rule and action)</SectionLabel>
+          <SectionLabel as="div">Renews this week (SectionLabel inside a card)</SectionLabel>
+          <div className="flex items-center gap-3 text-small text-ink-2">
+            <IconChip color={CATEGORY.health.color}><HeartPulse /></IconChip><IconChip color={CATEGORY.wealth.color}><Wallet /></IconChip><IconChip><Droplets /></IconChip>IconChip: a neutral well, the icon in the area colour
+          </div>
+        </div>
         <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
           <Stat label="Sleep" value="7.2h" sub="+0.4h vs last week" tone="good" />
           <Stat label="Spent" value="₹12,480" sub="+18% vs last month" tone="bad" />
@@ -169,6 +218,23 @@ export default function UiGallery() {
         <SegmentTabsDemo />
       </Section>
 
+      <Section title="Page grid: 12 / 8 / 1 columns, spans per tier">
+        <PageGridDemo />
+      </Section>
+
+      <Section title="Page head: label, title, brief, summary, underline tabs, actions">
+        <PageHeaderDemo />
+        <div className="mt-8"><PageHeaderPlainDemo /></div>
+      </Section>
+
+      <Section title="Rail: the last card grows so both columns end together">
+        <RailDemo />
+      </Section>
+
+      <Section title="Fold: closed, open, card, inline">
+        <FoldDemo />
+      </Section>
+
       <Section title="Peek link">
         <PeekLinkDemo />
       </Section>
@@ -180,6 +246,14 @@ export default function UiGallery() {
 
       <Section title="Area template and Life hub">
         <Suspense fallback={<Skeleton className="h-[420px]" />}><AreaGallery /></Suspense>
+      </Section>
+
+      <Section title="Area Overview: targets table, sleep chart, Wealth Overview">
+        <Suspense fallback={<Skeleton className="h-[420px]" />}><OverviewGallery /></Suspense>
+      </Section>
+
+      <Section title="Wealth: Overview, day bars, category rows, habit and transactions">
+        <Suspense fallback={<Skeleton className="h-[900px] rounded-lg" />}><WealthGallery /></Suspense>
       </Section>
 
       <Section title="Coach: Needs you, Ask and no model">
@@ -251,11 +325,13 @@ export default function UiGallery() {
 
       <Section title="Outcome goals">
         <p className="mb-4 text-[13px] text-ink-3">Synthetic examples. Menus, decisions and check-ins need real goals on /goals before the server can save them.</p>
-        <div className="grid gap-6 lg:grid-cols-2">
-          <OutcomeGoalCard g={goalSample} picker={goalPicker} today={goalToday} />
-          <OutcomeGoalCard g={checkInSample} picker={goalPicker} today={goalToday} />
-          <OutcomeGoalCard g={{ ...goalSample, id: 'sample-sensitive', title: 'Sleep 7–8 hours a night', measureName: 'Sleep', unit: 'h', direction: 'range', target: null, rangeLow: 7, rangeHigh: 8, baselineValue: 7.4, sensitive: true, snapshot: snap({ ...goalSample, direction: 'range', target: null, rangeLow: 7, rangeHigh: 8, baselineValue: 7.4 }, 6.4, true) }} picker={goalPicker} today={goalToday} />
-          <PausedFinishedList activeCount={2} goals={[
+        <div className="grid gap-6">
+          <GoalsBoard picker={goalPicker} today={goalToday} feeds={{ 'sample-goal': { peeks: [null], change: { parts: [{ text: 'Typing speed up 8% this week: ', bold: false }, { text: '66 wpm', bold: true }, { text: ' a day vs your usual ', bold: false }, { text: '61 wpm', bold: true }, { text: '.', bold: false }], caption: 'This week against the 4 before', peek: null } } }} goals={[
+            goalSample,
+            checkInSample,
+            { ...goalSample, id: 'sample-sensitive', title: 'Sleep 7–8 hours a night', measureName: 'Sleep', unit: 'h', direction: 'range', target: null, rangeLow: 7, rangeHigh: 8, baselineValue: 7.4, sensitive: true, snapshot: snap({ ...goalSample, direction: 'range', target: null, rangeLow: 7, rangeHigh: 8, baselineValue: 7.4 }, 6.4, true) },
+          ]} />
+          <GoalFolds activeCount={2} goals={[
             { ...goalSample, id: 'sample-paused', title: 'Run 5 km in under 30 minutes', status: 'paused', pausedAt: new Date('2026-11-02T08:00:00Z'), pausedOn: '2026-11-02' },
             { ...goalSample, id: 'sample-finished', title: 'Read 20 pages a day', status: 'finished', finishedAt: new Date('2026-10-04T08:00:00Z'), snapshot: { ...goalSample.snapshot!, met: false } },
           ]} />
@@ -283,6 +359,7 @@ export default function UiGallery() {
       <Section title="Empty & loading">
         <div className="grid gap-6 sm:grid-cols-2">
           <div className="rounded-md bg-surface-2 p-4"><EmptyState title="Nothing here yet" description="Empty states use the line-art style." action={<Button variant="primary">Add one</Button>} /></div>
+          <div className="rounded-md bg-surface-2 p-4"><EmptyState icon={HeartPulse} color={CATEGORY.health.color} title="No sleep logged" description="Connect a source or log it by hand." action={<Button>Log sleep</Button>} /></div>
           <div className="flex flex-col gap-3 rounded-md bg-surface-2 p-4"><Skeleton className="h-5 w-40" /><Skeleton className="h-24" /><Skeleton className="h-5 w-24" /></div>
         </div>
       </Section>
@@ -307,8 +384,11 @@ async function ChartSamples() {
     <div className="grid gap-6 lg:grid-cols-2">
       <div><div className="mb-2 text-[13px] text-ink-2">Daily bars with target</div><DailyBars data={days} target={7} unit="h" label="Daily bars sample" color={CATEGORY.skills.color} /></div>
       <div><div className="mb-2 text-[13px] text-ink-2">Trend with gap</div><TrendArea data={days} target={7} unit="h" label="Trend sample" color={CATEGORY.health.color} /></div>
-      <div><div className="mb-2 text-[13px] text-ink-2">Ranked</div><RankedBars label="Ranked sample" unit="₹" data={[{ label: 'Food delivery', value: 6120 }, { label: 'Groceries', value: 4380 }, { label: 'Transport', value: 1920 }]} color={CATEGORY.wealth.color} /></div>
-      <div><div className="mb-2 text-[13px] text-ink-2">Sparkline</div><div className="w-40"><Sparkline data={days} color={CATEGORY.mind.color} /></div></div>
+      <div><div className="mb-2 text-small text-ink-2">Sparkline, drawn only when hasTrend ({String(hasTrend(days))}); two points: {String(hasTrend(days.slice(0, 2)))}</div><div className="w-40"><Sparkline data={days} color={CATEGORY.mind.color} /></div></div>
+      <div className="lg:col-span-2"><div className="mb-2 text-small text-ink-2">Stacked bars: 11 series, 4 empty leading months. The lead in the accent, two neutrals, the rest as Other; the legend stops at four</div><StackedBars label="Stacked sample" unit="₹" height={260} categories={MONTHS} series={SPEND_SAMPLE} /></div>
+      <div><div className="mb-2 text-small text-ink-2">Stacked bars with a single series</div><StackedBars label="One series" unit="₹" height={160} categories={MONTHS} series={SPEND_SAMPLE.slice(0, 1)} /></div>
+      <div><div className="mb-2 text-small text-ink-2">Share donut: 8 segments, top 3 and Other</div><ShareDonut label="Share sample" unit="₹" totalLabel="held" segments={SHARE_SAMPLE} /></div>
+      <div><div className="mb-2 text-small text-ink-2">Share donut: area colours are kept</div><ShareDonut label="XP by area" totalLabel="XP" segments={CATEGORIES.map((c, i) => ({ id: c, name: CATEGORY[c].label, color: CATEGORY[c].color, value: 120 - i * 15 }))} /></div>
     </div>
   )
 }

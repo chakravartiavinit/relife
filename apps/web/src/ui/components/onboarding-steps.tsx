@@ -3,7 +3,7 @@
 import brand from '@relife/brand/brand.json'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useId, useState } from 'react'
-import { BedDouble, Check, CircleAlert, Clock, Droplet, FileUp, Footprints, LoaderCircle, Lock, RefreshCw, SlidersHorizontal, Sparkles, Sun, Wallet, type LucideIcon } from 'lucide-react'
+import { CircleAlert, Clock, FileUp, LoaderCircle, Lock, RefreshCw, SlidersHorizontal, Wallet, type LucideIcon } from 'lucide-react'
 import type { Pack } from '@relife/contract'
 import type { Category } from '@/db/schema'
 import type { Template } from '@/core/onboarding'
@@ -14,11 +14,12 @@ import { CATEGORY } from '../tokens'
 import { Button } from './button'
 import { Select } from './form'
 import { CurrencyPicker, TimezonePicker } from './region-picker'
-import { AREA_ICON, CapsuleIcon } from './capsule-icon'
+import { CapsuleIcon } from './capsule-icon'
+import { Picture } from './picture'
+import { StatusWord } from './status-word'
 import { Cmd, LOCAL_AI_DOWN, RecheckLocalAi } from './local-ai-check'
 import { ImportDialog } from './imports/import-dialog'
 import type { LocalAiResult } from '@/app/actions'
-import { AppLogo } from './app-logo'
 import { ConnectorDialog, type ConnectorItem } from './connector-market'
 import { InlineUsernameConnect } from './connections-status'
 import { tzOffset, tzOption } from '../regions'
@@ -29,7 +30,6 @@ import {
   AREA_BLURB, AT, CUSTOM_BLURB, IMPROVE, MAX_IMPROVE, PACK_BLURB, canonTz, clamp, currencySign, fitSleep, nfIN, nightHours, type V,
 } from './onboarding-data'
 import { Group, IDLE, LINK, PICKED, PICKER, PILL_HIT, SWAP, Tick, Title, choice, item, radioKeys } from './onboarding-ui'
-import { RoutineArt } from './routine-art'
 import { cn } from '../cn'
 
 // The six questions of setup. Every step comes filled in, so Enter walks straight through; each answer shows up in
@@ -75,7 +75,7 @@ export function StepYou({ v, set, suggested, timezones, currencies, nameError }:
         <BeuiInput
           id={`${id}-n`} label="What should we call you?" value={v.name} onChange={(n) => set('name', n)} placeholder="First name" autoComplete="given-name" maxLength={60} autoFocus
           error={nameError} success={!!v.name.trim()}
-          classNames={{ label: 'px-0 text-small font-semibold text-ink', field: 'h-12 rounded-md border-transparent bg-surface shadow-1', input: 'text-base sm:text-body' }}
+          classNames={{ label: 'px-0 text-small font-medium text-ink', field: 'h-12 rounded-md border-transparent bg-surface shadow-1', input: 'text-base sm:text-body' }}
         />
       </motion.div>
       {/* Above what follows (each block is its own layer once it has animated in), so an open list covers it. */}
@@ -107,25 +107,25 @@ export function packRows(p: Pack, sourceName: (id: string) => string | undefined
 }
 
 /** One choice of the Pack step: a radio card with the capsule, a one-line promise and what it brings. */
-function PackCard({ on, onPick, icon, color, name, blurb, rows }: {
-  on: boolean; onPick: () => void; icon: LucideIcon; color: string; name: string; blurb: string; rows: { k: string; v: string }[]
+function PackCard({ on, onPick, picture, name, blurb, rows }: {
+  on: boolean; onPick: () => void; picture: React.ReactNode; name: string; blurb: string; rows: { k: string; v: string }[]
 }) {
   return (
     <li role="none">
       {/* Concentric: radius 16 card, 12px padding. */}
       <button type="button" role="radio" aria-checked={on} tabIndex={on ? 0 : -1} onClick={onPick}
         className={cn('relative flex w-full items-start gap-3 rounded-[16px] p-3 text-start', choice, on ? PICKED : IDLE)}>
-        <CapsuleIcon color={color} icon={icon} size="sm" className="mt-0.5 ms-1" />
+        {picture}
         <span className="min-w-0 flex-1 pe-7">
           <span className="flex flex-wrap items-baseline gap-x-2">
-            <span className="text-body font-semibold text-ink">{name}</span>
+            <span className="text-body font-medium text-ink">{name}</span>
             <span className="text-caption text-ink-3">{blurb}</span>
           </span>
           {rows.length ? (
             <dl className="mt-1.5 grid grid-cols-[4.75rem_minmax(0,1fr)] gap-x-3 gap-y-0.5">
               {rows.map((r) => (
                 <div key={r.k} className="contents">
-                  <dt className="pt-0.5 font-mono text-label text-ink-3 uppercase">{r.k}</dt>
+                  <dt className="pt-0.5 text-caption font-medium text-ink-3">{r.k}</dt>
                   <dd className="text-caption text-ink-2">{r.v}</dd>
                 </div>
               ))}
@@ -145,10 +145,10 @@ export function StepPack({ v, packs, sourceName, onPick }: { v: V; packs: Pack[]
       <Title step={AT.pack} title="Pick a starting pack" body="Each pack adds areas, routines, targets and a first goal to approve. You can change all of it." />
       <motion.ul variants={item} role="radiogroup" aria-label="Starting pack" onKeyDown={radioKeys} className="flex flex-col gap-2">
         {packs.map((p) => (
-          <PackCard key={p.id} on={v.pack === p.id} onPick={() => onPick(p.id)} icon={AREA_ICON[p.areas?.[0] ?? 'health']} color={CATEGORY[p.areas?.[0] ?? 'health'].color}
+          <PackCard key={p.id} on={v.pack === p.id} onPick={() => onPick(p.id)} picture={<Picture of="area" to={p.areas?.[0] ?? 'health'} size={40} />}
             name={p.name} blurb={PACK_BLURB[p.id] ?? ''} rows={packRows(p, sourceName)} />
         ))}
-        <PackCard on={v.pack === null} onPick={() => onPick(null)} icon={SlidersHorizontal} color="var(--pill)" name="Custom" blurb={CUSTOM_BLURB} rows={[]} />
+        <PackCard on={v.pack === null} onPick={() => onPick(null)} picture={<CapsuleIcon color="var(--pill)" icon={SlidersHorizontal} size="sm" className="ms-1" />} name="Custom" blurb={CUSTOM_BLURB} rows={[]} />
       </motion.ul>
     </>
   )
@@ -178,9 +178,9 @@ export function StepAreas({ v, set, picks, options, onRefuse }: { v: V; set: Set
               {/* Concentric: radius 16 tile, 12px padding. */}
               <button type="button" role="checkbox" aria-checked={on} onClick={() => toggleArea(c)}
                 className={cn('relative flex min-h-[84px] w-full items-start gap-3 rounded-[16px] p-3 text-start', choice, on ? PICKED : IDLE)}>
-                <CapsuleIcon color={CATEGORY[c].color} icon={AREA_ICON[c]} size="sm" className="mt-0.5 ms-1" />
+                <Picture of="area" to={c} size={40} />
                 <span className="min-w-0 flex-1 pe-5">
-                  <span className="block truncate text-body font-semibold text-ink">{CATEGORY[c].label}</span>
+                  <span className="block truncate text-body font-medium text-ink">{CATEGORY[c].label}</span>
                   <span className="mt-0.5 block text-caption text-ink-3">{AREA_BLURB[c]}</span>
                 </span>
                 <span className="absolute end-2.5 top-2.5"><Tick on={on} /></span>
@@ -198,7 +198,7 @@ export function StepAreas({ v, set, picks, options, onRefuse }: { v: V; set: Set
               const on = rank > 0
               return (
                 <li key={o.id}>
-                  {/* A 36px capsule with a 40px hit area. Picked: its dot swaps for its priority number. */}
+                  {/* A 36px capsule with a 40px hit area. Picked: its picture swaps for its priority number. */}
                   <button type="button" role="checkbox" aria-checked={on} onClick={() => toggleTrain(o.id)}
                     className={cn('relative inline-flex h-9 items-center gap-2 rounded-full ps-3 pe-3.5 text-small font-medium text-ink after:absolute after:inset-[-2px]', choice, on ? PICKED : IDLE, !on && full && 'opacity-50')}>
                     <span aria-hidden className="relative grid size-4 shrink-0 place-items-center">
@@ -206,7 +206,7 @@ export function StepAreas({ v, set, picks, options, onRefuse }: { v: V; set: Set
                         {on ? (
                           <motion.span key="rank" {...SWAP} className="absolute inset-0 grid place-items-center rounded-full bg-pill text-label leading-none text-white tabular-nums">{rank}</motion.span>
                         ) : (
-                          <motion.span key="dot" {...SWAP} className="size-2 rounded-full" style={{ background: CATEGORY[o.area].color }} />
+                          <motion.span key="art" {...SWAP} className="absolute inset-0 grid place-items-center"><Picture of="tracker" name={o.art} size={20} className="size-4" /></motion.span>
                         )}
                       </AnimatePresence>
                     </span>
@@ -235,15 +235,15 @@ function SourceRow({ c }: { c: ConnectorItem }) {
   const sub = [c.provides.slice(0, 3).join(', '), howNote(c)].filter(Boolean).join(' · ')
   return (
     <li className="flex items-start gap-3 px-4 py-3">
-      <AppLogo id={c.id} category={c.category} size="sm" />
+      <Picture of="connector" id={c.id} name={c.name} size={40} />
       <div className="min-w-0 flex-1 self-center">
-        <p className="truncate text-body font-semibold text-ink">{c.name}</p>
+        <p className="truncate text-body font-medium text-ink">{c.name}</p>
         {c.connected || how !== 'inline' ? <p className="line-clamp-2 text-caption text-ink-3">{c.connected ? `Connected · ${c.statusLabel ?? 'first sync starting'}` : sub}</p> : null}
         {/* A username is one field, checked when you press Connect. */}
         {!c.connected && how === 'inline' ? <div className="mt-1.5"><InlineUsernameConnect c={c} /></div> : null}
       </div>
       {c.connected ? (
-        <span role="img" aria-label="Connected" className="grid size-6 shrink-0 place-items-center self-center rounded-full bg-good text-white"><Check className="size-3.5" strokeWidth={3} /></span>
+        <StatusWord tone="good" className="shrink-0 self-center">Connected</StatusWord>
       ) : how === 'later' ? (
         <span className="inline-flex h-7 shrink-0 items-center self-center rounded-full bg-surface-2 px-2.5 text-caption font-medium text-ink-2">Later</span>
       ) : how === 'dialog' ? (
@@ -292,12 +292,12 @@ function LocalStatus({ local, checking, onCheck, onCloud }: { local: LocalAiResu
     return (
       <div role="status">
         <div className="flex items-center gap-3 rounded-md bg-surface p-3 shadow-1">
-          <AppLogo id="local" size="xs" />
+          <Picture of="provider" id="local" size={40} />
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-small font-semibold text-ink">Ollama is running</span>
+            <span className="block truncate text-small font-medium text-ink">Ollama is running</span>
             <span className="block truncate text-caption text-ink-3">{local.model} on {host}</span>
           </span>
-          <span className="inline-flex shrink-0 items-center gap-1 text-caption font-medium text-good"><Check aria-hidden className="size-3.5" strokeWidth={2.5} />Ready</span>
+          <StatusWord tone="good" className="shrink-0">Ready</StatusWord>
         </div>
         <p className="mt-2 flex items-start gap-2 text-caption text-ink-3"><Lock aria-hidden className="mt-px size-3.5 shrink-0" strokeWidth={1.5} />Answered in {local.ms} ms. Free and offline; slower on older machines.</p>
       </div>
@@ -305,7 +305,7 @@ function LocalStatus({ local, checking, onCheck, onCloud }: { local: LocalAiResu
   }
   return (
     <div role="alert" className="rounded-md bg-surface-2 p-3">
-      <p className="flex items-start gap-2 text-small font-semibold text-ink">
+      <p className="flex items-start gap-2 text-small font-medium text-ink">
         <CircleAlert aria-hidden className="mt-px size-4 shrink-0 text-warn" strokeWidth={1.5} />
         {local.state === 'no-model' ? 'Ollama is running without the model' : LOCAL_AI_DOWN}
       </p>
@@ -328,7 +328,7 @@ function AiOption({ on, onPick, title, sub, chip, children }: { on: boolean; onP
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-2">
-            <span className="text-body font-semibold text-ink">{title}</span>
+            <span className="text-body font-medium text-ink">{title}</span>
             {chip ? <span className="rounded-full bg-pill/10 px-2 py-0.5 text-label font-medium text-pill-ink">{chip}</span> : null}
           </span>
           <span className="mt-0.5 block text-caption text-pretty text-ink-3">{sub}</span>
@@ -359,7 +359,7 @@ export function StepAi({ v, set, ai, providers, local, checking, onCheck, onRech
       {ai && !ai.ready && ai.model?.startsWith('local:') ? (
         // A local model is already chosen and its server isn't answering: setup leaves the choice alone.
         <motion.div variants={item} role="status" className="rounded-lg bg-surface p-4 shadow-1">
-          <p className="flex items-start gap-2 text-small font-semibold text-ink">
+          <p className="flex items-start gap-2 text-small font-medium text-ink">
             <CircleAlert aria-hidden className="mt-px size-4 shrink-0 text-warn" strokeWidth={1.5} />{LOCAL_AI_DOWN}
           </p>
           <p className="mt-1 ps-6 text-caption text-ink-2"><Cmd text={ai.local?.message ?? `${ai.model.slice('local:'.length)} isn’t answering yet.`} /></p>
@@ -368,8 +368,9 @@ export function StepAi({ v, set, ai, providers, local, checking, onCheck, onRech
         </motion.div>
       ) : ai?.ready ? (
         <motion.div variants={item} className="flex items-center gap-3 rounded-lg bg-surface p-4 shadow-1">
-          <span role="img" aria-label="Connected" className="grid size-6 shrink-0 place-items-center rounded-full bg-good text-white"><Check className="size-3.5" strokeWidth={3} /></span>
-          <p className="min-w-0 text-small text-ink-2"><span className="block font-semibold text-ink">A model is connected{ai.model ? `: ${ai.model}` : ''}</span>Change it any time in You › Connections.</p>
+          <Picture of="provider" id={ai.model?.split(':')[0] ?? 'local'} size={40} />
+          <p className="min-w-0 flex-1 text-small text-ink-2"><span className="block font-medium text-ink">A model is connected{ai.model ? `: ${ai.model}` : ''}</span>Change it any time in You › Connections.</p>
+          <StatusWord tone="good" className="shrink-0">Connected</StatusWord>
         </motion.div>
       ) : (
         <motion.ul variants={item} role="radiogroup" aria-label="AI for your coach" onKeyDown={radioKeys} className="flex flex-col gap-2">
@@ -382,8 +383,8 @@ export function StepAi({ v, set, ai, providers, local, checking, onCheck, onRech
             <div className="flex flex-wrap items-center gap-2">
               {cloud.map((p) => (
                 <ConnectorDialog key={p.id} c={p} trigger={
-                  <button type="button" aria-label={`Connect ${p.name}`} title={p.name} className={cn('grid size-10 place-items-center rounded-[10px]', choice, 'hover:opacity-80')}>
-                    <AppLogo id={p.id} size="xs" />
+                  <button type="button" aria-label={`Connect ${p.name}`} title={p.name} className={cn('rounded-md', choice, 'hover:opacity-80')}>
+                    <Picture of="provider" id={p.id} size={40} />
                   </button>
                 } />
               ))}
@@ -405,10 +406,10 @@ const STEPS_RANGE = { min: 1000, max: 30000, step: 1000 }
 const WATER = { min: 500, max: 6000, step: 250 }
 
 /** One line of the day card: what it is on the left, its control on the right. Lines are divided by hairlines. */
-function Line({ icon: Icon, label, children }: { icon: LucideIcon; label: string; children: React.ReactNode }) {
+function Line({ picture, label, children }: { picture: React.ReactNode; label: string; children: React.ReactNode }) {
   return (
     <div className="flex min-h-14 items-center justify-between gap-3 border-divider px-4 py-1.5 not-first:border-t">
-      <span className="flex min-w-0 items-center gap-3 text-body font-semibold text-ink"><Icon aria-hidden className="size-4 shrink-0 text-ink-2" strokeWidth={1.5} />{label}</span>
+      <span className="flex min-w-0 items-center gap-3 text-body font-medium whitespace-nowrap text-ink">{picture}{label}</span>
       {children}
     </div>
   )
@@ -435,25 +436,23 @@ const brief = (v: V) => [
   v.constraints.trim() ? `Work around: ${v.constraints.trim()}.` : '',
 ].filter(Boolean).join(' ').slice(0, 1500)
 
-/** One routine: its colour dot, its name, when it runs, and a switch. One you already have lies flat. */
+/** One routine: its picture, its name, when it runs, and a switch. One you already have lies flat. */
 function RoutineLine({ t, sub, on, have, onToggle }: { t: Template; sub: string; on: boolean; have?: boolean; onToggle: () => void }) {
   return (
     <li className="flex min-h-14 items-center gap-3 px-4 py-2">
-      <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-[8px]" style={{ background: `color-mix(in oklch, ${CATEGORY[t.area].color} 14%, transparent)` }}>
-        <RoutineArt name={t.name} kind={t.kind} area={t.area} className="size-5" />
-      </span>
+      <Picture of="routine" name={t.name} kind={t.kind} area={t.area} size={32} />
       <span className="min-w-0 flex-1">
-        <span className={cn('block truncate text-body font-semibold', have ? 'text-ink-2' : 'text-ink')}>{t.name}</span>
+        <span className={cn('block truncate text-body font-medium', have ? 'text-ink-2' : 'text-ink')}>{t.name}</span>
         <span className="block truncate text-caption text-ink-3">{have ? 'Already added' : sub}</span>
       </span>
-      {have ? <Check aria-label="Already added" className="size-4 shrink-0 text-ink-3" strokeWidth={2} /> : <Switch checked={on} onCheckedChange={onToggle} ariaLabel={t.name} />}
+      {have ? <StatusWord tone="quiet" className="shrink-0">Added</StatusWord> : <Switch checked={on} onCheckedChange={onToggle} ariaLabel={t.name} />}
     </li>
   )
 }
 
 const SKELETON = (
   <ul role="status" aria-label="Suggesting routines" className="divide-y divide-divider rounded-lg bg-surface shadow-1">
-    {[0, 1, 2, 3].map((k) => <li key={k} className="flex min-h-14 items-center gap-3 px-4"><div className="size-8 animate-pulse rounded-[8px] bg-surface-2" /><div className="h-4 w-40 animate-pulse rounded-full bg-surface-2" style={{ animationDelay: `${k * 100}ms` }} /></li>)}
+    {[0, 1, 2, 3].map((k) => <li key={k} className="flex min-h-14 items-center gap-3 px-4"><div className="size-8 animate-pulse rounded-md bg-surface-2" /><div className="h-4 w-40 animate-pulse rounded-full bg-surface-2" style={{ animationDelay: `${k * 100}ms` }} /></li>)}
   </ul>
 )
 
@@ -511,7 +510,7 @@ export function StepRoutines({ v, set, mode, kind, building, setBuilding, starte
     <>
       <Title step={AT.routines} title="Routines and targets" />
       <motion.div variants={item} className="rounded-lg bg-surface shadow-1">
-        <Line icon={Sun} label="Your day">
+        <Line picture={<Picture of="routine" name="morning" size={20} />} label="Your day">
           <span className="flex items-center gap-2">
             <Select variant="pill" className={PILL_HIT} aria-label="Wake up" value={v.wake} onChange={(e) => move('wake', e.target.value)}>
               {hours('wake').map((t) => <option key={t} value={t}>Up {t}</option>)}
@@ -521,14 +520,14 @@ export function StepRoutines({ v, set, mode, kind, building, setBuilding, starte
             </Select>
           </span>
         </Line>
-        <Line icon={BedDouble} label="Sleep">
+        <Line picture={<Picture of="tracker" name="sleep" size={20} />} label="Sleep">
           <Target label="Sleep target" value={v.sleepHours} range={SLEEP} text={(n) => `${n} h`} onChange={(n) => { set('sleepHours', n); set('sleepTouched', true) }} />
         </Line>
-        <Line icon={Footprints} label="Steps">
+        <Line picture={<Picture of="tracker" name="steps" size={20} />} label="Steps">
           <Target label="Steps target" value={v.steps} range={STEPS_RANGE} text={(n) => nfIN.format(n)} onChange={(n) => set('steps', n)} />
         </Line>
         {v.areas.includes('health') ? (
-          <Line icon={Droplet} label="Water">
+          <Line picture={<Picture of="tracker" name="water" size={20} />} label="Water">
             <Target label="Water target" value={v.waterMl} range={WATER} text={(n) => `${nfIN.format(n)} ml`} onChange={(n) => set('waterMl', clamp(n, WATER.min, WATER.max))} />
           </Line>
         ) : null}
@@ -565,7 +564,7 @@ export function StepRoutines({ v, set, mode, kind, building, setBuilding, starte
             )}
             <p className="mt-3 flex justify-between gap-3">
               {ordered.length > shown.length || all ? <button type="button" onClick={() => setAll(!all)} className={LINK}>{all ? 'Show fewer' : `Show ${ordered.length - shown.length} more`}</button> : <span />}
-              {ai.ready && mode === 'starter' ? <button type="button" onClick={() => set('routineMode', 'ai')} className={cn(LINK, 'inline-flex items-center gap-1')}><Sparkles aria-hidden className="size-3.5" strokeWidth={1.5} />Suggest from my focus</button> : null}
+              {ai.ready && mode === 'starter' ? <button type="button" onClick={() => set('routineMode', 'ai')} className={LINK}>Suggest from my focus</button> : null}
             </p>
           </>
         )}

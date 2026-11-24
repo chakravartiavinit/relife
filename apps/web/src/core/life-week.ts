@@ -6,8 +6,7 @@ import { buildWeek } from '@/domain/life-week'
 import { weekStart } from '@/domain/quests'
 import { peekParam } from '@/domain/peek'
 import { latestBriefs } from './briefs'
-import { isSpend, trackerDays, transactionsBetween } from './metrics'
-import { loadPatterns } from './patterns'
+import { patternsFor } from './patterns'
 import { addDays, localDate } from './time'
 import type { User } from './user'
 import { xpSummary } from './xp'
@@ -28,7 +27,7 @@ export const loadLifeWeek = cache(async (user: User, areas: string[]) => {
   const [xp, patterns] = await Promise.all([
     db.select({ date: schema.xpEvents.localDate, area: schema.xpEvents.area, amount: schema.xpEvents.amount }).from(schema.xpEvents)
       .where(and(eq(schema.xpEvents.userId, user.id), gte(schema.xpEvents.localDate, from), lte(schema.xpEvents.localDate, today), ne(schema.xpEvents.area, 'general'), ne(schema.xpEvents.kind, 'achievement'))),
-    loadPatterns(user),
+    patternsFor(user),
   ])
   const week = buildWeek(xp, today, areas)
   const change = (area: string) => {
@@ -39,26 +38,4 @@ export const loadLifeWeek = cache(async (user: User, areas: string[]) => {
     return top ? { text: changeLine(top), peek: id ? { type: 'metric' as const, id } : undefined } : null
   }
   return { ...week, changes: Object.fromEntries(areas.map((a) => [a, change(a)])) }
-})
-
-/** The last 14 days of each area's first pinned metric (Wealth: spending), one query for all tiles. Missing for an area with no data. */
-export const loadHubSparks = cache(async (user: User, today: string, bySlug: Record<string, string | undefined>) => {
-  const slugs = Object.values(bySlug).filter((s): s is string => !!s)
-  const from = addDays(today, -13)
-  // Wealth has no tracker: its trend is money spent per day.
-  const [rows, txns] = await Promise.all([
-    slugs.length ? trackerDays(user, from, today, { slugs }) : [],
-    'wealth' in bySlug && !bySlug.wealth ? transactionsBetween(user, from, today) : [],
-  ])
-  const days = Array.from({ length: 14 }, (_, i) => addDays(from, i))
-  const out: Record<string, { name: string; points: { date: string; value: number | null }[] } | undefined> = {}
-  const spend = new Map<string, number>()
-  for (const t of txns) if (isSpend(t)) spend.set(t.localDate, (spend.get(t.localDate) ?? 0) - t.base)
-  if (spend.size >= 3) out.wealth = { name: 'Spending', points: days.map((date) => ({ date, value: spend.get(date) ?? 0 })) }
-  for (const [area, slug] of Object.entries(bySlug)) {
-    const r = rows.find((x) => x.tracker.slug === slug)
-    if (!r || r.days.size < 3) continue
-    out[area] = { name: r.tracker.name, points: days.map((date) => ({ date, value: r.days.get(date) ?? null })) }
-  }
-  return out
 })

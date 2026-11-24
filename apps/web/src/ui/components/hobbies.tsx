@@ -41,7 +41,7 @@ function HobbyForm({ onDone }: { onDone: () => void }) {
     <form action={action} className="flex flex-col gap-5">
       <div className="flex items-end gap-3">
         {/* Live picture: changes as you type ("guitar", "chess", "baking"…). */}
-        <HobbyImage name={name || 'sparkles'} />
+        <HobbyImage name={name || 'art'} />
         <Field label="Hobby" htmlFor={`${id}-n`} className="flex-1">
           <Input id={`${id}-n`} name="name" required maxLength={40} autoFocus placeholder="Guitar" value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
@@ -51,7 +51,7 @@ function HobbyForm({ onDone }: { onDone: () => void }) {
           <button
             key={i} type="button" onClick={() => setName(i)} aria-pressed={name === i}
             className={cn(
-              'inline-flex h-9 items-center gap-1.5 rounded-full ps-1.5 pe-3 text-[12.5px] font-medium transition-[background-color,color,scale] duration-150 ease-out-quint active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill',
+              'inline-flex h-9 items-center gap-1.5 rounded-full ps-1.5 pe-3 text-caption font-medium transition-[background-color,color,scale] duration-150 ease-out-quint active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill',
               name === i ? 'bg-ink text-bg' : 'bg-surface-2 text-ink-2 hover:text-ink',
             )}
           >
@@ -67,7 +67,7 @@ function HobbyForm({ onDone }: { onDone: () => void }) {
             <button
               key={w} type="button" onClick={() => setWeekly(w)} aria-pressed={weekly === w}
               className={cn(
-                'h-9 rounded-md px-3 text-[13px] font-medium tabular-nums transition-[background-color,color,box-shadow,scale] duration-150 ease-out-quint active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill',
+                'h-9 rounded-md px-3 text-small font-medium tabular-nums transition-[background-color,color,box-shadow,scale] duration-150 ease-out-quint active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill',
                 weekly === w ? 'bg-surface text-ink shadow-[0_0_0_2px_var(--pill)]' : 'bg-surface-2 text-ink-2 hover:text-ink',
               )}
             >
@@ -76,7 +76,7 @@ function HobbyForm({ onDone }: { onDone: () => void }) {
           ))}
           <span className="flex items-center gap-2">
             <span className="w-24"><Input id={`${id}-w`} name="weekly" type="number" min={10} max={3000} value={weekly} onChange={(e) => setWeekly(Number(e.target.value) || 0)} className="tabular-nums" aria-label="Minutes a week" /></span>
-            <span className="text-[13px] whitespace-nowrap text-ink-3">min a week</span>
+            <span className="text-small whitespace-nowrap text-ink-3">min a week</span>
           </span>
         </div>
       </Field>
@@ -105,7 +105,7 @@ export function PracticeButtons({ slug, name, color }: { slug: string; name: str
       {[15, 30].map((m) => (
         <button
           key={m} type="button" disabled={pending} onClick={() => log(m)}
-          className="h-10 flex-1 rounded-md text-[13px] font-semibold tabular-nums transition-[background-color,scale,opacity] duration-150 ease-out-quint active:scale-[0.96] disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill"
+          className="h-10 flex-1 rounded-md text-small font-medium tabular-nums transition-[background-color,scale,opacity] duration-150 ease-out-quint active:scale-[0.96] disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill"
           style={{ color: `color-mix(in oklch, ${color} 80%, var(--ink))`, background: `color-mix(in oklch, ${color} 14%, transparent)` }}
         >
           +{m} min

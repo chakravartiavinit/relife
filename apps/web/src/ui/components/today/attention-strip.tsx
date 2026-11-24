@@ -1,63 +1,64 @@
 'use client'
 
 import Link from 'next/link'
-import { AlarmClock, BellRing, CalendarClock, ChevronRight, Pill, TriangleAlert, Unplug, type LucideIcon } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import type { PeekRef } from '@/domain/peek'
+import type { PictureRef } from '@/ui/picture'
 import { cn } from '@/ui/cn'
-import { PeekLink } from '../peek/peek-link'
+import { Card } from '../card'
+import { StatusRow } from '../status-row'
 
 export type AttentionKind = 'risk' | 'money' | 'medicine' | 'routine' | 'sync' | 'coach'
 export type AttentionCard = { key: string; tone: 'bad' | 'warn' | 'info'; kind: AttentionKind; title: string; detail: string; href: string; peek?: PeekRef }
 
-const ICON: Record<AttentionKind, LucideIcon> = { risk: TriangleAlert, money: CalendarClock, medicine: Pill, routine: AlarmClock, sync: Unplug, coach: BellRing }
 /** The one inline action each card offers, in the words the mockup uses. */
 const ACTION: Record<AttentionKind, string> = { risk: 'Review', money: 'Review', medicine: 'Refill', routine: 'Open', sync: 'Fix', coach: 'Open' }
-const TONE = { bad: 'var(--bad)', warn: 'var(--warn)', info: 'var(--pill)' } as const
+
+/** What each card shows at its left: the Coach picture, the routine, the service, the failing connector or Wealth. */
+const pictureOf = (c: AttentionCard): PictureRef => {
+  switch (c.kind) {
+    case 'coach': return { of: 'nav', to: '/coach' }
+    case 'medicine':
+    case 'routine': return { of: 'routine', name: c.title, kind: c.kind }
+    case 'money': return { of: 'merchant', name: c.title, category: 'Subscriptions' }
+    case 'sync': return { of: 'connector', id: c.detail.split(',')[0].trim() }
+    case 'risk': return { of: 'area', to: 'wealth' }
+  }
+}
 
 /** At most this many cards show; the rest are one tap away in Coach. */
 export const MAX_CARDS = 3
 
 /**
- * "Check first": the time-sensitive few (a refill, a renewal within two days, a failing connector, money near
- * liquidation) plus one chip for everything waiting in Coach. Only rendered when there is something to show.
- * Three cards side by side on a laptop, a swipeable row on a phone.
+ * "Check first", a card in Today's rail: the time-sensitive few (a refill, a renewal within two days, a failing
+ * connector, money near liquidation), one line each with its action, plus what waits in Coach. With nothing urgent it
+ * is the Coach line alone, with the Coach picture. Only rendered when there is something to show.
  */
-export function AttentionStrip({ cards, coach }: { cards: AttentionCard[]; coach: number }) {
+export function AttentionStrip({ cards, coach, className }: { cards: AttentionCard[]; coach: number; className?: string }) {
   const shown = cards.slice(0, MAX_CARDS)
   if (!shown.length && !coach) return null
+  const rows = shown.length ? shown : [{ key: 'coach', tone: 'info', kind: 'coach', title: `${coach} thing${coach === 1 ? '' : 's'} need${coach === 1 ? 's' : ''} you`, detail: 'Decisions and data waiting in Coach', href: '/coach' } satisfies AttentionCard]
   return (
-    <section aria-labelledby="check-first">
-      <div className="mb-2 flex items-center justify-between gap-3 px-1">
-        <h2 id="check-first" className="font-mono text-label text-ink-3 uppercase">Check first{shown.length ? ` · ${shown.length}` : ''}</h2>
-        {coach ? (
-          <Link href="/coach" className="inline-flex h-10 items-center gap-0.5 rounded-md px-1 text-small font-semibold text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-pill">
-            All in Coach · {coach}<ChevronRight className="size-4" strokeWidth={1.5} aria-hidden />
-          </Link>
-        ) : null}
+    <Card aria-labelledby={shown.length ? 'check-first' : undefined} aria-label={shown.length ? undefined : 'Check first'} className={cn('px-5 py-3', className)}>
+      {shown.length ? (
+        <div className="flex items-center justify-between gap-3 pt-1">
+          <h2 id="check-first" className="font-display text-heading text-ink">Check first</h2>
+          {coach ? (
+            <Link href="/coach" className="-me-1 inline-flex h-9 items-center gap-0.5 rounded-md px-1 text-small font-medium text-ink-2 hover-fine:text-ink focus-visible:outline-2 focus-visible:outline-pill">
+              All in Coach · {coach}<ChevronRight className="size-4" strokeWidth={1.5} aria-hidden />
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
+      <div>
+        {rows.map((c) => (
+          <StatusRow
+            key={c.key} picture={pictureOf(c)} pictureSize={40} name={c.title} line={c.detail}
+            {...(c.peek ? { peek: c.peek } : { href: c.href })}
+            trailing={<span aria-hidden className="inline-flex h-8 items-center rounded-md bg-surface px-3 text-small font-medium text-ink shadow-1">{ACTION[c.kind]}</span>}
+          />
+        ))}
       </div>
-      <ul className="-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-1 [scrollbar-width:none] sm:-mx-8 sm:px-8 lg:mx-0 lg:grid lg:grid-cols-3 lg:overflow-visible lg:px-0 lg:pb-0">
-        {shown.map((c) => <li key={c.key} className="w-[290px] shrink-0 snap-start lg:w-auto"><Card c={c} /></li>)}
-        {!shown.length ? <li className="w-full"><Card c={{ key: 'coach', tone: 'info', kind: 'coach', title: `${coach} thing${coach === 1 ? '' : 's'} need${coach === 1 ? 's' : ''} you`, detail: 'Decisions and data waiting in Coach', href: '/coach' }} /></li> : null}
-      </ul>
-    </section>
+    </Card>
   )
-}
-
-function Card({ c }: { c: AttentionCard }) {
-  const Icon = ICON[c.kind]
-  const tone = TONE[c.tone]
-  const cls = 'group flex h-full min-h-16 items-center gap-3 rounded-lg bg-surface p-3 shadow-1 transition-[box-shadow] duration-150 hover:shadow-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill'
-  const body = (
-    <>
-      <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-md" style={{ color: tone, background: `color-mix(in oklch, ${tone} 14%, transparent)` }}>
-        <Icon className="size-5" strokeWidth={1.5} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-body font-semibold text-ink">{c.title}</span>
-        <span className="block truncate text-caption text-ink-3">{c.detail}</span>
-      </span>
-      <span className={cn('inline-flex h-8 shrink-0 items-center rounded-full bg-surface-2 px-3 text-caption font-semibold text-ink transition-[background-color] duration-150 group-hover:bg-surface-3')}>{ACTION[c.kind]}</span>
-    </>
-  )
-  return c.peek ? <PeekLink to={c.peek} className={cls}>{body}</PeekLink> : <Link href={c.href} className={cls}>{body}</Link>
 }

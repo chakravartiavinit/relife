@@ -2,7 +2,7 @@
 
 import brand from '@relife/brand/brand.json'
 import Link from 'next/link'
-import { CircleAlert, CircleCheck, CircleDashed, RefreshCw, Sparkles } from 'lucide-react'
+import { CircleAlert, CircleCheck, CircleDashed, FileText, RefreshCw } from 'lucide-react'
 import type { BriefPeek, SyncPeek } from '@/core/peek/types'
 import { buttonClass } from '../../button'
 import { Badge } from '../../card'
@@ -65,7 +65,7 @@ export function SyncPeekView({ data: d }: { data: SyncPeek }) {
 const scopeName = (scope: string) => (scope === 'today' ? 'Today' : scope === 'time' ? 'Time' : (CATEGORY[scope as keyof typeof CATEGORY]?.label ?? scope))
 
 export function briefHeading(d: BriefPeek) {
-  return { title: `Why this summary`, description: scopeName(d.scope), icon: <PeekIcon icon={Sparkles} /> }
+  return { title: `Why this summary`, description: scopeName(d.scope), picture: { of: 'area', to: d.scope } as const }
 }
 
 /** The numbers behind a one-line summary; a number that has its own Peek links to it. With no summary written yet it says so and offers Coach. */
@@ -73,7 +73,7 @@ export function BriefPeekView({ data: d }: { data: BriefPeek }) {
   if (!d.line) {
     return (
       <div>
-        <PeekNote icon={Sparkles} label="No summary yet">
+        <PeekNote icon={FileText} label="No summary yet">
           {brand.name} has not written a summary for {scopeName(d.scope)} yet. It writes one once there is data to describe, and shows the numbers it came from here.
         </PeekNote>
         <div className="mt-5"><Link href={`/coach?ask=${encodeURIComponent(`How is my ${scopeName(d.scope).toLowerCase()} going?`)}`} className={buttonClass({ variant: 'secondary' })}>Ask Coach instead</Link></div>
@@ -82,7 +82,7 @@ export function BriefPeekView({ data: d }: { data: BriefPeek }) {
   }
   return (
     <div>
-      <PeekNote icon={Sparkles} label="Summary">{d.line}</PeekNote>
+      <PeekNote icon={FileText} label="Summary">{d.line}</PeekNote>
       <PeekSection label="Built from">
         {d.facts.map((f) => {
           const to = parsePeek(f.peek)

@@ -13,6 +13,8 @@ export type AreaKpi = {
   value: string
   sub?: string
   tone?: 'good' | 'bad'
+  /** A share of a whole, 0 to 1 (medicines kept, people in touch): the Overview's targets table draws it as a bar. */
+  ratio?: number
   /** Money that counts up on screen instead of a fixed `value`. */
   ticker?: { value: number; currency: string }
   /** Opens this Peek; without one the tile opens the area's summary (`brief:<scope>`). */

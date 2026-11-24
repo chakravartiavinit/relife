@@ -1,19 +1,19 @@
 'use client'
 
 import brand from '@relife/brand/brand.json'
-import { CalendarCheck, CalendarClock, ChartLine, CircleDashed, Repeat, Target } from 'lucide-react'
+import { CalendarCheck, CalendarClock, CircleDashed } from 'lucide-react'
 import type { GoalPeek } from '@/core/peek/types'
 import { CATEGORY } from '@/ui/tokens'
 import { Capsule } from '../../capsule'
-import { GoalStatusBadge } from '../../goals/goal-card'
-import { GoalDetailActions } from '../../goals/goal-detail-actions'
+import { Picture } from '../../picture'
+import { GoalMenu, GoalStatusBadge } from '../../goals/goal-card'
 import { CheckInList, GoalHistory } from '../../goals/goal-history'
 import { CheckInPanel } from '../../goals/goal-review'
-import { coverageLine, day, directionLabel, fill, measureLine, movement, target, value, weekday } from '../../goals/format'
-import { PeekFooter, PeekIcon, PeekOpen, PeekSection, PeekStats } from '../peek-parts'
+import { coverageLine, day, directionLabel, fill, goalPicture, measureLine, movement, target, value, weekday } from '../../goals/format'
+import { PeekFooter, PeekOpen, PeekSection, PeekStats } from '../peek-parts'
 
 export function goalHeading(d: GoalPeek) {
-  return { title: d.goal.title, description: `${CATEGORY[d.goal.area].label} · goal · ${measureLine(d.goal)}`, icon: <PeekIcon icon={Target} color={CATEGORY[d.goal.area].color} /> }
+  return { title: d.goal.title, description: `${CATEGORY[d.goal.area].label} · goal · ${measureLine(d.goal)}`, picture: goalPicture(d.goal) }
 }
 
 /** An outcome goal: baseline, now and target, progress, check-in, linked actions, history and the weekly decisions. */
@@ -25,7 +25,10 @@ export function GoalPeekView({ data: d }: { data: GoalPeek }) {
   const s = g.snapshot
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-2"><GoalStatusBadge g={g} />{g.status !== 'active' ? <span className="text-caption text-ink-3 capitalize">{g.status}</span> : null}</div>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1"><GoalStatusBadge g={g} />{g.status !== 'active' ? <span className="text-caption text-ink-3 capitalize">{g.status}</span> : null}</div>
+        <GoalMenu g={g} picker={d.picker} today={d.today} activeCount={d.activeCount} reviewDue={d.reviewDue} />
+      </div>
       {g.reason ? <p className="mt-3 text-small text-ink-2">{g.reason}</p> : null}
 
       <PeekSection label="Progress" className="mt-4">
@@ -56,7 +59,7 @@ export function GoalPeekView({ data: d }: { data: GoalPeek }) {
             <li key={`${a.kind}:${a.id}`}>
               <div className="flex items-baseline justify-between gap-2 text-small">
                 <span className={`flex min-w-0 items-center gap-1.5 truncate ${a.available ? 'font-medium text-ink' : 'text-ink-3'}`}>
-                  {a.kind === 'schedule' ? <Repeat className="size-3.5 shrink-0" strokeWidth={1.5} aria-hidden /> : <ChartLine className="size-3.5 shrink-0" strokeWidth={1.5} aria-hidden />}{a.name}
+                  <Picture of={a.kind === 'schedule' ? 'routine' : 'tracker'} name={a.name} area={g.area} size={20} />{a.name}
                 </span>
                 <span className="shrink-0 text-caption text-ink-3 tabular-nums">{!a.available ? 'No longer available' : a.kind === 'schedule' ? (a.due ? `${a.done} of ${a.due} days` : 'Nothing due') : `recorded ${a.recordedDays ?? 0} of ${a.windowDays} days`}</span>
               </div>
@@ -69,7 +72,6 @@ export function GoalPeekView({ data: d }: { data: GoalPeek }) {
 
       <PeekSection label="History"><GoalHistory unit={g.unit} startedOn={g.startedOn} baseline={`Baseline ${value(g.baselineValue, g.unit)}, ${g.baselineHow}`} rows={d.history} /></PeekSection>
 
-      <div className="mt-6"><GoalDetailActions g={g} picker={d.picker} today={d.today} activeCount={d.activeCount} reviewDue={d.reviewDue} /></div>
       <PeekFooter><PeekOpen href={`/plan/goals/${g.id}`}>Open full page</PeekOpen></PeekFooter>
     </div>
   )

@@ -53,7 +53,7 @@ const NO_MODEL: LocalAiResult = { ok: true, state: 'no-model', model: 'qwen3:4b-
 
 const Frame = ({ title, children, wide }: { title: string; children: React.ReactNode; wide?: boolean }) => (
   <div className="min-w-0">
-    <p className="mb-2 font-mono text-label text-ink-3 uppercase">{title}</p>
+    <p className="mb-2 text-small font-medium text-ink-3">{title}</p>
     <div className={`${wide ? 'w-[460px]' : 'w-[390px]'} max-w-full rounded-lg bg-bg p-5 shadow-1`}>{children}</div>
   </div>
 )

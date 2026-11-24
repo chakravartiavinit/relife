@@ -1,12 +1,13 @@
 'use client'
 
 import Link from 'next/link'
-import { Copy, Download, ImageOff, LoaderCircle, Share2 } from 'lucide-react'
+import { Copy, Download, ImageOff, Share2 } from 'lucide-react'
 import { SHARE_FIELDS, type ShareKind, type ShareSize } from '@/domain/share-card'
 import { Checkbox } from '@/ui/beui/motion/checkbox'
 import { cn } from '../../cn'
 import { Button } from '../button'
 import { Segmented } from '../form'
+import { Loader } from '../loader'
 
 // The share dialog's body, presentational: the dialog owns the fetching, `/dev/ui` draws every state from fixtures.
 
@@ -51,9 +52,7 @@ export function ShareCardView(p: ShareCardViewProps) {
           ) : null}
           {p.state === 'loading' && !p.src ? <span className="absolute inset-0 animate-pulse bg-surface-3/60" aria-hidden /> : null}
           {busy ? (
-            <span role="status" className="absolute inset-0 grid place-items-center text-ink-3">
-              <LoaderCircle className="size-6 animate-spin" strokeWidth={1.5} aria-hidden /><span className="sr-only">Drawing the card</span>
-            </span>
+            <span className="absolute inset-0 grid place-items-center"><Loader size="inline" label="Drawing the card" /></span>
           ) : null}
           {p.state === 'error' ? (
             <div role="alert" className="absolute inset-0 grid place-content-center justify-items-center gap-3 p-5 text-center">

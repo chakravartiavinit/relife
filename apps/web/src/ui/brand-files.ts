@@ -2,7 +2,18 @@
 export const BRAND = {
   "logo-light": "/brand/logo-light.e6bd8e69.png",
   "logo-dark": "/brand/logo-dark.1a41f167.png",
+  "capsule": "/brand/capsule.fcd76b7a.png",
   "icon-192": "/brand/icon-192.95443ff6.png",
   "icon-512": "/brand/icon-512.aff62fd0.png",
-  "ratio": 3.625766871165644
+  "ratio": 3.625766871165644,
+  "capsuleCut": {
+    "from": 0.53807,
+    "to": 0.69543,
+    "ratio": 0.57055,
+    "tilt": 12.95,
+    "axis": [
+      0.397,
+      1.032
+    ]
+  }
 } as const

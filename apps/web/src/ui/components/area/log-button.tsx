@@ -4,12 +4,12 @@ import { Plus } from 'lucide-react'
 import { Button } from '../button'
 import { openCapture } from '../capture/capture-data'
 
-/** "Log health": opens Capture. Logging is one surface; areas only name it. */
+/** "Log health": opens Capture. Logging is one surface; areas only name it. An icon button on a phone (the head's container), the label from 640px. */
 export function LogButton({ label }: { label: string }) {
   return (
-    <Button variant="secondary" onClick={() => openCapture()}>
+    <Button variant="secondary" className="relative w-9 px-0 after:absolute after:-inset-1 after:content-[''] grid-md:w-auto grid-md:px-3.5 grid-md:after:hidden" onClick={() => openCapture()}>
       <Plus className="size-4" strokeWidth={2} aria-hidden />
-      {label}
+      <span className="sr-only grid-md:not-sr-only">{label}</span>
     </Button>
   )
 }

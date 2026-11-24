@@ -5,6 +5,7 @@ import type { ConnectorItem } from './connector-market'
 import { NotificationChannel } from './notification-channel'
 import { PushRow } from './push-row'
 import { ReviewDueCard } from './goals/goal-card'
+import { YouGallery } from './you-gallery'
 
 // /dev/ui: the Plan and You pieces from fixtures. Actions on fixture ids fail soft, as in the other galleries.
 
@@ -32,7 +33,7 @@ const SUGGESTED: ConnectorItem[] = [
 ]
 
 const Sub = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div className="min-w-0"><p className="mb-2 font-mono text-label text-ink-3 uppercase">{title}</p>{children}</div>
+  <div className="min-w-0"><p className="mb-2 text-small font-medium text-ink-3">{title}</p>{children}</div>
 )
 const manage = (_c: ConnectorItem, trigger: React.ReactElement) => trigger
 
@@ -41,13 +42,15 @@ export function PlanYouGallery() {
     <div className="flex flex-col gap-8">
       <div className="grid gap-6 lg:grid-cols-2">
         <Sub title="Weekly review card (rail)">
-          <ReviewDueCard date="2026-11-08" goals={[
-            { id: 'g1', title: 'Type 70 words a minute', status: 'toward', sensitive: false },
+          <ReviewDueCard date="2026-11-08" today="2026-11-08" window={{ from: '2026-11-02', to: '2026-11-08' }} goals={[
+            { id: 'g1', title: 'Type 70 words a minute', status: 'toward', sensitive: false, picture: { of: 'tracker', name: 'Typing speed', area: 'skills' }, measure: 'Typing speed, wpm', note: 'Practice landed on most due days and the typing average is above the baseline.',
+              days: [['2026-11-02', 64], ['2026-11-03', 68], ['2026-11-04', 59], ['2026-11-05', 65], ['2026-11-06', 69], ['2026-11-07', null], ['2026-11-08', null]].map(([date, value]) => ({ date: date as string, value: value as number | null })) },
             { id: 'g2', title: 'Play Blackbird at 90 bpm', status: 'flat', sensitive: false },
           ]} />
         </Sub>
         <Sub title="Connect: success step"><div className="rounded-lg bg-surface p-5 shadow-1"><ConnectSuccess c={{ ...SOURCES[2], statusLabel: 'First sync running…' }} onDone={() => {}} /></div></Sub>
       </div>
+      <YouGallery />
       <Sub title="Your sources: two fixes pinned, healthy rows, a first sync"><YourSources items={SOURCES} manage={manage} /></Sub>
       <Sub title="Suggested for your areas (username apps connect inline)"><SuggestedForYou items={SUGGESTED} manage={manage} /></Sub>
       <div className="grid gap-6 lg:grid-cols-2">

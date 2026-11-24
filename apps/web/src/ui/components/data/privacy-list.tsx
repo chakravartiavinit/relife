@@ -1,6 +1,6 @@
-import { Bot, Check, Lock, MessageCircle, Globe, type LucideIcon } from 'lucide-react'
+import { Bot, Check, Lock, Globe, type LucideIcon } from 'lucide-react'
 import { agoText, AI_WHERE_NOTE, maskingLine, REACH_LABEL, REACH_NOTE, type AiWhere, type PrivacyView } from '@/domain/privacy'
-import { AppLogo } from '../app-logo'
+import { Picture } from '../picture'
 import { Badge } from '../card'
 import { SettingsRow, SettingsSection } from '../settings-layout'
 
@@ -15,10 +15,10 @@ function Code({ children }: { children: React.ReactNode }) {
   return <code className="rounded-xs bg-surface-2 px-1 text-caption">{children}</code>
 }
 
-function Line({ icon: Icon, children }: { icon: LucideIcon; children: React.ReactNode }) {
+function Line({ icon: Icon, picture, children }: { icon?: LucideIcon; picture?: React.ReactNode; children: React.ReactNode }) {
   return (
     <li className="flex items-start gap-2.5 text-small text-ink-2">
-      <Icon className="mt-0.5 size-4 shrink-0 text-ink-3" strokeWidth={1.5} aria-hidden /><span className="min-w-0">{children}</span>
+      {picture ?? (Icon ? <Icon className="mt-0.5 size-4 shrink-0 text-ink-3" strokeWidth={1.5} aria-hidden /> : null)}<span className="min-w-0">{children}</span>
     </li>
   )
 }
@@ -26,7 +26,7 @@ function Line({ icon: Icon, children }: { icon: LucideIcon; children: React.Reac
 function SourceRow({ s, now }: { s: PrivacyView['sources'][number]; now: number }) {
   return (
     <li className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
-      <AppLogo id={s.id} size="xs" />
+      <Picture of="connector" id={s.id} name={s.name} size={32} />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className="text-body font-medium text-ink">{s.name}</span>
@@ -67,7 +67,7 @@ export function PrivacyList({ view, now }: { view: PrivacyView; now: number }) {
         <ul className="flex flex-col gap-2">
           {view.ai.tasks.map((t) => (
             <li key={t.task} className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-              <span className="w-44 text-small text-ink-2">{t.label}</span>
+              <span className="inline-flex w-44 items-center gap-2 text-small text-ink-2">{t.model ? <Picture of="provider" id={t.model.split(':')[0]} size={20} /> : <span aria-hidden className="size-5 shrink-0" />}{t.label}</span>
               <code className="min-w-0 max-w-full truncate rounded-sm bg-surface-2 px-2 py-0.5 text-caption text-ink" title={t.model ?? undefined}>{t.model ?? 'No model'}</code>
               <Badge color={WHERE_COLOR[t.where]}>{WHERE_LABEL[t.where]}</Badge>
             </li>
@@ -96,7 +96,7 @@ export function PrivacyList({ view, now }: { view: PrivacyView; now: number }) {
       <SettingsRow label="Messages" hint="Channels that carry your data out.">
         <ul className="flex flex-col gap-2">
           {view.channels.map((c) => (
-            <Line key={c.id} icon={MessageCircle}>
+            <Line key={c.id} picture={<Picture of="connector" id={c.id} name={c.name} size={20} />}>
               <span className="font-medium text-ink">{c.name}</span> <Badge color={c.connected ? 'var(--warn)' : undefined}>{c.connected ? 'Connected' : 'Not connected'}</Badge>
               <span className="mt-0.5 block text-caption text-ink-3">{c.note}</span>
             </Line>

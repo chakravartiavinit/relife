@@ -1,4 +1,6 @@
 import brand from '@relife/brand/brand.json'
+import { addDays } from '@/core/time'
+import type { Change, Link, Signal } from '@/domain/patterns'
 import type { PulseTile } from '@/core/pulse'
 import type { TomorrowRow } from '@/core/day-plan'
 import type { MoneyView } from '@/core/today'
@@ -12,7 +14,18 @@ import type { SystemQuestItem } from '@/ui/components/system-quests'
 
 // Fixtures for the Today section of /dev/ui: the sample day from the design (Thursday 12 Nov, 14:10).
 
-const spark = (v: number[]) => v.map((value, i) => ({ date: `2026-11-${String(6 + i).padStart(2, '0')}`, value }))
+const TODAY = '2026-11-12'
+const signal = (id: string, name: string, area: string, f: (i: number) => number, unit?: string): Signal => ({
+  id, name, area, group: id, unit, direction: 'up',
+  days: new Map(Array.from({ length: 28 }, (_, i) => [addDays(TODAY, i - 27), f(i)] as const)),
+})
+const routines = signal('routines', 'Routines done', 'mind', (i) => 6 + 3 * Math.sin(i * 0.9))
+const sleep = signal('tracker:sleep.hours', 'Sleep', 'health', (i) => 7 + 0.8 * Math.sin(i * 0.9 + 1.2) - (i > 20 ? 0.6 : 0), 'h')
+const mood = signal('tracker:mood', 'Mood', 'mind', (i) => 3.8 + 0.5 * Math.sin(i * 0.7) - (i > 20 ? 0.6 : 0))
+/** The link the rail's "Worth knowing" shows (routines done → next-day sleep) and the change the Life pulse shows. */
+export const LINK: Link = { a: routines, b: sleep, lag: 1, rho: 0.52, n: 42, high: 7.6, low: 6.8, split: 8 }
+export const CHANGE: Change = { signal: mood, recent: 3.5, usual: 4.1, pct: -0.15, with: [{ signal: sleep, pct: -0.08 }] }
+export const FIXTURE_TODAY = TODAY
 
 export const HEADER: HeaderData = {
   date: 'Thursday · 12 November', greeting: 'Good afternoon', name: 'Avinit', why: true,
@@ -37,13 +50,12 @@ export const ATTENTION: AttentionCard[] = [
 ]
 
 export const PULSE: PulseTile[] = [
-  { slug: 'health', title: 'Health', color: 'var(--cat-health)', measure: 'Sleep', value: '6h 10m', sub: '1h 15m under your average', peek: { type: 'metric', id: 'sleep.hours' }, spark: spark([7, 6.5, 7.2, 5.8, 6.9, 7, 6.2]) },
-  { slug: 'mind', title: 'Mind', color: 'var(--cat-mind)', measure: 'Mood', value: '–', sub: 'Not logged · tap to log', peek: { type: 'metric', id: 'mood' }, action: 'capture', spark: spark([3, 4, 3, 4, 5, 3, 4]) },
-  { slug: 'skills', title: 'Skills', color: 'var(--cat-skills)', measure: 'Coding', value: '1h 05m', sub: '3 commits · WakaTime', peek: { type: 'metric', id: 'coding.minutes' }, spark: spark([40, 90, 20, 120, 60, 80, 65]) },
-  { slug: 'wealth', title: 'Wealth', color: 'var(--cat-wealth)', measure: 'Spent', value: '₹1,240', sub: '₹160 under a usual day', peek: { type: 'brief', id: 'wealth' }, spark: spark([900, 1500, 700, 2100, 1100, 1300, 1240]) },
-  { slug: 'hobbies', title: 'Hobbies', color: 'var(--cat-hobbies)', measure: 'Practice', value: '25 min', sub: 'Chess · Lichess 1,612', peek: { type: 'brief', id: 'hobbies' } },
-  { slug: 'people', title: 'People', color: 'var(--cat-relationships)', measure: 'In touch', value: '7/9', sub: 'Maa is due today', tone: 'bad', peek: { type: 'brief', id: 'relationships' } },
-  { slug: 'time', title: 'Time', color: 'var(--line-blue)', measure: 'Focus', value: '2h 41m', sub: '62% of laptop time', peek: { type: 'brief', id: 'time' }, spark: spark([120, 200, 90, 180, 160, 140, 161]) },
+  { slug: 'health', title: 'Health', color: 'var(--cat-health)', measure: 'Sleep', value: '6h 10m', sub: '1h 15m under your average', peek: { type: 'metric', id: 'sleep.hours' }, status: 'Slipping' },
+  { slug: 'mind', title: 'Mind', color: 'var(--cat-mind)', measure: 'Mood', value: '–', sub: 'Not logged · tap to log', peek: { type: 'metric', id: 'mood' }, action: 'capture', status: 'Quiet' },
+  { slug: 'skills', title: 'Skills', color: 'var(--cat-skills)', measure: 'Coding', value: '1h 05m', sub: '3 commits · WakaTime', peek: { type: 'metric', id: 'coding.minutes' }, status: 'Ahead' },
+  { slug: 'hobbies', title: 'Hobbies', color: 'var(--cat-hobbies)', measure: 'Practice', value: '25 min', sub: 'Chess · Lichess 1,612', peek: { type: 'brief', id: 'hobbies' }, status: 'Steady' },
+  { slug: 'people', title: 'People', color: 'var(--cat-relationships)', measure: 'In touch', value: '7/9', sub: 'Maa is due today', tone: 'bad', peek: { type: 'brief', id: 'relationships' }, status: 'Behind' },
+  { slug: 'time', title: 'Time', color: 'var(--line-blue)', measure: 'Focus', value: '2h 41m', sub: '62% of laptop time', peek: { type: 'brief', id: 'time' }, status: 'Steady' },
 ]
 
 const at = (h: number, m: number) => new Date(Date.UTC(2026, 10, 12, h - 5, m - 30)).toISOString()
@@ -82,7 +94,7 @@ export const GOALS: PaceGoal[] = [
 ]
 
 export const MONEY: MoneyView = {
-  total: '₹1,240', versus: { text: '₹160 under a usual day', bad: false }, more: 0,
+  total: '₹1,240', status: 'On track', versus: { text: '₹160 under a usual day', bad: false }, more: 0,
   payments: [
     { id: 'fx-t1', name: 'Swiggy', logo: 'Swiggy', sub: '13:12 · Lunch', amount: '₹486', typed: false, needsCategory: true },
     { id: 'fx-t2', name: 'Blinkit', logo: 'Blinkit', sub: '10:05 · Groceries', amount: '₹634', typed: false, needsCategory: false },
@@ -93,7 +105,7 @@ export const MONEY: MoneyView = {
     { id: 'fx-r2', weekday: 'Sun', day: '15', name: 'Spotify', when: 'In 3 days', soon: false, amount: '₹119' },
   ],
 }
-export const MONEY_EMPTY: MoneyView = { total: '₹0', payments: [], more: 0, renewals: [] }
+export const MONEY_EMPTY: MoneyView = { total: '₹0', status: 'Quiet', payments: [], more: 0, renewals: [] }
 
 export const STEPS: Step[] = [
   { id: 'routine', title: 'Routines picked', body: '6 routines from setup', href: '/plan/routines', cta: 'Add routine', done: true },

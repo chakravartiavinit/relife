@@ -1,14 +1,17 @@
-import { History, MessageCircle, Waypoints } from 'lucide-react'
-import { RouteTabs, type SegmentTab } from '../segment-tabs'
+import { RouteTabs } from '../segment-tabs'
 
-const ICON = 'size-4'
-const TABS: SegmentTab[] = [
-  { href: '/coach', label: <span className="inline-flex items-center gap-1.5"><MessageCircle className={ICON} strokeWidth={1.5} aria-hidden />Ask</span> },
-  { href: '/coach/patterns', label: <span className="inline-flex items-center gap-1.5"><Waypoints className={ICON} strokeWidth={1.5} aria-hidden />Patterns</span> },
-  { href: '/coach/history', label: <span className="inline-flex items-center gap-1.5"><History className={ICON} strokeWidth={1.5} aria-hidden />History</span> },
-]
+const count = (n?: number) => (n ? <span className="ml-1.5 text-small font-normal text-ink-3 tabular-nums">{n}</span> : null)
 
-/** Ask · Patterns · History, one row of route tabs that sits above the Ask pane and on the two sub-pages. */
-export function CoachTabs({ className }: { className?: string }) {
-  return <RouteTabs tabs={TABS} label="Coach" className={className} />
+/** Needs you · Patterns · History, the underline tab row of the Coach head (`coach/layout.tsx`), with what is waiting. */
+export function CoachTabs({ counts }: { counts?: { needs: number; patterns: number } }) {
+  return (
+    <RouteTabs
+      variant="underline" label="Coach"
+      tabs={[
+        { href: '/coach', label: <>Needs you{count(counts?.needs)}</> },
+        { href: '/coach/patterns', label: <>Patterns{count(counts?.patterns)}</> },
+        { href: '/coach/history', label: 'History' },
+      ]}
+    />
+  )
 }

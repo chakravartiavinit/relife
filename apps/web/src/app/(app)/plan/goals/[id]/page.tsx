@@ -9,6 +9,8 @@ import { getUser } from '@/core/user'
 import { CATEGORY } from '@/ui/tokens'
 import { Card, CardHeader, PageHeader, Skeleton, Stat } from '@/ui/components/card'
 import { Capsule } from '@/ui/components/capsule'
+import { GridItem, PageGrid } from '@/ui/components/page-grid'
+import { Rail } from '@/ui/components/rail'
 import { GoalStatusBadge } from '@/ui/components/goals/goal-card'
 import { GoalDetailActions } from '@/ui/components/goals/goal-detail-actions'
 import { CheckInList, GoalHistory } from '@/ui/components/goals/goal-history'
@@ -19,7 +21,7 @@ export const metadata: Metadata = { title: 'Goal' }
 
 export default function GoalDetailPage({ params }: PageProps<'/plan/goals/[id]'>) {
   return (
-    <Suspense fallback={<div aria-busy><Skeleton className="mb-6 h-[150px] rounded-[24px]" /><Skeleton className="h-[360px] rounded-lg" /></div>}>
+    <Suspense fallback={<PageGrid aria-busy><GridItem span={{ base: 12, lg: 8 }}><Skeleton className="h-[360px] rounded-lg" /></GridItem><Rail span={{ base: 12, lg: 4 }}><Skeleton className="h-[240px] rounded-lg" /></Rail></PageGrid>}>
       <Detail params={params} />
     </Suspense>
   )
@@ -44,8 +46,8 @@ async function Detail({ params }: { params: PageProps<'/plan/goals/[id]'>['param
         description={g.reason}
         actions={<GoalDetailActions g={g} picker={data.picker} today={data.today} activeCount={data.activeCount} reviewDue={!!data.due} />}
       />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="flex flex-col gap-6">
+      <PageGrid>
+        <GridItem span={{ base: 12, lg: 8 }} className="flex flex-col gap-6">
           <Card>
             <CardHeader icon={<Target strokeWidth={1.5} />} color={color} title="Progress" description={measureLine(g)} action={<GoalStatusBadge g={g} />} />
             <div className="grid grid-cols-3 gap-4">
@@ -54,14 +56,14 @@ async function Detail({ params }: { params: PageProps<'/plan/goals/[id]'>['param
               <Stat label="Target" value={target(g)} sub={directionLabel(g.direction)} />
             </div>
             <Capsule className="mt-5" value={fill(s)} color={color} label={`Progress toward ${g.title}`} />
-            <div className="mt-2 flex justify-between gap-3 text-[12.5px] text-ink-3 tabular-nums">
+            <div className="mt-2 flex justify-between gap-3 text-caption text-ink-3 tabular-nums">
               <span>{move?.since ?? 'No current value yet'}</span><span>{move?.left ?? ''}</span>
             </div>
-            <p className="mt-4 text-[12.5px] text-ink-3 tabular-nums">{coverageLine(g)} · Baseline: {g.baselineHow}</p>
-            {g.sensitive ? <p className="mt-2 text-[12.5px] text-ink-3">{brand.name} won’t set quests or suggest changes for this measure.</p> : null}
+            <p className="mt-4 text-caption text-ink-3 tabular-nums">{coverageLine(g)} · Baseline: {g.baselineHow}</p>
+            {g.sensitive ? <p className="mt-2 text-caption text-ink-3">{brand.name} won’t set quests or suggest changes for this measure.</p> : null}
             {g.measureKind === 'check_in' ? (
               <div className="mt-5">
-                <h3 className="mb-2 font-mono text-[11.5px] font-semibold tracking-[0.08em] text-ink-2 uppercase">Check-ins</h3>
+                <h3 className="mb-2 text-small font-medium text-ink-2">Check-ins</h3>
                 <CheckInList rows={data.checkIns} unit={g.unit} />
               </div>
             ) : null}
@@ -72,26 +74,26 @@ async function Detail({ params }: { params: PageProps<'/plan/goals/[id]'>['param
               <CheckInPanel g={g} today={data.today} full />
             </Card>
           ) : null}
-        </div>
-        <aside className="flex flex-col gap-6" aria-label="Actions and history">
+        </GridItem>
+        <Rail as="aside" aria-label="Actions and history" span={{ base: 12, lg: 4 }} pairs>
           <Card>
             <CardHeader icon={<Repeat strokeWidth={1.5} />} title="Linked actions" description={s ? `${day(s.window.from)}–${day(s.window.to)}` : undefined} />
             <ul className="flex flex-col gap-4">
               {(s?.actions ?? []).map((a) => (
                 <li key={`${a.kind}:${a.id}`}>
-                  <div className="flex items-baseline justify-between gap-2 text-[13.5px]">
+                  <div className="flex items-baseline justify-between gap-2 text-small">
                     <span className={a.available ? 'min-w-0 truncate font-medium text-ink' : 'min-w-0 truncate text-ink-3'}>{a.name}</span>
-                    <span className="shrink-0 text-[12.5px] text-ink-3 tabular-nums">{!a.available ? 'Action no longer available' : a.kind === 'schedule' ? (a.due ? `${a.done} of ${a.due} days` : 'Nothing due') : `recorded ${a.recordedDays ?? 0} of ${a.windowDays} days`}</span>
+                    <span className="shrink-0 text-caption text-ink-3 tabular-nums">{!a.available ? 'Action no longer available' : a.kind === 'schedule' ? (a.due ? `${a.done} of ${a.due} days` : 'Nothing due') : `recorded ${a.recordedDays ?? 0} of ${a.windowDays} days`}</span>
                   </div>
                   {a.available && a.kind === 'schedule' && a.due ? <Capsule size="sm" className="mt-1.5" value={a.done ?? 0} max={a.due} color={color} label={`${a.name} adherence`} /> : null}
-                  {a.available && a.kind === 'tracker' ? <p className="mt-1 text-[12px] text-ink-3">Days without a record aren’t counted as misses.</p> : null}
+                  {a.available && a.kind === 'tracker' ? <p className="mt-1 text-caption text-ink-3">Days without a record aren’t counted as misses.</p> : null}
                 </li>
               ))}
             </ul>
           </Card>
           <GoalHistory unit={g.unit} startedOn={g.startedOn} baseline={`Baseline ${value(g.baselineValue, g.unit)}, ${g.baselineHow}`} rows={data.history} />
-        </aside>
-      </div>
+        </Rail>
+      </PageGrid>
     </div>
   )
 }

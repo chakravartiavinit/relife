@@ -1,17 +1,17 @@
-import Link from 'next/link'
-import { CalendarCheck } from 'lucide-react'
 import { CATEGORIES, type Category } from '@/domain/categories'
 import type { User } from '@/core/user'
 import { addDays, formatDay, localDate } from '@/core/time'
 import { loadAdherence } from '@/core/adherence'
 import { CATEGORY } from '../tokens'
-import { Card, CardHeader } from './card'
-import { buttonClass } from './button'
+import { Picture } from './picture'
 
-const DAYS = 14 // phones show only the last 7
+const DAYS = 14 // phones show only the last 7 in the by-area table
 
-/** Share of scheduled routines done per area per day, last two weeks. */
-export async function Consistency({ user, now }: { user: User; now: Date }) {
+type Cells = { d: string; due: number; done: number }[]
+export type ConsistencyData = { today: string; days: string[]; grid: { c: Category; cells: Cells }[] }
+
+/** Share of scheduled routines done per area per day, last two weeks. Areas with nothing due in the window are left out. */
+export async function loadConsistency(user: User, now: Date): Promise<ConsistencyData> {
   const today = localDate(now, user.timezone)
   const rows = await loadAdherence(user, { kinds: ['routine', 'medicine'] }, 60, DAYS, now)
   const days = Array.from({ length: DAYS }, (_, i) => addDays(today, i - (DAYS - 1)))
@@ -29,45 +29,56 @@ export async function Consistency({ user, now }: { user: User; now: Date }) {
       }),
     }
   }).filter((r) => r.cells.some((x) => x.due))
+  return { today, days, grid }
+}
 
-  return (
-    <Card>
-      <CardHeader title="Consistency" icon={<CalendarCheck strokeWidth={2} />} color="var(--pill)" description="Routines done each day, by area" action={<Link href="/plan/routines" className={buttonClass({ variant: 'ghost', size: 'sm' })}>Routines</Link>} />
-      {grid.length ? (
-        <div className="overflow-x-auto">
-          <table className="w-full table-fixed sm:min-w-[560px] border-separate border-spacing-1">
-            <thead>
-              <tr>
-                <th className="w-20 sm:w-32" />
-                {days.map((d, i) => (
-                  <th key={d} scope="col" className={`text-center text-[11px] font-medium ${d === today ? 'text-ink' : 'text-ink-3'} ${i < DAYS - 7 ? 'max-sm:hidden' : ''}`}>
-                    {new Intl.DateTimeFormat('en', { weekday: 'narrow', timeZone: 'UTC' }).format(new Date(`${d}T00:00:00Z`))}
-                  </th>
-                ))}
-                <th className="w-14" />
+const pct = (cells: { due: number; done: number }[]) => {
+  const due = cells.reduce((n, x) => n + x.due, 0)
+  return due ? Math.round((cells.reduce((n, x) => n + x.done, 0) / due) * 100) : null
+}
+
+/** The fold's line: the three areas that did best. */
+export const consistencySummary = ({ grid }: ConsistencyData) =>
+  grid.map((r) => ({ c: r.c, p: pct(r.cells) })).filter((r) => r.p != null).sort((a, b) => b.p! - a.p!).slice(0, 3).map((r) => `${CATEGORY[r.c].label} ${r.p}%`).join(' · ') || 'Add a routine in Plan'
+
+/** The by-area table (one row per area, a cell per day), behind Progress's "By area" link. */
+export function ConsistencyByArea({ data: { today, days, grid } }: { data: ConsistencyData }) {
+  return grid.length ? (
+    <div className="overflow-x-auto">
+      <table className="w-full table-fixed sm:min-w-[560px] border-separate border-spacing-1">
+        <thead>
+          <tr>
+            <th className="w-24 sm:w-32" />
+            {days.map((d, i) => (
+              <th key={d} scope="col" className={`text-center text-caption font-medium ${d === today ? 'text-ink' : 'text-ink-3'} ${i < DAYS - 7 ? 'max-sm:hidden' : ''}`}>
+                {new Intl.DateTimeFormat('en', { weekday: 'narrow', timeZone: 'UTC' }).format(new Date(`${d}T00:00:00Z`))}
+              </th>
+            ))}
+            <th className="w-14" />
+          </tr>
+        </thead>
+        <tbody>
+          {grid.map(({ c, cells }) => {
+            const p = pct(cells)
+            return (
+              <tr key={c}>
+                <th scope="row" className="pr-3 text-left text-small font-medium text-ink-2">
+                  <span className="flex items-center gap-2"><Picture of="area" to={c} size={20} />{CATEGORY[c].label}</span>
+                </th>
+                {cells.map((x, i) => <Cell key={x.d} c={c} col={i} {...x} />)}
+                <td className="pl-2 text-right text-caption text-ink-3 tabular-nums">{p == null ? '–' : `${p}%`}</td>
               </tr>
-            </thead>
-            <tbody>
-              {grid.map(({ c, cells }) => {
-                const due = cells.reduce((s, x) => s + x.due, 0)
-                const done = cells.reduce((s, x) => s + x.done, 0)
-                return (
-                  <tr key={c}>
-                    <th scope="row" className="pr-3 text-left text-[13px] font-medium text-ink-2">
-                      <span className="flex items-center gap-2"><span aria-hidden className="size-2 rounded-full" style={{ background: CATEGORY[c].color }} />{CATEGORY[c].label}</span>
-                    </th>
-                    {cells.map((x, i) => <Cell key={x.d} c={c} col={i} {...x} />)}
-                    <td className="pl-2 text-right text-[12px] text-ink-3 tabular-nums">{due ? `${Math.round((done / due) * 100)}%` : '–'}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <p className="text-[13px] text-ink-3">Add a routine in Plan and its days fill in here.</p>
-      )}
-    </Card>
+            )
+          })}
+        </tbody>
+      </table>
+      <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-caption text-ink-3" aria-label="How to read the cells">
+        {[['Some', 30], ['Most', 50], ['All', 70]].map(([l, n]) => <span key={l} className="inline-flex items-center gap-1.5"><span aria-hidden className="size-3 rounded-xs" style={{ background: `color-mix(in oklch, var(--ink-2) ${n}%, transparent)` }} />{l}</span>)}
+        <span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-3 rounded-xs shadow-[inset_0_0_0_1px_var(--hairline)]" />Nothing due</span>
+      </p>
+    </div>
+  ) : (
+    <p className="text-small text-ink-3">Add a routine in Plan and its days fill in here.</p>
   )
 }
 

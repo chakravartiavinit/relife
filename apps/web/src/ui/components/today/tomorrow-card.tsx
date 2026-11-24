@@ -20,7 +20,7 @@ export function TomorrowCard({ date, rows, renewal }: { date: string; rows: Tomo
             </span>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-body font-medium text-ink">{r.name}</span>
-              <span className="block text-caption font-semibold text-ink-3 tabular-nums">{r.time}</span>
+              <span className="block text-caption font-medium text-ink-3 tabular-nums">{r.time}</span>
             </span>
           </li>
         ))}
@@ -29,7 +29,7 @@ export function TomorrowCard({ date, rows, renewal }: { date: string; rows: Tomo
             <span className="min-w-0 truncate text-ink-2">{renewal.name} renews {renewal.when}</span>
             <span className="flex shrink-0 items-center gap-3">
               {renewal.amount ? <span className="text-ink-3 tabular-nums">{renewal.amount}</span> : null}
-              <Link href="/wealth/subscriptions" className="font-semibold text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-pill">Review</Link>
+              <Link href="/wealth/subscriptions" className="font-medium text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-pill">Review</Link>
             </span>
           </li>
         ) : null}

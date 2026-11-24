@@ -1,110 +1,84 @@
 import type { Metadata } from 'next'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
-import { Sparkles } from 'lucide-react'
-import { CATEGORIES, type Category } from '@/db/schema'
-import { AREA_LIST, areaScope, loadAreaKpis, type AreaDef } from '@/core/areas'
-import { loadTime } from '@/core/areas/time'
-import { loadDayPlan } from '@/core/day-plan'
-import { loadAreaLevels, loadHubBriefs, loadHubSparks, loadLifeWeek } from '@/core/life-week'
-import { formatDay, localDate } from '@/core/time'
+import { loadLifeHub } from '@/core/life-hub'
+import { formatDay } from '@/core/time'
 import { getUser } from '@/core/user'
-import { Card, Skeleton, SystemLabel } from '@/ui/components/card'
-import { AreaTile, TileSkeleton } from '@/ui/components/life/area-tile'
-import { TimeTile } from '@/ui/components/life/time-tile'
-import { WeekTable } from '@/ui/components/life/week-table'
-import { PeekLink } from '@/ui/components/peek/peek-link'
+import { GridItem, PageGrid } from '@/ui/components/page-grid'
+import { Rail } from '@/ui/components/rail'
+import { Skeleton, SystemLabel } from '@/ui/components/card'
+import { InsightLine } from '@/ui/components/insight-line'
+import { AreaLedger, LedgerSkeleton, WeekBalance } from '@/ui/components/life/area-ledger'
+import { AreaRow } from '@/ui/components/life/area-row'
+import { ConnectionsCard } from '@/ui/components/life/connections-card'
 
 export const metadata: Metadata = { title: 'Life' }
 
-/** The Life hub: today's brief, one tile per area (and Time) with its own brief and numbers, then the week by area. */
+/**
+ * The Life hub: one sentence across the areas, one status row per area (and Time) with its level, the week's balance and up
+ * to two connections that cross areas. Per-area numbers, trends and week dots live on the area pages and in their Peek.
+ */
 export default function LifePage() {
   return (
     <div className="flex flex-col gap-6">
-      <Suspense fallback={<HubHeader />}><Header /></Suspense>
-      <Suspense fallback={<Tiles />}><LiveTiles /></Suspense>
-      <Suspense fallback={<Skeleton className="h-[400px] rounded-lg" />}><Week /></Suspense>
+      <Suspense fallback={<HeadSkeleton />}><Head /></Suspense>
+      <PageGrid>
+        <GridItem span={{ base: 12, lg: 8 }} className="self-start">
+          <Suspense fallback={<LedgerSkeleton />}><Areas /></Suspense>
+        </GridItem>
+        <Rail span={{ base: 12, lg: 4 }} pairs as="aside" aria-label="This week across areas" className="self-start">
+          {/* No skeleton: most weeks no cross-area connection qualifies and the card is left out, so a placeholder would jump. */}
+          <Suspense fallback={null}><Connections /></Suspense>
+          <Suspense fallback={<Skeleton className="h-[250px] rounded-lg" />}><Balance /></Suspense>
+        </Rail>
+      </PageGrid>
     </div>
   )
 }
 
-/** The date and the day's brief. The brief streams in; until then the card holds the same height. */
-function HubHeader({ date, brief }: { date?: string; brief?: string }) {
+/** The date label, the title and the opening sentence with a Why? that opens today's brief. */
+async function Head() {
+  await connection()
+  const user = await getUser()
+  const hub = await loadLifeHub(user)
   return (
-    <Card className="p-5 sm:p-6">
-      <SystemLabel>Life{date ? ` · ${date}` : ''}</SystemLabel>
-      <h1 className="mt-0.5 font-display text-title text-ink sm:text-display">{date ?? 'Your life'}</h1>
-      <p className="mt-1.5 flex max-w-[64ch] items-start gap-2 text-body text-ink-2">
-        {brief ? (
-          <>
-            <Sparkles aria-hidden className="mt-0.5 size-4 shrink-0 text-pill-ink" strokeWidth={1.5} />
-            <span>{brief}{' '}<PeekLink to={{ type: 'brief', id: 'today' }} className="rounded-xs font-semibold whitespace-nowrap text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-pill">Why?</PeekLink></span>
-          </>
-        ) : 'All six areas and your laptop time, one click each.'}
-      </p>
-    </Card>
+    <header>
+      <SystemLabel>{formatDay(hub.today, { weekday: 'long', day: 'numeric', month: 'long' })}</SystemLabel>
+      <h1 className="mt-1.5 font-display text-display text-ink">Life</h1>
+      <InsightLine className="mt-2 max-w-[64ch]" peek={hub.brief ? { type: 'brief', id: 'today' } : undefined}>{hub.opening}</InsightLine>
+    </header>
   )
 }
 
-async function Header() {
-  await connection()
-  const user = await getUser()
-  const briefs = await loadHubBriefs(user)
-  return <HubHeader date={formatDay(localDate(new Date(), user.timezone), { weekday: 'long', day: 'numeric', month: 'long' })} brief={briefs.get('today')?.text} />
-}
-
-/** Areas the user shows (all when they have not picked), always in the same order. */
-const shown = (areas: Category[] | undefined) => AREA_LIST.filter((d) => d.category && (!areas?.length || areas.includes(d.category)))
-
-/** The grid before its data arrives: the right number of tiles at their final size. */
-function Tiles({ children }: { children?: React.ReactNode }) {
+function HeadSkeleton() {
   return (
-    <section aria-label="Areas" className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {children ?? <>{Array.from({ length: 6 }, (_, i) => <TileSkeleton key={i} />)}<TileSkeleton wide /></>}
-    </section>
+    <div aria-busy className="grid gap-1">
+      <Skeleton className="h-4 w-44" />
+      <Skeleton className="mt-1.5 h-10 w-32 grid-md:h-12" />
+      <Skeleton className="mt-2 h-[22px] w-full max-w-[64ch]" />
+    </div>
   )
 }
 
-async function LiveTiles() {
+async function Areas() {
   await connection()
-  const user = await getUser()
-  const today = localDate(new Date(), user.timezone)
-  const defs = shown(user.profile.areas)
-  const [briefs, levels, plan, sparks] = await Promise.all([
-    loadHubBriefs(user), loadAreaLevels(user), loadDayPlan(user),
-    loadHubSparks(user, today, Object.fromEntries(defs.map((d) => [d.slug, d.pinned[0]]))),
-  ])
+  const hub = await loadLifeHub(await getUser())
   return (
-    <Tiles>
-      {defs.map((def) => (
-        <Suspense key={def.slug} fallback={<TileSkeleton />}>
-          <Tile def={def} brief={briefs.get(areaScope(def))?.text} level={levels.find((l) => l.area === def.category)} plan={def.category ? plan.byCat[def.category] : undefined} spark={sparks[def.slug]} />
-        </Suspense>
-      ))}
-      <Suspense fallback={<TileSkeleton wide />}><Time brief={briefs.get('time')?.text} /></Suspense>
-    </Tiles>
+    <AreaLedger>
+      {hub.rows.map((r) => <AreaRow key={r.def.slug} d={r} />)}
+      <AreaRow d={{ def: hub.timeRow.def, status: hub.timeRow.status, line: hub.timeRow.line, kinds: hub.timeRow.kinds }} />
+    </AreaLedger>
   )
 }
 
-async function Tile({ def, brief, level, plan, spark }: { def: AreaDef; brief?: string; level?: { level: number; progress: number; xp: number }; plan?: { done: number; total: number }; spark?: { name: string; points: { date: string; value: number | null }[] } }) {
+async function Connections() {
   await connection()
-  const kpis = await loadAreaKpis(await getUser(), def.slug)
-  return <AreaTile d={{ def, brief, level, plan, kpis, spark }} />
+  const hub = await loadLifeHub(await getUser())
+  return <ConnectionsCard items={hub.connections} today={hub.today} />
 }
 
-async function Time({ brief }: { brief?: string }) {
+async function Balance() {
   await connection()
-  const user = await getUser()
-  const t = await loadTime(user, localDate(new Date(), user.timezone))
-  const kpis = await loadAreaKpis(user, 'time')
-  return <TimeTile kinds={t.s.byKind} kpis={kpis} brief={brief} />
+  const hub = await loadLifeHub(await getUser())
+  return <WeekBalance week={hub.week} />
 }
-
-async function Week() {
-  await connection()
-  const user = await getUser()
-  const w = await loadLifeWeek(user, [...CATEGORIES])
-  const show = shown(user.profile.areas).map((d) => d.category as string)
-  return <WeekTable week={w} changes={w.changes} show={show} />
-}
-

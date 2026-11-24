@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { ArrowLeft, Laptop, Puzzle, QrCode as QrIcon, ShieldCheck } from 'lucide-react'
 import { findWaitingByCode, waitingDevices, type Offer, type WaitingDevice } from '@/app/devices-actions'
 import { Button } from '../button'
-import { SystemLabel } from '../card'
+import { SectionLabel } from '../card'
 import { Dialog, FormError } from '../forms/dialog'
 import { ApproveCard } from './approve-card'
 import { CodeInput } from './code-input'
@@ -90,7 +90,7 @@ export function ConnectDialog({ open, onClose, initialCode, mode = 'all' }: { op
       ) : approveOnly ? (
         <div>
           <ol className="flex flex-col gap-3 text-body leading-snug text-ink-2">
-            <Step n={1}>Open the <b className="font-semibold text-ink">{brand.name} extension</b> in Chrome and choose <b className="font-semibold text-ink">Connect</b>.</Step>
+            <Step n={1}>Open the <b className="font-medium text-ink">{brand.name} extension</b> in Chrome and choose <b className="font-medium text-ink">Connect</b>.</Step>
             <Step n={2}>It shows an 8-character code. Type it below.</Step>
           </ol>
           <div className="mt-5">{codeBox}</div>
@@ -104,10 +104,10 @@ export function ConnectDialog({ open, onClose, initialCode, mode = 'all' }: { op
 
             {/* Right: how to use it, and the way in for the Mac app and the extension. */}
             <div className="flex min-w-0 flex-col">
-              <SystemLabel>Scan with your phone</SystemLabel>
+              <SectionLabel as="p">Scan with your phone</SectionLabel>
               <ol className="mt-3 flex flex-col gap-3 text-body leading-snug text-ink-2">
-                <Step n={1}>Open the <b className="font-semibold text-ink">Camera</b> on your phone and point it at the code.</Step>
-                <Step n={2}>Tap the {brand.name} link, then <b className="font-semibold text-ink">Continue</b>. It stays signed in.</Step>
+                <Step n={1}>Open the <b className="font-medium text-ink">Camera</b> on your phone and point it at the code.</Step>
+                <Step n={2}>Tap the {brand.name} link, then <b className="font-medium text-ink">Continue</b>. It stays signed in.</Step>
               </ol>
               {isMac && offer ? (
                 <a href={offer.macLink} className="mt-3 inline-flex h-10 items-center gap-2 self-start rounded-md px-1 text-small font-medium text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-pill">

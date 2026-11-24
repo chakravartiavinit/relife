@@ -53,7 +53,7 @@ export const loadSkills = cache(async (user: User, today: string) => {
 export async function skillsKpis(user: User, today: string): Promise<AreaKpi[]> {
   const s = await loadSkills(user, today)
   return [
-    { label: 'Days practised, 28 days', value: `${s.practisedDays28}/28`, sub: s.streak.current ? `${s.streak.current}-day streak` : 'Start a streak today' },
+    { label: 'Days practised, 28 days', value: `${s.practisedDays28}/28`, ratio: s.practisedDays28 / 28, sub: s.streak.current ? `${s.streak.current}-day streak` : 'Start a streak today' },
     { label: 'Learning, 28 days', value: hm(sumLast(s.learningMin, today, 28)), sub: `${s.learning.length} in progress`, peek: { type: 'metric', id: 'learning.minutes' } },
     { label: 'Coding, 28 days', value: formatNumber(sumLast(s.coding, today, 28)), sub: `${formatNumber(sumLast(s.commits, today, 7))} commits this week`, peek: { type: 'metric', id: 'github.commits' } },
     { label: 'Problems solved, 28 days', value: formatNumber(sumLast(s.solved, today, 28)), sub: s.cpActive ? `${s.cpActive} active days` : s.cpSites.length ? 'None this month yet' : 'Connect a judge in You › Connections', peek: { type: 'metric', id: 'cp.solved' } },

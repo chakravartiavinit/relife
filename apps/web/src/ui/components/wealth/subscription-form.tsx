@@ -7,7 +7,7 @@ import { formatMoney } from '@/domain/money'
 import { Button } from '../button'
 import { Field, Input, Select, Segmented } from '../form'
 import { Dialog, FormError } from '../forms/dialog'
-import { BrandLogo } from '../brand-logo'
+import { Picture } from '../picture'
 import { useToast } from '../toast'
 import { cn } from '@/ui/cn'
 
@@ -71,7 +71,7 @@ function SubscriptionForm({ today, baseCurrency, initial, onDone }: { today: str
   useEffect(() => {
     if (!state?.ok || handled.current === state) return
     handled.current = state // once per save, however often this re-renders before the dialog closes
-    toast(initial?.id ? `${name} saved` : `${name} added`, 'good', { icon: '/routines/card.png' })
+    toast(initial?.id ? `${name} saved` : `${name} added`, 'good', { picture: { of: 'merchant', name } })
     onDone()
   }, [state, toast, onDone, name, initial?.id])
 
@@ -86,19 +86,19 @@ function SubscriptionForm({ today, baseCurrency, initial, onDone }: { today: str
   const edit = !!initial?.id
   const preview = (
     // Live preview: the card as it will appear on the page.
-    <div className="flex items-center gap-3 rounded-[16px] bg-surface-2 p-3">
-      {name.trim() ? <BrandLogo name={name} size="md" /> : (
-        <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-[11px] bg-surface text-ink-3 shadow-[inset_0_0_0_1.5px_var(--hairline)]">
+    <div className="flex items-center gap-3 rounded-lg bg-surface-2 p-3">
+      {name.trim() ? <Picture of="merchant" name={name} size={40} /> : (
+        <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-md bg-surface text-ink-3 shadow-[inset_0_0_0_1.5px_var(--hairline)]">
           <CreditCard className="size-[18px]" strokeWidth={1.5} />
         </span>
       )}
       <div className="min-w-0 flex-1">
-        <p className={cn('truncate text-[15px] font-semibold', name ? 'text-ink' : 'text-ink-3')}>{name || 'Your subscription'}</p>
-        <p className="text-[12.5px] text-ink-3">Every {EVERY[freq]}</p>
+        <p className={cn('truncate text-body font-medium', name ? 'text-ink' : 'text-ink-3')}>{name || 'Your subscription'}</p>
+        <p className="text-small text-ink-3">Every {EVERY[freq]}</p>
       </div>
-      <p className="shrink-0 text-right text-[16px] font-semibold text-ink tabular-nums">
+      <p className="shrink-0 text-right text-body font-medium text-ink tabular-nums">
         {value > 0 ? formatMoney(value, currency) : <span className="text-ink-3">–</span>}
-        <span className="block text-[11.5px] font-normal text-ink-3">/ {EVERY[freq]}</span>
+        <span className="block text-caption font-normal text-ink-3">/ {EVERY[freq]}</span>
       </p>
     </div>
   )
@@ -122,18 +122,18 @@ function SubscriptionForm({ today, baseCurrency, initial, onDone }: { today: str
           <div className="flex flex-col gap-4">
             {preview}
             <fieldset>
-              <legend className="mb-2 text-[12.5px] font-medium text-ink-2">Popular</legend>
+              <legend className="mb-2 text-small font-medium text-ink-2">Popular</legend>
               <div className="grid grid-cols-4 gap-1.5 md:grid-cols-3">
                 {POPULAR.map((p) => (
                   <button
                     key={p.name} type="button" onClick={() => pick(p)} aria-pressed={name === p.name}
                     className={cn(
-                      'flex min-h-[70px] flex-col items-center justify-start gap-1.5 rounded-[12px] px-1 pt-2.5 pb-2 text-[11px] leading-tight text-ink-2 transition-[background-color,box-shadow,scale] duration-150 active:scale-[0.96]',
+                      'flex min-h-[70px] flex-col items-center justify-start gap-1.5 rounded-md px-1 pt-2.5 pb-2 text-caption text-ink-2 transition-[background-color,box-shadow,scale] duration-150 active:scale-[0.96]',
                       'hover:bg-surface-2 focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_var(--pill)]',
                       name === p.name && 'bg-surface-2 text-ink shadow-[0_0_0_1.5px_var(--pill)]',
                     )}
                   >
-                    <BrandLogo name={p.name} size="sm" />
+                    <Picture of="merchant" name={p.name} size={32} />
                     <span className="line-clamp-2 text-center">{p.name}</span>
                   </button>
                 ))}
@@ -180,7 +180,7 @@ function SubscriptionForm({ today, baseCurrency, initial, onDone }: { today: str
 
       <FormError message={state && !state.ok ? state.error : undefined} />
       <div className="flex justify-end gap-2">
-        <Button variant="ghost" onClick={onDone}>Cancel</Button>
+        <Button variant="quiet" onClick={onDone}>Cancel</Button>
         <Button type="submit" variant="primary" disabled={pending}>{pending ? 'Saving…' : edit ? 'Save' : 'Add subscription'}</Button>
       </div>
     </form>

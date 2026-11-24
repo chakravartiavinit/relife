@@ -8,10 +8,11 @@ import { Button, buttonClass } from './button'
 import { Input } from './form'
 import { FormError } from './forms/dialog'
 import { useToast } from './toast'
-import { AppLogo as Logo } from './app-logo'
+import { Picture } from './picture'
+import { StatusWord } from './status-word'
 import { PeekLink } from './peek/peek-link'
 import { isInline, needsFix } from '@/domain/connections'
-import { STATUS } from './connector-status'
+import { STATUS, STATUS_WORD } from './connector-status'
 import { SyncButton, type ConnectorItem } from './connector-market'
 import { Cmd, LOCAL_AI_DOWN, RecheckLocalAi } from './local-ai-check'
 import { cn } from '../cn'
@@ -39,7 +40,7 @@ export function YourSources({ items, manage }: { items: ConnectorItem[]; manage:
   if (!sources.length) {
     return (
       <section aria-labelledby="your-sources" className="rounded-lg bg-surface p-5 shadow-1">
-        <h2 id="your-sources" className="text-heading text-ink">Your sources</h2>
+        <h2 id="your-sources" className="font-display text-heading text-ink">Your sources</h2>
         <p className="mt-1 text-small text-ink-3">Nothing connected yet. Pick one of the suggestions below, or search the list. Nothing syncs until you connect it.</p>
       </section>
     )
@@ -48,13 +49,13 @@ export function YourSources({ items, manage }: { items: ConnectorItem[]; manage:
   return (
     <section aria-labelledby="your-sources" className="flex flex-col gap-3">
       <div className="flex items-baseline justify-between gap-3 px-1">
-        <h2 id="your-sources" className="text-heading text-ink">Your sources</h2>
+        <h2 id="your-sources" className="font-display text-heading text-ink">Your sources</h2>
         <span className="text-small text-ink-3 tabular-nums">{sources.length} connected{broken.length ? ` · ${broken.length} need a fix` : ''}</span>
       </div>
       {broken.map((c) => <FixRow key={c.id} c={c} manage={manage} />)}
       {healthy.length ? (
         <div className="rounded-lg bg-surface p-2 shadow-1 sm:p-3">
-          <div aria-hidden className="hidden grid-cols-[minmax(0,1fr)_120px_120px_96px_88px] gap-3 px-3 pb-1 font-mono text-label text-ink-3 uppercase md:grid">
+          <div aria-hidden className="hidden grid-cols-[minmax(0,1fr)_120px_120px_96px_88px] gap-3 px-3 pb-1 text-caption font-medium text-ink-3 md:grid">
             <span>Source</span><span>Health</span><span>Last sync</span><span className="text-end">Synced</span><span />
           </div>
           <ul className="divide-y divide-divider">{first.map((c) => <SourceRow key={c.id} c={c} />)}</ul>
@@ -80,10 +81,10 @@ function FixRow({ c, manage }: { c: ConnectorItem; manage: Manage }) {
   const last = c.lastSync ? ` Last good sync ${c.lastSync}.` : ''
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-lg p-3 shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--bad)_35%,transparent)]" style={{ background: 'color-mix(in oklab, var(--bad) 7%, var(--surface))' }}>
-      <Logo id={c.id} category={c.category} size="sm" />
+      <Picture of="connector" id={c.id} name={c.name} size={40} />
       <div className="min-w-0 flex-1 basis-56">
-        <PeekLink to={{ type: 'connector', id: c.id }} className="rounded-xs text-body font-semibold text-ink hover:underline focus-visible:outline-2 focus-visible:outline-pill">{c.name}</PeekLink>
-        <p className="text-small text-ink-2"><span className={cn('font-medium', local ? 'text-warn' : 'text-bad')}>{local ? `${LOCAL_AI_DOWN}.` : `${STATUS[c.status].label}.`}</span> {local ? <Cmd text={problem ?? ''} /> : problem}{last}</p>
+        <PeekLink to={{ type: 'connector', id: c.id }} className="rounded-xs text-body font-medium text-ink hover:underline focus-visible:outline-2 focus-visible:outline-pill">{c.name}</PeekLink>
+        <p className="text-small text-ink-2"><StatusWord {...(local ? { tone: 'warn' as const } : STATUS_WORD[c.status])}>{local ? LOCAL_AI_DOWN : c.status === 'error' ? 'Slipping' : STATUS[c.status].label}</StatusWord> {local ? <Cmd text={problem ?? ''} /> : problem}{last}</p>
       </div>
       {local ? <RecheckLocalAi variant="primary" /> : c.oauth && c.status !== 'setup' ? (
         <a href={`/api/oauth/${c.id}/start`} className={buttonClass({ variant: 'primary', size: 'md' })}><LogIn className="size-4" strokeWidth={2} aria-hidden />{fixLabel(c)}</a>
@@ -99,15 +100,14 @@ function SourceRow({ c }: { c: ConnectorItem }) {
   return (
     <li className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 px-3 py-2.5 md:grid-cols-[minmax(0,1fr)_120px_120px_96px_88px]">
       <span className="flex min-w-0 items-center gap-3 max-md:contents">
-        <Logo id={c.id} category={c.category} size="sm" />
+        <Picture of="connector" id={c.id} name={c.name} size={32} />
         <span className="min-w-0 max-md:col-start-2">
           <PeekLink to={{ type: 'connector', id: c.id }} className="block truncate rounded-xs text-body font-medium text-ink hover:underline focus-visible:outline-2 focus-visible:outline-pill">{c.name}</PeekLink>
           <span className="block truncate text-caption text-ink-3 md:hidden">{first ? c.statusLabel ?? st.label : `${c.lastSync}${n ? ` · ${fmt(n)} items` : ''}`}</span>
         </span>
       </span>
-      <span className="flex items-center gap-1.5 text-small text-ink-2 max-md:col-start-3 max-md:row-start-1 max-md:justify-self-end">
-        <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: st.color }} />
-        <span className="max-md:sr-only">{first ? 'Starting' : 'Healthy'}</span>
+      <span className="max-md:col-start-3 max-md:row-start-1 max-md:justify-self-end">
+        {first ? <StatusWord tone="quiet">Starting</StatusWord> : <StatusWord status="Steady" />}
       </span>
       <span className="hidden text-small text-ink-2 tabular-nums md:block">
         {c.lastSync ?? 'not yet'}
@@ -132,16 +132,16 @@ export function SuggestedForYou({ items, areas, manage }: { items: ConnectorItem
   return (
     <section aria-labelledby="suggested" className="flex flex-col gap-3">
       <div className="px-1">
-        <h2 id="suggested" className="text-heading text-ink">Suggested for your areas</h2>
+        <h2 id="suggested" className="font-display text-heading text-ink">Suggested for your areas</h2>
         <p className="text-small text-ink-3">Not connected yet. Each one adds numbers to the areas you picked.</p>
       </div>
       <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {picks.map((c) => (
           <li key={c.id} className="flex min-w-0 flex-col gap-3 rounded-lg bg-surface p-4 shadow-1">
             <div className="flex items-center gap-3">
-              <Logo id={c.id} category={c.category} size="sm" />
+              <Picture of="connector" id={c.id} name={c.name} size={40} />
               <div className="min-w-0">
-                <p className="truncate text-body font-semibold text-ink">{c.name}</p>
+                <p className="truncate text-body font-medium text-ink">{c.name}</p>
                 <p className="truncate text-caption text-ink-3">{c.category ? CATEGORY[c.category].label : ''}</p>
               </div>
             </div>
@@ -170,7 +170,7 @@ export function InlineUsernameConnect({ c }: { c: ConnectorItem }) {
   const rest = f.label.toLowerCase().startsWith(c.name.toLowerCase() + ' ') ? f.label.slice(c.name.length + 1) : f.label
   const hint = rest.charAt(0).toUpperCase() + rest.slice(1)
   useEffect(() => {
-    if (ok) toast(`${c.name} connected`, 'good', { icon: <Logo id={c.id} category={c.category} size="xs" />, description: 'Its first sync starts within a minute' })
+    if (ok) toast(`${c.name} connected`, 'good', { picture: { of: 'connector', id: c.id, name: c.name }, description: 'Its first sync starts within a minute' })
   }, [ok]) // eslint-disable-line react-hooks/exhaustive-deps -- once per success
   if (ok) {
     return <p role="status" className="flex min-h-10 items-center gap-2 text-small font-medium text-good"><CircleCheck className="size-4" strokeWidth={2} aria-hidden />Connected. First sync starting…</p>
@@ -203,7 +203,7 @@ export function ConnectSuccess({ c, onDone }: { c: ConnectorItem; onDone: () => 
       <p className="flex items-center gap-2 text-heading text-ink"><span className="grid size-6 place-items-center rounded-full bg-good/15 text-good"><Check className="size-4" strokeWidth={2.5} aria-hidden /></span>{c.name} connected</p>
       <p className="text-small text-ink-2">The first sync runs in the background, so you can close this. {c.statusLabel ?? 'It starts within a minute.'}</p>
       <div>
-        <h3 className="mb-2 font-mono text-label text-ink-3 uppercase">What you’ll see and where</h3>
+        <h3 className="mb-2 text-small font-medium text-ink-3">What you’ll see and where</h3>
         <ul className="flex flex-col divide-y divide-divider rounded-md bg-surface-2/60 shadow-[inset_0_0_0_1px_var(--hairline)]">
           {rows.map((r) => (
             <li key={r.href}>

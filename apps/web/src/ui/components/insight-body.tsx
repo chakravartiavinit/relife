@@ -29,13 +29,13 @@ function AlertBody({ text }: { text: string }) {
   const [lead, ...data] = hideUrlQuery(text).split('\n').filter((l) => l.trim())
   return (
     <div className="flex max-w-[68ch] flex-col gap-3">
-      <p className="text-[14px] leading-relaxed text-ink-2 text-pretty [overflow-wrap:anywhere]">{lead}</p>
+      <p className="text-body leading-relaxed text-ink-2 text-pretty [overflow-wrap:anywhere]">{lead}</p>
       {data.length ? (
         <ul aria-label="Numbers" className="divide-y divide-divider rounded-[12px] bg-surface-2 px-3.5">
           {data.map((line, i) => {
             const m = /^(.*?)\s*·\s*([▲▼])\s*([\d.,]+%)$/.exec(line)
             return (
-              <li key={i} className="flex min-h-10 items-center justify-between gap-3 py-2 text-[13px] text-ink-2 tabular-nums">
+              <li key={i} className="flex min-h-10 items-center justify-between gap-3 py-2 text-small text-ink-2 tabular-nums">
                 <span className="min-w-0 [overflow-wrap:anywhere]"><Amounts text={m ? m[1] : line} /></span>
                 {m ? <Change up={m[2] === '▲'} pct={m[3]} /> : null}
               </li>
@@ -55,7 +55,7 @@ function Amounts({ text }: { text: string }) {
 function Change({ up, pct }: { up: boolean; pct: string }) {
   const Icon = up ? ArrowUp : ArrowDown
   return (
-    <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-full bg-surface px-2 text-[12px] font-medium text-ink-2 shadow-1">
+    <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-full bg-surface px-2 text-caption font-medium text-ink-2 shadow-1">
       <Icon className="size-3" strokeWidth={2.5} aria-hidden />
       <span className="sr-only">{up ? 'Up' : 'Down'} </span>{pct}
     </span>
@@ -83,12 +83,12 @@ function GoalPoints({ goals }: { goals: NonNullable<ReviewContent['goals']> }) {
       <ul className="flex flex-col gap-3">
         {goals.map((g) => (
           <li key={g.reviewId} className="min-w-0">
-            <p className="text-[14px] leading-snug font-medium text-ink">{g.title}</p>
-            <ul className="mt-1 flex flex-col gap-0.5 text-[13px] leading-relaxed text-ink-3 tabular-nums">
+            <p className="text-body leading-snug font-medium text-ink">{g.title}</p>
+            <ul className="mt-1 flex flex-col gap-0.5 text-small leading-relaxed text-ink-3 tabular-nums">
               {g.lines.map((l, i) => <li key={i} className="text-pretty">{l}</li>)}
             </ul>
-            {g.note ? <p className="mt-1 text-[13px] leading-relaxed text-ink-2 text-pretty"><span className="font-medium text-ink">Coach note: </span>{g.note}</p> : null}
-            <p className="mt-1 text-[13.5px] font-medium text-ink-2 text-pretty">{g.prompt}</p>
+            {g.note ? <p className="mt-1 text-small leading-relaxed text-ink-2 text-pretty"><span className="font-medium text-ink">Coach note: </span>{g.note}</p> : null}
+            <p className="mt-1 text-small font-medium text-ink-2 text-pretty">{g.prompt}</p>
           </li>
         ))}
       </ul>
@@ -107,8 +107,8 @@ function Points({ kind, points }: { kind: keyof typeof SECTION; points: ReviewPo
           <li key={i} className="flex gap-2.5">
             <span aria-hidden className="mt-[7px] size-2 shrink-0 rounded-full" style={{ background: CATEGORY[p.area]?.color ?? 'var(--ink-3)' }} />
             <span className="min-w-0">
-              <span className="block text-[14px] leading-snug font-medium text-ink">{p.headline}</span>
-              <span className="mt-0.5 block text-[13px] leading-relaxed text-ink-3 text-pretty">{p.detail}</span>
+              <span className="block text-body leading-snug font-medium text-ink">{p.headline}</span>
+              <span className="mt-0.5 block text-small leading-relaxed text-ink-3 text-pretty">{p.detail}</span>
             </span>
           </li>
         ))}
@@ -122,9 +122,9 @@ function NextWeek({ focus, plan }: { focus: string; plan: string }) {
     <section aria-label="Next week" className="flex gap-3 rounded-[14px] bg-pill-wash px-4 py-3">
       <Target className="mt-0.5 size-[18px] shrink-0 text-pill-ink" strokeWidth={2} aria-hidden />
       <div className="min-w-0">
-        <p className="text-[11.5px] font-semibold tracking-[0.04em] text-pill-ink uppercase">Next week</p>
-        {focus ? <p className="mt-0.5 text-[14.5px] font-semibold text-ink">{focus}</p> : null}
-        {plan ? <p className="mt-0.5 text-[13.5px] leading-relaxed text-ink-2 text-pretty">{plan}</p> : null}
+        <p className="text-small font-medium text-pill-ink">Next week</p>
+        {focus ? <p className="mt-0.5 text-body font-medium text-ink">{focus}</p> : null}
+        {plan ? <p className="mt-0.5 text-small leading-relaxed text-ink-2 text-pretty">{plan}</p> : null}
       </div>
     </section>
   )
@@ -132,7 +132,7 @@ function NextWeek({ focus, plan }: { focus: string; plan: string }) {
 
 function SectionLabel({ icon: Icon, color, children }: { icon: typeof Check; color: string; children: React.ReactNode }) {
   return (
-    <p className="mb-2 flex items-center gap-1.5 text-[12px] font-semibold text-ink-2">
+    <p className="mb-2 flex items-center gap-1.5 text-caption font-medium text-ink-2">
       <span aria-hidden className="grid size-5 place-items-center rounded-full" style={{ color, background: `color-mix(in oklch, ${color} 14%, transparent)` }}>
         <Icon className="size-3" strokeWidth={2.5} />
       </span>
@@ -147,7 +147,7 @@ function Formatted({ text }: { text: string }) {
   // An old review's "Next week" block becomes the same callout as a new one.
   const heading = (line: string) => /^\*\*(.+)\*\*:?$/.exec(line.trim())?.[1] ?? /^([A-Z][\w ]{1,20}):$/.exec(line.trim())?.[1]
   return (
-    <div className="flex max-w-[68ch] flex-col gap-3 text-[14px] leading-relaxed text-ink-2 [overflow-wrap:anywhere]">
+    <div className="flex max-w-[68ch] flex-col gap-3 text-body leading-relaxed text-ink-2 [overflow-wrap:anywhere]">
       {blocks.map((block, n) => {
         const lines = block.split('\n')
         const title = heading(lines[0])
@@ -157,7 +157,7 @@ function Formatted({ text }: { text: string }) {
         const kind = title && /win/i.test(title) ? 'wins' : title && /watch|slip|problem/i.test(title) ? 'watch' : null
         return (
           <section key={n}>
-            {title ? (kind ? <SectionLabel icon={SECTION[kind].icon} color={SECTION[kind].color}>{title}</SectionLabel> : <p className="mb-1 text-[12px] font-semibold text-ink-2">{title}</p>) : null}
+            {title ? (kind ? <SectionLabel icon={SECTION[kind].icon} color={SECTION[kind].color}>{title}</SectionLabel> : <p className="mb-1 text-caption font-medium text-ink-2">{title}</p>) : null}
             {bullets && rest.length ? (
               <ul className="flex flex-col gap-1.5">
                 {rest.map((l, i) => (
@@ -177,5 +177,5 @@ function Formatted({ text }: { text: string }) {
 
 /** **bold** spans; everything else as typed. */
 function Inline({ text }: { text: string }) {
-  return <>{text.split(/(\*\*[^*]+\*\*)/).map((part, i) => (/^\*\*[^*]+\*\*$/.test(part) ? <strong key={i} className="font-semibold text-ink">{part.slice(2, -2)}</strong> : part))}</>
+  return <>{text.split(/(\*\*[^*]+\*\*)/).map((part, i) => (/^\*\*[^*]+\*\*$/.test(part) ? <strong key={i} className="font-medium text-ink">{part.slice(2, -2)}</strong> : part))}</>
 }

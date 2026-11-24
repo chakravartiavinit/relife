@@ -1,4 +1,4 @@
-import { SystemLabel } from '@/ui/components/card'
+import { PageHeader } from '@/ui/components/card'
 import { RouteTabs, type SegmentTab } from '@/ui/components/segment-tabs'
 
 const TABS: SegmentTab[] = [
@@ -8,15 +8,11 @@ const TABS: SegmentTab[] = [
   { href: '/you/settings', label: 'Settings' },
 ]
 
-/** One compact header and tab row for the four You pages; only the tab body below changes on a tab click. */
+/** One compact head and tab row for the four You pages; only the tab body below changes on a tab click. */
 export default function YouLayout({ children }: LayoutProps<'/you'>) {
   return (
     <>
-      <header className="mb-4">
-        <SystemLabel>You</SystemLabel>
-        <h1 className="mt-0.5 font-display text-title font-extrabold tracking-[-0.03em] text-ink">Progress, sources and settings</h1>
-      </header>
-      <RouteTabs tabs={TABS} label="You" className="mb-6" />
+      <PageHeader title="You" description="Progress, sources and settings." tabs={<RouteTabs variant="underline" tabs={TABS} label="You" />} />
       {children}
     </>
   )

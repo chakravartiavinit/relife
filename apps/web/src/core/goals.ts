@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { cache } from 'react'
 import { and, desc, eq, inArray, isNull, lte, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import {
@@ -101,7 +102,6 @@ export async function goalPicker(user: User, today: string) {
     routines,
   }
 }
-export type GoalPicker = Awaited<ReturnType<typeof goalPicker>>
 
 async function viewsFor(user: User, list: Goal[], today: string, now: Date): Promise<GoalView[]> {
   const live = list.filter((g) => g.status !== 'finished')
@@ -165,6 +165,10 @@ export async function loadGoalsPage(user: User, now = new Date()) {
   }
 }
 
+/** One request, one load: the Plan head and the tab under it both read the goals, and the second read reuses the first. */
+const goalsMemo = cache((): { page?: ReturnType<typeof loadGoalsPage> } => ({}))
+export const loadGoalsPageOnce = (user: User) => (goalsMemo().page ??= loadGoalsPage(user))
+
 /** What the goal form needs to open from a draft anywhere (Coach's Needs you): the picker, today and how many goals are active. */
 export async function goalFormContext(user: User, now = new Date()) {
   const today = localDate(now, user.timezone)
@@ -173,15 +177,6 @@ export async function goalFormContext(user: User, now = new Date()) {
     db.select({ n: sql<number>`count(*)::int` }).from(G).where(and(eq(G.userId, user.id), eq(G.status, 'active'))),
   ])
   return { picker, today, activeCount: active?.n ?? 0 }
-}
-
-/** How many active goals wait on a weekly-review decision. Two light queries, for the dot on the Plan › Review tab. */
-export async function dueReviewCount(user: User) {
-  const [active, reviews] = await Promise.all([
-    db.select({ id: G.id }).from(G).where(and(eq(G.userId, user.id), eq(G.status, 'active'))),
-    latestReviews(user.id),
-  ])
-  return active.filter((g) => reviews.some((r) => r.goalId === g.id && !r.decision)).length
 }
 
 /** One goal with its history and check-ins, for /plan/goals/[id]. */

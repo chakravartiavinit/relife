@@ -60,7 +60,7 @@ export function PeopleOnServer({ people, invites }: { people: PersonRow[]; invit
       >
         {people.map((p) => (
           <div key={p.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3.5">
-            <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-[12px] bg-pill-wash font-display text-heading font-bold text-pill-ink">{p.name.trim().slice(0, 1).toUpperCase() || '?'}</span>
+            <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-[12px] bg-pill-wash font-display text-heading font-medium text-pill-ink">{p.name.trim().slice(0, 1).toUpperCase() || '?'}</span>
             <div className="min-w-0 flex-1 basis-48">
               <p className="flex flex-wrap items-center gap-2 text-body font-medium text-ink">
                 <span className="truncate">{p.name}</span>

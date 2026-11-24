@@ -2,21 +2,21 @@
 
 import type { PeekData } from '@/core/peek/types'
 import { PEEK_FIXTURES } from '@/ui/fixtures/peek'
-import { PeekView, peekHeading } from './peek-view'
+import { headingMark, PeekView, peekHeading, type PeekHeading } from './peek-view'
 import { Failed, Gone } from './peek-host'
 import { PeekSkeleton } from './peek-parts'
 
 // /dev/ui: every Peek type drawn from a fixture, plus the loading, 404 and error states, in a plain 440px frame
 // (the real one is a fixed panel on a laptop and a bottom sheet on a phone).
 
-function Frame({ title, children, heading }: { title: string; heading?: { title: string; description?: string; icon?: React.ReactNode }; children: React.ReactNode }) {
+function Frame({ title, children, heading }: { title: string; heading?: PeekHeading; children: React.ReactNode }) {
   return (
-    <div>
+    <div className="min-w-0">
       <div className="mb-2 text-small text-ink-2">{title}</div>
       <div className="w-full max-w-[440px] overflow-hidden rounded-lg bg-surface shadow-2">
         {heading ? (
           <div className="flex items-center gap-3 border-b border-line px-4 py-4">
-            {heading.icon}
+            {headingMark(heading)}
             <div className="min-w-0">
               <div className="truncate text-heading text-ink">{heading.title}</div>
               {heading.description ? <div className="truncate text-small text-ink-3">{heading.description}</div> : null}

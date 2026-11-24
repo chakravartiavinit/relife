@@ -1,23 +1,27 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Sector, usePlotArea, useYAxisScale, type PieSectorShapeProps } from 'recharts'
 import { EvilAreaChart } from '@/components/evilcharts/charts/recharts-area-chart'
 import { EvilLineChart } from '@/components/evilcharts/charts/recharts-line-chart'
 import { EvilBarChart } from '@/components/evilcharts/charts/recharts-bar-chart'
 import { EvilPieChart } from '@/components/evilcharts/charts/recharts-pie-chart'
 import type { ChartConfig } from '@/components/evilcharts/ui/recharts-chart'
-import { interpolateGaps, niceAxis } from '@/domain/series'
-import { CHART } from '../tokens'
+import { hasTrend, interpolateGaps, leadSeries, niceAxis, trimLeadingEmpty, type RankedSeries } from '@/domain/series'
+import { CHART, chartShade } from '../tokens'
+import { TargetTrend } from './category/target-trend'
 
 // ReLife's charts: EvilCharts (evilcharts.com), installed unmodified with `npx shadcn add @evilcharts/…` into
 // src/components/evilcharts. These wrappers only pick the chart, its parts and ReLife's colours.
 // One rule per kind of number:
 //   a measure over time (sleep, mood, weight)     → TrendArea   (gradient area; with a goal, a line chart with a dashed goal line)
 //   a count per day (steps, commits, spend, XP)   → DailyBars   (bars; days that met the goal stand out)
-//   a ranking (spending by category)              → RankedBars  (horizontal bars, sorted)
 //   shares of a whole (XP by kind, holdings)      → ShareDonut  (pie chart as a ring, with its legend)
-//   several series per period (spend by month)    → StackedBars
-//   a tiny trend in a stat tile                   → Sparkline
+//   several series per period (spend by month)    → StackedBars  (the lead series in the accent, the rest in neutrals)
+//   the one lead chart of a screen                (LeadChart: a line with its dashed reference and its last value written on it)
+//   a tiny trend in a stat tile                   → Sparkline    (render its slot only when `hasTrend` from domain/series says there is one)
+// One lead chart per screen, 240 to 280 high (`height`); the others sit at 120 to 160 and are a different kind.
+// One accent per chart. Area colours (`--cat-*`) belong to area series and are kept; nothing else gets its own hue.
 // Colours are ReLife tokens; they switch with the theme on their own, so light and dark get the same value.
 // Tooltips show EvilCharts' plain numbers, so the unit goes in the series name ("Sleep (h)").
 // Habit adherence keeps its own shape-coded strip.
@@ -36,7 +40,7 @@ const goalColor = 'var(--ink-3)'
 /** One series colour for both themes (the token itself changes with the theme). */
 const tone = (label: string, color: string) => ({ label, colors: { light: [color], dark: [color] } })
 const named = (name: string, unit?: string) => (unit ? `${name} (${unit})` : name)
-const axisTick = { fontSize: 11 }
+const axisTick = { fontSize: 12 }
 type Row = Record<string, string | number | null>
 
 /**
@@ -50,17 +54,31 @@ export function seriesName(label: string) {
 // Mixed into a raised surface rather than transparent, so a below-goal bar still reads on a dark card.
 const faded = (c: string) => `color-mix(in oklch, ${c} 50%, var(--surface-3))`
 
-const GHOST = [38, 62, 45, 80, 55, 30, 68, 50, 74, 42, 58, 85, 48, 64, 36, 70, 52, 44, 78, 60]
-
-/** Shown instead of empty axes: faint ghost bars and one line of guidance. */
+/** Shown instead of empty axes: a plain well of the chart's height and one line of guidance. */
 function ChartEmpty({ height, label }: { height: number; label: string }) {
   return (
-    <figure aria-label={`${label}: no data yet`} className="relative m-0 grid place-items-center" style={{ height }}>
-      <div aria-hidden className="absolute inset-x-1 bottom-6 top-3 flex items-end gap-[3px] opacity-60 [mask-image:linear-gradient(to_top,black,transparent)]">
-        {GHOST.map((h, i) => <span key={i} className="flex-1 rounded-t-[4px] bg-surface-2" style={{ height: `${h}%` }} />)}
-      </div>
-      <figcaption className="relative rounded-full bg-surface px-3.5 py-1.5 text-[12.5px] font-medium text-ink-3 shadow-1">No data yet</figcaption>
+    <figure aria-label={`${label}: no data yet`} className="m-0 grid place-items-center rounded-md bg-surface-2" style={{ height }}>
+      <figcaption className="text-small text-ink-3">No data yet</figcaption>
     </figure>
+  )
+}
+
+const isArea = (color: string) => color.startsWith('var(--cat-')
+/** The colour rule: the lead takes the accent, ranks 2 and 3 and Other the neutral ramp; an area series keeps its area colour. */
+function shade(r: RankedSeries, accent: string) {
+  if (isArea(r.color)) return r.color
+  return chartShade(r.rank, accent, r.other)
+}
+const LEGEND_MAX = 4
+
+/** The legend of a chart that leads with one series: at most four entries, wrapping under the chart. */
+function Legend({ items, max = LEGEND_MAX }: { items: { id: string; name: string; color: string }[]; max?: number }) {
+  return (
+    <ul className="mt-3 flex flex-wrap justify-center gap-x-3 gap-y-1.5 text-caption text-ink-2">
+      {items.slice(0, max).map((s) => (
+        <li key={s.id} className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: s.color }} />{s.name}</li>
+      ))}
+    </ul>
   )
 }
 
@@ -155,91 +173,172 @@ export function Sparkline({ data, color = CHART.accent, height = 32, label = 'Tr
     const values = interpolateGaps(data.map((p) => p.value))
     return data.map((p, i) => ({ day: shortDate(p.date), value: values[i] }))
   }, [data])
+  const [box, shown] = useHasSize<HTMLDivElement>()
   // One or two points draw as a sliver at the edge; the space stays, the line waits for more days.
-  if (data.filter((p) => p.value != null).length < 3) return null
+  if (!hasTrend(data)) return null
   return (
     <figure aria-label={label} className="m-0">
-      <div style={{ height }}><EvilAreaChart data={rows} config={{ value: tone(seriesName(label), color) }} animationType="none" className="aspect-auto h-full w-full"
+      <div ref={box} style={{ height }}>{shown ? <EvilAreaChart data={rows} config={{ value: tone(seriesName(label), color) }} animationType="none" className="aspect-auto h-full w-full"
         chartProps={{ margin: { top: 2, right: 2, bottom: 2, left: 2 } }}>
         <EvilAreaChart.Area dataKey="value" variant="gradient" strokeVariant="solid" connectNulls />
-      </EvilAreaChart></div>
+      </EvilAreaChart> : null}</div>
     </figure>
   )
 }
 
-/** Ranked horizontal bars (magnitude by category), largest first. */
-export function RankedBars({ data, color = CHART.accent, unit, label }: {
-  data: { label: string; value: number }[]; color?: string; unit?: string; label: string
-}) {
-  const rows = useMemo(() => [...data].sort((a, b) => b.value - a.value), [data])
-  return (
-    <figure aria-label={label} className="m-0">
-        <div style={{ height: rows.length * 34 + 16 }}><EvilBarChart data={rows} config={{ value: tone(named(seriesName(label), unit), color) }} layout="horizontal" barRadius={4} className="aspect-auto h-full w-full">
-          {/* Headroom on the right for each bar's value label. */}
-          <EvilBarChart.XAxis type="number" hide domain={[0, (max: number) => max * 1.2]} />
-          <EvilBarChart.YAxis type="category" dataKey="label" width={120} tick={{ fontSize: 12 }} />
-          <EvilBarChart.Tooltip />
-          <EvilBarChart.Bar dataKey="value" barProps={{ dataKey: 'value', label: { position: 'right', fontSize: 12, fill: 'var(--ink-2)', formatter: (v: unknown) => (typeof v === 'number' ? fmt(Math.round(v), unit) : '') } }} />
-        </EvilBarChart></div>
-      </figure>
-  )
+/**
+ * True once the element has a size. A sparkline inside a cell that CSS hides (display: none at some widths) has no
+ * box, and Recharts warns "width(0) and height(0)" when it draws into one; so the chart mounts only while it is seen.
+ */
+function useHasSize<T extends HTMLElement>() {
+  const ref = useRef<T>(null)
+  const [shown, setShown] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const ro = new ResizeObserver(([e]) => setShown(e.contentRect.width > 0 && e.contentRect.height > 0))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  return [ref, shown] as const
 }
 
-/** Shares of a whole as a ring, with EvilCharts' legend and the total underneath. */
-export function ShareDonut({ segments, unit, totalLabel, label }: {
+/**
+ * One donut slice. The vendored pie spreads Recharts' shape props, `key` included, into `<Sector>`, which React rejects
+ * ("A props object containing a key prop is being spread into JSX"). We leave EvilCharts untouched and draw the slice
+ * here without the key; the fill is still the pie's own colour.
+ */
+function donutSlice({ key: _key, ...props }: PieSectorShapeProps & { key?: unknown }) {
+  return <Sector {...props} stroke="none" strokeWidth={0} />
+}
+
+/**
+ * Shares of a whole as a ring, with a legend and the total underneath. The biggest `top` shares are drawn (the lead in
+ * the accent, the next ones in neutrals) and the rest fold into Other; at most four legend entries. Shares that are
+ * areas (XP by area) keep their area colours and are all shown.
+ */
+export function ShareDonut({ segments, unit, totalLabel, label, top = 3, accent = CHART.accent }: {
   segments: { id: string; name: string; color: string; value: number }[]; unit?: string; totalLabel: string; label: string
+  /** How many shares keep their own slice before the rest fold into Other. Ignored for area-coloured shares. */
+  top?: number
+  accent?: string
 }) {
   // Config keys become CSS variable names, so they're simple ids, not the segment names.
-  const { rows, config, total } = useMemo(() => {
-    const shown = segments.filter((s) => s.value > 0)
-    const config: ChartConfig = Object.fromEntries(shown.map((s, i) => [`s${i}`, tone(s.name, s.color)]))
-    return { rows: shown.map((s, i) => ({ key: `s${i}`, value: s.value })), config, total: shown.reduce((a, s) => a + s.value, 0) }
-  }, [segments])
-  if (!rows.length) return <p className="text-[13px] text-ink-3">Nothing to show yet.</p>
+  const { shown, rows, config, total } = useMemo(() => {
+    const live = segments.filter((s) => s.value > 0)
+    const areas = live.some((s) => isArea(s.color))
+    const ranked = areas ? live.map((s, i) => ({ id: s.id, name: s.name, color: s.color, value: s.value, rank: i + 1 })) : leadSeries(live.map((s) => ({ id: s.id, name: s.name, color: s.color, values: [s.value] })), top).map((r) => ({ id: r.id, name: r.name, color: shade(r, accent), value: r.values[0] ?? 0, rank: r.rank }))
+    const config: ChartConfig = Object.fromEntries(ranked.map((s, i) => [`s${i}`, tone(s.name, s.color)]))
+    return { shown: areas ? ranked : ranked.slice(0, LEGEND_MAX), rows: ranked.map((s, i) => ({ key: `s${i}`, value: s.value })), config, total: live.reduce((a, s) => a + s.value, 0) }
+  }, [segments, top, accent])
+  if (!rows.length) return <p className="text-small text-ink-3">Nothing to show yet.</p>
   return (
     <figure aria-label={label} className="m-0">
       <EvilPieChart data={rows} dataKey="value" nameKey="key" config={config} className="mx-auto aspect-square w-full max-w-[16rem]">
-        <EvilPieChart.Pie innerRadius="62%" paddingAngle={2} cornerRadius={4} />
+        <EvilPieChart.Pie innerRadius="62%" paddingAngle={2} cornerRadius={4} pieProps={{ shape: donutSlice }} />
         <EvilPieChart.Tooltip />
       </EvilPieChart>
-      {/* Our own legend, outside the square chart, so many or long names wrap instead of running past the card. */}
-      <ul className="mt-3 flex flex-wrap justify-center gap-x-3 gap-y-1.5 text-caption text-ink-2">
-        {segments.filter((s) => s.value > 0).map((s) => (
-          <li key={s.id} className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: s.color }} />{s.name}</li>
-        ))}
-      </ul>
-      <figcaption className="mt-2 text-center text-[12.5px] text-ink-3 tabular-nums">
+      {/* Our own legend, outside the square chart, so long names wrap instead of running past the card. */}
+      <Legend items={shown} max={shown.length} />
+      <figcaption className="mt-2 text-center text-small text-ink-3 tabular-nums">
         <span className="font-medium text-ink">{fmt(Math.round(total), unit)}</span> {totalLabel}
       </figcaption>
     </figure>
   )
 }
 
-/** Several series stacked per period (spend by category per month), with a legend. */
-export function StackedBars({ categories, series, unit, height = 220, label }: {
+const END_LABEL_ROOM = 88
+
+/**
+ * The name of each series at the end of the last bar, level with its segment, so the chart needs no legend. Labels that
+ * would touch are pushed 14px apart. A child of the chart (it reads the plot area and the value scale).
+ */
+function EndLabels({ rows, names }: { rows: Row[]; names: string[] }) {
+  const plot = usePlotArea()
+  const y = useYAxisScale()
+  // The last period with anything in it (today may not have started).
+  const last = [...rows].reverse().find((r) => names.some((_, i) => Number(r[`s${i}`] ?? 0) > 0))
+  if (!plot || !y || !last) return null
+  let base = 0
+  const at = names.map((_, i) => {
+    const v = Number(last[`s${i}`] ?? 0)
+    const mid = Number(y(base + v / 2) ?? 0)
+    base += v
+    return { i, y: mid }
+  })
+  // From the top down each label sits at its segment's middle or 14px under the one above; the last one stays inside the plot.
+  const placed = [...at].sort((a, b) => a.y - b.y)
+  placed.forEach((p, k) => { if (k && p.y < placed[k - 1].y + 14) p.y = placed[k - 1].y + 14 })
+  for (let k = placed.length - 1; k >= 0; k--) {
+    const max = plot.y + plot.height - (placed.length - 1 - k) * 14
+    if (placed[k].y > max) placed[k].y = max
+  }
+  return (
+    <g aria-hidden>
+      {placed.map((p) => (
+        <text key={p.i} x={plot.x + plot.width + 8} y={p.y + 4} fontSize={12} fill={p.i === 0 ? 'var(--ink)' : 'var(--ink-3)'} className={p.i === 0 ? 'font-medium' : undefined}>{names[p.i]}</text>
+      ))}
+    </g>
+  )
+}
+
+/**
+ * Several series stacked per period (spend by category per month). One series leads: `lead` (a series id) or the
+ * biggest takes the accent, the next `top - 1` and Other are neutrals, and a series that is an area keeps its area
+ * colour. Periods before the first activity are hidden. The legend shows at most four entries.
+ */
+export function StackedBars({ categories, series, unit, height = 220, label, top = 3, lead, accent = CHART.accent, legend = true, given = false, endLabels = false }: {
   categories: string[]; series: { id: string; name: string; color: string; values: (number | null)[] }[]; unit?: string; height?: number; label: string
+  /** How many series keep their own colour before the rest fold into Other. */
+  top?: number
+  /** The id of the series to lead with, when it is not simply the biggest. */
+  lead?: string
+  accent?: string
+  /** False when the page lists the series itself right beside the chart (Time's By kind). */
+  legend?: boolean
+  /** True: draw the series in the order and colours given (bottom to top) instead of ranking them by size, for a page whose series have a fixed meaning (Time's focus, messages, distraction). */
+  given?: boolean
+  /** True: name each series at the end of the last bar, in place of a legend. */
+  endLabels?: boolean
 }) {
-  const { rows, config, axis } = useMemo(() => {
-    const keys = series.map((_, i) => `s${i}`)
-    const rows: Row[] = categories.map((c, j) => ({ category: c, ...Object.fromEntries(series.map((s, i) => [keys[i], s.values[j]])) }))
-    const config: ChartConfig = Object.fromEntries(series.map((s, i) => [keys[i], tone(s.name, s.color)]))
+  const { rows, config, axis, ranked, empty } = useMemo(() => {
+    const trimmed = trimLeadingEmpty(categories, series)
+    const ranked = (given ? trimmed.series.map((r, i): RankedSeries => ({ ...r, rank: i + 1 })) : leadSeries(trimmed.series, top, lead).map((r) => ({ ...r, color: shade(r, accent) })))
+    const keys = ranked.map((_, i) => `s${i}`)
+    const rows: Row[] = trimmed.categories.map((c, j) => ({ category: c, ...Object.fromEntries(ranked.map((s, i) => [keys[i], s.values[j] ?? null])) }))
+    const config: ChartConfig = Object.fromEntries(ranked.map((s, i) => [keys[i], tone(s.name, s.color)]))
     // Minutes read better on an hours axis: 0, 2h, 4h rather than 0, 200, 400.
-    const top = Math.max(0, ...categories.map((_, j) => series.reduce((a, s) => a + (s.values[j] ?? 0), 0)))
-    const hours = unit === 'min' ? niceAxis(0, top / 60) : null
+    const peak = Math.max(0, ...trimmed.categories.map((_, j) => ranked.reduce((a, s) => a + (s.values[j] ?? 0), 0)))
+    const hours = unit === 'min' ? niceAxis(0, peak / 60) : null
     const axis = hours ? { domain: [0, hours.domain[1] * 60] as [number, number], ticks: hours.ticks.map((h) => h * 60) } : { domain: undefined, ticks: undefined }
-    return { rows, config, axis }
-  }, [categories, series, unit])
-  if (!series.some((s) => s.values.some((v) => v))) return <ChartEmpty height={height} label={label} />
+    return { rows, config, axis, ranked, empty: !ranked.some((s) => s.values.some((v) => v)) }
+  }, [categories, series, unit, top, lead, accent, given])
+  if (empty) return <ChartEmpty height={height} label={label} />
   return (
     <figure aria-label={label} className="m-0">
-        <div style={{ height: height + 28 }}><EvilBarChart data={rows} config={config} stackType="stacked" barRadius={3} className="aspect-auto h-full w-full">
-          <EvilBarChart.Grid />
-          <EvilBarChart.XAxis dataKey="category" interval="preserveStartEnd" minTickGap={16} tick={axisTick} />
-          <EvilBarChart.YAxis domain={axis.domain} ticks={axis.ticks} tickFormatter={unit === 'min' ? (v: number) => (v ? `${tick(v / 60)}h` : '0') : tick} tick={axisTick} />
-          <EvilBarChart.Tooltip />
-          <EvilBarChart.Legend variant="circle" />
-          {series.map((_, i) => <EvilBarChart.Bar key={i} dataKey={`s${i}`} />)}
-        </EvilBarChart></div>
-      </figure>
+      <div style={{ height }}><EvilBarChart data={rows} config={config} stackType="stacked" barRadius={3} className="aspect-auto h-full w-full" chartProps={endLabels ? { margin: { right: END_LABEL_ROOM } } : undefined}>
+        <EvilBarChart.Grid />
+        <EvilBarChart.XAxis dataKey="category" interval="preserveStartEnd" minTickGap={16} tick={axisTick} />
+        <EvilBarChart.YAxis domain={axis.domain} ticks={axis.ticks} tickFormatter={unit === 'min' ? (v: number) => (v ? `${tick(v / 60)}h` : '0') : tick} tick={axisTick} />
+        <EvilBarChart.Tooltip />
+        {ranked.map((_, i) => <EvilBarChart.Bar key={i} dataKey={`s${i}`} />)}
+        {endLabels ? <EndLabels rows={rows} names={ranked.map((r) => r.name)} /> : null}
+      </EvilBarChart></div>
+      {legend ? <Legend items={ranked} /> : null}
+    </figure>
   )
+}
+
+/**
+ * The one lead chart of a screen: direction over time, labelled on the chart itself. Give it a `reference` (a target, or
+ * the usual level) and it draws a line with a dashed reference line named at its end, a filled dot for every day on the
+ * right side of it and a hollow one under it, and the last value written beside the last dot; with none it is the plain
+ * area. At most one per screen, 240 to 280 high. Its card heading carries the status word, the chart carries no legend.
+ */
+export function LeadChart({ data, color = CHART.accent, unit, reference, direction = 'up', label, height = 260 }: {
+  data: Point[]; color?: string; unit?: string; label: string; direction?: 'up' | 'down'; height?: number
+  reference?: { value: number; label?: string }
+}) {
+  if (!reference) return <TrendArea data={data} color={color} unit={unit} label={label} height={height} />
+  return <TargetTrend data={data} color={color} unit={unit} label={label} height={height} direction={direction} target={reference.value} targetLabel={reference.label} />
 }

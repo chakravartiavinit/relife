@@ -8,7 +8,8 @@ import { monthlyCost, upcomingPayments } from './schedules'
 import { loadPortfolio, contractCoin } from './portfolio'
 import { snapshotNetWorth, netWorthHistory } from './net-worth'
 import { addDays, localDate } from './time'
-import { monthPace, monthRange, oneOffs, repeatBuys, shiftMonth, usualMonth } from '@/domain/wealth'
+import { categoryPace } from '@/domain/category-pace'
+import { activeMonths, monthPace, monthRange, oneOffs, repeatBuys, shiftMonth, usualMonth } from '@/domain/wealth'
 import { toLiquidation } from '@/domain/watch'
 
 // Everything the Wealth overview shows, in one read: spending (month pace, 12 months by category, apps,
@@ -16,20 +17,6 @@ import { toLiquidation } from '@/domain/watch'
 
 /** Where an order came from, as people call it. */
 const APP_NAME: Record<string, string> = { zomato: 'Zomato', swiggy: 'Swiggy', blinkit: 'Blinkit', zepto: 'Zepto', amazon: 'Amazon', flipkart: 'Flipkart', makemytrip: 'MakeMyTrip' }
-// One colour per spending category (core/categorize SPEND_CATEGORIES), from the theme tokens and mixes of them,
-// so stacked bars and legends never show two categories in the same colour.
-const mix = (a: string, b: string, pa = 55) => `color-mix(in oklch, var(${a}) ${pa}%, var(${b}))`
-export const SPEND_COLORS: Record<string, string> = {
-  'Food delivery': 'var(--cat-health)', Groceries: 'var(--cat-hobbies)', Shopping: 'var(--pill)', Rent: 'var(--cat-wealth)',
-  Bills: 'var(--cat-relationships)', Transport: 'var(--cat-mind)', 'Dining out': mix('--cat-health', '--cat-wealth'), 'Eating out': mix('--cat-health', '--cat-wealth'),
-  Entertainment: mix('--cat-mind', '--cat-health', 60), Subscriptions: 'var(--cat-skills)', Travel: mix('--cat-relationships', '--cat-hobbies', 60),
-  Health: 'var(--bad)', 'Personal care': mix('--cat-mind', '--pill', 50), Education: 'var(--warn)', Gifts: mix('--cat-hobbies', '--cat-wealth', 50),
-}
-const PALETTE = [...new Set(Object.values(SPEND_COLORS))]
-/** A category's colour; anything new gets a stable one from the palette, money moved around is grey. */
-export const spendColor = (c: string) => SPEND_COLORS[c]
-  ?? (/^(Investments|Transfers|Income|Uncategorized|Other)$/.test(c) ? 'var(--ink-3)' : PALETTE[[...c].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7) % PALETTE.length])
-
 /** Topics of the money nudges in src/rules/watch.ts, plus the money rules. */
 const MONEY_ALERT = /^(watch:(spend|habit|portfolio|coin|futures|subscriptions)|low-balance)/
 
@@ -74,6 +61,10 @@ export async function loadWealthOverview(user: User, now = new Date()) {
   const usual = usualMonth(byMonth, month)
   const oneOff = oneOffs(spend.filter((t) => t.localDate.startsWith(month)).map((t) => -t.base), usual)
   const pace = { spent, day, daysInMonth, usual, oneOff, ...monthPace(spent, day, daysInMonth, usual, oneOff) }
+  // What was spent on each day so far this month (day 1 first), and each category against the same days of the last 3 months.
+  const daily = Array.from({ length: day }, () => 0)
+  for (const t of spend) if (t.localDate.startsWith(month)) daily[Number(t.localDate.slice(8)) - 1] -= t.base
+  const catPace = categoryPace(spend, month, day)
   const thisMonthCats = [...(byMonthCat.get(month) ?? new Map<string, number>())].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value)
 
   // Apps, last 12 months.
@@ -109,7 +100,7 @@ export async function loadWealthOverview(user: User, now = new Date()) {
   const history = await netWorthHistory(user, 90, now)
 
   return {
-    base, today, month, months, categories, byMonthCat, byMonth, year, pace, thisMonthCats,
+    base, today, month, months, activeMonths: activeMonths(months, byMonth), categories, byMonthCat, byMonth, year, pace, daily, catPace, thisMonthCats,
     apps: appList, allTime, repeat: repeatBuys(lines),
     subs: { monthly: subsMonthly, count: subs.length, next, top: monthlyBase.sort((a, b) => b.monthly - a.monthly) },
     invest: {

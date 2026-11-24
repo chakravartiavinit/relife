@@ -152,7 +152,7 @@ export function BrandLogo({ name, size = 'sm', className }: { name: string; size
   return (
     <span
       aria-hidden
-      className={cn('grid shrink-0 place-items-center font-display font-bold text-[oklch(0.42_0.11_var(--h))] bg-[oklch(0.93_0.045_var(--h))] dark:text-[oklch(0.85_0.08_var(--h))] dark:bg-[oklch(0.33_0.06_var(--h))]', SIZE[size], className)}
+      className={cn('grid shrink-0 place-items-center font-display font-medium text-[oklch(0.42_0.11_var(--h))] bg-[oklch(0.93_0.045_var(--h))] dark:text-[oklch(0.85_0.08_var(--h))] dark:bg-[oklch(0.33_0.06_var(--h))]', SIZE[size], className)}
       style={{ '--h': h } as React.CSSProperties}
     >
       {letter}

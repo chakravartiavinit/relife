@@ -60,6 +60,15 @@ export function oneOffs(orders: number[], usualMonth: number | null, floor = 500
   return orders.filter((v) => v >= min).reduce((a, b) => a + b, 0)
 }
 
+/**
+ * How many of `months` (oldest first) count for an average: from the first one with spending to the last, so a new
+ * install with 4 months of history says "in 4 months", not 12. Gaps after the first are months of no spending and count.
+ */
+export function activeMonths(months: string[], byMonth: Map<string, number>) {
+  const first = months.findIndex((m) => (byMonth.get(m) ?? 0) > 0)
+  return first < 0 ? 0 : months.length - first
+}
+
 /** Average of the full months before `month` that had any spending (up to `n` of them). Null with fewer than 2. */
 export function usualMonth(byMonth: Map<string, number>, month: string, n = 6) {
   const prior = Array.from({ length: n }, (_, i) => byMonth.get(shiftMonth(month, -(i + 1)))).filter((v): v is number => !!v)

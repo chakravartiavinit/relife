@@ -4,11 +4,11 @@ import { AREAS, TEMPLATE_SLUGS } from '@/core/areas'
 import { localDate } from '@/core/time'
 import { getUser } from '@/core/user'
 import { AreaTrends } from '@/ui/components/area/area-trends'
-import { CategorySkeleton } from '@/ui/components/category/skeleton'
+import { Skeleton } from '@/ui/components/card'
 
 export default function AreaTrendsPage({ params }: PageProps<'/[area]/trends'>) {
   return (
-    <Suspense fallback={<CategorySkeleton cards={4} />}>
+    <Suspense fallback={<Skeleton aria-busy className="h-[820px] rounded-lg" />}>
       <Trends params={params} />
     </Suspense>
   )

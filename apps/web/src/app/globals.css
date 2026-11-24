@@ -7,11 +7,31 @@
 /* A wide but short window (a 13" laptop): onboarding tightens its spacing here so each step still fits. */
 @custom-variant short (@media (min-width: 64rem) and (max-height: 52.5rem));
 /* The shell's saved sidebar state, on <html> before first paint (shell/sidebar-script.ts): no layout flash. */
-@custom-variant rail (html[data-sidebar="rail"] &);
+@custom-variant rail (:is(html[data-sidebar="rail"], [data-sidebar-rail]) &);
+/* `group-hover:` for fine pointers only (see hover-fine). */
+@custom-variant group-hover-fine {
+  @media (hover: hover) and (pointer: fine) {
+    &:is(:where(.group):hover *) {
+      @slot;
+    }
+  }
+}
+/* Hover only where a mouse or trackpad exists, so a tap on a phone never leaves a stuck hover state. Use `hover-fine:` in new code. */
+@custom-variant hover-fine {
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      @slot;
+    }
+  }
+}
+/* PageGrid breakpoints are container queries on the page's own column (not the window), so the 240px sidebar and the
+   72px rail both get the right column count: 1 column below 40rem, 8 columns from 40rem, 12 columns from 60rem. */
+@custom-variant grid-md (@container (min-width: 40rem));
+@custom-variant grid-lg (@container (min-width: 60rem));
 
 /*
- * ReLife design tokens: the ReLIFE capsule. Ink black, clean white and capsule blue, light-first,
- * with halftone dots as the one decorative texture. Tuned for contrast.
+ * ReLife design tokens: the ReLIFE capsule. Ink black, flat warm grey and capsule blue, light-first,
+ * with halftone dots in banner corners as the one decorative texture. Tuned for contrast.
  * Text-safe colors are AA (4.5:1) on their surface; sky / sakura / cardigan are fills only.
  * The values live in packages/tokens/tokens.json; edit there and run `npm run tokens`.
  * Derived values (var() aliases) and the Tailwind color mapping stay here.
@@ -48,6 +68,10 @@
   --color-good: var(--good);
   --color-bad: var(--bad);
   --color-warn: var(--warn);
+  /* Text-safe status colours (4.5:1 on surface and surface-2): status words, overdue times. */
+  --color-good-ink: var(--good-ink);
+  --color-warn-ink: var(--warn-ink);
+  --color-bad-ink: var(--bad-ink);
   --color-health: var(--cat-health);
   --color-mind: var(--cat-mind);
   --color-skills: var(--cat-skills);
@@ -68,32 +92,13 @@
   --color-destructive: var(--bad);
   --color-accent: var(--pill);
 
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-outfit), var(--font-inter), ui-sans-serif, sans-serif;
-  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
-
-  /* Type scale. Use these instead of text-[Npx]: `text-title font-display`, `text-label font-mono uppercase`. */
-  --text-display: 34px;
-  --text-display--line-height: 40px;
-  --text-display--font-weight: 800;
-  --text-display--letter-spacing: -0.03em;
-  --text-title: 24px;
-  --text-title--line-height: 30px;
-  --text-title--font-weight: 700;
-  --text-title--letter-spacing: -0.02em;
-  --text-heading: 17px;
-  --text-heading--line-height: 24px;
-  --text-heading--font-weight: 600;
-  --text-body: 14px;
-  --text-body--line-height: 20px;
-  --text-small: 13px;
-  --text-small--line-height: 18px;
-  --text-caption: 12px;
-  --text-caption--line-height: 16px;
-  --text-label: 11px;
-  --text-label--line-height: 14px;
-  --text-label--font-weight: 600;
-  --text-label--letter-spacing: 0.08em;
+  --font-sans: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
+  /* Display: Fraunces, for page titles, card titles and one standalone figure. It has no tabular figures. */
+  --font-display: var(--font-fraunces), Georgia, 'Times New Roman', serif;
+  /* Figures in a row or column: Hanken Grotesk with tabular digits (see the num utility). */
+  --font-figure: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
+  /* No mono face is loaded: code and codes use the system one. */
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
   --shadow-1: var(--elev-1);
   --shadow-2: var(--elev-2);
@@ -103,6 +108,39 @@
   --color-scrim: var(--scrim);
 }
 
+/* The type scale is a plain @theme (not inline) so utilities read var(--text-*) and a media query can resize a step. */
+@theme {
+  /* Type scale (T1 "Field notebook"). Use these instead of text-[Npx]: `font-display text-display`, `text-label`.
+     Display, Title, Heading and Figure are set in Fraunces (add `font-display`); the rest is Hanken Grotesk.
+     Weights 400-600, sentence case, no negative tracking under 20px. */
+  --text-display: 44px;
+  --text-display--line-height: 48px;
+  --text-display--font-weight: 400;
+  --text-display--letter-spacing: -0.01em;
+  --text-title: 28px;
+  --text-title--line-height: 34px;
+  --text-title--font-weight: 400;
+  --text-title--letter-spacing: -0.005em;
+  --text-heading: 19px;
+  --text-heading--line-height: 24px;
+  --text-heading--font-weight: 500;
+  --text-figure: 36px;
+  --text-figure--line-height: 40px;
+  --text-figure--font-weight: 400;
+  --text-figure--letter-spacing: -0.01em;
+  --text-body: 15px;
+  --text-body--line-height: 22px;
+  --text-small: 13px;
+  --text-small--line-height: 18px;
+  --text-caption: 12px;
+  --text-caption--line-height: 16px;
+  --text-caption--letter-spacing: 0.01em;
+  --text-label: 13px;
+  --text-label--line-height: 16px;
+  --text-label--font-weight: 500;
+  --text-label--letter-spacing: 0.01em;
+}
+
 @layer base {
   html {
     background: var(--bg);
@@ -110,28 +148,19 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
-    font-feature-settings: "cv11", "ss01";
+    font-variant-numeric: tabular-nums;
   }
   body {
     font-family: var(--font-sans);
     position: relative;
     isolation: isolate;
   }
-  /* Fixed atmosphere layers behind everything (no background-attachment: fixed, cheap on mobile). */
-  body::before,
-  body::after {
-    content: '';
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-  }
-  body::before {
-    background: var(--canvas-wash);
-  }
-  body::after {
-    opacity: var(--grain-opacity);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  /* Fraunces: soft, no wonk; the optical size follows the text size. No tabular figures, so lining ones. */
+  .font-display {
+    font-synthesis-weight: none;
+    font-optical-sizing: auto;
+    font-variation-settings: "SOFT" 50, "WONK" 0;
+    font-variant-numeric: lining-nums;
   }
   h1, h2, h3 {
     text-wrap: balance;
@@ -163,10 +192,6 @@
 @media (prefers-reduced-motion: reduce) {
   .rise { animation-name: relife-fade; }
   .animate-pulse { animation: none; }
-}
-
-[data-theme="dark"] body::after {
-  filter: invert(1);
 }
 
 /* One-time staged entrance for hero content (Today). Interactive states use transitions instead. */
@@ -240,59 +265,6 @@
 }
 [data-theme="dark"] .halftone { opacity: 0.22; }
 
-/* Setup's backdrop (/welcome): a halftone skyline of XP bars along the bottom edge that grows with
-   each step, and small logo capsules drifting up from it. Bars share one dot grid (36px apart, a
-   multiple of the 9px pitch), with the dots growing toward the ground like a printed screentone.
-   Bars rise once on load (keyframe) and glide to each new height after that (transition), from the
-   centre outward. Decorative: aria-hidden, pointer-events off, still under reduced motion. */
-.skyline {
-  -webkit-mask-image: linear-gradient(to top, #000 12%, transparent 96%);
-  mask-image: linear-gradient(to top, #000 12%, transparent 96%);
-}
-@keyframes skyline-rise {
-  from { clip-path: inset(100% 0 0 0 round 12px 12px 0 0); }
-}
-.skyline-bar {
-  --dot: var(--pill);
-  position: absolute;
-  inset-block: 0;
-  width: 27px;
-  background: radial-gradient(circle, var(--dot) 1px, transparent 1.6px) 0 0 / 9px 9px;
-  clip-path: inset(calc(100% - var(--h)) 0 0 0 round 12px 12px 0 0);
-  transition: clip-path 900ms var(--ease-out-strong) calc(var(--i) * 14ms);
-  animation: skyline-rise 1200ms var(--ease-out-strong) calc(150ms + var(--i) * 20ms) backwards;
-}
-.skyline-bar::before,
-.skyline-bar::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-}
-.skyline-bar::before {
-  background: radial-gradient(circle, var(--dot) 1.9px, transparent 2.5px) 0 0 / 9px 9px;
-  -webkit-mask-image: linear-gradient(to top, #000 15%, transparent 75%);
-  mask-image: linear-gradient(to top, #000 15%, transparent 75%);
-}
-.skyline-bar::after {
-  background: radial-gradient(circle, var(--dot) 3px, transparent 3.6px) 0 0 / 9px 9px;
-  -webkit-mask-image: linear-gradient(to top, #000, transparent 42%);
-  mask-image: linear-gradient(to top, #000, transparent 42%);
-}
-@keyframes mote-rise {
-  from { translate: 0 0; opacity: 0; }
-  12%, 72% { opacity: var(--o); }
-  to { translate: var(--dx) calc(var(--rise) * -1); opacity: 0; }
-}
-.mote {
-  position: absolute;
-  opacity: 0;
-  animation: mote-rise var(--t) linear var(--d) infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .skyline-bar { animation: none; transition: none; }
-  .mote { animation: none; }
-}
-
 /* The day-complete card: five capsule pieces fall once (1.4s) over the card. Gone under reduced motion. */
 @keyframes day-confetti {
   from { translate: 0 -14px; rotate: 0deg; opacity: 0; }
@@ -320,6 +292,14 @@ details::details-content {
   transition: opacity 150ms var(--ease-out-quint), content-visibility 150ms allow-discrete;
 }
 details[open]::details-content { opacity: 1; }
+/* A `Fold inline` (fold.tsx) is plain content from the 8-column tier of its PageGrid up: no summary row, body always shown. */
+@supports selector(::details-content) {
+  @container (min-width: 40rem) {
+    details[data-fold-inline] > summary { display: none; }
+    /* Opacity too: the unlayered `details::details-content { opacity: 0 }` above beats the Fold's own utility class. */
+    details[data-fold-inline]::details-content { content-visibility: visible; opacity: 1; }
+  }
+}
 
 /* Sidebar sub-pages (Wealth → Spending…): height reveal so the rows below slide rather than jump.
    A transition, so clicking away mid-open reverses smoothly. Reduced motion keeps only the fade. */
@@ -340,11 +320,21 @@ details[open]::details-content { opacity: 1; }
   mask-image: linear-gradient(to bottom, transparent 0, #000 10px, #000 calc(100% - 28px), transparent);
 }
 
-/* Big numbers (KPI values, totals): display face, bold, digits that line up. */
+/* Big numbers in rows and columns (KPI values, totals): the UI face (Hanken Grotesk), medium weight, digits that line up. */
 @utility num {
-  font-family: var(--font-display);
-  font-weight: 700;
+  font-family: var(--font-figure);
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
+}
+
+/* Phone: Display 44/48 steps down to 34/40 and Body 15/22 up to 16/24 (the calm type specimen). */
+@media (max-width: 639px) {
+  :root {
+    --text-display: 34px;
+    --text-display--line-height: 40px;
+    --text-body: 16px;
+    --text-body--line-height: 24px;
+  }
 }
 
 /* Where the desktop Sheet panel starts from the top of the viewport: the shell's top bar (72px) plus the 12px
@@ -352,11 +342,22 @@ details[open]::details-content { opacity: 1; }
 :root { --sheet-top: 12px; --topbar-h: 72px; --tabbar-h: calc(64px + max(20px, env(safe-area-inset-bottom))); }
 @media (min-width: 1024px) { :root { --sheet-top: calc(var(--topbar-h) + 12px); } }
 
-/* Sidebar, before hydration: a saved rail is drawn at once from <html data-sidebar>, ignoring the width and label
-   state React has not caught up with yet. `data-sidebar-ready` (set shortly after load) hands control back to
-   the spring so collapsing animates. */
-html[data-sidebar="rail"]:not([data-sidebar-ready]) aside[data-slot="sidebar"] { width: var(--sidebar-width-icon) !important; }
-html[data-sidebar="rail"]:not([data-sidebar-ready]) [data-slot="sidebar-label"] { opacity: 0 !important; }
+/* Sidebar: the saved state is on <html data-sidebar> before first paint and CSS (the `rail:` variant) lays it out, so a
+   saved rail never flashes open. ⌘\ switches at once; only the collapse button sets `data-sidebar-animate`
+   (sidebar.tsx) to ease the width. Reduced motion shows the final width. */
+html[data-sidebar-animate] [data-sidebar-panel] { transition: width 200ms var(--ease-out-quint); }
+@media (prefers-reduced-motion: reduce) {
+  html[data-sidebar-animate] [data-sidebar-panel] { transition: none; }
+}
+/* The rail tooltip grows from its left edge; the phone Life tray grows from the Life tab. Reduced motion shows them
+   in place. */
+@keyframes tip-in { from { opacity: 0; transform: scale(0.97); } }
+@keyframes tray-in { from { opacity: 0; transform: translateY(8px) scale(0.97); } }
+.tip-in { transform-origin: left center; animation: tip-in 125ms var(--ease-out-strong) both; }
+.tray-in { transform-origin: 30% 100%; animation: tray-in 200ms var(--ease-out-strong) both; }
+@media (prefers-reduced-motion: reduce) {
+  .tip-in, .tray-in { animation: none; }
+}
 
 /* The Life group's area list unfolds with a height reveal so the rows below slide rather than jump. */
-html[data-life="closed"] .nav-sub[data-open] { grid-template-rows: 0fr; opacity: 0; }
+html[data-life="closed"]:not([data-sidebar="rail"]) .nav-sub[data-open] { grid-template-rows: 0fr; opacity: 0; }

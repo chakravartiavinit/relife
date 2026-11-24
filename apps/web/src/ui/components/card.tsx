@@ -1,5 +1,6 @@
 import type { PeekRef } from '@/domain/peek'
 import { cn } from '../cn'
+import { PageHead } from './page-head'
 import { PeekLink } from './peek/peek-link'
 
 const CATEGORY_BY_LABEL: Record<string, string> = {
@@ -16,13 +17,13 @@ export function Card({ className, as: As = 'section', ...props }: React.HTMLAttr
   return <As className={cn('relative rounded-lg bg-surface p-5 shadow-1', className)} {...props} />
 }
 
-/** Rounded-square icon chip. Concentric with 40px rows: 28px chip, 6px radius. */
+/** A small mark: a 24px well in neutral, the icon in the area colour (a mark, never text). Stroke is forced to 1.5. */
 export function IconChip({ children, color, className }: { children: React.ReactNode; color?: string; className?: string }) {
   return (
     <span
       aria-hidden
-      className={cn('grid size-7 shrink-0 place-items-center rounded-[8px] [&_svg]:size-[15px]', !color && 'bg-surface-2 text-ink-2', className)}
-      style={color ? { color, background: `color-mix(in oklch, ${color} 14%, transparent)` } : undefined}
+      className={cn('grid size-6 shrink-0 place-items-center rounded-xs bg-surface-2 text-ink-2 [&_svg]:size-3.5 [&_svg]:[stroke-width:1.5]', className)}
+      style={color ? { color } : undefined}
     >
       {children}
     </span>
@@ -37,8 +38,8 @@ export function CardHeader({ title, description, action, icon, color, className 
       <div className="flex min-w-0 items-start gap-3">
         {icon ? <IconChip color={color}>{icon}</IconChip> : null}
         <div className="min-w-0">
-          <h2 className={cn('text-[15px] font-semibold tracking-[-0.01em] text-ink', !!icon && 'leading-7')}>{title}</h2>
-          {description ? <p className={cn('text-[13px] text-ink-3', icon ? '-mt-0.5' : 'mt-0.5')}>{description}</p> : null}
+          <h2 className={cn('font-display text-heading text-ink', !!icon && 'leading-6')}>{title}</h2>
+          {description ? <p className="mt-0.5 text-small text-ink-3">{description}</p> : null}
         </div>
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}
@@ -51,14 +52,14 @@ export function Stat({ label, value, sub, tone, icon, color, className }: {
 }) {
   return (
     <div className={cn('@container min-w-0', className)}>
-      <div className="flex items-center gap-2 text-[12.5px] font-medium text-ink-3">
-        {icon ? <span aria-hidden className="[&_svg]:size-3.5" style={{ color: color ?? 'var(--ink-3)' }}>{icon}</span> : null}
+      <div className="flex items-center gap-2 text-small text-ink-3">
+        {icon ? <span aria-hidden className="[&_svg]:size-3.5 [&_svg]:[stroke-width:1.5]" style={{ color: color ?? 'var(--ink-3)' }}>{icon}</span> : null}
         {label}
       </div>
       {/* Scales with its column (container query) so ₹14,14,684 never runs into its neighbour on a phone. */}
       {/* A good or bad number is coloured itself; the line under it is an explanation and stays plain text. */}
-      <div className={cn('mt-2 font-display text-[clamp(20px,9cqi,30px)] leading-none font-bold tracking-[-0.025em] break-words tabular-nums', tone === 'good' ? 'text-good' : tone === 'bad' ? 'text-bad' : 'text-ink')}>{value}</div>
-      {sub ? <div className="mt-2 text-[12.5px] text-ink-3 tabular-nums">{sub}</div> : null}
+      <div className={cn('mt-2 num text-[clamp(20px,9cqi,28px)] leading-none break-words', tone === 'good' ? 'text-good' : tone === 'bad' ? 'text-bad' : 'text-ink')}>{value}</div>
+      {sub ? <div className="mt-2 text-small text-ink-3 tabular-nums">{sub}</div> : null}
     </div>
   )
 }
@@ -66,7 +67,7 @@ export function Stat({ label, value, sub, tone, icon, color, className }: {
 export function Badge({ children, color, className }: { children: React.ReactNode; color?: string; className?: string }) {
   return (
     <span
-      className={cn('inline-flex h-5 items-center rounded-full px-2 text-[11px] font-medium tracking-[0.01em] whitespace-nowrap', !color && 'bg-surface-2 text-ink-2', className)}
+      className={cn('inline-flex h-5 items-center rounded-full px-2 text-caption font-medium whitespace-nowrap', !color && 'bg-surface-2 text-ink-2', className)}
       // The colour tints the pill; the text is mixed toward ink so it stays readable (ochre on cream is ~3:1).
       style={color ? { color: `color-mix(in oklch, ${color} 65%, var(--ink))`, background: `color-mix(in oklch, ${color} 13%, transparent)` } : undefined}
     >
@@ -80,47 +81,62 @@ export function Skeleton({ className }: { className?: string }) {
 }
 
 /**
- * Page title block, as a banner in the game style (same shape as the area and character banners).
- * Category pages get their colour automatically from the eyebrow.
+ * The compact head of a page (see `PageHead`): the sentence-case label, the Fraunces title, one brief line, an optional summary on
+ * the right and an optional tab row with the page's actions at its end. Not a card. Category pages get their colour
+ * automatically from the eyebrow.
+ *
+ * `eyebrow` is the sentence-case label, `description` the brief line, `summary` the right-hand block, `tabs` an underline
+ * `RouteTabs`, `actions` the page's buttons (in the tabs row when there are tabs), `capsule` a `CapsuleIcon`.
  */
-export function PageHeader({ title, description, actions, eyebrow }: {
+export function PageHeader({ title, description, actions, eyebrow, summary, tabs, capsule, className }: {
   title: React.ReactNode; description?: React.ReactNode; actions?: React.ReactNode; eyebrow?: React.ReactNode
+  summary?: React.ReactNode; tabs?: React.ReactNode; capsule?: React.ReactNode; className?: string
 }) {
   const c = typeof eyebrow === 'string' ? CATEGORY_BY_LABEL[eyebrow.toLowerCase()] ?? 'var(--pill)' : 'var(--pill)'
   return (
-    <header className="relative isolate mb-6 overflow-hidden rounded-[24px] bg-surface p-5 shadow-2 sm:p-6">
-      <div aria-hidden className="halftone inset-y-0 right-0 -z-10 w-2/3" style={{ '--tone': c } as React.CSSProperties} />
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0">
-          {eyebrow ? <SystemLabel color={c}>{eyebrow}</SystemLabel> : null}
-          <h1 className="mt-0.5 font-display text-[28px] leading-[1.05] font-extrabold tracking-[-0.03em] text-ink sm:text-[34px]">{title}</h1>
-          {description ? <p className="mt-1.5 max-w-[60ch] text-[14px] leading-relaxed text-ink-2">{description}</p> : null}
-        </div>
-        {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
-      </div>
-    </header>
+    <PageHead
+      tone={c} capsule={capsule} label={eyebrow ? <SystemLabel color={c}>{eyebrow}</SystemLabel> : undefined}
+      title={title} brief={description} summary={summary} tabs={tabs} actions={actions} className={className}
+    />
   )
 }
 
-/** A small mono label in the System's voice: ▮ HEALTH. Used above page and area titles. */
+/**
+ * The sentence-case label above a page title: a small area-coloured dot and `Health`, `Monday, 23 November`.
+ * Only in page banners (PageHeader, AreaHeader, the Life and You heads, the Today date, the save file, the sign-in
+ * banner). Sections use `SectionLabel`.
+ */
 export function SystemLabel({ color = 'var(--pill)', children }: { color?: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2 font-mono text-label uppercase" style={{ color: `color-mix(in oklch, ${color} 70%, var(--ink))` }}>
-      <span aria-hidden className="h-3 w-1.5 rounded-full" style={{ background: color }} />
+    <div className="flex items-center gap-2 text-label text-ink-2">
+      <span aria-hidden className="size-1.5 shrink-0 rounded-full" style={{ background: color }} />
       {children}
+    </div>
+  )
+}
+
+/**
+ * A section heading in sentence case: `Check first`, `Life pulse`. `rule` draws the divider line the page sections
+ * use between the label and a right-hand `action` (a link); inside a card leave it off.
+ */
+export function SectionLabel({ as: As = 'h2', id, children, action, rule = false, className }: {
+  as?: 'h2' | 'h3' | 'div' | 'p'; id?: string; children: React.ReactNode; action?: React.ReactNode; rule?: boolean; className?: string
+}) {
+  return (
+    <div className={cn('flex items-center gap-3', className)}>
+      <As id={id} className={cn('text-small font-medium whitespace-nowrap', rule ? 'text-ink-2' : 'text-ink-3')}>{children}</As>
+      {rule ? <span aria-hidden className="h-px flex-1 bg-divider" /> : action ? <span className="flex-1" /> : null}
+      {action ? <div className="shrink-0">{action}</div> : null}
     </div>
   )
 }
 
 export type Kpi = { label: React.ReactNode; value: React.ReactNode; sub?: React.ReactNode; tone?: 'good' | 'bad'; /** Opens this item's Peek. */ peek?: PeekRef }
 
-/** Every item opens `peek` unless it already has its own (an area's tiles open the area's summary). */
-export const peekAll = (items: Kpi[], peek: PeekRef): Kpi[] => items.map((k) => ({ peek, ...k }))
-
 /** The row of headline numbers at the top of every area page. A number with a `peek` opens its Peek. */
 export function KpiStrip({ items }: { items: Kpi[] }) {
   return (
-    <Card className="p-6">
+    <Card>
       {/* Each stat spans three rows of a shared grid (label, number, note), so when one label wraps on a phone
           the numbers beside it still line up. */}
       <div className="grid grid-cols-2 gap-x-6 md:grid-cols-4">
@@ -132,7 +148,7 @@ export function KpiStrip({ items }: { items: Kpi[] }) {
               <PeekLink
                 to={k.peek}
                 aria-label={`${typeof k.label === 'string' ? k.label : 'Details'}: open details`}
-                className="absolute -inset-x-3 -inset-y-2 rounded-md transition-colors duration-150 ease-out-quint hover:bg-ink/[0.04] focus-visible:outline-2 focus-visible:outline-pill dark:hover:bg-white/[0.05] md:-inset-x-3"
+                className="absolute -inset-x-3 -inset-y-2 rounded-md transition-colors duration-150 ease-out-quint hover:bg-ink/[0.04] focus-visible:outline-2 focus-visible:outline-pill md:-inset-x-3"
               />
             ) : null}
           </div>

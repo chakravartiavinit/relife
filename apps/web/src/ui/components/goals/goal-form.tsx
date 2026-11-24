@@ -127,14 +127,14 @@ function GoalStartPicker({ picker, activeCount, drafts, onDraft, onTracker, onCh
       </div>
       {draft ? (
         <div className="rounded-md bg-pill/7 p-4">
-          <p className="font-mono text-label text-pill-ink uppercase">Coach draft</p>
-          <p className="mt-1 text-body font-semibold text-ink">{draft.draft.title}</p>
+          <p className="text-small font-medium text-pill-ink">Coach draft</p>
+          <p className="mt-1 text-body font-medium text-ink">{draft.draft.title}</p>
           <p className="mt-0.5 text-small text-ink-2">{draft.draft.reason}</p>
           <Button variant="primary" className="mt-3" onClick={() => onDraft(draft)}>Use this draft</Button>
         </div>
       ) : null}
       <div>
-        <h3 className="mb-2 text-small font-semibold text-ink-2">Trackers {brand.name} already fills</h3>
+        <h3 className="mb-2 text-small font-medium text-ink-2">Trackers {brand.name} already fills</h3>
         <ul className="flex flex-col gap-2">
           {shown.map((t) => {
             const ok = t.observations >= MIN_DAYS && !!t.baseline
@@ -171,9 +171,9 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
   return (
     <fieldset className="flex flex-col gap-4 border-t border-divider pt-5 first-of-type:border-t-0 first-of-type:pt-0">
       <legend className="contents">
-        <span className="block text-[15px] font-semibold text-ink">{title}</span>
+        <span className="block text-heading font-medium text-ink">{title}</span>
       </legend>
-      {hint ? <p className="-mt-3 text-[12.5px] text-ink-3">{hint}</p> : null}
+      {hint ? <p className="-mt-3 text-caption text-ink-3">{hint}</p> : null}
       {children}
     </fieldset>
   )
@@ -183,13 +183,13 @@ export function UnitInput({ unit, error, ...props }: React.ComponentProps<'input
   return (
     <div className="relative">
       <Input type="number" step="any" inputMode="decimal" aria-invalid={!!error || undefined} className={cn(unit && 'pr-12', error && 'shadow-[0_0_0_1.5px_var(--bad)]')} {...props} />
-      {unit ? <span aria-hidden className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-[13px] text-ink-3">{unit}</span> : null}
+      {unit ? <span aria-hidden className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-small text-ink-3">{unit}</span> : null}
     </div>
   )
 }
 
 function FieldError({ id, message }: { id: string; message?: string }) {
-  return message ? <p id={id} className="text-[12.5px] text-bad">{message}</p> : null
+  return message ? <p id={id} className="text-caption text-bad">{message}</p> : null
 }
 
 /** 28 baseline days, oldest first. Recorded days use the area colour; missing days are striped, never zero. */
@@ -203,14 +203,14 @@ export function ObservationStrip({ strip, color, from, to }: { strip: boolean[];
             style={on ? { background: `color-mix(in oklch, ${color} 55%, transparent)` } : undefined} />
         ))}
       </div>
-      <div className="mt-1 flex justify-between text-[12px] text-ink-3 tabular-nums"><span>{day(from)}</span><span>{day(to)}</span></div>
+      <div className="mt-1 flex justify-between text-caption text-ink-3 tabular-nums"><span>{day(from)}</span><span>{day(to)}</span></div>
     </div>
   )
 }
 
 export function Notice({ tone = 'info', icon: Icon = tone === 'warn' ? TriangleAlert : Info, children }: { tone?: 'info' | 'warn'; icon?: LucideIcon; children: React.ReactNode }) {
   return (
-    <p className={cn('flex gap-2 rounded-md px-3 py-2 text-[13px] leading-relaxed text-ink-2', tone === 'warn' ? 'bg-warn/10' : 'bg-pill/7')}>
+    <p className={cn('flex gap-2 rounded-md px-3 py-2 text-small leading-relaxed text-ink-2', tone === 'warn' ? 'bg-warn/10' : 'bg-pill/7')}>
       <Icon aria-hidden className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} style={{ color: tone === 'warn' ? 'var(--warn)' : 'var(--pill)' }} />
       <span>{children}</span>
     </p>
@@ -314,7 +314,7 @@ function GoalForm({ mode, initial, picker, today, onDone, onBack }: { mode: Mode
 
       <Section title="Measure" hint={locked ? 'To measure something else, finish this goal and start a new one.' : `Use a tracker ${brand.name} already fills, or record a check-in yourself.`}>
         {locked ? (
-          <p className="text-[13.5px] text-ink-2">{goal!.measureKind === 'tracker' ? `${goal!.measureName} tracker` : `Check-in · ${goal!.measureName}`}{goal!.unit ? ` · ${goal!.unit}` : ''}</p>
+          <p className="text-small text-ink-2">{goal!.measureKind === 'tracker' ? `${goal!.measureName} tracker` : `Check-in · ${goal!.measureName}`}{goal!.unit ? ` · ${goal!.unit}` : ''}</p>
         ) : (
           <>
             <Segmented name="measureKind" aria-label="Measure source" value={measureKind} onValueChange={(v) => { setMeasureKind(v as 'tracker' | 'check_in'); setBaseline(v === 'tracker' ? recordedBaseline(tracker) : '') }} className="self-start"
@@ -350,7 +350,7 @@ function GoalForm({ mode, initial, picker, today, onDone, onBack }: { mode: Mode
 
       <Section title="Where you start">
         {locked ? (
-          <p className="text-[13.5px] text-ink-2 tabular-nums">Baseline {goal!.baselineValue}{goal!.unit ? ` ${goal!.unit}` : ''} · {day(goal!.baselineDate)} · {goal!.baselineHow}</p>
+          <p className="text-small text-ink-2 tabular-nums">Baseline {goal!.baselineValue}{goal!.unit ? ` ${goal!.unit}` : ''} · {day(goal!.baselineDate)} · {goal!.baselineHow}</p>
         ) : (
           <>
             <input type="hidden" name="baselineMode" value={useRecorded ? 'recorded' : 'manual'} />
@@ -361,10 +361,10 @@ function GoalForm({ mode, initial, picker, today, onDone, onBack }: { mode: Mode
               </Field>
               {measureKind === 'tracker' && tracker ? (
                 <div className="flex flex-col gap-1.5">
-                  <span className="text-[13px] font-medium text-ink-2">Recorded</span>
+                  <span className="text-small font-medium text-ink-2">Recorded</span>
                   <div className="flex h-9 items-center gap-2">
                     <Badge color={tracker.observations >= 7 ? 'var(--good)' : undefined}>{tracker.observations} of 28 days</Badge>
-                    <span className="text-[12.5px] text-ink-3">7 or more needed</span>
+                    <span className="text-caption text-ink-3">7 or more needed</span>
                   </div>
                 </div>
               ) : (
@@ -379,7 +379,7 @@ function GoalForm({ mode, initial, picker, today, onDone, onBack }: { mode: Mode
               <>
                 <ObservationStrip strip={tracker.strip} color={CATEGORY[tracker.category].color} from={addDays(today, -28)} to={addDays(today, -1)} />
                 {tracker.baseline ? (
-                  <p className="text-[12.5px] leading-relaxed text-ink-3">
+                  <p className="text-caption leading-relaxed text-ink-3">
                     {useRecorded ? `Auto-filled: the average of ${tracker.baseline.observations} days from your ${tracker.name} tracker in the 28 days before today. Missing days are left out. You can change it.` : 'You changed the recorded average, so this baseline is yours.'}
                   </p>
                 ) : <Notice>Only {tracker.observations} days recorded in the 28 days before today. A baseline needs 7, so enter one yourself.</Notice>}
@@ -399,7 +399,7 @@ function GoalForm({ mode, initial, picker, today, onDone, onBack }: { mode: Mode
       </Section>
 
       <Section title="Target">
-        {locked ? <p className="-mt-1 text-[13px] text-ink-3">{directionLabel(goal!.direction)}</p> : (
+        {locked ? <p className="-mt-1 text-small text-ink-3">{directionLabel(goal!.direction)}</p> : (
           <Segmented name="direction" aria-label="Direction" value={direction} onValueChange={(v) => setDirection(v as GoalFormInitial['direction'])} className="self-start"
             options={[{ value: 'increase', label: 'Increase' }, { value: 'decrease', label: 'Decrease' }, { value: 'range', label: 'Stay in range' }]} />
         )}
@@ -443,34 +443,34 @@ function GoalForm({ mode, initial, picker, today, onDone, onBack }: { mode: Mode
               <label key={o.key} className="relative">
                 <input type="checkbox" name="actions" value={o.key} checked={on} disabled={o.measure || (!on && full)} className="peer sr-only"
                   onChange={() => setActions((a) => (on ? a.filter((x) => x !== o.key) : [...a, o.key]))} />
-                <span className="flex h-10 cursor-pointer items-center gap-1.5 rounded-md bg-surface-2 px-3 text-[13px] font-medium text-ink-2 transition-[background-color,color,box-shadow] duration-150 select-none peer-checked:bg-ink peer-checked:text-bg peer-disabled:cursor-not-allowed peer-disabled:opacity-50 peer-focus-visible:shadow-[0_0_0_2px_var(--pill)]">
+                <span className="flex h-10 cursor-pointer items-center gap-1.5 rounded-md bg-surface-2 px-3 text-small font-medium text-ink-2 transition-[background-color,color,box-shadow] duration-150 select-none peer-checked:bg-ink peer-checked:text-bg peer-disabled:cursor-not-allowed peer-disabled:opacity-50 peer-focus-visible:shadow-[0_0_0_2px_var(--pill)]">
                   {on ? <Check className="size-3.5" strokeWidth={2} aria-hidden /> : null}
                   {o.label}{o.measure ? ' · measure' : ''}
                 </span>
               </label>
             )
           })}
-          {!actionOptions.length ? <p className="text-[13px] text-ink-3">Add a routine in Plan › Routines first, then link it here.</p> : null}
+          {!actionOptions.length ? <p className="text-small text-ink-3">Add a routine in Plan › Routines first, then link it here.</p> : null}
         </div>
-        <p className="text-[12.5px] text-ink-3 tabular-nums">{actions.length} of {MAX_ACTIONS} selected.{outcomeTrackerKey ? ' The measure can’t also be an action.' : ''}</p>
+        <p className="text-caption text-ink-3 tabular-nums">{actions.length} of {MAX_ACTIONS} selected.{outcomeTrackerKey ? ' The measure can’t also be an action.' : ''}</p>
         <FieldError id={`${id}-actions-e`} message={errors.actions} />
       </Section>
 
       <Section title="Review">
         <Segmented name="cadence" aria-label="Review cadence" defaultValue={initial.cadence} className="self-start"
           options={Object.entries(CADENCE_LABEL).map(([value, label]) => ({ value, label }))} />
-        <p className="-mt-2 text-[12.5px] text-ink-3">Reviews land on a Sunday. You decide to keep, change, pause or finish.</p>
+        <p className="-mt-2 text-caption text-ink-3">Reviews land on a Sunday. You decide to keep, change, pause or finish.</p>
       </Section>
 
       {stale ? (
-        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-bad/8 px-3 py-2 text-[13px] text-bad">
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-bad/8 px-3 py-2 text-small text-bad">
           <span>This goal changed somewhere else since you opened it. Nothing was saved.</span>
           <Button size="sm" onClick={() => { router.refresh(); onDone() }}>Reload goal</Button>
         </div>
       ) : <FormError message={state && !state.ok ? state.error ?? (Object.keys(errors).length ? 'Check the highlighted fields.' : undefined) : undefined} />}
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-divider pt-4">
-        <p className="text-[12.5px] text-ink-3 tabular-nums">{activeAfter ? `Saving makes this active goal ${activeAfter} of ${MAX_ACTIVE}.` : ''}</p>
+        <p className="text-caption text-ink-3 tabular-nums">{activeAfter ? `Saving makes this active goal ${activeAfter} of ${MAX_ACTIVE}.` : ''}</p>
         <div className="flex gap-2">
           <Button variant="ghost" onClick={onBack ?? onDone}>{onBack ? 'Back' : 'Cancel'}</Button>
           <Button type="submit" variant="primary" disabled={pending}>{pending ? 'Saving…' : mode.kind === 'draft' || mode.kind === 'create' ? 'Start goal' : 'Save'}</Button>
@@ -484,7 +484,7 @@ function GoalForm({ mode, initial, picker, today, onDone, onBack }: { mode: Mode
  * "New goal"; also open while the URL is `/plan?new=1`. Open state comes from the URL, not from state set once,
  * so a page kept alive in the background never comes back with a stale dialog. Disabled at the cap with the reason read out.
  */
-export function NewGoalButton({ today, picker, activeCount, listenToUrl = false, drafts }: { today: string; picker: GoalPickerData; activeCount: number; listenToUrl?: boolean; drafts?: DraftOffer[] }) {
+export function NewGoalButton({ today, picker, activeCount, listenToUrl = false, drafts, variant = 'primary' }: { today: string; picker: GoalPickerData; activeCount: number; listenToUrl?: boolean; drafts?: DraftOffer[]; variant?: 'primary' | 'secondary' }) {
   const atCap = activeCount >= MAX_ACTIVE
   const [open, setOpen] = useState(false)
   const router = useRouter()
@@ -493,7 +493,7 @@ export function NewGoalButton({ today, picker, activeCount, listenToUrl = false,
   const fromUrl = listenToUrl && pathname === '/plan' && params.get('new') === '1'
   return (
     <>
-      <Button variant="primary" onClick={() => setOpen(true)} disabled={atCap} aria-describedby={atCap ? 'goal-cap-note' : undefined}>
+      <Button variant={variant} onClick={() => setOpen(true)} disabled={atCap} aria-describedby={atCap ? 'goal-cap-note' : undefined}>
         <Plus className="size-4" strokeWidth={2} />
         New goal
       </Button>

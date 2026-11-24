@@ -19,7 +19,7 @@ const FIXTURE: CapturePayload = {
   frequent: [{ slug: 'guitar', name: 'Guitar', unit: 'min', area: 'hobbies', typical: 20 }],
   trackers: [{ slug: 'water', name: 'Water', unit: 'ml' }, { slug: 'mood', name: 'Mood', unit: null }, { slug: 'guitar', name: 'Guitar', unit: 'min' }],
   moodToday: null,
-  spend: [{ note: 'Chai', amount: 120, currency: 'INR' }, { note: 'Auto', amount: 80, currency: 'INR' }, { note: 'Lunch', amount: 250, currency: 'INR' }],
+  spend: [{ note: 'Chai', amount: 120, currency: 'INR' }, { note: 'Uber', amount: 180, currency: 'INR' }, { note: 'Swiggy', amount: 250, currency: 'INR' }],
   ai: true,
 }
 
@@ -31,7 +31,7 @@ function Frame({ title, layout = 'palette', data = FIXTURE, status = 'ready', va
   const [v, setV] = useState(value)
   const sheet = layout === 'sheet'
   return (
-    <div>
+    <div className="min-w-0">
       <div className="mb-2 text-small text-ink-2">{title}</div>
       <div className={sheet ? 'flex h-[520px] w-[390px] max-w-full flex-col overflow-hidden rounded-t-xl bg-surface px-4 pt-4 shadow-3' : 'w-full max-w-[680px]'}>
         <div className={sheet ? 'min-h-0 flex-1 overflow-y-auto' : ''}>

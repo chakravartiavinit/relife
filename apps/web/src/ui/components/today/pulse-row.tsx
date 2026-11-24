@@ -1,57 +1,36 @@
-'use client'
-
 import Link from 'next/link'
-import { ChevronRight } from 'lucide-react'
 import type { PulseTile } from '@/core/pulse'
-import { cn } from '@/ui/cn'
-import { Sparkline } from '../charts'
-import { openCapture } from '../capture/capture-data'
-import { PeekLink } from '../peek/peek-link'
-
-const CELL = 'group flex h-full min-w-0 flex-col gap-1 p-3 text-start transition-colors duration-150 ease-out-quint hover:bg-ink/[0.03] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-pill dark:hover:bg-white/[0.04]'
+import { Card } from '../card'
+import { buttonLinkClass } from '../button'
+import { StatusRow } from '../status-row'
+import { CaptureRow } from './capture-row'
 
 /**
- * Life pulse: the six areas and Time, each a key number for today with one line of context and a 7-day trend. A
- * cell opens the area's Peek; one with nothing logged says so and opens Capture. One card of seven cells on a wide
- * laptop, a swipeable row of tiles below that.
+ * Life pulse: one status row per area (and Time) with the area's picture, its key number in the line and a status
+ * word; a row opens the area's Peek, one with nothing logged says so and opens Capture. Above them goes the week's
+ * biggest change as a `Connection` (`connection`, drawn by the page from `findChanges`; nothing when none qualifies).
+ * Two columns from 640px of page, one on a phone. Wealth is not here: Money today has it.
  */
-export function PulseRow({ tiles }: { tiles: PulseTile[] }) {
+export function PulseCard({ tiles, connection, className }: { tiles: PulseTile[]; connection?: React.ReactNode; className?: string }) {
   return (
-    <section aria-labelledby="life-pulse">
-      <div className="mb-2 flex items-center justify-between gap-3 px-1">
-        <h2 id="life-pulse" className="font-mono text-label text-ink-3 uppercase">Life pulse</h2>
-        <Link href="/life" className="inline-flex h-10 items-center gap-0.5 rounded-md px-1 text-small font-semibold text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-pill">
-          Open Life<ChevronRight className="size-4" strokeWidth={1.5} aria-hidden />
-        </Link>
-      </div>
-      <ul className="-mx-5 flex snap-x gap-3 overflow-x-auto px-5 pb-1 [scrollbar-width:none] sm:-mx-8 sm:px-8 xl:mx-0 xl:grid xl:grid-flow-col xl:auto-cols-fr xl:gap-0 xl:overflow-hidden xl:rounded-lg xl:bg-surface xl:p-0 xl:pb-0 xl:shadow-1">
-        {tiles.map((t) => (
-          <li key={t.slug} className="w-[136px] shrink-0 snap-start overflow-hidden rounded-lg bg-surface shadow-1 xl:w-auto xl:rounded-none xl:shadow-none xl:not-first:border-s xl:not-first:border-divider">
-            <Cell t={t} />
-          </li>
-        ))}
+    <Card aria-labelledby="life-pulse" className={className}>
+      <header className="mb-4 flex items-start justify-between gap-4">
+        <h2 id="life-pulse" className="font-display text-heading text-ink">Life pulse</h2>
+        <Link href="/life" className={buttonLinkClass('text-small', { target: true })}>Open Life</Link>
+      </header>
+      {connection ? <div className="mb-3 rounded-lg bg-surface-2 p-4">{connection}</div> : null}
+      <ul className="grid grid-cols-1 gap-x-10 grid-md:grid-cols-2">
+        {tiles.map((t) => {
+          const line = `${t.value}${t.sub ? ` · ${t.sub}` : ''}`
+          const picture = { of: 'area', to: t.slug } as const
+          // A divider above every row but the first of each column.
+          return (
+            <li key={t.slug} className="min-w-0 not-first:border-t not-first:border-divider grid-md:[&:nth-child(2)]:border-t-0">
+              {t.action ? <CaptureRow picture={picture} name={t.measure} line={line} status={t.status} /> : <StatusRow picture={picture} name={t.measure} line={line} status={t.status} peek={t.peek} />}
+            </li>
+          )
+        })}
       </ul>
-    </section>
-  )
-}
-
-function Cell({ t }: { t: PulseTile }) {
-  const inner = (
-    <>
-      <span className="flex items-center gap-1.5 text-caption text-ink-3">
-        <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: t.color }} />
-        <span className="truncate">{t.title} · {t.measure}</span>
-      </span>
-      <span className={cn('num truncate text-title', t.tone === 'bad' ? 'text-bad' : t.tone === 'good' ? 'text-good' : 'text-ink', t.action && 'text-ink-3')}>{t.value}</span>
-      <span className="line-clamp-1 text-caption text-ink-3" title={t.sub}>{t.sub ?? ' '}</span>
-      <span className="mt-auto block h-8 pt-1" aria-hidden={!t.spark}>
-        {t.spark ? <Sparkline data={t.spark} color={t.color} height={28} label={`${t.title} ${t.measure}, last 7 days`} /> : null}
-      </span>
-    </>
-  )
-  return t.action ? (
-    <button type="button" onClick={() => openCapture()} className={cn(CELL, 'w-full')}>{inner}</button>
-  ) : (
-    <PeekLink to={t.peek} className={CELL} aria-label={`${t.title}, ${t.measure}: ${t.value}. Open details`}>{inner}</PeekLink>
+    </Card>
   )
 }

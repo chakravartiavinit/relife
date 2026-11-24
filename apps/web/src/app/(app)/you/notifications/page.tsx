@@ -3,6 +3,7 @@ import { connection } from 'next/server'
 import { Suspense } from 'react'
 import { getUser } from '@/core/user'
 import { Skeleton } from '@/ui/components/card'
+import { GridItem, PageGrid } from '@/ui/components/page-grid'
 import { NotificationSettings } from '@/ui/components/notification-settings'
 import { NotificationChannel } from '@/ui/components/notification-channel'
 import { env } from '@/core/env'
@@ -16,7 +17,7 @@ export const metadata: Metadata = { title: 'Notifications' }
 
 export default function NotificationsPage() {
   return (
-    <Suspense fallback={<div aria-busy><div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]"><Skeleton className="h-[420px] rounded-lg" /><Skeleton className="h-[360px] rounded-lg" /></div></div>}>
+    <Suspense fallback={<PageGrid aria-busy><GridItem span={{ base: 12, lg: 8 }}><Skeleton className="h-[420px] rounded-lg" /></GridItem><GridItem span={{ base: 12, lg: 4 }}><Skeleton className="h-[360px] rounded-lg" /></GridItem></PageGrid>}>
       <Notifications />
     </Suspense>
   )
@@ -32,9 +33,9 @@ async function Notifications() {
   const owner = await ownerUser()
   const link = { bot: !!env('TELEGRAM_BOT_TOKEN'), linked: !!user.profile.telegram?.chatId, member: user.role !== 'owner', owner: owner?.name }
   return (
-    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-      <div className="min-w-0 max-lg:order-2"><NotificationSettings initial={user.profile.notifications} both={telegram && pushDevices > 0} /></div>
-      <div className="max-lg:order-1 lg:sticky lg:top-6"><NotificationChannel telegram={telegram} stats={stats} pushDevices={pushDevices} locked={isDemo() ? DEMO_MESSAGE : undefined} link={link} /></div>
-    </div>
+    <PageGrid className="items-start">
+      <GridItem span={{ base: 12, lg: 8 }} className="order-2 grid-lg:order-none"><NotificationSettings initial={user.profile.notifications} both={telegram && pushDevices > 0} /></GridItem>
+      <GridItem span={{ base: 12, lg: 4 }} className="order-1 grid-lg:order-none grid-lg:sticky grid-lg:top-6"><NotificationChannel telegram={telegram} stats={stats} pushDevices={pushDevices} locked={isDemo() ? DEMO_MESSAGE : undefined} link={link} /></GridItem>
+    </PageGrid>
   )
 }

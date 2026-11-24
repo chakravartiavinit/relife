@@ -1,0 +1,232 @@
+/*
+ * The app's logo loader (concept C1, "Fill"): the real capsule from the logo fills along its own tilt like a stat bar.
+ * The art is the capsule cut that packages/brand/build.mjs writes; it is clipped, never redrawn. The geometry (tilt,
+ * clip box, columns in the wordmark) comes from the build as custom properties set by loader.tsx.
+ * Motion values: .plans/designs/loader/ld-c1.html. Easing tokens are the ones in tokens.css.
+ */
+/* In the components layer, so a utility class on a loader (`size-4`, `place-items-center`) still wins. */
+@layer components {
+  .ld {
+    --ld-ghost: 0.2;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex: none;
+    animation: ld-show 160ms var(--ease-out-strong) var(--ld-delay, 300ms) backwards;
+    transition: opacity 180ms var(--ease-out-strong), transform 180ms var(--ease-out-strong), visibility 0s;
+  }
+  [data-theme='dark'] .ld {
+    --ld-ghost: 0.26;
+  }
+  .ld[data-state='done'] {
+    opacity: 0;
+    transform: scale(0.96);
+    visibility: hidden;
+    transition-delay: 240ms, 240ms, 420ms;
+  }
+
+  /* The mark: the capsule alone, or the wordmark with the capsule laid into its gap. */
+  .ld-mark {
+    position: relative;
+    flex: none;
+    width: calc(var(--ld-h) * var(--ld-ratio));
+    height: var(--ld-h);
+  }
+  .ld[data-size='splash'] .ld-mark {
+    width: calc(var(--ld-h) * var(--ld-wm-ratio));
+  }
+  .ld-wm {
+    position: absolute;
+    inset: 0;
+    background: var(--ld-wm-light) center / 100% 100% no-repeat;
+    /* A gap where the capsule goes, so the loader's capsule is the only one drawn. */
+    mask-image: linear-gradient(90deg, #000 var(--ld-from), transparent 0 var(--ld-to), #000 0);
+  }
+  [data-theme='dark'] .ld-wm {
+    background-image: var(--ld-wm-dark);
+  }
+  .ld-cap {
+    position: relative;
+    display: block;
+    width: calc(var(--ld-h) * var(--ld-ratio));
+    height: var(--ld-h);
+  }
+  .ld[data-size='splash'] .ld-cap {
+    position: absolute;
+    top: 0;
+    left: calc(var(--ld-h) * var(--ld-wm-ratio) * var(--ld-from-n));
+  }
+  /* The clip box: turned to the capsule's tilt, so clip-path and the fill run along the pill. */
+  .ld-axis {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: calc(var(--ld-h) * var(--ld-axis-w));
+    height: calc(var(--ld-h) * var(--ld-axis-h));
+    transform: translate(-50%, -50%) rotate(var(--ld-tilt));
+  }
+  /* The art turned back, so the logo never rotates. */
+  .ld-art {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: calc(var(--ld-h) * var(--ld-ratio));
+    height: var(--ld-h);
+    transform: translate(-50%, -50%) rotate(calc(var(--ld-tilt) * -1));
+    background: var(--ld-art) center / 100% 100% no-repeat;
+  }
+  .ld-ghost {
+    filter: grayscale(1);
+    opacity: var(--ld-ghost);
+    transition: opacity 200ms var(--ease-out-strong);
+  }
+  .ld[data-state='done'] .ld-ghost {
+    opacity: 0;
+  }
+  .ld-fill {
+    animation: ld-fill 1400ms var(--ease-in-out-strong) infinite;
+  }
+  /* Real progress: the clip follows the number, 240ms linear per update. Same art as the loop. */
+  .ld-fill[data-determinate] {
+    animation: none;
+    clip-path: inset(calc(100% - var(--ld-p, 0%)) 0 0 0);
+    transition: clip-path 240ms linear;
+  }
+
+  @keyframes ld-show {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+  }
+  @keyframes ld-show-rm {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes ld-fill {
+    0% {
+      clip-path: inset(100% 0 0 0);
+    }
+    45%,
+    60% {
+      clip-path: inset(0 0 0 0);
+    }
+    100% {
+      clip-path: inset(0 0 100% 0);
+    }
+  }
+  @keyframes ld-pulse {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0.55;
+    }
+  }
+
+  /* Reduced motion: no clip travel. The whole capsule is drawn and pulses; the hand-off is opacity only. */
+  @media (prefers-reduced-motion: reduce) {
+    .ld:not([data-motion='full']) {
+      animation-name: ld-show-rm;
+    }
+    .ld:not([data-motion='full']) .ld-fill {
+      animation: none;
+      clip-path: none;
+    }
+    .ld:not([data-motion='full']) .ld-ghost {
+      display: none;
+    }
+    .ld:not([data-motion='full'])[data-state='loading'] .ld-mark {
+      animation: ld-pulse 1200ms var(--ease-in-out-strong) infinite alternate;
+    }
+    .ld:not([data-motion='full'])[data-state='done'] {
+      transform: none;
+      transition-duration: 150ms;
+      transition-delay: 0ms, 0ms, 150ms;
+    }
+    .ld-swap:not([data-motion='full']) .ld-content {
+      transform: none;
+    }
+    .ld-swap:not([data-motion='full'])[data-state='done'] .ld-content {
+      transition-duration: 200ms;
+      transition-delay: 100ms;
+    }
+  }
+  .ld[data-motion='reduce'] {
+    animation-name: ld-show-rm;
+  }
+  .ld[data-motion='reduce'] .ld-fill {
+    animation: none;
+    clip-path: none;
+  }
+  .ld[data-motion='reduce'] .ld-ghost {
+    display: none;
+  }
+  .ld[data-motion='reduce'][data-state='loading'] .ld-mark {
+    animation: ld-pulse 1200ms var(--ease-in-out-strong) infinite alternate;
+  }
+  .ld[data-motion='reduce'][data-state='done'] {
+    transform: none;
+    transition-duration: 150ms;
+    transition-delay: 0ms, 0ms, 150ms;
+  }
+  .ld-swap[data-motion='reduce'] .ld-content {
+    transform: none;
+  }
+  .ld-swap[data-motion='reduce'][data-state='done'] .ld-content {
+    transition-duration: 200ms;
+    transition-delay: 100ms;
+  }
+
+  /* A loader and the content it hands off to, in one grid cell so nothing moves when they swap. */
+  .ld-swap {
+    display: inline-grid;
+    align-items: center;
+  }
+  .ld-swap > * {
+    grid-area: 1 / 1;
+  }
+  .ld-content {
+    transition: opacity 240ms var(--ease-out-strong), transform 240ms var(--ease-out-strong), visibility 0s;
+  }
+  /* The loader is showing: the content makes room, and comes back up from 6px below when the wait ends. */
+  .ld-swap[data-state='loading'] .ld-content {
+    opacity: 0;
+    transform: translateY(6px);
+    visibility: hidden;
+    transition-duration: 120ms, 120ms, 0s;
+    transition-delay: 0s, 0s, 120ms;
+  }
+  .ld-swap[data-state='done'] .ld-content {
+    transition-delay: 300ms;
+  }
+
+  /*
+   * Cold-start splash: only when the app is launched as an installed app (standalone), never over a page in a browser
+   * tab. Plain background first, the wordmark after 300ms, gone when the app has hydrated. If the scripts never run
+   * (a failed chunk), the failsafe below clears it after 2.5s anyway, so the page is never covered for good.
+   */
+  .ld-splash {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: none;
+    place-items: center;
+    background: var(--bg);
+    transition: opacity 240ms var(--ease-out-strong) 300ms, visibility 0s linear 540ms;
+    animation: ld-splash-failsafe 240ms var(--ease-out-strong) 2500ms forwards;
+  }
+  @media (display-mode: standalone) {
+    .ld-splash { display: grid; }
+  }
+  .ld-splash[data-state='done'] {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+@keyframes ld-splash-failsafe {
+  to { opacity: 0; visibility: hidden; }
+}

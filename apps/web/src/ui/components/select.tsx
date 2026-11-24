@@ -15,8 +15,8 @@ export type SelectProps = Omit<React.SelectHTMLAttributes<HTMLSelectElement>, 'o
   value?: string | number
   defaultValue?: string | number
   onChange?: (e: { target: { value: string; name?: string } }) => void
-  /** 'field': a full-width form control. 'pill': a compact rounded tag for inline pickers. */
-  variant?: 'field' | 'pill'
+  /** 'field': a full-width form control. 'pill': a compact rounded tag for inline pickers. 'quiet': the current value as plain text with a chevron, for a picker inside a list row. */
+  variant?: 'field' | 'pill' | 'quiet'
 }
 
 const textOf = (n: React.ReactNode): string =>
@@ -101,7 +101,8 @@ export function Select({ value, defaultValue, onChange, name, id, disabled, clas
     }
   }
 
-  const pill = variant === 'pill'
+  const pill = variant !== 'field'
+  const quiet = variant === 'quiet'
   return (
     <>
       {name ? <input type="hidden" name={name} value={current} /> : null}
@@ -113,13 +114,15 @@ export function Select({ value, defaultValue, onChange, name, id, disabled, clas
         onKeyDown={(e) => { if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !open) { e.preventDefault(); list.current?.showPopover() } }}
         className={cn(
           'group relative inline-flex items-center gap-2 text-start transition-[background-color,box-shadow,color] duration-150 ease-out-quint focus-visible:outline-none disabled:opacity-50',
-          pill
+          quiet
+            ? 'h-8 rounded-md ps-2 pe-7 text-small text-ink-2 hover-fine:bg-surface-2 hover:text-ink focus-visible:shadow-[0_0_0_2px_var(--pill)] aria-expanded:bg-surface-2 aria-expanded:text-ink'
+            : pill
             ? 'h-8 rounded-full bg-surface-2 ps-3 pe-7 text-[12px] font-medium text-ink-2 hover:bg-surface-3 hover:text-ink focus-visible:shadow-[0_0_0_2px_var(--pill)] aria-expanded:bg-surface-3 aria-expanded:text-ink'
             : 'h-9 w-full rounded-md bg-surface ps-3 pe-8 text-sm text-ink shadow-1 focus-visible:shadow-[0_0_0_2px_var(--pill)] aria-expanded:shadow-[0_0_0_2px_var(--pill)]',
           className,
         )}
       >
-        {selected?.color ? <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: selected.color }} /> : null}
+        {selected?.color && !quiet ? <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: selected.color }} /> : null}
         <span className={cn('min-w-0 flex-1 truncate', !selected && 'text-ink-3')}>{selected?.label ?? 'Choose…'}</span>
         <ChevronDown
           aria-hidden strokeWidth={2}

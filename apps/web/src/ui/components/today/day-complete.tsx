@@ -36,7 +36,7 @@ export function DayComplete({ done, total, streak, xp, chests }: { done: number;
           <h2 className="text-heading text-ink">Day complete</h2>
           <p className="text-small text-ink-3 tabular-nums">{done} of {total}{streak ? ` · streak now ${streak} ${streak === 1 ? 'day' : 'days'}` : ''}</p>
         </div>
-        {xp ? <span className="inline-flex h-8 shrink-0 items-center rounded-full px-3 text-small font-semibold text-ink tabular-nums" style={{ background: 'color-mix(in oklch, var(--medal-gold) 18%, transparent)' }}>+{xp} XP</span> : null}
+        {xp ? <span className="inline-flex h-8 shrink-0 items-center rounded-full px-3 text-small font-medium text-ink tabular-nums" style={{ background: 'color-mix(in oklch, var(--medal-gold) 18%, transparent)' }}>+{xp} XP</span> : null}
       </div>
       <Capsule value={done} max={total} size="md" color="var(--pill)" label="Done today" className="mt-4" />
       {chest ? (
@@ -48,10 +48,10 @@ export function DayComplete({ done, total, streak, xp, chests }: { done: number;
         >
           <ChestArt rarity={chest.rarity} size={40} />
           <span className="min-w-0 flex-1">
-            <span className="block text-body font-semibold text-ink">{chests.length === 1 ? 'Chest earned' : `${chests.length} chests earned`}</span>
+            <span className="block text-body font-medium text-ink">{chests.length === 1 ? 'Chest earned' : `${chests.length} chests earned`}</span>
             <span className="block truncate text-caption text-ink-3">{chest.reason} · {RARITY[chest.rarity].label.toLowerCase()}</span>
           </span>
-          <span className={cn('shrink-0 rounded-full bg-ink px-3.5 py-2 text-caption font-semibold text-bg')}>Open</span>
+          <span className={cn('shrink-0 rounded-full bg-ink px-3.5 py-2 text-caption font-medium text-bg')}>Open</span>
         </button>
       ) : null}
       {streakMilestone(streak) ? <ShareButton kind="streak" label="Share streak" className="mt-3">Share streak</ShareButton> : null}

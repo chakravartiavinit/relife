@@ -1,15 +1,22 @@
 'use client'
 
 import { useRef, useState, useTransition } from 'react'
-import { BellRing, Check, Lightbulb, Loader2, Moon, Search, Sparkles, Swords, TriangleAlert, type LucideIcon } from 'lucide-react'
+import { Check, Loader2, Moon } from 'lucide-react'
 import { saveNotifications } from '@/app/actions'
 import { CATEGORY_INFO, CHANNELS, DEFAULT_QUIET, NOTIFY_CATEGORIES, delivery, type Channel, type Delivery, type NotifyCategory, type NotifyPrefs } from '@/domain/notify'
 import { Switch } from '@/ui/beui/motion/switch'
 import { Input, Select } from './form'
+import { Picture } from './picture'
+import type { PictureRef } from '../picture'
 import { SettingsRow, SettingsSection } from './settings-layout'
 import { cn } from '../cn'
 
-const ICON: Record<NotifyCategory, LucideIcon> = { system: Swords, reminders: BellRing, alerts: TriangleAlert, analysis: Search, coach: Lightbulb, events: Sparkles }
+// One 3D picture per category, from the same set the rest of the app uses: quests are the Plan's target, reminders Today's sunrise,
+// alerts the energy bolt, analysis the Mind brain, the morning nudge the Coach, progress the sparkles.
+const PICTURE: Record<NotifyCategory, PictureRef> = {
+  system: { of: 'nav', to: '/plan' }, reminders: { of: 'nav', to: '/' }, alerts: { of: 'routine', name: 'Energy' },
+  analysis: { of: 'routine', name: 'Analysis', area: 'mind' }, coach: { of: 'nav', to: '/coach' }, events: { of: 'hobby', name: 'Progress' },
+}
 const EVERY = [10, 15, 30, 60, 120, 240]
 const TIMES = [1, 2, 3, 5]
 const CAPS = [1, 2, 3, 5, 6, 10]
@@ -44,7 +51,7 @@ export function NotificationSettings({ initial, both = false }: { initial?: Noti
       title="Notifications"
       description="What ReLife sends to Telegram and as push, and how often. Everything also shows in the app, even when a message isn't sent."
       action={
-        <span aria-live="polite" className={cn('inline-flex h-8 items-center gap-1.5 text-[12.5px]', state === 'error' ? 'text-bad' : 'text-ink-3')}>
+        <span aria-live="polite" className={cn('inline-flex h-8 items-center gap-1.5 text-caption', state === 'error' ? 'text-bad' : 'text-ink-3')}>
           {pending ? <><Loader2 className="size-3.5 animate-spin" strokeWidth={1.5} /> Saving</> : state === 'saved' ? <><Check className="size-3.5" strokeWidth={1.5} /> Saved</> : state === 'error' ? 'Couldn’t save' : null}
         </span>
       }
@@ -53,25 +60,24 @@ export function NotificationSettings({ initial, both = false }: { initial?: Noti
         <div className="flex flex-wrap items-center gap-3">
           <Switch checked={!!quiet} onCheckedChange={(on) => setQ(on ? lastQuiet.current : null)} ariaLabel="Quiet hours" />
           {quiet ? (
-            <div className="flex items-center gap-2 text-[13px] text-ink-3">
+            <div className="flex items-center gap-2 text-small text-ink-3">
               <Input type="time" aria-label="Quiet from" value={quiet.from} onChange={(e) => e.target.value && setQ({ ...quiet, from: e.target.value })} className="w-36 tabular-nums" />
               to
               <Input type="time" aria-label="Quiet until" value={quiet.to} onChange={(e) => e.target.value && setQ({ ...quiet, to: e.target.value })} className="w-36 tabular-nums" />
             </div>
-          ) : <span className="text-[13px] text-ink-3">Off: messages arrive any time</span>}
+          ) : <span className="text-small text-ink-3">Off: messages arrive any time</span>}
         </div>
       </SettingsRow>
 
       {NOTIFY_CATEGORIES.map((c) => {
         const info = CATEGORY_INFO[c]
         const d = cats[c]
-        const Icon = ICON[c]
         const modes: { value: Delivery['mode']; label: string }[] = [
           { value: 'off', label: 'Off' }, { value: 'once', label: 'Once' },
           ...(info.repeatable ? [{ value: 'repeat' as const, label: 'Until I respond' }] : []),
         ]
         return (
-          <SettingsRow key={c} label={<span className="inline-flex items-center gap-2"><Icon className="size-4 text-ink-3" strokeWidth={1.5} />{info.label}</span>} hint={info.about}>
+          <SettingsRow key={c} label={<span className="inline-flex items-center gap-2"><Picture {...PICTURE[c]} size={20} />{info.label}</span>} hint={info.about}>
             <div className="flex flex-col gap-3">
               <div role="radiogroup" aria-label={`${info.label} delivery`} className="inline-flex w-fit rounded-md bg-surface-2 p-1">
                 {modes.map((m) => {
@@ -80,7 +86,7 @@ export function NotificationSettings({ initial, both = false }: { initial?: Noti
                     <button
                       key={m.value} type="button" role="radio" aria-checked={on} onClick={() => setCat(c, { mode: m.value })}
                       className={cn(
-                        'flex h-8 items-center rounded-sm px-3 text-[13px] font-medium transition-[background-color,color,box-shadow,scale] duration-150 ease-out-quint active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill',
+                        'flex h-8 items-center rounded-sm px-3 text-small font-medium transition-[background-color,color,box-shadow,scale] duration-150 ease-out-quint active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill',
                         on ? 'bg-surface text-ink shadow-1' : 'text-ink-3 hover:text-ink',
                       )}
                     >
@@ -91,7 +97,7 @@ export function NotificationSettings({ initial, both = false }: { initial?: Noti
               </div>
 
               {d.mode !== 'off' && both ? (
-                <div role="group" aria-label={`${info.label}: send to`} className="flex flex-wrap items-center gap-2 text-[13px] text-ink-2">
+                <div role="group" aria-label={`${info.label}: send to`} className="flex flex-wrap items-center gap-2 text-small text-ink-2">
                   Send to
                   {CHANNELS.map((ch) => {
                     const on = d.channels.includes(ch)
@@ -101,7 +107,7 @@ export function NotificationSettings({ initial, both = false }: { initial?: Noti
                         key={ch} type="button" aria-pressed={on} disabled={last} title={last ? 'At least one stays on' : undefined}
                         onClick={() => setCat(c, { channels: on ? d.channels.filter((x) => x !== ch) : CHANNELS.filter((x) => x === ch || d.channels.includes(x)) })}
                         className={cn(
-                          'inline-flex h-8 items-center rounded-full px-3 text-[13px] font-medium transition-[background-color,color,box-shadow,scale] duration-150 ease-out-quint active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill disabled:cursor-default',
+                          'inline-flex h-8 items-center rounded-full px-3 text-small font-medium transition-[background-color,color,box-shadow,scale] duration-150 ease-out-quint active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill disabled:cursor-default',
                           on ? 'bg-pill-wash text-pill-ink shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--pill)_30%,transparent)]' : 'bg-surface-2 text-ink-3 hover:text-ink',
                         )}
                       >
@@ -113,7 +119,7 @@ export function NotificationSettings({ initial, both = false }: { initial?: Noti
               ) : null}
 
               {d.mode === 'repeat' ? (
-                <div className="flex flex-wrap items-center gap-2 text-[13px] text-ink-2">
+                <div className="flex flex-wrap items-center gap-2 text-small text-ink-2">
                   Again every
                   <Select aria-label={`${info.label}: repeat every`} value={d.everyMin} onChange={(e) => setCat(c, { everyMin: Number(e.target.value) })} className="w-auto">
                     {EVERY.map((m) => <option key={m} value={m}>{every(m)}</option>)}
@@ -126,7 +132,7 @@ export function NotificationSettings({ initial, both = false }: { initial?: Noti
               ) : null}
 
               {d.mode !== 'off' ? (
-                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] text-ink-2">
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-small text-ink-2">
                   <Switch checked={d.quiet} onCheckedChange={(v) => setCat(c, { quiet: v })} label="Hold during quiet hours" disabled={!quiet} />
                   <label className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap">
                     At most
@@ -136,7 +142,7 @@ export function NotificationSettings({ initial, both = false }: { initial?: Noti
                     </Select>
                   </label>
                 </div>
-              ) : <p className="text-[12.5px] text-ink-3">Not sent. You’ll still see these in the app.</p>}
+              ) : <p className="text-caption text-ink-3">Not sent. You’ll still see these in the app.</p>}
             </div>
           </SettingsRow>
         )

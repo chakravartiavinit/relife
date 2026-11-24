@@ -7,6 +7,7 @@ import { ShieldCheck, UserPlus } from 'lucide-react'
 import type { PairJoinResult } from '@relife/contract'
 import { Button } from '../button'
 import { FormError } from '../forms/dialog'
+import { Loader } from '../loader'
 import { Input } from '../form'
 import { postJson } from './pair-api'
 
@@ -52,7 +53,7 @@ export function JoinClient() {
     return (
       <div>
         <span aria-hidden className="grid size-12 place-items-center rounded-[14px] bg-pill-wash text-pill-ink"><UserPlus className="size-6" strokeWidth={1.5} /></span>
-        <h1 className="mt-4 font-display text-title leading-tight font-extrabold tracking-[-0.03em] text-ink">This invite link is incomplete</h1>
+        <h1 className="mt-4 font-display text-title leading-tight font-medium tracking-[-0.03em] text-ink">This invite link is incomplete</h1>
         <p className="mt-1.5 text-body leading-relaxed text-ink-3">Open the whole link the person who runs this {brand.name} sent you. It ends with a long code after a #.</p>
         <Link href="/signin" className="mt-5 flex h-11 items-center justify-center rounded-md text-body font-medium text-ink-2 transition-colors duration-150 hover:text-ink focus-visible:outline-2 focus-visible:outline-pill">I already have an account here</Link>
       </div>
@@ -62,7 +63,7 @@ export function JoinClient() {
   return (
     <form onSubmit={(e) => { e.preventDefault(); void join() }}>
       <span aria-hidden className="grid size-12 place-items-center rounded-[14px] bg-pill-wash text-pill-ink"><UserPlus className="size-6" strokeWidth={1.5} /></span>
-      <h1 className="mt-4 font-display text-title leading-tight font-extrabold tracking-[-0.03em] text-ink">Join {brand.name} at <span className="inline-block max-w-full [overflow-wrap:anywhere]">{host}</span></h1>
+      <h1 className="mt-4 font-display text-title leading-tight font-medium tracking-[-0.03em] text-ink">Join {brand.name} at <span className="inline-block max-w-full [overflow-wrap:anywhere]">{host}</span></h1>
       <p className="mt-2 text-body leading-relaxed text-ink-3">You were invited to share this server. You get your own space: your data, your keys and your devices stay yours.</p>
 
       <div className="mt-5 rounded-[16px] bg-surface-2 p-4">
@@ -73,7 +74,7 @@ export function JoinClient() {
       <p className="mt-3 flex items-start gap-2 text-small text-ink-3"><ShieldCheck className="mt-0.5 size-4 shrink-0 text-good" strokeWidth={1.5} aria-hidden />The person who runs this server can read everything stored on it, including connector keys. Don’t connect anything you wouldn’t tell them.</p>
       <div className="mt-3"><FormError message={error ?? undefined} /></div>
 
-      <Button type="submit" variant="primary" size="lg" className="mt-5 w-full" disabled={busy || !name.trim()}>{busy ? 'Joining…' : 'Join'}</Button>
+      <Button type="submit" variant="primary" size="lg" className="mt-5 w-full" disabled={busy || !name.trim()}>{busy ? <Loader size="inline" px={16} label="Joining" /> : null}{busy ? 'Joining…' : 'Join'}</Button>
       <Link href="/signin" className="mt-2 flex h-11 items-center justify-center rounded-md text-body font-medium text-ink-2 transition-colors duration-150 hover:text-ink focus-visible:outline-2 focus-visible:outline-pill">Not now</Link>
     </form>
   )

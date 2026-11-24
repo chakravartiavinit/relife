@@ -1,9 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { agoShort, areaToday, syncLabel, syncTone, workerAlive } from './shell'
+import { agoShort, closed, left, progressState, syncLabel, syncTone, workerAlive } from './shell'
 import { needsYou } from './needs-you'
-
-const empty = { health: { done: 0, total: 0 }, mind: { done: 0, total: 0 }, skills: { done: 0, total: 0 }, wealth: { done: 0, total: 0 }, hobbies: { done: 0, total: 0 }, relationships: { done: 0, total: 0 } }
 
 test('needsYou adds decisions to data', () => {
   assert.deepEqual(needsYou(2, 1, 3), { total: 6, decisions: 2, data: 4 })
@@ -33,10 +31,13 @@ test('sync labels', () => {
   assert.equal(agoShort(10_000), 'just now')
 })
 
-test('area status from the day plan', () => {
-  const r = areaToday({ ...empty, health: { done: 2, total: 2 }, mind: { done: 0, total: 1 }, wealth: { done: 1, total: 3 } })
-  assert.equal(r.health, 'done')
-  assert.equal(r.mind, 'due')
-  assert.equal(r.wealth, 'due')
-  assert.equal(r.skills, 'none')
+test('one area or the whole day: done, due or nothing due', () => {
+  assert.equal(progressState({ done: 5, total: 11, skipped: 0 }), 'due')
+  assert.equal(progressState({ done: 11, total: 11, skipped: 0 }), 'done')
+  assert.equal(progressState({ done: 0, total: 0, skipped: 0 }), 'none')
+  // Skipped is closed for the day, like done.
+  assert.equal(progressState({ done: 9, total: 11, skipped: 2 }), 'done')
+  assert.equal(progressState({ done: 9, total: 11, skipped: 1 }), 'due')
+  assert.equal(closed({ done: 9, total: 11, skipped: 1 }), 10)
+  assert.equal(left({ done: 9, total: 11, skipped: 1 }), 1)
 })

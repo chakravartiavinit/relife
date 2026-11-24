@@ -23,8 +23,8 @@ export function AvatarRing({ initial, level, progress, className }: { initial: s
           <circle cx="20" cy="20" r={R} fill="none" stroke="var(--surface-3)" strokeWidth="3" />
           <circle cx="20" cy="20" r={R} fill="none" stroke="var(--pill)" strokeWidth="3" strokeLinecap="round" strokeDasharray={`${p * CIRC} ${CIRC}`} transform="rotate(-90 20 20)" />
         </svg>
-        <CapsuleIcon letter={initial} size="xs" />
-        {level ? <span className="absolute -right-1 -bottom-[3px] h-4 min-w-5 rounded-full bg-ink px-1 text-center text-label leading-4 font-bold tracking-normal text-bg tabular-nums shadow-[0_0_0_2px_var(--bg)]">{level}</span> : null}
+        <CapsuleIcon letter={initial} size="nav" />
+        {level ? <span className="absolute -right-1 -bottom-[3px] h-4 min-w-5 rounded-full bg-ink px-1 text-center text-label leading-4 font-medium tracking-normal text-bg tabular-nums shadow-[0_0_0_2px_var(--bg)]">{level}</span> : null}
       </span>
     </Link>
   )

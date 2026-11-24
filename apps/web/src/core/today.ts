@@ -10,6 +10,8 @@ import { integration } from './integrations'
 import { formatMoney } from '@/domain/money'
 import { dueLabel, oneOffs } from '@/domain/wealth'
 import { toLiquidation } from '@/domain/watch'
+import { spendStatus } from '@/domain/life-status'
+import type { Status } from '@/domain/status-of'
 import type { PeekRef } from '@/domain/peek'
 
 // The morning briefing on Today: what needs you first, today's spending next to a usual day and today's mood.
@@ -94,6 +96,8 @@ export const loadTodayBriefing = cache(async (user: User) => {
 /** What Today's Money card draws: formatted, so the component (and its /dev/ui fixtures) holds no logic. */
 export type MoneyView = {
   total: string
+  /** Today against a usual day: Quiet with nothing spent yet, On track under it, Slipping far over. */
+  status: Status
   /** "₹160 under a usual day"; `bad` when well over. */
   versus?: { text: string; bad: boolean }
   payments: { id: string; name: string; logo: string; sub: string; amount: string; typed: boolean; needsCategory: boolean }[]
@@ -111,6 +115,7 @@ export function moneyView(user: User, b: Briefing, payments: DueItem[]): MoneyVi
   const diff = usualDay ? spentToday - usualDay : null
   return {
     total: money(spentToday),
+    status: spendStatus(spentToday, usualDay),
     versus: diff == null ? undefined : { text: `${money(Math.abs(diff))} ${diff <= 0 ? 'under' : 'over'} a usual day`, bad: !!usualDay && spentToday > usualDay * 1.5 },
     payments: paymentsToday.map((t) => {
       const needsCategory = !t.category || t.category === 'Uncategorized'

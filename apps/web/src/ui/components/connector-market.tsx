@@ -1,6 +1,6 @@
 'use client'
 
-import { STATUS, type ConnectorStatus } from './connector-status'
+import { STATUS, STATUS_WORD, type ConnectorStatus } from './connector-status'
 import { useActionState, useEffect, useId, useRef, useState, useTransition } from 'react'
 import { AtSign, Check, ChevronRight, CircleAlert, CircleCheck, Code2, Copy, Cpu, Dumbbell, ExternalLink, Gamepad2, Globe, GraduationCap, KeyRound, Lock, LogIn, Moon, Puzzle, RefreshCw, Search, Send, ShoppingBag, Timer, UtensilsCrossed, Wallet, Zap, type LucideIcon } from 'lucide-react'
 import type { Category } from '@/db/schema'
@@ -14,11 +14,13 @@ import { CenterMorphModal, CenterMorphModalContent, CenterMorphModalTrigger } fr
 import { ConnectExtension, openConnectExtension } from './devices/connect-extension'
 import { useToast } from './toast'
 import { usePeekChanged } from './peek/peek-context'
-import { AppLogo as Logo } from './app-logo'
+import { Picture } from './picture'
+import { StatusWord } from './status-word'
 import { ConnectSuccess, YourSources, SuggestedForYou, needsFix } from './connections-status'
 import { ImportButton } from './imports/import-button'
 import { PastImports, type PastImport } from './imports/import-history'
 import { cn } from '../cn'
+import { LoaderSwap } from './loader'
 
 export type { ConnectorStatus }
 /** A dialog field plus what the server already has for it. Secret values are never sent. */
@@ -145,7 +147,7 @@ export function ConnectorMarket({ items, worker, areas, imports = [], zipMaxMb, 
         <YourSources items={items} manage={manage} />
         <PastImports imports={imports} />
         <SuggestedForYou items={items} areas={areas} manage={manage} />
-        <h2 className="-mb-4 px-1 text-heading text-ink">All apps</h2>
+        <h2 className="-mb-4 px-1 font-display text-heading text-ink">All apps</h2>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[200px_minmax(0,1fr)] xl:gap-10">
@@ -175,11 +177,11 @@ export function ConnectorMarket({ items, worker, areas, imports = [], zipMaxMb, 
                 <div className="flex min-w-0 items-center gap-3">
                   <IconChip color={g.color}><g.icon strokeWidth={2} /></IconChip>
                   <div className="min-w-0">
-                    <h2 id={`grp-${g.key}`} className="text-[17px] leading-tight font-semibold tracking-[-0.01em] text-ink">{g.title}</h2>
-                    <p className="truncate text-[13px] text-ink-3">{g.hint}</p>
+                    <h2 id={`grp-${g.key}`} className="font-display text-heading leading-tight font-medium text-ink">{g.title}</h2>
+                    <p className="truncate text-small text-ink-3">{g.hint}</p>
                   </div>
                 </div>
-                <span className="shrink-0 text-[12.5px] text-ink-3 tabular-nums">{g.on ? `${g.on} of ${g.all.length} on` : `${g.all.length} available`}</span>
+                <span className="shrink-0 text-caption text-ink-3 tabular-nums">{g.on ? `${g.on} of ${g.all.length} on` : `${g.all.length} available`}</span>
               </div>
               <div className="@container">
                 <ul className="grid grid-cols-1 gap-3 @xl:grid-cols-2 @3xl:grid-cols-3">
@@ -194,7 +196,7 @@ export function ConnectorMarket({ items, worker, areas, imports = [], zipMaxMb, 
           )) : (
             <div className="flex flex-col items-center gap-3 rounded-lg bg-surface px-6 py-12 text-center shadow-1">
               <Search className="size-5 text-ink-3" strokeWidth={1.5} aria-hidden />
-              <p className="text-[14px] text-ink-2">
+              <p className="text-body text-ink-2">
                 {q ? <>Nothing matches “{query.trim()}”{show === 'all' ? '' : show === 'on' ? ' in your connected apps' : ' in the ones not connected'}.</> : show === 'on' ? 'Nothing connected yet.' : 'Everything is connected.'}
               </p>
               <Button size="sm" onClick={reset}>Show all connectors</Button>
@@ -215,10 +217,10 @@ function useSignInResult(items: ConnectorItem[]) {
     if (!id) return
     const c = items.find((i) => i.id === id)
     const name = c?.name ?? id
-    const icon = c ? <Logo id={c.id} category={c.category} size="xs" /> : undefined
+    const picture = { of: 'connector', id: c?.id ?? id, name } as const
     const error = q.get('error')
-    if (error) toast(`Couldn’t sign in with ${name}`, 'bad', { icon, description: error })
-    else toast(`Signed in with ${name}`, 'good', { icon, description: 'Its first sync starts within a minute' })
+    if (error) toast(`Couldn’t sign in with ${name}`, 'bad', { picture, description: error })
+    else toast(`Signed in with ${name}`, 'good', { picture, description: 'Its first sync starts within a minute' })
     window.history.replaceState(null, '', window.location.pathname)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps -- once, on arrival
 }
@@ -260,7 +262,7 @@ function CategoryRail({ groups, active }: { groups: GroupView[]; active?: string
       <div className="sticky top-9 flex flex-col gap-5">
         {shelves.map((s) => (
           <div key={s} className="flex flex-col gap-0.5">
-            <div className="px-2.5 pb-1 font-mono text-[11px] font-semibold tracking-[0.14em] text-ink-3 uppercase">{s}</div>
+            <div className="px-2.5 pb-1 text-small font-medium text-ink-3">{s}</div>
             {groups.filter((g) => g.shelf === s).map((g) => {
               const empty = !g.list.length
               const on = active === g.key && !empty
@@ -272,14 +274,14 @@ function CategoryRail({ groups, active }: { groups: GroupView[]; active?: string
                   aria-disabled={empty || undefined}
                   tabIndex={empty ? -1 : undefined}
                   className={cn(
-                    'flex h-9 items-center gap-2.5 rounded-md px-2.5 text-[13.5px] transition-[background-color,color,box-shadow,opacity] duration-150 focus-visible:outline-2 focus-visible:outline-pill',
+                    'flex h-9 items-center gap-2.5 rounded-md px-2.5 text-small transition-[background-color,color,box-shadow,opacity] duration-150 focus-visible:outline-2 focus-visible:outline-pill',
                     on ? 'bg-surface font-medium text-ink shadow-1' : 'text-ink-2 hover:bg-ink/[0.04] hover:text-ink dark:hover:bg-white/[0.05]',
                     empty && 'pointer-events-none opacity-45',
                   )}
                 >
                   <g.icon className="size-4 shrink-0" strokeWidth={on ? 2 : 1.5} style={{ color: g.color }} aria-hidden />
                   <span className="min-w-0 flex-1 truncate">{g.title}</span>
-                  <span className="text-[12px] text-ink-3 tabular-nums" aria-label={`${g.on} of ${g.all.length} connected`}>{g.on ? `${g.on}/${g.all.length}` : g.all.length}</span>
+                  <span className="text-caption text-ink-3 tabular-nums" aria-label={`${g.on} of ${g.all.length} connected`}>{g.on ? `${g.on}/${g.all.length}` : g.all.length}</span>
                 </a>
               )
             })}
@@ -314,7 +316,7 @@ function CategoryChips({ groups, active }: { groups: GroupView[]; active?: strin
               aria-disabled={empty || undefined}
               tabIndex={empty ? -1 : undefined}
               className={cn(
-                'inline-flex h-10 shrink-0 items-center gap-2 rounded-full px-3.5 text-[13px] font-medium whitespace-nowrap transition-[background-color,color,opacity] duration-150 focus-visible:outline-2 focus-visible:outline-pill active:scale-[0.96]',
+                'inline-flex h-10 shrink-0 items-center gap-2 rounded-full px-3.5 text-small font-medium whitespace-nowrap transition-[background-color,color,opacity] duration-150 focus-visible:outline-2 focus-visible:outline-pill active:scale-[0.96]',
                 on ? 'bg-pill text-white' : 'bg-surface text-ink-2 shadow-1',
                 empty && 'pointer-events-none opacity-45',
               )}
@@ -331,7 +333,7 @@ function CategoryChips({ groups, active }: { groups: GroupView[]; active?: strin
 
 function Pill({ children, color, title }: { children: React.ReactNode; color?: string; title?: string }) {
   return (
-    <span title={title} className="inline-flex h-8 items-center gap-2 rounded-full bg-surface px-3 text-[12.5px] font-medium text-ink-2 shadow-1 tabular-nums">
+    <span title={title} className="inline-flex h-8 items-center gap-2 rounded-full bg-surface px-3 text-caption font-medium text-ink-2 shadow-1 tabular-nums">
       {color ? <span aria-hidden className="size-2 rounded-full" style={{ background: color }} /> : null}
       {children}
     </span>
@@ -346,6 +348,8 @@ function Tile({ c, ...props }: { c: ConnectorItem } & React.ButtonHTMLAttributes
   const status = STATUS[c.status]
   const how = method(c)
   const calm = c.status === 'ok' || c.status === 'ready'
+  // Connected and waiting for its first sync, which needs nothing from you: the capsule fills in the status dot's place.
+  const firstSync = c.connected && c.status === 'waiting' && !needsFix(c)
   return (
     <button
       type="button"
@@ -353,33 +357,35 @@ function Tile({ c, ...props }: { c: ConnectorItem } & React.ButtonHTMLAttributes
       className={cn('group flex w-full flex-col gap-3 rounded-[18px] bg-surface p-4 text-start shadow-1 transition-[box-shadow,scale] duration-150 ease-out-quint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill', c.unavailable ? 'cursor-not-allowed opacity-60' : 'hover:shadow-2 active:scale-[0.96]')}
     >
       <span className="flex items-center gap-3">
-        <span className="transition-[scale] duration-150 ease-out-quint group-hover:scale-[1.04]"><Logo id={c.id} category={c.category} size="sm" /></span>
+        <span className="transition-[scale] duration-150 ease-out-quint group-hover:scale-[1.04]"><Picture of="connector" id={c.id} name={c.name} size={40} /></span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[15px] font-semibold text-ink">{c.name}</span>
-          <span className="mt-0.5 flex items-center gap-1 text-[12px] text-ink-3">
+          <span className="block truncate text-heading font-medium text-ink">{c.name}</span>
+          <span className="mt-0.5 flex items-center gap-1 text-caption text-ink-3">
             <how.icon className="size-3.5 shrink-0" strokeWidth={1.5} aria-hidden />
             <span className="truncate">{c.badge ?? how.label}</span>
           </span>
         </span>
       </span>
-      <span className="line-clamp-2 text-[13px] leading-snug text-ink-2">{c.description}</span>
+      <span className="line-clamp-2 text-small leading-snug text-ink-2">{c.description}</span>
       <span className="mt-auto flex min-h-8 items-center gap-2 border-t border-divider pt-3">
         {c.connected ? (
           <>
-            <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: status.color }} />
-            <span className={cn('min-w-0 flex-1 truncate text-[12.5px] tabular-nums', calm ? 'text-ink-3' : 'font-medium')} style={calm ? undefined : { color: status.color }}>
+            <LoaderSwap loading={firstSync} px={16} label={`First sync of ${c.name}`} className="-mx-1 size-4 shrink-0 place-items-center">
+              <span aria-hidden className="size-2 rounded-full" style={{ background: status.color }} />
+            </LoaderSwap>
+            <span className={cn('min-w-0 flex-1 truncate text-caption tabular-nums', calm ? 'text-ink-3' : 'font-medium')} style={calm ? undefined : { color: status.color }}>
               <span className="sr-only">{status.label}: </span>{calm ? c.detail : c.statusLabel ?? status.label}
             </span>
-            <span className="inline-flex shrink-0 items-center gap-0.5 text-[12.5px] font-medium text-ink-2 transition-[color] duration-150 group-hover:text-ink">
+            <span className="inline-flex shrink-0 items-center gap-0.5 text-caption font-medium text-ink-2 transition-[color] duration-150 group-hover:text-ink">
               Manage<ChevronRight className="size-4 transition-[translate] duration-150 ease-out-quint group-hover:translate-x-0.5 rtl:-scale-x-100" strokeWidth={1.5} aria-hidden />
             </span>
           </>
         ) : c.unavailable ? (
-          <span className="text-[12.5px] leading-snug text-ink-3">{c.unavailable}</span>
+          <span className="text-caption leading-snug text-ink-3">{c.unavailable}</span>
         ) : (
           <>
-            <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink-3">{c.provides.slice(0, 3).join(' · ')}</span>
-            <span className="shrink-0 rounded-full bg-pill-wash px-3 py-1.5 text-[12.5px] font-semibold text-pill-ink transition-[background-color,color] duration-150 group-hover:bg-pill group-hover:text-white">Connect</span>
+            <span className="min-w-0 flex-1 truncate text-caption text-ink-3">{c.provides.slice(0, 3).join(' · ')}</span>
+            <span className="shrink-0 rounded-full bg-pill-wash px-3 py-1.5 text-caption font-medium text-pill-ink transition-[background-color,color] duration-150 group-hover:bg-pill group-hover:text-white">Connect</span>
           </>
         )}
       </span>
@@ -401,7 +407,7 @@ export function SyncButton({ id, name, compact }: { id: string; name: string; /*
       variant={compact ? 'ghost' : undefined}
       aria-label={compact ? `Sync ${name} now` : undefined}
       onClick={() => start(async () => {
-        const t = toast.loading(`Syncing ${name}…`, { icon: <Logo id={id} size="xs" /> })
+        const t = toast.loading(`Syncing ${name}…`, { picture: { of: 'connector', id, name } })
         const r = await syncNow(id)
         changed()
         if (r.ok) toast.update(t, `${name} synced`, 'good', { description: r.events ? `${r.events} new` : 'Nothing new since the last sync' })
@@ -437,12 +443,10 @@ export function ConnectorDialog({ c, trigger }: { c: ConnectorItem; trigger: Rea
       >
         <div className="flex flex-col gap-5 p-6">
           <header className="flex items-center gap-4 pe-10">
-            <Logo id={c.id} category={c.category} size="lg" />
+            <Picture of="connector" id={c.id} name={c.name} size={56} />
             <div className="min-w-0">
-              <h2 className="font-display text-[22px] leading-tight font-bold tracking-[-0.02em] text-ink">{c.name}</h2>
-              <p className="mt-1 inline-flex items-center gap-1.5 text-[12.5px] font-medium" style={{ color: c.connected ? status.color : 'var(--ink-3)' }}>
-                <span aria-hidden className="size-2 rounded-full" style={{ background: status.color }} />{c.statusLabel ?? status.label}
-              </p>
+              <h2 className="font-display text-title leading-tight font-medium text-ink">{c.name}</h2>
+              <StatusWord className="mt-1" {...(c.connected ? STATUS_WORD[c.status] : { tone: 'quiet' as const })}>{c.statusLabel ?? status.label}</StatusWord>
             </div>
           </header>
 
@@ -475,22 +479,22 @@ export function ConnectorBody({ c, onDone, descId }: { c: ConnectorItem; onDone:
   const secrets = c.fields.filter((f) => f.secret && !f.optional) // the ones you must have
   return (
     <>
-      <p id={descId} className="-mt-1 text-[14px] leading-relaxed text-ink-2">{c.description}</p>
+      <p id={descId} className="-mt-1 text-body leading-relaxed text-ink-2">{c.description}</p>
       {c.id === 'laptop' ? <ExtensionAction onOpen={onDone} /> : null}
       {!c.connected ? (
         <ul aria-label="What it brings in" className="-mt-2 flex flex-wrap gap-1.5">
-          {c.provides.map((p) => <li key={p} className="inline-flex h-7 items-center rounded-full px-2.5 text-[12.5px] text-ink-2 shadow-[inset_0_0_0_1px_var(--hairline)]">{p}</li>)}
-          <li className="inline-flex h-7 items-center gap-1 px-1 text-[12.5px] text-ink-3"><KeyRound className="size-3.5" strokeWidth={1.5} aria-hidden />{c.login ? 'Log in with your account' : c.oauth ? `Sign in with ${c.name}` : secrets.length ? `Needs ${secrets.map((f) => lowerFirst(f.label)).join(' and ')}` : 'No key needed'}</li>
+          {c.provides.map((p) => <li key={p} className="inline-flex h-7 items-center rounded-full px-2.5 text-caption text-ink-2 shadow-[inset_0_0_0_1px_var(--hairline)]">{p}</li>)}
+          <li className="inline-flex h-7 items-center gap-1 px-1 text-caption text-ink-3"><KeyRound className="size-3.5" strokeWidth={1.5} aria-hidden />{c.login ? 'Log in with your account' : c.oauth ? `Sign in with ${c.name}` : secrets.length ? `Needs ${secrets.map((f) => lowerFirst(f.label)).join(' and ')}` : 'No key needed'}</li>
         </ul>
       ) : (
         <div className="flex flex-col gap-3 rounded-[16px] bg-surface-2/60 p-4 shadow-[inset_0_0_0_1px_var(--hairline)]">
           <div className="flex items-center justify-between gap-3">
-            <span className="text-[13px] text-ink-2 tabular-nums">{c.detail}</span>
+            <span className="text-small text-ink-2 tabular-nums">{c.detail}</span>
             {c.sync ? <SyncButton id={c.id} name={c.name} /> : null}
           </div>
-          {c.error && c.status === 'error' ? <p className="rounded-md bg-bad/10 px-3 py-2 text-[12.5px] text-bad">{c.error}</p> : null}
+          {c.error && c.status === 'error' ? <p className="rounded-md bg-bad/10 px-3 py-2 text-caption text-bad">{c.error}</p> : null}
           {c.syncs?.length ? (
-            <ul aria-label="Recent syncs" className="flex flex-col divide-y divide-divider text-[12.5px]">
+            <ul aria-label="Recent syncs" className="flex flex-col divide-y divide-divider text-caption">
               {c.syncs.map((r, i) => (
                 <li key={i} className="flex h-8 items-center gap-2.5">
                   {r.ok === false ? <CircleAlert className="size-3.5 text-bad" strokeWidth={2} aria-label="Failed" /> : <CircleCheck className="size-3.5 text-good" strokeWidth={2} aria-label="OK" />}
@@ -514,7 +518,7 @@ function LoginStep({ c }: { c: ConnectorItem }) {
   const [state, setState] = useState<'idle' | 'open' | string>('idle')
   return (
     <div className="flex flex-col gap-3 rounded-md bg-surface-2/60 p-4 shadow-[inset_0_0_0_1px_var(--hairline)]">
-      <ol className="flex list-decimal flex-col gap-1 ps-4 text-[13.5px] text-ink-2">
+      <ol className="flex list-decimal flex-col gap-1 ps-4 text-small text-ink-2">
         <li>Open a login window and sign in to {c.name} as usual (OTP included).</li>
         <li>Once you see your account, come back here.</li>
         <li>Press {c.connected ? 'Save' : 'Connect'}. ReLife closes the window, keeps the login and syncs orders every few hours.</li>
@@ -523,7 +527,7 @@ function LoginStep({ c }: { c: ConnectorItem }) {
         <Button type="button" disabled={pending} onClick={() => start(async () => { const r = await openAppLogin(c.id); setState(r.ok ? 'open' : r.error) })}>
           <ExternalLink className="size-4" strokeWidth={1.5} />{pending ? 'Opening…' : c.connected ? 'Log in again' : 'Open login window'}
         </Button>
-        <span role="status" className={cn('text-[12.5px]', state !== 'idle' && state !== 'open' ? 'text-bad' : 'text-ink-3')}>
+        <span role="status" className={cn('text-caption', state !== 'idle' && state !== 'open' ? 'text-bad' : 'text-ink-3')}>
           {state === 'open' ? 'Window open. Log in, then close it.' : state === 'idle' ? '' : state}
         </span>
       </div>
@@ -546,12 +550,12 @@ function SignInStep({ c }: { c: ConnectorItem }) {
           <a href={`/api/oauth/${c.id}/start`} className={buttonClass({ variant: o.signedIn ? 'secondary' : 'accent' })}>
             <LogIn className="size-4" strokeWidth={2} aria-hidden />{o.signedIn ? 'Sign in again' : `Sign in with ${c.name}`}
           </a>
-          <span role="status" className="inline-flex items-center gap-1.5 text-[12.5px]" style={{ color: o.signedIn ? 'var(--good)' : 'var(--warn)' }}>
+          <span role="status" className="inline-flex items-center gap-1.5 text-caption" style={{ color: o.signedIn ? 'var(--good)' : 'var(--warn)' }}>
             {o.signedIn ? <><CircleCheck className="size-3.5" strokeWidth={2} aria-hidden />Signed in</> : 'Not signed in yet'}
           </span>
         </div>
       ) : null}
-      <ol className="flex list-decimal flex-col gap-1 ps-4 text-[13.5px] text-ink-2">
+      <ol className="flex list-decimal flex-col gap-1 ps-4 text-small text-ink-2">
         <li>
           Create an app at{' '}
           <a href={o.setupUrl} target="_blank" rel="noreferrer" className="font-medium text-pill-ink underline-offset-2 hover:underline">{new URL(o.setupUrl).host}</a>.
@@ -559,7 +563,7 @@ function SignInStep({ c }: { c: ConnectorItem }) {
         <li className="flex flex-col gap-1.5">
           <span>Add this redirect address to it:</span>
           <span className="flex items-center gap-1.5">
-            <code className="min-w-0 flex-1 truncate rounded-sm bg-surface px-2 py-1.5 font-mono text-[12px] text-ink shadow-[inset_0_0_0_1px_var(--hairline)]" title={o.redirectUri}>{o.redirectUri}</code>
+            <code className="min-w-0 flex-1 truncate rounded-sm bg-surface px-2 py-1.5 font-mono text-caption text-ink shadow-[inset_0_0_0_1px_var(--hairline)]" title={o.redirectUri}>{o.redirectUri}</code>
             <Button
               size="icon-sm"
               aria-label={copied ? 'Copied' : 'Copy redirect address'}
@@ -572,7 +576,7 @@ function SignInStep({ c }: { c: ConnectorItem }) {
         <li>Paste its client ID and secret below, then press {c.connected ? 'Save' : 'Connect'} to sign in.</li>
       </ol>
       {o.httpsOnly && o.redirectUri.startsWith('http:') ? (
-        <p className="flex items-start gap-2 text-[12.5px] text-warn">
+        <p className="flex items-start gap-2 text-caption text-warn">
           <CircleAlert className="mt-0.5 size-3.5 shrink-0" strokeWidth={2} aria-hidden />
           {c.name} only accepts https addresses. Open ReLife over https (an HTTPS tunnel such as Tailscale Serve) and connect from there.
         </p>
@@ -596,15 +600,15 @@ function ConnectForm({ c, onDone }: { c: ConnectorItem; onDone: () => void }) {
   const failed = !!state && !state.ok
   useEffect(() => {
     if (!state?.ok || connectedHere) return
-    const icon = <Logo id={c.id} category={c.category} size="xs" />
+    const picture = { of: 'connector', id: c.id, name: c.name } as const
     // A new or changed app needs a sign-in before anything syncs: go straight there.
     if (c.oauth && (!wasConnected.current || !c.oauth.signedIn)) {
-      toast(`Opening ${c.name} sign-in…`, 'neutral', { icon })
+      toast(`Opening ${c.name} sign-in…`, 'neutral', { picture })
       window.location.assign(`/api/oauth/${c.id}/start`)
       return
     }
-    if (wasConnected.current) { toast(`${c.name} settings saved`, 'good', { icon }); onDone(); return }
-    toast(`${c.name} connected`, 'good', { icon, description: c.sync ? 'Its first sync starts within a minute' : undefined })
+    if (wasConnected.current) { toast(`${c.name} settings saved`, 'good', { picture }); onDone(); return }
+    toast(`${c.name} connected`, 'good', { picture, description: c.sync ? 'Its first sync starts within a minute' : undefined })
     setConnectedHere(true)
   }, [state, connectedHere, c.connected, c.name, c.id, c.category, c.sync, c.oauth, onDone, toast])
 
@@ -638,17 +642,17 @@ function ConnectForm({ c, onDone }: { c: ConnectorItem; onDone: () => void }) {
           />
         </Field>
       )) : (
-        <p className="text-[14px] text-ink-2">No key needed. Connect and ReLife starts syncing within a minute.</p>
+        <p className="text-body text-ink-2">No key needed. Connect and ReLife starts syncing within a minute.</p>
       )}
 
       {c.login ? (
-        <p className="flex items-start gap-2 text-[12.5px] text-ink-3">
+        <p className="flex items-start gap-2 text-caption text-ink-3">
           <Lock className="mt-0.5 size-3.5 shrink-0" strokeWidth={1.5} aria-hidden />
           Your session stays in this Mac’s Chrome profile for ReLife (data/browser). Not an official integration: it may break when {c.name} changes its site, and you’ll log in again every few weeks.
         </p>
       ) : null}
       {c.fields.some((f) => f.secret) ? (
-        <p className="flex items-start gap-2 text-[12.5px] text-ink-3">
+        <p className="flex items-start gap-2 text-caption text-ink-3">
           <Lock className="mt-0.5 size-3.5 shrink-0" strokeWidth={1.5} aria-hidden />
           Keys are encrypted in your local database and only sent to {c.name}.
         </p>
@@ -662,7 +666,7 @@ function ConnectForm({ c, onDone }: { c: ConnectorItem; onDone: () => void }) {
             variant="danger"
             disabled={leaving || pending}
             onClick={() => startLeave(async () => {
-              try { await disconnectIntegration(c.id); toast(`${c.name} disconnected`, 'neutral', { icon: <Logo id={c.id} category={c.category} size="xs" /> }); onDone() } catch { toast.error(`Couldn’t disconnect ${c.name}`) }
+              try { await disconnectIntegration(c.id); toast(`${c.name} disconnected`, 'neutral', { picture: { of: 'connector', id: c.id, name: c.name } }); onDone() } catch { toast.error(`Couldn’t disconnect ${c.name}`) }
             })}
           >
             {leaving ? 'Disconnecting…' : 'Disconnect'}

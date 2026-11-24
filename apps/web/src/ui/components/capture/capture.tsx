@@ -5,7 +5,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { addToGoal, quickLog, toggleCheck, undoQuickLog } from '@/app/actions'
 import { amountText } from '@/domain/capture'
 import type { QuickLogUndo } from '@/domain/quicklog'
-import { routineArt } from '../../routine-icons'
 import { Sheet, useIsDesktop } from '../sheet'
 import { announceXp, useToast } from '../toast'
 import { CAPTURE_EVENT, invalidateCapture, useCaptureData } from './capture-data'
@@ -122,7 +121,7 @@ function useCaptureActions(close: () => void, retry: () => void): CaptureActions
     // “Water +250 ml · 750 ml today”: what was logged, then the running total.
     const [title, ...rest] = r.message.split(' · ')
     const token: QuickLogUndo | undefined = r.undo
-    toast(title, 'good', { description: rest.join(' · ') || undefined, icon: routineArt(title, '', ''), action: token ? undoable(() => undoQuickLog(token)) : undefined })
+    toast(title, 'good', { description: rest.join(' · ') || undefined, picture: { of: 'tracker', name: title }, action: token ? undoable(() => undoQuickLog(token)) : undefined })
     return true
   })
 
@@ -131,14 +130,14 @@ function useCaptureActions(close: () => void, retry: () => void): CaptureActions
     log,
     checkOff: (r) => run(`due:${r.scheduleId}|${r.occurrence}`, async () => {
       announceXp(toast, await toggleCheck(r.scheduleId, r.occurrence, 'done'))
-      toast(`${r.name} done`, 'good', { description: r.xp ? `+${r.xp} XP` : undefined, icon: routineArt(r.name, r.kind, r.area), action: undoable(() => toggleCheck(r.scheduleId, r.occurrence, null)) })
+      toast(`${r.name} done`, 'good', { description: r.xp ? `+${r.xp} XP` : undefined, picture: { of: 'routine', name: r.name, kind: r.kind, area: r.area }, action: undoable(() => toggleCheck(r.scheduleId, r.occurrence, null)) })
       return true
     }),
     addStep: (g) => run(`goal:${g.scheduleId}`, async () => {
       const { undo, ...news } = await addToGoal(g.scheduleId, g.step)
       announceXp(toast, news)
       toast(`${g.name} +${amountText(g.step, g.unit)}`, 'good', {
-        description: `${amountText(g.value + g.step, g.unit)} of ${amountText(g.target, g.unit)} today`, icon: routineArt(g.name, 'routine', g.area),
+        description: `${amountText(g.value + g.step, g.unit)} of ${amountText(g.target, g.unit)} today`, picture: { of: 'tracker', name: g.name, kind: 'routine', area: g.area },
         action: undoable(() => undoQuickLog(undo)),
       })
       return true

@@ -5,10 +5,11 @@ import { localDate } from '@/core/time'
 import { getUser } from '@/core/user'
 import { AreaSources } from '@/ui/components/area/area-sources'
 import { Skeleton } from '@/ui/components/card'
+import { KpiSkeleton } from '@/ui/components/area/area-layout'
 
 export default function AreaSourcesPage({ params }: PageProps<'/[area]/sources'>) {
   return (
-    <Suspense fallback={<div aria-busy className="flex flex-col gap-6"><Skeleton className="h-[240px] rounded-lg" /><Skeleton className="h-[200px] rounded-lg" /></div>}>
+    <Suspense fallback={<div aria-busy className="flex flex-col gap-6"><KpiSkeleton /><Skeleton className="h-[240px] rounded-lg" /><Skeleton className="h-[200px] rounded-lg" /></div>}>
       <Sources params={params} />
     </Suspense>
   )

@@ -252,7 +252,7 @@ export function Tour() {
               {/* What the picture shows, beat by beat, on the picture's clock (both mount in this render). */}
               {TOUR_STEPS[0].beats ? <motion.div variants={item}><Beats set={TOUR_STEPS[0].beats} className="mx-2 mt-3" /></motion.div> : null}
               <div className="px-4 pt-6 pb-1 text-center sm:px-6">
-                <motion.h2 variants={item} id="welcome-t" className="font-display text-[24px] leading-[1.2] font-extrabold tracking-[-0.02em] text-balance text-ink">{TOUR_STEPS[0].title}</motion.h2>
+                <motion.h2 variants={item} id="welcome-t" className="font-display text-[24px] leading-[1.2] font-medium tracking-[-0.02em] text-balance text-ink">{TOUR_STEPS[0].title}</motion.h2>
                 <motion.p variants={item} id="welcome-d" className="mx-auto mt-2 max-w-[320px] text-[14px] leading-normal text-balance text-ink-2">{TOUR_STEPS[0].body}</motion.p>
                 <motion.div variants={item} className="mt-6">
                   <button ref={startRef} type="button" onClick={() => go(1, 1)} className={buttonClass({ variant: 'primary', size: 'lg', className: 'h-10 w-full text-[14px]' })}>
@@ -328,7 +328,7 @@ export function Tour() {
                 <AnimatePresence mode="popLayout" initial={false} custom={dir}>
                   <motion.div key={step} custom={dir} variants={slide} initial="enter" animate="center" exit="exit"
                     transition={{ duration: 0.2, ease: EASE_OUT_STRONG }} className="px-4 pt-4">
-                    <h3 id="tour-t" className="font-display text-[17px] leading-[1.25] font-extrabold tracking-[-0.02em] text-ink">{current.title}</h3>
+                    <h3 id="tour-t" className="font-display text-[17px] leading-[1.25] font-medium tracking-[-0.02em] text-ink">{current.title}</h3>
                     <p id="tour-d" className="mt-1.5 text-[13px] leading-normal text-pretty text-ink-2">{current.body}</p>
                   </motion.div>
                 </AnimatePresence>

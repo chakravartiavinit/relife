@@ -12,7 +12,7 @@ import { Sheet } from '../sheet'
 import { PeekChangedProvider } from './peek-context'
 import { closePeek } from './peek-link'
 import { PeekSkeleton } from './peek-parts'
-import { PeekView, peekHeading } from './peek-view'
+import { headingMark, PeekView, peekHeading } from './peek-view'
 
 /**
  * The Peek drawer (laptop) or sheet (phone), driven by `?peek=type:id`. Mounted once in the root layout, inside
@@ -39,7 +39,7 @@ export function PeekHost() {
     {key ? <SourceRing k={key} /> : null}
       <Sheet
         open={!!ref} onOpenChange={(o) => { if (!o) closePeek() }}
-        title={heading.title} description={heading.description} icon={heading.icon}
+        title={heading.title} description={heading.description} icon={headingMark(heading)}
         snapPoints={[0.62, 0.92]}
       >
         <PeekChangedProvider value={changed}>

@@ -11,7 +11,7 @@ export function PeekSection({ label, aside, children, className }: { label: Reac
   return (
     <section className={cn('mt-6', className)}>
       <div className="mb-2 flex items-center justify-between gap-3">
-        <h3 className="text-label font-mono uppercase text-ink-3">{label}</h3>
+        <h3 className="text-small font-medium text-ink-3">{label}</h3>
         {aside ? <div className="min-w-0 text-caption text-ink-3 tabular-nums">{aside}</div> : null}
       </div>
       {children}
@@ -40,7 +40,7 @@ export function PeekNote({ icon: Icon, label, children, tone = 'pill' }: { icon?
   return (
     <div className="mt-5 rounded-md px-4 py-3 text-small text-ink-2" style={{ background: `color-mix(in oklch, ${color} 10%, transparent)` }}>
       {label ? (
-        <p className="mb-1 flex items-center gap-1.5 text-label font-mono uppercase" style={{ color: `color-mix(in oklch, ${color} 70%, var(--ink))` }}>
+        <p className="mb-1 flex items-center gap-1.5 text-small font-medium" style={{ color: `color-mix(in oklch, ${color} 70%, var(--ink))` }}>
           {Icon ? <Icon className="size-3.5" strokeWidth={1.5} aria-hidden /> : null}{label}
         </p>
       ) : null}

@@ -1,16 +1,19 @@
-import brand from '@relife/brand/brand.json'
 import type { Metadata } from 'next'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
-import { Target } from 'lucide-react'
-import { loadGoalsPage } from '@/core/goals'
+import { loadGoalsPageOnce } from '@/core/goals'
+import { loadPatterns } from '@/core/patterns'
 import { getUser } from '@/core/user'
+import { connectionView } from '@/domain/connection-view'
+import brand from '@relife/brand/brand.json'
 import { MAX_ACTIVE } from '@/domain/goals'
 import { Card, Skeleton } from '@/ui/components/card'
+import { GridItem, PageGrid } from '@/ui/components/page-grid'
+import { Rail } from '@/ui/components/rail'
 import { EmptyState } from '@/ui/components/empty'
-import { CapNote, GoalDraftCard, OutcomeGoalCard, PausedFinishedList, ReviewDueCard, SuggestDraftCard } from '@/ui/components/goals/goal-card'
+import { CapNote, CoachDraftsCard, FreeSlot, GoalDraftCard, GoalFolds, GoalsBoard, ReviewDueCard, SuggestDraftCard } from '@/ui/components/goals/goal-card'
 import { NewGoalButton } from '@/ui/components/goals/goal-form'
-import { cn } from '@/ui/cn'
+import { actionPeeks, goalPicture, type GoalFeed } from '@/ui/components/goals/format'
 
 export const metadata: Metadata = { title: 'Goals' }
 
@@ -26,72 +29,74 @@ async function Goals() {
   await connection()
   const user = await getUser()
   const { aiEnabledFor } = await import('@/ai')
-  const data = await loadGoalsPage(user)
+  const data = await loadGoalsPageOnce(user)
   const atCap = data.activeCount >= MAX_ACTIVE
   const ai = await aiEnabledFor(user, 'plan')
   const nothing = !data.active.length && !data.paused.length && !data.finished.length
   const drafts = data.drafts.filter((d) => d.payload.goalDraft)
-  // One New goal button at a time (the empty state, or the free-slot row under the goals); it also opens on /plan?new=1.
+  // One New goal button at a time (the empty state, or the free-slot well under the goals); it also opens on /plan?new=1.
   const offers = drafts.map((d) => ({ insightId: d.id, draft: d.payload.goalDraft! }))
-  const hasAside = data.due.length > 0 || drafts.length > 0 || ai
+  const slots = MAX_ACTIVE - data.activeCount
+  const first = data.due.map((d) => d.review.snapshot.window)
+  const feeds = await feedsFor(data)
   return (
-    <div>
-      {/* DOM order: Review due → Active → Drafts → Paused and finished. On wide screens review and drafts sit in the right column. */}
-      <div className={cn('grid gap-6', hasAside && 'lg:grid-cols-[minmax(0,1fr)_340px] lg:grid-rows-[auto_1fr_auto]')}>
+    <PageGrid>
+      {/* DOM order: Active → Review due, drafts and the folds (the rail). The rail ends level with the board. */}
+      <GridItem as="section" aria-label="Goals" span={{ base: 12, lg: 8 }} className="flex flex-col">
+        {data.active.length ? (
+          <GoalsBoard goals={data.active} picker={data.picker} today={data.today} feeds={feeds}>
+            <CapNote show={atCap} />
+            {!atCap ? <FreeSlot slots={slots} today={data.today} picker={data.picker} activeCount={data.activeCount} drafts={offers} /> : null}
+          </GoalsBoard>
+        ) : (
+          <Card className="flex-1">
+            <EmptyState picture={{ of: 'nav', to: '/plan' }}
+              title={nothing ? 'No goals yet' : 'No active goals'}
+              description={nothing ? `Pick one outcome you want to change, like sleep or savings. ${brand.name} records where you start and checks in every week.` : 'Resume a paused goal or create a new one.'}
+              action={<NewGoalButton today={data.today} picker={data.picker} activeCount={data.activeCount} listenToUrl drafts={offers} />} />
+          </Card>
+        )}
+      </GridItem>
+
+      <Rail as="aside" aria-label="Review, drafts and more" span={{ base: 12, lg: 4 }} pairs>
         {data.due.length ? (
-          <div className="lg:col-start-2 lg:row-start-1">
-            <ReviewDueCard date={data.today} goals={data.due.map(({ goal }) => ({ id: goal.id, title: goal.title, status: goal.snapshot?.outcome.status ?? null, sensitive: goal.sensitive }))} />
-          </div>
+          <ReviewDueCard date={data.due[0].review.reviewDate} today={data.today} window={first.sort((a, b) => a.from.localeCompare(b.from))[0]}
+            goals={data.due.map(({ goal, review }) => ({
+              id: goal.id, title: goal.title, status: goal.snapshot?.outcome.status ?? null, sensitive: goal.sensitive, days: review.snapshot.outcome.days, note: review.aiNote,
+              picture: goalPicture(goal), measure: `${goal.measureName}${goal.unit ? `, ${goal.unit}` : ''}`,
+            }))} />
         ) : null}
-
-        <section aria-labelledby="active-goals" className="flex flex-col gap-4 lg:col-start-1 lg:row-span-2 lg:row-start-1">
-          <div className="flex items-baseline justify-between px-1">
-            <h2 id="active-goals" className="text-heading text-ink">Active</h2>
-            <span className="text-small text-ink-3 tabular-nums">{data.activeCount} of {MAX_ACTIVE}</span>
-          </div>
-          <CapNote show={atCap} />
-          {data.active.length ? data.active.map((g) => <OutcomeGoalCard key={g.id} g={g} picker={data.picker} today={data.today} />) : (
-            <Card>
-              <EmptyState icon={Target}
-                title={nothing ? 'No goals yet' : 'No active goals'}
-                description={nothing ? `Pick one outcome you want to change, like sleep or savings. ${brand.name} records where you start and checks in every week.` : 'Resume a paused goal or create a new one.'}
-                action={<NewGoalButton today={data.today} picker={data.picker} activeCount={data.activeCount} listenToUrl drafts={offers} />} />
-            </Card>
-          )}
-          {data.active.length && !atCap ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-surface-2 p-4">
-              <div className="min-w-0">
-                <p className="text-body font-semibold text-ink">{MAX_ACTIVE - data.activeCount} {MAX_ACTIVE - data.activeCount === 1 ? 'slot' : 'slots'} free</p>
-                <p className="text-small text-ink-3">Start from the coach draft or any tracker {brand.name} already fills.</p>
-              </div>
-              <NewGoalButton today={data.today} picker={data.picker} activeCount={data.activeCount} listenToUrl drafts={offers} />
-            </div>
-          ) : null}
-        </section>
-
         {drafts.length || ai ? (
-          <section aria-label="Drafts" className={cn('flex flex-col gap-4 lg:col-start-2', data.due.length ? 'lg:row-start-2' : 'lg:row-start-1')}>
+          <CoachDraftsCard freeSlots={Math.max(0, slots)}>
             {drafts.map((d) => <GoalDraftCard key={d.id} insightId={d.id} draft={d.payload.goalDraft!} picker={data.picker} today={data.today} activeCount={data.activeCount} />)}
             {ai && drafts.length < 3 ? <SuggestDraftCard profileGoals={user.profile.goals?.slice(0, 160) ?? null} atCap={atCap} /> : null}
-          </section>
+          </CoachDraftsCard>
         ) : null}
-
-        <div className="lg:col-start-1">
-          <PausedFinishedList goals={[...data.paused, ...data.finished]} activeCount={data.activeCount} />
-        </div>
-      </div>
-    </div>
+        <GoalFolds goals={[...data.paused, ...data.finished]} activeCount={data.activeCount} />
+      </Rail>
+    </PageGrid>
   )
+}
+
+/** Per active goal: the Peek of each linked action, and this week's change in one of its trackers when `findChanges` has one. */
+async function feedsFor(data: Awaited<ReturnType<typeof loadGoalsPageOnce>>) {
+  const feeds: Record<string, GoalFeed> = {}
+  const tracked = data.active.some((g) => g.trackerId || g.actions.some((a) => a.kind === 'tracker'))
+  const changes = tracked ? (await loadPatterns(await getUser())).changes : []
+  for (const g of data.active) {
+    const slugs = [g.trackerId, ...g.actions.filter((a) => a.kind === 'tracker').map((a) => a.id)].flatMap((id) => data.picker.trackers.find((t) => t.id === id)?.slug ?? [])
+    const change = changes.find((c) => slugs.some((s) => c.signal.id === `tracker:${s}`))
+    const v = change ? connectionView({ change }) : null
+    feeds[g.id] = { peeks: actionPeeks(g, data.picker.trackers), change: v ? { parts: v.parts, caption: v.caption, peek: v.peek } : undefined }
+  }
+  return feeds
 }
 
 function GoalsSkeleton() {
   return (
-    <div aria-busy>
-      <Skeleton className="mb-4 ml-auto h-10 w-36" />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="flex flex-col gap-4"><Skeleton className="h-6 w-24" /><Skeleton className="h-[320px] rounded-lg" /><Skeleton className="h-[320px] rounded-lg" /></div>
-        <div className="flex flex-col gap-6"><Skeleton className="h-[200px] rounded-lg" /><Skeleton className="h-[220px] rounded-lg" /></div>
-      </div>
-    </div>
+    <PageGrid aria-busy>
+      <GridItem span={{ base: 12, lg: 8 }}><Skeleton className="h-[640px] rounded-lg" /></GridItem>
+      <Rail span={{ base: 12, lg: 4 }} pairs><Skeleton className="h-[420px] rounded-lg" /><Skeleton className="h-[200px] rounded-lg" /></Rail>
+    </PageGrid>
   )
 }

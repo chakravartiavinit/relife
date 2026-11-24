@@ -1,8 +1,10 @@
 import Link from 'next/link'
-import { Flame, Snowflake, Sparkles } from 'lucide-react'
+import { Flame } from 'lucide-react'
+import { formatNumber } from '@/domain/money'
 import { cn } from '@/ui/cn'
 import { SystemLabel } from '../card'
-import { PeekLink } from '../peek/peek-link'
+import { buttonLinkClass } from '../button'
+import { InsightLine } from '../insight-line'
 
 export type HeaderData = {
   /** "Thursday · 12 November", already formatted in the user's time zone. */
@@ -14,6 +16,7 @@ export type HeaderData = {
   /** Opens the brief's Peek (the facts behind the line). Hidden when the line is not a stored brief. */
   why: boolean
   streak: { current: number; doneToday: boolean }
+  /** Streak freezes held and XP earned today: read out with the streak link, not drawn (Quests holds the freezes). */
   freezes: number
   xpToday: number
   /** Day one: a streak of 0 reads as an invitation, and the label says so. */
@@ -22,48 +25,33 @@ export type HeaderData = {
 }
 
 /**
- * The top of Today, open on the canvas (no card): date, greeting, one line from the brief with a Why? link, and the
- * streak chip. The halftone sits in the top-right corner only. On a phone the chip shrinks to one pill beside the date.
+ * The top of Today, open on the canvas (no card): the date label, the greeting in Fraunces, one line from the brief
+ * with its Why?, and the streak as a link to You. On a phone the streak sits under the line; from 640px of page it
+ * sits at the right, on the line's baseline.
  */
 export function TodayHeader({ d }: { d: HeaderData }) {
   const suffix = d.firstDay ? ' · Day 1' : d.complete ? ' · Day complete' : ''
-  return (
-    <header className="relative isolate grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 gap-y-1">
-      <div aria-hidden className="halftone -top-6 -right-5 -z-10 h-44 w-3/4 sm:-right-8 sm:w-1/2" />
-      <div className="col-start-1 row-start-1"><SystemLabel>{d.date}{suffix}</SystemLabel></div>
-      <StreakChip d={d} />
-      <h1 className="col-span-2 font-display text-title text-ink sm:col-span-1 sm:text-display">{d.greeting}, {d.name}.</h1>
-      <p className="col-span-2 mt-1 flex max-w-[64ch] items-start gap-2 text-body text-ink-2 sm:col-span-1 sm:text-heading sm:font-normal">
-        <Sparkles aria-hidden className="mt-0.5 size-4 shrink-0 text-pill-ink sm:mt-1 sm:size-[18px]" strokeWidth={1.5} />
-        <span>
-          {d.line}
-          {d.why ? <>{' '}<PeekLink to={{ type: 'brief', id: 'today' }} className="rounded-xs font-semibold whitespace-nowrap text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-pill">Why?</PeekLink></> : null}
-        </span>
-      </p>
-    </header>
-  )
-}
-
-/** Streak, freezes held and XP today, in one link to the streak on You. */
-function StreakChip({ d }: { d: HeaderData }) {
   const { current, doneToday } = d.streak
   return (
-    <Link
-      href="/you#streak"
-      className="col-start-2 row-start-1 flex items-center gap-2 rounded-full bg-surface px-3 py-1.5 shadow-1 transition-[box-shadow] duration-150 hover:shadow-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill sm:row-span-3 sm:gap-3 sm:rounded-lg sm:px-4 sm:py-3"
-    >
-      <Flame className={cn('size-5 sm:size-6', current ? 'text-(--medal-gold)' : 'text-ink-3')} strokeWidth={2} aria-hidden />
-      <span className="flex items-baseline gap-1.5 sm:block sm:text-center">
-        <span className="num block text-heading leading-none sm:text-title">{current}</span>
-        <span className="hidden text-caption text-ink-3 sm:mt-1 sm:block">{d.firstDay ? 'check one thing off to start' : 'day streak'}</span>
-      </span>
-      {d.firstDay ? null : (
-        <span className="flex items-center gap-1 text-caption text-ink-3 tabular-nums sm:block sm:border-s sm:border-divider sm:ps-3">
-          {d.freezes ? <span className="flex items-center gap-1"><Snowflake className="size-3.5 text-sky" strokeWidth={2} aria-hidden />{d.freezes}<span className="max-sm:sr-only"> {d.freezes === 1 ? 'freeze' : 'freezes'}</span></span> : null}
-          {d.xpToday ? <span className="block max-sm:hidden">+{d.xpToday} XP today</span> : null}
-        </span>
-      )}
-      <span className="sr-only">{doneToday ? 'Kept today.' : 'Not kept yet today.'}{d.xpToday ? ` ${d.xpToday} XP today.` : ''}</span>
-    </Link>
+    <header className="@container">
+      <div className="grid grid-cols-1 items-end gap-x-6 gap-y-3 grid-md:grid-cols-12">
+        <div className="min-w-0 grid-md:col-[1/10]">
+          <SystemLabel>{d.date}{suffix}</SystemLabel>
+          <h1 className="mt-1.5 font-display text-display text-ink">{d.greeting}, {d.name}.</h1>
+          <InsightLine className="mt-2 max-w-[64ch]" peek={d.why ? { type: 'brief', id: 'today' } : undefined}>{d.line}</InsightLine>
+        </div>
+        <div className="min-w-0 grid-md:col-[10/13] grid-md:justify-self-end">
+          <Link
+            href="/you#streak"
+            className={cn(buttonLinkClass('inline-flex h-10 items-center gap-1.5 text-body'), 'grid-md:h-9')}
+            title={`${d.freezes ? `${d.freezes} ${d.freezes === 1 ? 'freeze' : 'freezes'} held. ` : ''}${d.xpToday ? `${formatNumber(d.xpToday)} XP today.` : ''}`.trim() || undefined}
+          >
+            <Flame className={cn('size-4', current ? 'text-(--medal-gold)' : 'text-ink-3')} strokeWidth={1.5} aria-hidden />
+            {d.firstDay ? 'Check one thing off to start' : `${current}-day streak`}
+            <span className="sr-only">. {doneToday ? 'Kept today.' : 'Not kept yet today.'}{d.xpToday ? ` ${formatNumber(d.xpToday)} XP today.` : ''}</span>
+          </Link>
+        </div>
+      </div>
+    </header>
   )
 }

@@ -18,6 +18,7 @@ import { PeopleOnServer, ShareAiSwitch } from '@/ui/components/people-on-server'
 import { buttonClass } from '@/ui/components/button'
 import { ProfileForm, ThemePicker } from '@/ui/components/settings-ui'
 import { SettingsRow, SettingsSection } from '@/ui/components/settings-layout'
+import { GridItem, PageGrid } from '@/ui/components/page-grid'
 import { SettingsRail } from '@/ui/components/settings-rail'
 import { SystemFocus } from '@/ui/components/system-focus'
 import { TemplatesButton } from '@/ui/components/templates/templates-button'
@@ -34,8 +35,8 @@ const TASKS: { task: Task; label: string; hint: string }[] = [
 
 export default function SettingsPage() {
   return (
-    <>
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <PageGrid>
+      <GridItem className="flex flex-wrap items-end justify-between gap-3">
         <p className="max-w-[60ch] text-body text-ink-2">Your profile, how {brand.name} looks and which AI it uses. Export, backups, privacy and deleting your data are under Data & privacy; data sources and API keys are in Connections; Telegram messages are in Notifications.</p>
         <div className="flex flex-wrap items-center gap-2">
           {/* A full load: the tour opens from the address on arrival. */}
@@ -45,16 +46,14 @@ export default function SettingsPage() {
           </Suspense>
           <Link href="/welcome" className={buttonClass({ variant: 'secondary', size: 'sm' })}>Run setup again</Link>
         </div>
-      </div>
-      <div className="grid gap-8 lg:grid-cols-[200px_minmax(0,1fr)] xl:gap-12">
+      </GridItem>
         <SettingsRail current="settings" />
-        <div className="flex max-w-3xl min-w-0 flex-col gap-10">
+        <GridItem span={{ base: 12, lg: 9 }} className="flex max-w-3xl flex-col gap-10">
           <Suspense fallback={<SettingsSkeleton />}>
             <Settings />
           </Suspense>
-        </div>
-      </div>
-    </>
+        </GridItem>
+    </PageGrid>
   )
 }
 
@@ -140,7 +139,7 @@ async function Settings() {
           return (
             <SettingsRow key={task} label={label} hint={hint}>
               <div className="flex flex-wrap items-center gap-2.5">
-                <code className="min-w-0 truncate rounded-sm bg-surface-2 px-2 py-1 text-[12.5px] text-ink">{id ?? 'No model'}</code>
+                <code className="min-w-0 truncate rounded-sm bg-surface-2 px-2 py-1 text-small text-ink">{id ?? 'No model'}</code>
                 <Badge color={ok ? 'var(--good)' : id ? 'var(--bad)' : undefined}>{ok ? 'Ready' : !allowed ? `Turned off by ${owner?.name ?? 'the owner'}` : id ? 'Key missing' : 'Not set'}</Badge>
               </div>
             </SettingsRow>
@@ -182,8 +181,8 @@ async function Settings() {
 function Usage({ label, value, bad }: { label: string; value: string; bad?: boolean }) {
   return (
     <div className="rounded-md bg-surface-2/70 px-3 py-2.5 shadow-[inset_0_0_0_1px_var(--hairline)]">
-      <dt className="text-[11.5px] text-ink-3">{label}</dt>
-      <dd className={`mt-0.5 font-display text-[18px] font-bold tabular-nums ${bad ? 'text-bad' : 'text-ink'}`}>{value}</dd>
+      <dt className="text-caption text-ink-3">{label}</dt>
+      <dd className={`mt-0.5 font-display text-heading font-medium tabular-nums ${bad ? 'text-bad' : 'text-ink'}`}>{value}</dd>
     </div>
   )
 }

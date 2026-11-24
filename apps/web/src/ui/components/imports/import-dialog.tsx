@@ -4,7 +4,7 @@ import brand from '@relife/brand/brand.json'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowRight, FileUp, LoaderCircle, Upload } from 'lucide-react'
+import { ArrowRight, FileUp, Upload } from 'lucide-react'
 import {
   cancelImportAction, createImportAction, finishUploadAction, importStatusAction, previewImportAction, startImportAction, undoImportAction,
 } from '@/app/actions'
@@ -16,6 +16,7 @@ import { Button, buttonClass } from '../button'
 import { Dialog, FormError } from '../forms/dialog'
 import { useToast } from '../toast'
 import { cn } from '../../cn'
+import { Loader } from '../loader'
 import {
   ACCEPT, FileRow, ImportProgress, ImportRail, ImportResult, KindPicker, Note, PRIVACY, RepeatWarning, ResultBar, SavedChip, StatementColumns, StatementTable,
   TrackerColumns, TrackerTable, ZipFound, fmtDay, fmtSize,
@@ -245,7 +246,7 @@ export function ImportDialog({ open, onClose, zipMaxMb = 2048 }: { open: boolean
               <>
                 <Button variant="secondary" disabled={stage === 'starting'} onClick={() => { dropUpload(importId); setImportId(null); setPreview(null); setMapping(null); setError(null); setStage('pick') }}>Back</Button>
                 <Button variant="primary" onClick={() => void start()} disabled={!ready || stage === 'starting'} aria-busy={stage === 'starting'}>
-                  {stage === 'starting' ? <LoaderCircle aria-hidden className="size-4 animate-spin [animation-duration:0.7s]" /> : null}
+                  {stage === 'starting' ? <Loader size="inline" px={16} label="Starting the import" /> : null}
                   {statement ? (toAdd > 0 ? `Import ${toAdd.toLocaleString('en-US')} ${statement.duplicates ? 'new ' : ''}rows` : 'Nothing new to import') : tracker ? `Import ${tracker.rows.toLocaleString('en-US')} values` : 'Start import'}
                 </Button>
               </>

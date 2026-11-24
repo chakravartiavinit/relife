@@ -1,7 +1,6 @@
-// Pure rules for the app shell: the sync dot, the area dots and the level ring.
+// Pure rules for the app shell: the sync dot, today's and each area's progress, and the nav status.
 
 import type { Category } from '@/db/schema'
-import { CATEGORIES } from '@/domain/categories'
 
 export type SyncTone = 'good' | 'warn' | 'bad'
 
@@ -31,12 +30,20 @@ export function agoShort(ms: number): string {
   return h < 48 ? `${h} h` : `${Math.round(h / 24)} d`
 }
 
-/** done: all due items are done; due: something is still due; none: nothing is due today. */
+/** Routines and goals checked off, and skipped (closed for the day, not left), out of those due. */
+export type Progress = { done: number; total: number; skipped: number }
+
+/** Done or skipped: nothing more to do about it today. */
+export const closed = (p: Progress) => p.done + p.skipped
+/** Still open: due and neither done nor skipped. */
+export const left = (p: Progress) => p.total - closed(p)
+
+/** done: every due item is done or skipped; due: something is still due; none: nothing is due today. */
 export type AreaToday = 'done' | 'due' | 'none'
 
-export function areaToday(byCat: Record<Category, { done: number; total: number }>): Record<Category, AreaToday> {
-  return Object.fromEntries(CATEGORIES.map((c) => {
-    const { done, total } = byCat[c]
-    return [c, total === 0 ? 'none' : done >= total ? 'done' : 'due']
-  })) as Record<Category, AreaToday>
+export function progressState(p: Progress): AreaToday {
+  return p.total === 0 ? 'none' : closed(p) >= p.total ? 'done' : 'due'
 }
+
+/** What the sidebar and the phone tab bar show next to each destination: today's plan, each area's, and the Coach count. */
+export type NavStatus = { today: Progress; areas: Record<Category, Progress>; coach: number }

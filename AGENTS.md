@@ -26,8 +26,7 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
 
 ## Layout
 
-- Pages: Today (`/`: header, Check first, Life pulse, then the day's plan and a rail of Quests, Goals and Money), Life (`/life`, the hub: a brief and one tile per area plus Time,
-  then "This week, area by area"), seven areas, Plan (`/plan`, tabs:
+- Pages: Today (`/`: the head with the streak card, then the day's plan (Up next beside the all-day water panel, the rest as compact rows) beside a rail of Check first, Goals, Quests and Finish setting up, then Life pulse beside Money today), Life (`/life`, the hub: the area ledger, one row per area with its level, brief, three numbers, trend and week, then Time as its own block), seven areas, Plan (`/plan`, tabs:
   Goals (up to 3 outcome goals with a baseline, linked actions and weekly review decisions), `/plan/routines`,
   `/plan/trackers`, `/plan/review`; details at `/plan/goals/[id]` and `/plan/trackers/[slug]`), Coach (`/coach`: Needs you and
   Ask side by side, `/coach/patterns`, `/coach/history`; `?filter=decisions|data`, `?ask=`, `?view=ask`) and You (`/you`, tabs: Progress (the character
@@ -37,27 +36,41 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
   `/relationships`, ...) redirect (307) through `LEGACY_REDIRECTS` in `apps/web/src/domain/routes.ts`; never link to them.
   Navigation data (`NAV`, `isActive`) lives in `apps/web/src/ui/components/nav.tsx`; the shell is in `apps/web/src/ui/components/shell/`: a
   collapsible desktop `Sidebar` (240px, or a 72px icon rail; the choice is stored in `localStorage` `relife:sidebar`
-  and put on `<html data-sidebar>` before paint by `sidebar-script.ts`, ⌘\ toggles it), the desktop `TopBar`
-  (breadcrumb from `trail()`, Capture field, sync dot, Coach bell, level avatar), the phone `PhoneTopBar` and
-  `TabBar` (a raised `+`; both open Capture). Everything the shell shows besides the page
-  (Coach count, sync dot, level ring, area dots) comes from `loadShellStatus` in `apps/web/src/core/shell.ts`: one SQL
-  statement plus `xpLevel` and `buildDayPlan`, wrapped in React `cache`, read by each piece in its own Suspense
-  island (`shell-status.tsx`). The needs-you rules (merchant grouping, nudges expire after 3 days) are in
-  `apps/web/src/domain/needs-you.ts`. The game look comes from three banners: `CharacterBanner`
+  and put on `<html data-sidebar>` before paint by `sidebar-script.ts`; the `rail:` variant lays the same elements out as a rail,
+  ⌘\ toggles it with no animation and the collapse button eases the width). Each destination is one 34px row with its 3D
+  picture (`NavItem.picture`, Fluent 3D emoji in `public/routines`) and today's status from `rowStatus` (`nav-status.ts`): Today
+  "5 of 11", areas "N left" or a check, Coach the count; the rail shows a ring or check on the picture and a tooltip. The foot has the You
+  card (`sidebar-profile.tsx`, segmented XP `LevelBar`), the labelled sync line, the theme toggle and the collapse button.
+  The phone has the `PhoneTopBar` (wordmark, sync dot, level avatar) and `TabBar` (pictures, a raised `+` that opens Capture,
+  Life opens a tray of the areas with today's state). The desktop `TopBar` is the breadcrumb from `trail()` and the Capture field only.
+  Everything the shell shows besides the page (Coach count, sync, level, `today` and per-area `areaCounts`, where a skipped routine counts as closed) comes from
+  `loadShellStatus` in `apps/web/src/core/shell.ts`: one SQL statement plus `xpLevel` and `buildDayPlan`, wrapped in React `cache`,
+  read by each piece in its own Suspense island (`shell-status.tsx`; rows render without status while it loads). The needs-you
+  rules (merchant grouping, nudges expire after 3 days) are in
+  `apps/web/src/domain/needs-you.ts`. The game look comes from three headers: `CharacterSheet`
   (`hud.tsx`, Progress on You only; Today has the lighter `TodayHeader`), `AreaHeader` (`area/area-header.tsx`, every area page) and `PageHeader` (everything else). Routine
   pictures come from `apps/web/src/ui/routine-icons.ts`.
 - Areas: the `AREAS` registry (`apps/web/src/core/areas/index.ts`, one file per area next to it) is the one list of Health, Mind,
   Skills, Wealth, Hobbies, People (`/people`, DB category `relationships`) and Time: title, colour, tabs, pinned metrics,
   connector ids and the four headline numbers (`kpis`, shared by the area header, the Life tiles, the brief's facts and Today).
   Health, Mind, Skills, Hobbies and People share the `apps/web/src/app/(app)/[area]/` template (`layout.tsx` → `AreaLayout`: `AreaHeader` →
-  `AreaTabs` (Overview · Trends · Routines · Sources; counts stream in) → `AreaKpis` → the tab body; an unknown slug is a
-  `notFound()`, because Cache Components does not allow `dynamicParams = false`). Each area's own Overview cards live in
-  `apps/web/src/ui/areas/` (`OVERVIEWS`) inside `OverviewShell`; Trends, Routines and Sources are the shared `area-*.tsx` in
-  `apps/web/src/ui/components/area/`. `AllMetrics` draws a `MetricTile` for every tracker of the area from every source (nothing is
+  `AreaTabs` (Overview · Trends · Routines · Sources; counts stream in) → the tab body (`AreaKpis`, the strip of the four headline numbers, shows
+  on the tabs after Overview through `OnTabs`; the Overview carries the same numbers in its targets table); an unknown slug is a
+  `notFound()`, because Cache Components does not allow `dynamicParams = false`). The Overview is `OverviewShell` on the page grid: main 8 columns is
+  `TargetTable` (`category/target-table.tsx`, "Against your targets": one row per headline number, pinned tracker and tracker with a target, with the
+  28-day average, a `Bullet` bar against the target, days on target and a 28-day trend; the rows come from the pure `targetRows` in
+  `apps/web/src/domain/target-rows.ts`, the trackers from `loadAreaTrackers`, and each row opens its Peek) and then the area's own cards from
+  `apps/web/src/ui/areas/` (`OVERVIEWS`; Health's lead chart is `TargetTrend`, sleep against its target with direct labels); the rail is
+  today's routines (check-offs; on a phone the next two, the rest folded) with the sources line at its foot; All metrics runs full width in 6
+  columns (a fold on a phone). Trends, Routines and Sources are the shared `area-*.tsx` in `apps/web/src/ui/components/area/`. `AllMetrics` draws a `MetricTile` for every tracker of the area from every source (nothing is
   filtered by slug, so connector metrics like HRV or readiness show up on their own); `summarizeTracker` in
   `apps/web/src/domain/metric-tile.ts` is the tested maths. Wealth (`apps/web/src/app/(app)/wealth/`: Overview · Spending · Portfolio ·
   Subscriptions · Sources) and Time (`apps/web/src/app/(app)/time/`) have their own folders on the same `AreaLayout` (Wealth with
-  `kpis={false}`: each tab keeps its numbers). Every KPI item, tile and "Why?" opens a Peek: a metric where the number has
+  `kpis={false}`: each tab keeps its numbers; Time with `kpis={false}` and `summary`: Today, Focus and Distraction stand in its head where the other areas have the level).
+  The Wealth Overview (`ui/components/wealth/overview.tsx`, `WealthOverviewView`) is the month so far with its pace bar and the month bars (`activeMonths` in
+  `core/wealth-overview.ts` gives the "in N months" average), where it went as a ranked list with a month / all time switch (`CategoryList`), net worth,
+  subscriptions, merchants, and what ReLife noticed / bought again; its other tabs keep their own numbers on the same grid. Time's page is the Each day
+  chart with By kind as its legend, top sites with "What you spent it on" as its footer, and the library (`LibraryGrid compact`). Every KPI item, tile and "Why?" opens a Peek: a metric where the number has
   one, else `brief:<scope>` (`KpiStrip` items take `peek`, `peekAll` sets one for a whole strip).
 - Briefs: one line per scope (`today`, each category, `time`) in the `briefs` table, written by the `ai:area-briefs` job
   (`apps/web/src/ai/jobs/area-briefs.ts`, daily 06:30 and on `data.changed`). The rules in `apps/web/src/domain/briefs.ts` (pure, tested) write
@@ -108,16 +121,24 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
   messages stay text-only.
 - Today (`apps/web/src/app/(app)/page.tsx`, parts in `apps/web/src/ui/components/today/`): each section is its own Suspense island with a skeleton of its final
   size, sharing cached loaders (`loadDayPlan`, `loadShellStatus`, `loadTodayBriefing`, `loadPulse`). `TodayHeader` (greeting, the
-  `today` brief or the rule-based `planLine` with Why?, streak chip), `AttentionStrip` ("Check first": up to 3 time-sensitive items from
-  `loadBriefing().attention`, nudges left out because Coach's count, `loadShellStatus().needsYou.total`, is one chip), `PulseRow` (the
-  areas and Time, each the first headline number of its `AreaDef.kpis`; `core/pulse.ts`), then `Plan` (the all-day `Goals compact` rows and
-  `Agenda timeline`) beside the rail (`Quests`, `GoalsCard`, `MoneyToday`). The rules are pure in `apps/web/src/domain/day-plan.ts` (periods, Now line,
+  `today` brief or the rule-based `planLine` with Why?, the streak card on the rail's 4 columns), then a `PageGrid`: `Plan` (8 columns: `Agenda timeline` leads with
+  `UpNext`, the next due routine with the time until it and Check off / Skip, beside the all-day `Goals compact` water panel passed as `timeline.lead`; the other
+  routines are compact `Row`s under Morning / Afternoon / Evening with the Now line, and on a phone every period after the first one with something to do is a
+  `Fold inline`) beside a `Rail` (4 columns: `AttentionStrip` "Check first" with up to 3 time-sensitive items from `loadBriefing().attention` and the Coach line
+  (nudges left out because Coach's count, `loadShellStatus().needsYou.total`, is one line), `GoalsCard`, `Quests`, `SetupSteps` with the other steps folded); on a phone the
+  rail is `contents`, so Finish setting up (`order-1`) lands after Money. Below: `PulseHead`, `PulseRow` (the areas and Time as a 3 x 2 grid, each the first headline
+  number of its `AreaDef.kpis`; `core/pulse.ts`; Wealth is left out from 640px because Money today sits beside it) beside `MoneyToday`. The rules are pure in `apps/web/src/domain/day-plan.ts` (periods, Now line,
   greeting, goal pace, state). Every check-off and goal step toasts with Undo (`toggleCheck(…, null)`, `undoQuickLog` with the token `addToGoal` returns); rows,
   numbers and quests open Peeks. States: first day (nothing earned and setup open: `SetupCard` replaces Check first, Life pulse and Money,
   `GoalsCard` shows its empty line), nothing planned (EmptyState with Add a routine and Capture) and all done (`DayComplete` with its
   chest, `TomorrowCard`, the briefing becomes the recap). `/dev/ui` "Today" draws all of them from `apps/web/src/ui/fixtures/today.ts`.
+- Life hub (`apps/web/src/app/(app)/life/page.tsx`, parts in `apps/web/src/ui/components/life/`): the head carries `WeekBalance` ("4 of 6 areas", one dot per area, the +50 XP balance rule);
+  `AreaLedger` is one list with a row per area (`AreaRow`: capsule, `LevelBar`, today's routines chip; the brief with Why?, three numbers from `AreaDef.kpis` that each
+  open a Peek, a 14-day trend from 960px only when `hasTrend`; the week's dots, XP with its change on the same days of last week, and the biggest change in words when no
+  brief tells it), each row its own Suspense island with a `RowSkeleton`; `TimeTile` follows as its own block (the week's laptop time as one stacked bar with its legend
+  under it, today's numbers beside it). A phone stacks each row (no trend, no XP bar). `/dev/ui` "Area template and Life hub" draws them from `life/life-gallery.tsx`.
 - Plan (`apps/web/src/app/(app)/plan/(tabs)/`, parts in `apps/web/src/ui/components/goals/` and `habits/`): **Goals** (`OutcomeGoalCard`: the title and the Now number open the goal Peek; a status badge from `goalPace` (Ahead, On pace, Behind pace) with an ink pace tick on the capsule; a "N slots free" well; the rail holds the weekly review card, the coach draft and Paused and finished). **New goal** is two steps in one dialog (`CreateSteps` in `goal-form.tsx`): pick a coach draft, a tracker with at least 7 recorded days (baseline prefilled from its 28-day average) or a check-in, then the form; open state stays URL-derived (`/plan?new=1`), and the toast reads "Goal started · First review Sun 15 Nov". **Routines** (`PlanRoutines`) opens with today's check-off from `loadDayPlan` (`Goals compact` for water, then `Agenda timeline`; Undo toasts like Today), then the routine list, each name a `PeekLink routine:<id>`; the tab label carries today's `done/total`. **Trackers** (`TrackersGrid`) is a `MetricTile` grid by area from `summarizeTracker`, with quiet and no-data trackers folded. **Review** (`ReviewFlow` in `review-flow.tsx`): a step list (Deciding, Up next, what was decided), one `GoalReviewCard` at a time with a four-card radiogroup, a "What changes" preview and Save (Finish asks twice). "Decide later" only moves on. With nothing due, `ReviewNow` starts one through `reviewGoalNowAction`.
-- You (`apps/web/src/app/(app)/you/`): Progress keeps `CharacterBanner` as the hero (the one page where the game layer is the frame); on a phone Achievements come before Consistency, and "How XP works" is folded. **Connections** starts with `YourSources` (`connections-status.tsx`: failing sources pinned as `FixRow` with the fix as the primary button, then a table with health, last sync, items synced and a sync icon; the rules `needsFix` and `isInline` are pure, in `apps/web/src/domain/connections.ts`), an **Import a file** button (`ui/components/imports/`: pick a type, map columns, result) with a **Past imports** list (last 10, Undo), then `SuggestedForYou` (unconnected sources for `profile.areas`; a username-only source carries its own field, checked on submit by the connector's `check`), then the searchable catalogue. A new key connection ends on `ConnectSuccess` (where the numbers will show up); a rejected key keeps the field and shows the connector's message with "Check again". `?oauth=<id>` on `/you/connections` still toasts the sign-in result. **Notifications** adds `NotificationChannel` (Telegram state, the 7-day sent / held / dropped counts from `weeklyNotifications`, and "Send a test message": `sendTestMessage` goes through `notify(user, 'events', …)`, so the user's own delivery choice, quiet hours and cap apply and the result says when they hold it back). **Settings** gained Areas (`saveAreas`) and the worker heartbeat.
+- You (`apps/web/src/app/(app)/you/`): Progress opens with `CharacterSheet` (level, titles, streak and freezes; the one page where the game layer is the frame) beside `CloseToUnlocking` (the three closest locked badges; its "All locked" link sets the Achievements filter to Locked, opens the phone fold and scrolls to it, through the `SHOW_LOCKED` event in `all-locked-link.tsx`), then the party when there is one, Achievements (`AchievementsBoard`), the life numbers, Consistency with the XP mix and "How XP works" in a rail, XP per day and Recent XP. On a phone each block after the sheet and Close to unlocking is a fold, with Achievements before Consistency. **Connections** starts with `YourSources` (`connections-status.tsx`: failing sources pinned as `FixRow` with the fix as the primary button, then a table with health, last sync, items synced and a sync icon; the rules `needsFix` and `isInline` are pure, in `apps/web/src/domain/connections.ts`), an **Import a file** button (`ui/components/imports/`: pick a type, map columns, result) with a **Past imports** list (last 10, Undo), then `SuggestedForYou` (unconnected sources for `profile.areas`; a username-only source carries its own field, checked on submit by the connector's `check`), then the searchable catalogue. A new key connection ends on `ConnectSuccess` (where the numbers will show up); a rejected key keeps the field and shows the connector's message with "Check again". `?oauth=<id>` on `/you/connections` still toasts the sign-in result. **Notifications** adds `NotificationChannel` (Telegram state, the 7-day sent / held / dropped counts from `weeklyNotifications`, and "Send a test message": `sendTestMessage` goes through `notify(user, 'events', …)`, so the user's own delivery choice, quiet hours and cap apply and the result says when they hold it back). **Settings** gained Areas (`saveAreas`) and the worker heartbeat.
 - Setup (`/welcome`, `apps/web/src/ui/components/onboarding-*.tsx`): six steps, You · Pack · Areas · Connect · AI · Routines (`STEPS` in
   `onboarding-data.ts`), as a split screen: the questions on the left (`onboarding-flow.tsx` holds the state, the footer and
   the draft in `sessionStorage` `relife:setup-draft:v3`; the steps are in `onboarding-steps.tsx`, their shared look in
@@ -136,11 +157,21 @@ npm workspaces (no Turborepo). Run everything from the repo root; root scripts d
   they are filled, then does the same. Today redirects here until `profile.onboardedAt` is set; "Run setup again" (Settings)
   sends only what was changed. `/dev/ui` "Setup" draws every step and the preview from fixtures.
 - Look ("ReLife capsule"): ink black, white and the logo's capsule blue, light-first. The signature shapes are
-  `CapsuleIcon` (`capsule-icon.tsx`, the tilted pill from the logo, for areas and avatars), `SystemLabel` (mono
-  area label in `card.tsx`) and the `.halftone` dot texture in header corners. No other decorative textures.
-- Type: the scale lives in `globals.css` (`text-display`, `text-title`, `text-heading`, `text-body`, `text-small`,
-  `text-caption`, `text-label font-mono uppercase`; big numbers use `num`). New code uses these, not `text-[13px]`;
+  `CapsuleIcon` (`capsule-icon.tsx`, the tilted pill from the logo, for areas and avatars), `SystemLabel` (the sentence-case
+  label with an area dot in `card.tsx`) and the `.halftone` dot texture in header corners. No other decorative textures.
+- Type (T1 "Field notebook"): Fraunces (`font-display`, SOFT 50, WONK 0, opsz auto; 400/500) for page titles, card titles and
+  one standalone figure; Hanken Grotesk (400/500/600, tabular figures) for everything else and every number in a row or column
+  (`num`). No mono face is loaded (`font-mono` is the system one, for codes). The scale lives in `globals.css`: `text-display`
+  44/48 (phone 34/40), `text-title` 28/34, `text-heading` 19/24, `text-figure` 36/40, `text-body` 15/22 (phone 16/24),
+  `text-small`, `text-caption`, `text-label` 13/16 500. New code uses these, not `text-[13px]`;
   `apps/web/src/ui/type-scale.test.ts` counts the old arbitrary sizes and fails if the number goes up (lower it when you convert some).
+- Calm components (`apps/web/src/ui/components/`, `/dev/ui` "Calm system"): `StatusWord` (dot + word in `--good-ink`, `--warn-ink`,
+  `--bad-ink`; the six words come from `statusOf` in `domain/status-of.ts`), `StatCard`, `StatusRow`, `Connection` (a `Link` or
+  `Change`; text and figures from `connectionView` in `domain/connection-view.ts`), `InsightLine`, `Fold`, `EmptyState`,
+  `LeadChart` (`charts.tsx`), `Chip` (filters only), `buttonLinkClass` (the one link look) and `Picture`, which draws what
+  `pictureSpec` (`ui/picture.ts`) resolves for a nav item, area, routine, tracker, hobby, category, merchant, connector, AI
+  provider, coin, device, medal or library item, from files the app ships, with the lettered fallback. Toasts take `picture`
+  (20px) and `peekHeading` can return `picture` (40px).
 - Shared primitives: `Sheet` (`sheet.tsx`: bottom sheet on a phone, non-modal 440px right panel on a laptop, starting at
   `--sheet-top`), `SegmentTabs` (`segment-tabs.tsx`: route-driven pill tabs), `PeekLink`/`openPeek`
   (`peek/peek-link.tsx`: open `?peek=type:id` without a server trip; `apps/web/src/domain/peek.ts` parses it). Route map and

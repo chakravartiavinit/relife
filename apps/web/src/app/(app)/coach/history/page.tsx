@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
-import { ChevronRight, Clock, EyeOff, Target } from 'lucide-react'
+import { ChevronRight, Clock, EyeOff } from 'lucide-react'
 import { loadCoachHistory, type HistoryEvent } from '@/core/coach-history'
 import { formatDay, formatTime, localDate } from '@/core/time'
 import { getUser } from '@/core/user'
@@ -11,12 +11,15 @@ import { formatMoney } from '@/domain/money'
 import { reasonFor, summarize } from '@/domain/inbox'
 import { sentenceCase } from '@/domain/text'
 import { cn } from '@/ui/cn'
-import { AppLogo } from '@/ui/components/app-logo'
-import { buttonClass } from '@/ui/components/button'
-import { Badge, Card, IconChip, Skeleton } from '@/ui/components/card'
-import { CoachTabs } from '@/ui/components/coach/coach-tabs'
+import { buttonLinkClass } from '@/ui/components/button'
+import { Card, Skeleton } from '@/ui/components/card'
+import { chipClass } from '@/ui/components/chip'
 import { QUEUE_KIND } from '@/ui/components/coach/kinds'
+import { appPicture, kindPicture } from '@/ui/components/coach/queue-picture'
 import { STATUS } from '@/ui/components/insight-kinds'
+import { Picture } from '@/ui/components/picture'
+import { StatusWord } from '@/ui/components/status-word'
+import { GridItem, PageGrid } from '@/ui/components/page-grid'
 import { PeekLink } from '@/ui/components/peek/peek-link'
 import { RawEventActions, RetryAll } from '@/ui/components/raw-event-actions'
 
@@ -26,14 +29,15 @@ const SHOW = [{ key: null, label: 'All' }, { key: 'decisions', label: 'Decisions
 
 export default function HistoryPage({ searchParams }: PageProps<'/coach/history'>) {
   return (
-    <div className="flex max-w-[52rem] flex-col gap-4">
-      <CoachTabs />
-      <Suspense fallback={<Skeleton className="h-[420px] rounded-lg" />}><History searchParams={searchParams} /></Suspense>
-    </div>
+    <PageGrid>
+      <GridItem span={{ base: 12, lg: 8 }}>
+        <Suspense fallback={<Skeleton className="h-[420px] rounded-lg" />}><History searchParams={searchParams} /></Suspense>
+      </GridItem>
+    </PageGrid>
   )
 }
 
-const sectionTitle = 'font-mono text-label uppercase text-ink-3'
+const sectionTitle = 'text-small font-medium text-ink-3'
 
 async function History({ searchParams }: { searchParams: PageProps<'/coach/history'>['searchParams'] }) {
   await connection()
@@ -53,36 +57,36 @@ async function History({ searchParams }: { searchParams: PageProps<'/coach/histo
           return (
             <Link
               key={f.key ?? 'all'} href={f.key ? `/coach/history?show=${f.key}` : '/coach/history'} scroll={false} aria-current={active ? 'page' : undefined}
-              className={buttonClass({ variant: active ? 'primary' : 'secondary', size: 'sm', className: cn('shrink-0 rounded-full', !active && 'font-normal text-ink-2') })}
+              className={chipClass({ selected: active })}
             >{f.label}</Link>
           )
         })}
       </nav>
 
       {show === null || show === 'decisions' ? (
-        <Card as="section" aria-labelledby="decisions-h" className="px-0 pb-0">
-          <h2 id="decisions-h" className={cn(sectionTitle, 'px-5 pb-3')}>Decisions</h2>
+        <Card as="section" aria-labelledby="decisions-h">
+          <h2 id="decisions-h" className={sectionTitle}>Decisions</h2>
           {h.decisions.length ? (
-            <ul className="flex flex-col divide-y divide-divider border-t border-divider">
+            <ul className="mt-2 flex flex-col divide-y divide-divider">
               {h.decisions.map((d) => {
                 const k = QUEUE_KIND[d.kind]
-                const status = d.expired ? { label: 'Expired after 3 days' } : STATUS[d.status] ?? { label: d.status }
+                const status = d.expired ? { label: 'Expired after 3 days', tone: 'quiet' as const } : { label: STATUS[d.status]?.label ?? d.status, tone: d.status === 'dismissed' ? 'quiet' as const : 'good' as const }
                 return (
-                  <li key={d.id} className="flex items-start gap-3.5 px-5 py-4">
-                    <IconChip color={k.color} className="mt-px size-9 rounded-[12px] [&_svg]:size-[18px]"><k.icon strokeWidth={1.5} /></IconChip>
+                  <li key={d.id} className="flex items-center gap-3.5 py-3">
+                    <Picture {...kindPicture(d.kind, d.title)} size={32} />
                     <div className="min-w-0 flex-1">
-                      <p className="font-mono text-label uppercase text-ink-3"><span className="text-ink-2">{k.label}</span> <span aria-hidden>·</span> {when(d.at)}</p>
-                      <p className="mt-1 text-body font-semibold text-ink text-pretty">{sentenceCase(d.title)}</p>
+                      <p className="text-body font-medium text-ink text-pretty">{sentenceCase(d.title)}</p>
+                      <p className="text-small text-ink-3">{k.label} <span aria-hidden>·</span> {when(d.at)}</p>
                     </div>
-                    <div className="flex shrink-0 flex-col items-end gap-1">
-                      <Badge color={status.color}>{status.label}</Badge>
-                      <PeekLink to={{ type: 'insight', id: d.id }} className="inline-flex min-h-10 items-center rounded-sm px-1 text-small font-medium text-pill-ink hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill">Why?</PeekLink>
+                    <div className="flex shrink-0 flex-col items-end gap-0.5 sm:flex-row sm:items-center sm:gap-4">
+                      <StatusWord tone={status.tone}>{status.label}</StatusWord>
+                      <PeekLink to={{ type: 'insight', id: d.id }} className={buttonLinkClass('inline-flex min-h-8 items-center text-small')}>Why?</PeekLink>
                     </div>
                   </li>
                 )
               })}
             </ul>
-          ) : <p className="border-t border-divider px-5 py-8 text-center text-body text-ink-3">Nothing decided yet. Cards you handle in Needs you land here.</p>}
+          ) : <p className="mt-3 text-body text-ink-3">Nothing decided yet. Cards you handle in Needs you land here.</p>}
         </Card>
       ) : null}
 
@@ -92,7 +96,7 @@ async function History({ searchParams }: { searchParams: PageProps<'/coach/histo
           {h.plans.length ? (
             <ul className="mt-3 flex flex-col gap-3">
               {h.plans.map((p) => (
-                <li key={p.id} className="flex items-start gap-2.5 text-body text-ink"><Target className="mt-0.5 size-4 shrink-0 text-pill-ink" strokeWidth={1.5} aria-hidden />{p.goal}</li>
+                <li key={p.id} className="flex items-center gap-3.5 text-body font-medium text-ink"><Picture {...kindPicture('plan', p.goal)} size={32} />{p.goal}</li>
               ))}
             </ul>
           ) : <p className="mt-2 text-body text-ink-3">Approved plans show up here, and their steps become routines.</p>}
@@ -135,7 +139,7 @@ function EventRow({ e, when, orphan, skipped = false }: { e: HistoryEvent; when:
   const s = summarize(e.source, e.body)
   return (
     <li className="flex items-start gap-3.5 px-5 py-4">
-      <AppLogo id={s.app} size="xs" />
+      <Picture {...appPicture(s.app, s.title)} size={32} />
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-3">
           <p className="truncate text-body font-medium text-ink">{s.title}</p>

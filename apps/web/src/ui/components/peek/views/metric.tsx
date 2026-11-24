@@ -10,13 +10,14 @@ import { CATEGORY } from '@/ui/tokens'
 import { Badge, Card, CardHeader } from '../../card'
 import { Button } from '../../button'
 import { Capsule } from '../../capsule'
-import { AREA_ICON } from '../../capsule-icon'
 import { DailyBars, TrendArea } from '../../charts'
 import { Input, Segmented } from '../../form'
+import { GridItem, PageGrid } from '../../page-grid'
+import { Rail } from '../../rail'
 import { QuickLog } from '../../forms/tracker-forms'
 import { useToast } from '../../toast'
 import { usePeekChanged } from '../peek-context'
-import { PeekFooter, PeekIcon, PeekOpen, PeekSection, PeekStats } from '../peek-parts'
+import { PeekFooter, PeekOpen, PeekSection, PeekStats } from '../peek-parts'
 
 const RANGES = [{ value: '7', label: '7D' }, { value: '28', label: '28D' }, { value: '90', label: '90D' }]
 
@@ -36,7 +37,7 @@ export function metricHeading(d: MetricPeek) {
   return {
     title: d.name,
     description: `${c.label} · tracker${d.target ? ` · daily target ${metricValue(d, d.target)}` : ''}`,
-    icon: <PeekIcon icon={AREA_ICON[d.category]} color={c.color} />,
+    picture: { of: 'tracker', name: d.name, area: d.category } as const,
   }
 }
 
@@ -79,28 +80,30 @@ export function MetricDetail({ data: t, wide = false }: { data: MetricPeek; wide
 
   if (wide) {
     return (
-      <div className="flex flex-col gap-6">
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
-          <Card>
+      <PageGrid>
+        <GridItem span={{ base: 12, lg: 8 }}>
+          <Card className="h-full">
             <CardHeader title="Last 90 days" icon={<ChartLine strokeWidth={2} />} color="var(--pill)" description={t.aggregate === 'last' ? 'Daily value' : 'Daily total'} />
             {chart}
           </Card>
-          <div className="flex flex-col gap-6">
-            <Card>{today}</Card>
-            <Card>{stats}</Card>
-            <Card>
-              <CardHeader title="Log today" icon={<PencilLine strokeWidth={2} />} color="var(--pill)" />
-              {log}
-            </Card>
-            {targetRow ? <Card><CardHeader title="Target" icon={<Target strokeWidth={2} />} color="var(--pill)" />{targetRow}</Card> : null}
-          </div>
-        </div>
-        {sources ? <Card><CardHeader title="Sources" description="Where the recent numbers came from" />{sources}</Card> : null}
-        <Card>
-          <CardHeader title="Recent entries" icon={<History strokeWidth={2} />} color="var(--pill)" />
-          {entries}
-        </Card>
-      </div>
+        </GridItem>
+        <Rail span={{ base: 12, lg: 4 }} pairs>
+          <Card>{today}</Card>
+          <Card>{stats}</Card>
+          <Card>
+            <CardHeader title="Log today" icon={<PencilLine strokeWidth={2} />} color="var(--pill)" />
+            {log}
+          </Card>
+          {targetRow ? <Card><CardHeader title="Target" icon={<Target strokeWidth={2} />} color="var(--pill)" />{targetRow}</Card> : null}
+        </Rail>
+        {sources ? <GridItem><Card><CardHeader title="Sources" description="Where the recent numbers came from" />{sources}</Card></GridItem> : null}
+        <GridItem>
+          <Card>
+            <CardHeader title="Recent entries" icon={<History strokeWidth={2} />} color="var(--pill)" />
+            {entries}
+          </Card>
+        </GridItem>
+      </PageGrid>
     )
   }
   return (
@@ -134,7 +137,7 @@ function TodayValue({ t }: { t: MetricPeek }) {
       <p className="text-caption text-ink-3">Today</p>
       <p className="num mt-0.5 flex flex-wrap items-baseline gap-x-2 text-display text-ink tabular-nums">
         {v == null ? '–' : metricValue(t, v)}
-        {t.target ? <span className="text-heading font-semibold text-ink-3">of {metricValue(t, t.target)}</span> : null}
+        {t.target ? <span className="text-heading font-medium text-ink-3">of {metricValue(t, t.target)}</span> : null}
       </p>
       {v != null && t.target && t.direction === 'up' ? <Capsule className="mt-3" value={v} max={t.target} color={CATEGORY[t.category].color} label={`${t.name} today`} /> : null}
       {line ? <p className={`mt-2 text-small ${tone}`}>{line}</p> : null}

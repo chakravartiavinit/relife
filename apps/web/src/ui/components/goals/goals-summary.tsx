@@ -21,6 +21,7 @@ export async function TodayGoals({ showEmpty }: { showEmpty?: boolean }) {
       const o = g.snapshot.outcome
       return {
         id: g.id, title: g.title, area: g.area, share: fill(g.snapshot),
+        picture: { of: 'tracker', name: g.measureKind === 'check_in' && g.actionNames[0] ? g.actionNames[0] : g.measureName, area: g.area },
         pace: goalPace({ share: o.progressShare, met: o.status === 'met', startedOn: localDate(g.createdAt, user.timezone), targetDate: g.targetDate }, today),
         line: `${o.current != null ? value(o.current, g.unit) : '—'} · target ${target(g)}`, by: `by ${day(g.targetDate)}`,
       }

@@ -2,12 +2,13 @@
 
 import brand from '@relife/brand/brand.json'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Clock, Loader2, ShieldAlert, Terminal } from 'lucide-react'
+import { Clock, ShieldAlert, Terminal } from 'lucide-react'
 import type { PairPoll, PairRequestStarted } from '@relife/contract'
 import { browserDeviceName, isPhoneUa } from '@/core/auth/names'
 import { Button } from '../button'
 import { SystemLabel } from '../card'
 import { FormError } from '../forms/dialog'
+import { Loader } from '../loader'
 import { CodeInput } from './code-input'
 import { ConnectCode } from './connect-code'
 import { postJson, safeNext } from './pair-api'
@@ -87,7 +88,7 @@ export function SigninClient({ next, reason, container }: { next?: string; reaso
 
       {st.s === 'waiting' ? <Waiting req={st.req} onCancel={() => setSt({ s: 'idle' })} /> : st.s === 'locked' ? <Locked until={st.until} onBack={() => { setSt({ s: 'idle' }); setCode('') }} /> : (
         <>
-          <h1 className="font-display text-title leading-tight font-extrabold tracking-[-0.03em] text-ink">{st.s === 'ended' ? (st.why === 'denied' ? 'It was turned down' : 'That request expired') : `Connect to your ${brand.name}`}</h1>
+          <h1 className="font-display text-title leading-tight font-medium tracking-[-0.03em] text-ink">{st.s === 'ended' ? (st.why === 'denied' ? 'It was turned down' : 'That request expired') : `Connect to your ${brand.name}`}</h1>
           <p className="mt-2 text-body leading-relaxed text-ink-3">
             {st.s === 'ended' ? 'Start again whenever you are ready.' : `This browser shows a code. Approve it from a screen that is already signed in: ${brand.name} on your Mac or phone, in Settings → Devices.`}
           </p>
@@ -96,13 +97,13 @@ export function SigninClient({ next, reason, container }: { next?: string; reaso
               <p className="mb-2 text-small font-medium text-ink-2">Type the code from Connect a device</p>
               <CodeInput value={code} onChange={(v) => { setCode(v); setError(null) }} onComplete={(v) => void redeem(v)} disabled={busy} invalid={!!error} autoFocus />
               <div className="mt-3 min-h-5"><FormError message={error ?? undefined} /></div>
-              <Button variant="primary" size="lg" className="mt-3 w-full" disabled={busy || code.length !== 8} onClick={() => void redeem(code)}>{busy ? 'Connecting…' : 'Connect'}</Button>
+              <Button variant="primary" size="lg" className="mt-3 w-full" disabled={busy || code.length !== 8} onClick={() => void redeem(code)}>{busy ? <Loader size="inline" px={16} label="Connecting" /> : null}{busy ? 'Connecting…' : 'Connect'}</Button>
               <button type="button" onClick={() => { setTyping(false); setError(null) }} className="mt-2 flex h-11 w-full items-center justify-center rounded-md text-body font-medium text-ink-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-pill">Show a code here instead</button>
             </div>
           ) : (
             <div className="mt-5">
               <div className="mb-3"><FormError message={error ?? undefined} /></div>
-              <Button variant="primary" size="lg" className="w-full" disabled={busy} onClick={() => void start()}>{busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}{busy ? 'Asking…' : st.s === 'ended' ? 'Try again' : 'Connect this browser'}</Button>
+              <Button variant="primary" size="lg" className="w-full" disabled={busy} onClick={() => void start()}>{busy ? <Loader size="inline" px={16} label="Asking for approval" /> : null}{busy ? 'Asking…' : st.s === 'ended' ? 'Try again' : 'Connect this browser'}</Button>
               <button type="button" onClick={() => { setTyping(true); setError(null) }} className="mt-2 flex h-11 w-full items-center justify-center rounded-md text-body font-medium text-ink-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-pill">I have a code</button>
             </div>
           )}
@@ -124,14 +125,14 @@ function Waiting({ req, onCancel }: { req: PairRequestStarted; onCancel: () => v
   return (
     <div role="status" aria-live="polite">
       <SystemLabel>Waiting for approval</SystemLabel>
-      <h1 className="mt-2 font-display text-title leading-tight font-extrabold tracking-[-0.03em] text-ink">Approve this code in {brand.name}</h1>
+      <h1 className="mt-2 font-display text-title leading-tight font-medium tracking-[-0.03em] text-ink">Approve this code in {brand.name}</h1>
       <p className="mt-1.5 text-body leading-relaxed text-ink-3">Open {brand.name} on a device that’s signed in, go to Settings → Devices, and check this code. Or scan it with a signed-in phone.</p>
       <div className="mt-5 flex flex-col items-center gap-4 rounded-[16px] bg-surface-2 p-4">
         <ConnectCode code={req.userCode} size="lg" />
         <QrCode value={req.approveUrl} label="QR code that opens the approval page" className="w-44" />
       </div>
       <p className="mt-4 flex items-center justify-center gap-2 text-small text-ink-3 tabular-nums">
-        <Loader2 className="size-3.5 animate-spin" strokeWidth={1.5} aria-hidden />Waiting{left !== null ? ` · expires in ${mmss(left)}` : ''}
+        <Loader size="inline" px={16} label="Waiting for approval" />Waiting{left !== null ? ` · expires in ${mmss(left)}` : ''}
       </p>
       <Button className="mt-3 w-full" onClick={onCancel}>Cancel</Button>
     </div>
@@ -143,7 +144,7 @@ function Locked({ until, onBack }: { until: number; onBack: () => void }) {
   return (
     <div role="alert">
       <span aria-hidden className="grid size-12 place-items-center rounded-full bg-warn/12 text-warn"><Clock className="size-6" strokeWidth={1.5} /></span>
-      <h1 className="mt-4 font-display text-title leading-tight font-extrabold tracking-[-0.03em] text-ink">Too many tries</h1>
+      <h1 className="mt-4 font-display text-title leading-tight font-medium tracking-[-0.03em] text-ink">Too many tries</h1>
       <p className="mt-1.5 text-body text-ink-3 tabular-nums">{left ? `Try again in ${mmss(left)}.` : 'You can try again now.'}</p>
       <Button className="mt-5 w-full" disabled={!!left} onClick={onBack}>Back</Button>
     </div>

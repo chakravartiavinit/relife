@@ -1,24 +1,25 @@
 import type { Metadata } from 'next'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
-import { loadPatterns } from '@/core/patterns'
-import { getUser } from '@/core/user'
 import { Skeleton } from '@/ui/components/card'
-import { CoachTabs } from '@/ui/components/coach/coach-tabs'
-import { PatternsCard } from '@/ui/components/patterns-card'
+import { GridItem, PageGrid } from '@/ui/components/page-grid'
+import { PatternsBoard } from '@/ui/components/coach/patterns-board'
+import { coachPatterns } from '../loaders'
 
 export const metadata: Metadata = { title: 'Patterns · Coach' }
 
 export default function PatternsPage() {
   return (
-    <div className="flex max-w-[52rem] flex-col gap-4">
-      <CoachTabs />
-      <Suspense fallback={<Skeleton className="h-[420px] rounded-lg" />}><Patterns /></Suspense>
-    </div>
+    <PageGrid>
+      <GridItem span={{ base: 12, lg: 8 }}>
+        <Suspense fallback={<Skeleton className="h-[420px] rounded-lg" />}><Patterns /></Suspense>
+      </GridItem>
+    </PageGrid>
   )
 }
 
 async function Patterns() {
   await connection()
-  return <PatternsCard patterns={await loadPatterns(await getUser())} askWhy />
+  const { patterns, today } = await coachPatterns()
+  return <PatternsBoard patterns={patterns} today={today} />
 }

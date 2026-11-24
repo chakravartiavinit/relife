@@ -2,14 +2,15 @@
 
 import Link from 'next/link'
 import { useState, useTransition } from 'react'
-import { BellRing, Check, ExternalLink, Loader2, MessageSquare, Send, Unlink } from 'lucide-react'
+import { BellRing, Check, ExternalLink, Loader2, Send, Unlink } from 'lucide-react'
 import type { Channel } from '@/domain/notify'
 import { sendTestMessage } from '@/app/actions'
 import { linkTelegramAction, unlinkTelegramAction } from '@/app/people-actions'
 import { Button, buttonClass } from './button'
-import { Card, SystemLabel } from './card'
+import { Card, SectionLabel } from './card'
 import { cn } from '../cn'
 import { PushControl } from './push-control'
+import { Picture } from './picture'
 
 export type ChannelStats = { sent: number; held: number; skipped: number }
 type Result = { tone: 'good' | 'warn' | 'bad'; text: string }
@@ -61,11 +62,11 @@ export function NotificationChannel({ telegram, stats, pushDevices, push, locked
   return (
     <Card as="section" aria-labelledby="channel-h" className="flex flex-col gap-4">
       <div>
-        <SystemLabel>Where they go</SystemLabel>
-        <h2 id="channel-h" className="mt-1.5 text-heading text-ink">Telegram, push and the app</h2>
+        <SectionLabel as="p">Where they go</SectionLabel>
+        <h2 id="channel-h" className="mt-1.5 font-display text-heading text-ink">Telegram, push and the app</h2>
       </div>
       <div className="flex items-start gap-3">
-        <span aria-hidden className="mt-1.5 size-2 shrink-0 rounded-full" style={{ background: telegram ? 'var(--good)' : 'var(--ink-3)' }} />
+        <Picture of="connector" id="telegram" name="Telegram" size={32} />
         <div className="min-w-0 flex-1">
           <p className="text-body font-medium text-ink">{telegram ? 'Telegram is connected' : 'Telegram is not connected'}</p>
           <p className="text-small text-ink-3">{telegram ? 'Messages go to your chat, with buttons you can tap.' : 'Connect it to get these on your phone. Everything still shows in Coach.'}</p>
@@ -73,8 +74,8 @@ export function NotificationChannel({ telegram, stats, pushDevices, push, locked
       </div>
       <div className="border-t border-divider pt-4">{push ?? <PushControl devices={pushDevices} onCount={setDevices} locked={locked} />}</div>
       <div className="flex items-start gap-3">
-        <MessageSquare aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-3" strokeWidth={1.5} />
-        <p className="text-small text-ink-2">In the app: <Link href="/coach/history" className="font-medium text-pill-ink hover:underline">Coach › History</Link> keeps every message, even ones Telegram doesn’t get.</p>
+        <Picture of="nav" to="/coach" size={32} />
+        <p className="min-w-0 flex-1 self-center text-small text-ink-2">In the app: <Link href="/coach/history" className="font-medium text-pill-ink hover:underline">Coach › History</Link> keeps every message, even ones Telegram doesn’t get.</p>
       </div>
       {/* Only once Telegram is connected. Push has its own "Send a test to this device" in its row, and Connect Telegram below is the next step before it. */}
       {telegram ? (

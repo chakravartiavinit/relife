@@ -19,7 +19,7 @@ export type Stop = readonly [number, string, (keyof typeof EASES)?]
 /** `end` is the finished frame. It is also what shows under reduced motion, when animations are off. */
 type Track = { end: string; origin?: string; stops: readonly Stop[] }
 
-/** Turns per-element stops (in seconds) into one looping keyframe set each. Returns class names and the CSS. */
+/** Turns per-element stops (in seconds) into one keyframe set each, played once. Returns class names and the CSS. */
 export function timeline<K extends string>(id: string, seconds: number, tracks: Record<K, Track>) {
   // Generated keys (bar0, ch3…) widen to string, so allow any key on top of the literal ones.
   const c: Record<string, string> = {}
@@ -33,7 +33,7 @@ export function timeline<K extends string>(id: string, seconds: number, tracks: 
     const last = stops[stops.length - 1]
     const frames = stops.map(([t, decl, ease]) => `${at(t)}{${decl};${ease ? `animation-timing-function:${EASES[ease]}` : ''}}`).join('')
     const box = origin ? `transform-box:fill-box;transform-origin:${origin};` : ''
-    css += `.${name}{${box}${end};animation:${name} ${seconds}s linear infinite}`
+    css += `.${name}{${box}${end};animation:${name} ${seconds}s linear 1 forwards}`
     css += `@keyframes ${name}{${first[0] > 0 ? `0%{${first[1]}}` : ''}${frames}${last[0] < seconds ? `100%{${last[1]}}` : ''}}`
   }
   return { c: c as Record<K, string> & Record<string, string>, css }
@@ -192,7 +192,7 @@ export function Beats({ set, className }: { set: BeatSet; className?: string }) 
           <span className="block h-[3px] overflow-hidden rounded-full bg-ink/[0.08] dark:bg-white/[0.1]">
             <span className={`block h-full rounded-full bg-pill ${set.c[`f${k}`]}`} />
           </span>
-          <span className={`mt-1.5 block truncate text-[11px] leading-[14px] font-medium ${set.c[`l${k}`]}`}>{label}</span>
+          <span className={`mt-1.5 block truncate text-caption leading-[14px] font-medium ${set.c[`l${k}`]}`}>{label}</span>
         </li>
       ))}
     </ol>

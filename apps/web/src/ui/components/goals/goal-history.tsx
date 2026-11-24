@@ -45,9 +45,9 @@ export function GoalHistory({ rows, unit, startedOn, baseline }: { rows: History
             <li key={r.id} className="flex gap-3">
               <span aria-hidden className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-surface-2 text-ink-2"><Icon className="size-3.5" strokeWidth={1.5} /></span>
               <div className="min-w-0">
-                <p className={r.decision ? 'text-[13.5px] font-medium text-ink' : 'text-[13.5px] text-ink-3'}>{title} · {weekday(r.reviewDate)}</p>
-                <p className="text-[12.5px] text-ink-3 tabular-nums">{detail}</p>
-                {r.note ? <p className="mt-0.5 text-[12.5px] text-ink-2">“{r.note}”</p> : null}
+                <p className={r.decision ? 'text-body font-medium text-ink' : 'text-body text-ink-3'}>{title} · {weekday(r.reviewDate)}</p>
+                <p className="text-small text-ink-3 tabular-nums">{detail}</p>
+                {r.note ? <p className="mt-0.5 text-small text-ink-2">“{r.note}”</p> : null}
               </div>
             </li>
           )
@@ -55,8 +55,8 @@ export function GoalHistory({ rows, unit, startedOn, baseline }: { rows: History
         <li className="flex gap-3">
           <span aria-hidden className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-surface-2 text-ink-2"><Flag className="size-3.5" strokeWidth={1.5} /></span>
           <div className="min-w-0">
-            <p className="text-[13.5px] font-medium text-ink">Started · {weekday(startedOn)}</p>
-            <p className="text-[12.5px] text-ink-3 tabular-nums">{baseline}</p>
+            <p className="text-body font-medium text-ink">Started · {weekday(startedOn)}</p>
+            <p className="text-small text-ink-3 tabular-nums">{baseline}</p>
           </div>
         </li>
       </ol>
@@ -65,14 +65,14 @@ export function GoalHistory({ rows, unit, startedOn, baseline }: { rows: History
 }
 
 export function CheckInList({ rows, unit }: { rows: CheckInRow[]; unit: string | null }) {
-  if (!rows.length) return <p className="text-[13px] text-ink-3">No check-ins yet.</p>
+  if (!rows.length) return <p className="text-small text-ink-3">No check-ins yet.</p>
   return (
     <ul className="grid gap-2 sm:grid-cols-3">
       {rows.slice(0, 9).map((c) => (
         <li key={c.id} className="rounded-md bg-surface-2 px-3 py-2">
-          <p className="text-[12px] text-ink-3">{weekday(c.localDate)}</p>
-          <p className="text-[14px] font-semibold text-ink tabular-nums">{value(c.value, unit)}</p>
-          {c.note ? <p className="truncate text-[12px] text-ink-3">{c.note}</p> : null}
+          <p className="text-caption text-ink-3">{weekday(c.localDate)}</p>
+          <p className="text-body font-medium text-ink tabular-nums">{value(c.value, unit)}</p>
+          {c.note ? <p className="truncate text-caption text-ink-3">{c.note}</p> : null}
         </li>
       ))}
     </ul>

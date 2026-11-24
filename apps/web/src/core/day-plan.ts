@@ -5,6 +5,7 @@ import { dayAgenda, type ScheduleMeta } from '@/core/schedules'
 import { trackerDays } from '@/core/metrics'
 import { addDays, formatTime, localDate } from '@/core/time'
 import { xpShare } from '@/domain/day-plan'
+import type { Progress } from '@/domain/shell'
 import { CATEGORY } from '@/ui/tokens'
 import type { AgendaRow, GoalRow } from '@/ui/components/agenda'
 
@@ -12,11 +13,12 @@ export type DayPlan = {
   today: string
   rows: AgendaRow[]
   goals: GoalRow[]
-  byCat: Record<Category, { done: number; total: number }>
+  byCat: Record<Category, Progress>
   overdue: AgendaRow[]
   next: AgendaRow | undefined
   total: number
   done: number
+  skipped: number
 }
 
 /**
@@ -67,14 +69,15 @@ export async function buildDayPlan(user: User, now = new Date()): Promise<DayPla
     })
   }
 
-  const byCat = Object.fromEntries(CATEGORIES.map((c) => [c, { done: 0, total: 0 }])) as DayPlan['byCat']
-  for (const r of rows) { const c = catOf.get(r.scheduleId)!; byCat[c].total++; if (r.status === 'done') byCat[c].done++ }
+  const byCat = Object.fromEntries(CATEGORIES.map((c) => [c, { done: 0, total: 0, skipped: 0 }])) as DayPlan['byCat']
+  for (const r of rows) { const c = catOf.get(r.scheduleId)!; byCat[c].total++; if (r.status === 'done') byCat[c].done++; else if (r.status === 'skipped') byCat[c].skipped++ }
   for (const g of goals) { const c = catOf.get(g.scheduleId)!; byCat[c].total++; if (g.value >= g.target) byCat[c].done++ }
   const total = rows.length + goals.length
   // Each routine's share of today's 100 plan XP, shown as its quest reward.
   for (const r of rows) r.xp = xpShare(total)
   const done = Object.values(byCat).reduce((s, c) => s + c.done, 0)
-  return { today, rows, goals, byCat, overdue: rows.filter((r) => r.status === 'missed'), next: rows.find((r) => r.status === 'pending'), total, done }
+  const skipped = Object.values(byCat).reduce((s, c) => s + c.skipped, 0)
+  return { today, rows, goals, byCat, overdue: rows.filter((r) => r.status === 'missed'), next: rows.find((r) => r.status === 'pending'), total, done, skipped }
 }
 
 /** One plan per request: the shell's area dots and the page share it. */

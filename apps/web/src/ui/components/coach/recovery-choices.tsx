@@ -74,7 +74,7 @@ export function RecoveryChoices({ recovery, onChosen, choose = (input) => choose
               onClick={() => pick(o.choice)}
               className="relative flex min-h-14 flex-col items-start rounded-md bg-surface px-3.5 py-2.5 text-start shadow-1 transition-[scale,background-color,opacity] duration-150 ease-out-quint hover:bg-surface-2 active:scale-96 disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pill"
             >
-              <span className="flex items-center gap-1.5 text-body font-semibold text-ink">
+              <span className="flex items-center gap-1.5 text-body font-medium text-ink">
                 {wait ? <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" strokeWidth={2} aria-hidden /> : null}
                 {wait ? 'Saving…' : error && attempt === o.choice ? `Retry ${o.title.toLowerCase()}` : o.title}
               </span>
