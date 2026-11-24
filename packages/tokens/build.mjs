@@ -169,7 +169,7 @@ ${radii.join('\n')}
 
 // oklch -> hex / rgba(): Satori (next/og, the share cards) cannot parse oklch(), so the cards read these copies.
 const OG_COLORS = ['bg', 'surface', 'surface-2', 'surface-3', 'ink', 'ink-2', 'ink-3', 'hairline', 'divider', 'pill', 'pill-ink', 'pill-wash', 'good',
-  'sky-soft', 'sakura', 'sakura-soft',
+  'sky', 'sky-soft', 'night', 'sakura', 'sakura-soft',
   'medal-bronze', 'medal-silver', 'medal-gold', 'medal-sakura', 'cat-health', 'cat-mind', 'cat-skills', 'cat-wealth', 'cat-hobbies', 'cat-relationships']
 function srgb(value) {
   const c = parse(value)

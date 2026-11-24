@@ -1,346 +1,355 @@
 import og from '@relife/tokens/og.json'
-import type { CardModel, CardStat, ShareSize, TierName } from '@/domain/share-card'
+import type { CardModel, CardStat, ShareSize } from '@/domain/share-card'
 import { SHARE_SIZES } from '@/domain/share-card'
+import { medalFor } from '@/domain/xp'
 
 // The share card as Satori markup: flexbox and inline styles only, no Tailwind, no grid, no oklch. Colours come from
 // packages/tokens/og.json (sRGB copies of the tokens).
 //
-// One system for every kind, from the brand in docs/SYSTEM_DESIGN.md §8: a sky wash at the top (the Today header's
-// motif, night sky in dark), flat paper below, the wordmark and the card's context in one sentence-case line, and the
-// capsule (ink outline, white half filling into blue) as every meter. Numbers are Outfit, words Inter. Petals fall only
-// on the streak card, as they do in the app at a streak milestone.
+// Every card is a collectible: a trading card tilted on a sky (night sky in dark) with sakura petals, its frame in the
+// colour of what was earned (a medal tier, else capsule blue), its name and a badge on top, an art window with the
+// card's object drawn in the logo's sticker style (an ink outline, flat fills, one highlight), then a type line, the
+// stats, a capsule meter and the wordmark. Only what the model holds is drawn: an unticked field is not on the card,
+// and the frame and objects are chosen from the model alone, so they never give away a hidden number.
 
 export type CardTheme = 'light' | 'dark'
 export type CardBrand = { name: string; /** A data URL, only when brand.publicReady. Otherwise a text wordmark and a capsule are drawn. */ logo: string | null }
 
 type C = typeof og.light
+type Tier = 'pill' | 'bronze' | 'silver' | 'gold' | 'sakura'
 
 const DISPLAY = 'Outfit'
 const TEXT = 'Inter'
-const PAD = 80
-/** The card's inner width: 1080 less the padding. Both sizes are 1080 wide. */
-const W = SHARE_SIZES.square.width - PAD * 2
+const MONO = 'JetBrains Mono'
+/** Dark text on the coloured frame, badge and medal: the ink of the light theme, in both themes. */
+const ON_COLOUR = og.light.ink
 
 /** Outfit ExtraBold runs about 0.6em a character; a line is sized so it fits `room`. */
 const fit = (text: string, room: number, max: number, em = 0.6) => Math.min(max, Math.floor(room / Math.max(1, text.length * em)))
 
+const Row = ({ children, style }: { children?: React.ReactNode; style?: React.CSSProperties }) => <div style={{ display: 'flex', ...style }}>{children}</div>
+const Col = ({ children, style }: { children?: React.ReactNode; style?: React.CSSProperties }) => <div style={{ display: 'flex', flexDirection: 'column', ...style }}>{children}</div>
+const Text = ({ children, size, color, weight = 400, font = TEXT, style }: { children: React.ReactNode; size: number; color: string; weight?: 400 | 600 | 800; font?: string; style?: React.CSSProperties }) => (
+  <div style={{ display: 'flex', fontFamily: font, fontWeight: weight, fontSize: size, color, lineHeight: font === DISPLAY ? 1.02 : 1.25, ...(font === DISPLAY ? { letterSpacing: -size * 0.02 } : {}), ...style }}>{children}</div>
+)
+
 /** Lucide `flame` and `trophy` (ISC). */
-const FLAME = ['M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4']
+const FLAME_LINE = ['M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4']
 const TROPHY = [
   'M10 14.66V17a1 1 0 0 1-1 1 2 2 0 0 0-2 2v2', 'M14 14.66V17a1 1 0 0 0 1 1 2 2 0 0 1 2 2v2', 'M17.916 10H19.5A2.5 2.5 0 0 0 22 7.5V5a1 1 0 0 0-1-1h-3',
   'M4 22h16', 'M6 9a6 6 0 0 0 12 0V3a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1z', 'M6.084 10H4.5A2.5 2.5 0 0 1 2 7.5V5a1 1 0 0 1 1-1h3',
 ]
+const Icon = ({ paths, size, color }: { paths: string[]; size: number; color: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    {paths.map((d) => <path key={d} d={d} />)}
+  </svg>
+)
 
-function Icon({ paths, size, color, stroke = 1.6 }: { paths: string[]; size: number; color: string; stroke?: number }) {
+// ─── What a card is made of, from the model ───────────────────────────────────────────────────────────────────────
+
+const num = (v: string | undefined) => (v ? Number(v.replace(/[^0-9]/g, '')) : NaN)
+
+/** The frame's colour: what was earned, as a medal tier. Read from the model, so a hidden number never picks it. */
+function tierOf(m: CardModel): Tier {
+  const n = m.hero && !m.hero.text ? num(m.hero.value) : NaN
+  switch (m.kind) {
+    case 'level': return Number.isFinite(n) ? (medalFor(n)?.medal ?? 'pill') : 'pill'
+    case 'streak': return !Number.isFinite(n) ? 'pill' : n >= 365 ? 'sakura' : n >= 100 ? 'gold' : n >= 30 ? 'silver' : n >= 7 ? 'bronze' : 'pill'
+    case 'achievement': return m.tier ?? 'pill'
+    case 'weekly': { const d = m.days?.shown; return d == null ? 'pill' : d >= 7 ? 'gold' : d >= 5 ? 'silver' : d >= 3 ? 'bronze' : 'pill' }
+  }
+}
+const frameOf = (c: C, t: Tier) => (t === 'pill' ? c.pill : c[`medal-${t}`])
+
+type Badge = { top: string; value: string } | { icon: string[] }
+type Face = {
+  title: string; sub: string | null; badge: Badge | null
+  type: string; typeRight: string | null; serial: string | null
+  stats: CardStat[]
+  meter: { value: number; left: string; right: string | null } | null
+}
+
+function faceOf(m: CardModel): Face {
+  const hero = m.hero?.value
+  const base = { sub: null, badge: null, typeRight: null, serial: null, stats: [] as CardStat[], meter: null }
+  switch (m.kind) {
+    case 'level': {
+      const xp = m.stats.find((s) => s.id === 'xp')
+      const p = m.progress
+      return {
+        ...base, title: m.caption ?? (hero ? `Level ${hero}` : 'Level up'), sub: p?.next ?? null,
+        badge: hero ? { top: 'Lv', value: hero } : null, type: 'Level up', typeRight: xp ? `${xp.value} XP` : null,
+        serial: hero ? `No. ${hero.padStart(3, '0')}` : null, stats: m.stats.filter((s) => s.n != null),
+        meter: p ? { value: p.value, left: p.line, right: null } : null,
+      }
+    }
+    case 'streak': {
+      const best = m.stats.find((s) => s.id === 'best')
+      const days = num(hero)
+      const meter = best?.n != null && Number.isFinite(days)
+        ? { value: best.n ? days / best.n : 1, left: days >= best.n ? 'Your longest streak yet' : `${best.n - days} more to match your best`, right: `Best ${best.value}` }
+        : null
+      return {
+        ...base, title: hero ? `${hero}-day streak` : 'Streak', badge: { icon: FLAME_LINE }, type: 'Streak',
+        serial: hero ? `Day ${hero}` : null, stats: m.stats.filter((s) => s.id !== 'best' || !meter), meter,
+      }
+    }
+    case 'achievement':
+      return { ...base, title: hero ?? 'Achievement', badge: { icon: TROPHY }, type: 'Achievement unlocked', typeRight: m.caption }
+    case 'weekly': {
+      const [week, dates] = (m.range ?? '').split(' · ')
+      return {
+        ...base, title: week || 'Weekly recap', badge: m.days ? { top: 'Days', value: `${m.days.shown}/${m.days.of}` } : null,
+        type: 'Weekly recap', typeRight: dates || null, stats: m.stats,
+      }
+    }
+  }
+}
+
+// ─── Pieces ───────────────────────────────────────────────────────────────────────────────────────────────────────
+
+const PETAL = 'M0 24 C-15 12 -17 -8 -7 -20 L0 -13 L7 -20 C17 -8 15 12 0 24 Z'
+function Petals({ at, color, w, h, opacity = 0.9 }: { at: number[][]; color: string; w: number; h: number; opacity?: number }) {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round">
-      {paths.map((d) => <path key={d} d={d} />)}
+    <svg xmlns="http://www.w3.org/2000/svg" width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ position: 'absolute', top: 0, left: 0 }}>
+      {at.map(([x, y, s, r]) => <path key={`${x}:${y}`} d={PETAL} fill={color} fillOpacity={opacity} transform={`translate(${x} ${y}) rotate(${r}) scale(${s})`} />)}
     </svg>
   )
 }
 
-const Row = ({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) => <div style={{ display: 'flex', ...style }}>{children}</div>
-const Col = ({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) => <div style={{ display: 'flex', flexDirection: 'column', ...style }}>{children}</div>
-const Text = ({ children, size, color, weight = 400, font = TEXT, style }: { children: React.ReactNode; size: number; color: string; weight?: 400 | 600 | 800; font?: string; style?: React.CSSProperties }) => (
-  <div style={{ display: 'flex', fontFamily: font, fontWeight: weight, fontSize: size, color, lineHeight: font === DISPLAY ? 1 : 1.25, ...(font === DISPLAY ? { letterSpacing: -size * 0.025 } : {}), ...style }}>{children}</div>
-)
-
-/**
- * The capsule meter. With `outline` it is the logo's capsule laid flat: an ink ring, the white half, the blue filling
- * in. Without, a quiet track in the surface colour (the thin per-area bars). A started fill is never narrower than
- * the capsule is tall, so its end stays round.
- */
-function Capsule({ value, width, height, c, fill, outline = true }: { value: number; width: number; height: number; c: C; fill?: string; outline?: boolean }) {
-  const ring = outline ? Math.max(4, Math.round(height * 0.08)) : 0
-  const inner = height - ring * 2
-  const room = width - ring * 2
-  const v = Math.max(0, Math.min(1, value))
-  const w = v <= 0 ? 0 : Math.max(inner, Math.round(room * v))
+/** The logo's capsule as an object: ink ring, white half, blue half, the blue filling into the white half by `value`. */
+function CapsuleObject({ w, value, c }: { w: number; value: number; c: C }) {
+  const h = Math.round(w * 0.38)
+  const sw = Math.round(h * 0.075), r = (h - sw) / 2, x0 = sw / 2, y0 = sw / 2, iw = w - sw, ih = h - sw
+  const half = x0 + iw / 2
+  const fill = Math.max(0, Math.min(1, value)) * (iw / 2 - r * 0.35)
   return (
-    <div style={{ display: 'flex', width, height, borderRadius: 999, background: outline ? c.surface : c['surface-3'], border: outline ? `${ring}px solid ${c.ink}` : 'none', overflow: 'hidden' }}>
-      {w ? <div style={{ display: 'flex', width: w, height: inner, borderRadius: 999, background: fill ?? c.pill }} /> : null}
+    <svg xmlns="http://www.w3.org/2000/svg" width={w} height={Math.round(h * 1.45)} viewBox={`0 0 ${w} ${Math.round(h * 1.45)}`}>
+      <defs>
+        <clipPath id="capsule"><rect x={x0} y={y0} width={iw} height={ih} rx={r} /></clipPath>
+        <linearGradient id="capsule-shade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#ffffff" stopOpacity="0" /><stop offset="1" stopColor="#000000" stopOpacity="0.16" /></linearGradient>
+        <radialGradient id="capsule-shadow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stopColor="#000000" stopOpacity="0.22" /><stop offset="1" stopColor="#000000" stopOpacity="0" /></radialGradient>
+      </defs>
+      <ellipse cx={w / 2} cy={h * 1.2} rx={w * 0.44} ry={h * 0.15} fill="url(#capsule-shadow)" />
+      <g clipPath="url(#capsule)">
+        <rect x={x0} y={y0} width={iw} height={ih} fill="#fbfbfa" />
+        <rect x={half} y={y0} width={iw / 2} height={ih} fill={c.pill} />
+        {fill > 0 ? <rect x={half - fill} y={y0} width={fill} height={ih} fill={og.dark['pill-ink']} /> : null}
+        <rect x={x0} y={y0} width={iw} height={ih} fill="url(#capsule-shade)" />
+        <rect x={x0 + r * 0.6} y={y0 + ih * 0.16} width={iw - r * 1.2} height={ih * 0.14} rx={ih * 0.07} fill="#ffffff" fillOpacity="0.55" />
+      </g>
+      <line x1={half} y1={y0} x2={half} y2={y0 + ih} stroke={ON_COLOUR} strokeWidth={sw * 0.6} />
+      <rect x={x0} y={y0} width={iw} height={ih} rx={r} fill="none" stroke={ON_COLOUR} strokeWidth={sw} />
+    </svg>
+  )
+}
+
+/** A flame in the same sticker style: gold outside, sakura inside, an ink outline. */
+function FlameObject({ size, c }: { size: number; c: C }) {
+  const outer = 'M52 4 C56 24 70 32 80 48 C88 60 88 74 84 84 C78 98 66 106 50 106 C32 106 18 96 16 78 C14 62 22 50 30 42 C30 52 34 58 40 60 C38 44 42 22 52 4 Z'
+  const inner = 'M52 52 C58 64 68 72 68 86 C68 97 60 104 50 104 C40 104 32 97 32 87 C32 78 38 72 42 66 C44 72 48 74 51 74 C49 66 49 60 52 52 Z'
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size * 1.1} viewBox="0 0 100 110">
+      <defs>
+        <linearGradient id="flame" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={og.light['medal-gold']} /><stop offset="1" stopColor={og.light['medal-bronze']} /></linearGradient>
+      </defs>
+      <path d={outer} fill="url(#flame)" stroke={ON_COLOUR} strokeWidth={4} strokeLinejoin="round" />
+      <path d={inner} fill={c.sakura} stroke={ON_COLOUR} strokeWidth={3} strokeLinejoin="round" />
+      <path d="M60 30 C66 38 72 44 74 54" fill="none" stroke="#ffffff" strokeOpacity={0.6} strokeWidth={4} strokeLinecap="round" />
+    </svg>
+  )
+}
+
+/** A struck medal on two ribbons (capsule blue and sakura), the trophy in ink. */
+function MedalObject({ d, colour, c }: { d: number; colour: string; c: C }) {
+  const cx = d / 2, cy = d * 0.45, r = d * 0.4, s = (r * 1.05) / 24
+  const ribbon = (pts: number[][]) => pts.map(([x, y]) => `${(x * d).toFixed(1)},${(y * d).toFixed(1)}`).join(' ')
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={d} height={d * 1.3} viewBox={`0 0 ${d} ${d * 1.3}`}>
+      <polygon points={ribbon([[0.3, 0.6], [0.16, 1.24], [0.29, 1.13], [0.4, 1.26], [0.5, 0.7]])} fill={c.pill} stroke={ON_COLOUR} strokeWidth={d * 0.018} strokeLinejoin="round" />
+      <polygon points={ribbon([[0.7, 0.6], [0.84, 1.24], [0.71, 1.13], [0.6, 1.26], [0.5, 0.7]])} fill={c.sakura} stroke={ON_COLOUR} strokeWidth={d * 0.018} strokeLinejoin="round" />
+      <circle cx={cx} cy={cy} r={r} fill={colour} stroke={ON_COLOUR} strokeWidth={d * 0.024} />
+      <circle cx={cx} cy={cy} r={r * 0.8} fill="none" stroke="#ffffff" strokeOpacity={0.5} strokeWidth={d * 0.016} />
+      <path d={`M${cx - r * 0.55} ${cy - r * 0.62} A ${r * 0.8} ${r * 0.8} 0 0 1 ${cx + r * 0.2} ${cy - r * 0.78}`} fill="none" stroke="#ffffff" strokeOpacity={0.7} strokeWidth={d * 0.02} strokeLinecap="round" />
+      <g transform={`translate(${cx - 12 * s} ${cy - 12 * s}) scale(${s})`} fill="none" stroke={ON_COLOUR} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+        {TROPHY.map((p) => <path key={p} d={p} />)}
+      </g>
+    </svg>
+  )
+}
+
+/** A week: the XP set large, then seven capsules standing, the days shown filled blue. */
+function WeekObject({ m, w, h, c, k }: { m: CardModel; w: number; h: number; c: C; k: number }) {
+  const xp = m.hero
+  const days = m.days
+  const gap = Math.round(14 * k)
+  const pw = Math.min(Math.floor((w * 0.86 - gap * 6) / 7), Math.round(h * (xp ? 0.22 : 0.3)))
+  const ph = Math.round(pw * 2.1)
+  const size = xp ? fit(`${xp.value} ${xp.unit ?? ''}`, w * 0.86, Math.round(h * (days ? 0.3 : 0.42)), 0.62) : 0
+  return (
+    <Col style={{ alignItems: 'center', gap: Math.round(28 * k) }}>
+      {xp ? (
+        <Row style={{ alignItems: 'baseline', gap: Math.round(size * 0.12) }}>
+          <Text font={DISPLAY} weight={800} size={size} color={c.ink}>{xp.value}</Text>
+          {xp.unit ? <Text font={DISPLAY} weight={800} size={Math.round(size * 0.5)} color={c.ink}>{xp.unit}</Text> : null}
+        </Row>
+      ) : null}
+      {days ? (
+        <Row style={{ gap }}>
+          {Array.from({ length: days.of }, (_, i) => {
+            const on = i < days.shown
+            return (
+              <Col key={i} style={{ width: pw, height: ph, borderRadius: 999, border: `${Math.max(3, Math.round(pw * 0.09))}px solid ${ON_COLOUR}`, overflow: 'hidden', opacity: on ? 1 : 0.4 }}>
+                <div style={{ display: 'flex', flex: 1, background: on ? c.pill : '#fbfbfa' }} />
+                <div style={{ display: 'flex', flex: 1, background: '#fbfbfa' }} />
+              </Col>
+            )
+          })}
+        </Row>
+      ) : null}
+    </Col>
+  )
+}
+
+/** The flat capsule meter under the stats: an ink ring, the white half, the blue filling in. */
+function Meter({ value, width, height, c }: { value: number; width: number; height: number; c: C }) {
+  const ring = 3
+  const inner = height - ring * 2
+  const v = Math.max(0, Math.min(1, value))
+  const w = v <= 0 ? 0 : Math.max(inner, Math.round((width - ring * 2) * v))
+  return (
+    <div style={{ display: 'flex', width, height, borderRadius: 999, background: c['surface-2'], border: `${ring}px solid ${c.ink}`, overflow: 'hidden' }}>
+      {w ? <div style={{ display: 'flex', width: w, height: inner, borderRadius: 999, background: c.pill }} /> : null}
     </div>
   )
 }
 
-function Wordmark({ brand, c }: { brand: CardBrand; c: C }) {
-  if (brand.logo) return <img src={brand.logo} alt="" height={64} style={{ height: 64 }} />
+function Wordmark({ brand, c, k }: { brand: CardBrand; c: C; k: number }) {
+  if (brand.logo) return <img src={brand.logo} alt="" height={Math.round(34 * k)} style={{ height: Math.round(34 * k) }} />
   return (
-    <Row style={{ alignItems: 'center', gap: 20 }}>
+    <Row style={{ alignItems: 'center', gap: Math.round(10 * k) }}>
       {/* The capsule: a tilted pill, blue over white, ringed in ink. A plain shape, not the logo. */}
-      <div style={{ display: 'flex', width: 64, height: 30, borderRadius: 15, border: `4px solid ${c.ink}`, overflow: 'hidden', transform: 'rotate(-32deg)' }}>
+      <div style={{ display: 'flex', width: Math.round(32 * k), height: Math.round(16 * k), borderRadius: 999, border: `${Math.round(3 * k)}px solid ${c.ink}`, overflow: 'hidden', transform: 'rotate(-32deg)' }}>
         <div style={{ display: 'flex', flex: 1, background: c.pill }} />
         <div style={{ display: 'flex', flex: 1, background: c.surface }} />
       </div>
-      <Text font={DISPLAY} weight={800} size={52} color={c.ink}>{brand.name}</Text>
+      <Text font={DISPLAY} weight={800} size={Math.round(28 * k)} color={c.ink}>{brand.name}</Text>
     </Row>
   )
 }
 
-/** A label and its value on one ruled line: the stat list of the week and the streak. */
-function StatRow({ s, c, width }: { s: CardStat; c: C; width: number }) {
-  return (
-    <Row style={{ width, justifyContent: 'space-between', alignItems: 'center', gap: 24, paddingTop: 20, paddingBottom: 20, borderTop: `2px solid ${c.divider}` }}>
-      <Text size={30} color={c['ink-2']}>{s.label}</Text>
-      <Text font={DISPLAY} weight={800} size={44} color={c.ink}>{s.value}</Text>
-    </Row>
-  )
-}
-
-/** Rows in `cols` columns, filled down each column first so a ranked list reads top to bottom. */
-function Columns<T>({ items, cols, gap, render }: { items: T[]; cols: number; gap: number; render: (item: T, width: number) => React.ReactNode }) {
-  const width = Math.floor((W - gap * (cols - 1)) / cols)
-  const per = Math.ceil(items.length / cols)
-  return (
-    <Row style={{ gap }}>
-      {Array.from({ length: cols }, (_, i) => items.slice(i * per, (i + 1) * per)).filter((col) => col.length).map((col, i) => (
-        <Col key={i} style={{ width }}>{col.map((it) => render(it, width))}</Col>
-      ))}
-    </Row>
-  )
-}
-
-// ─── The bodies, one per kind ─────────────────────────────────────────────────────────────────────────────────────
-
-/** Level: the number and the title side by side, the capsule toward the next level, the areas as a ranked bar list. */
-function LevelBody({ m, c, story }: { m: CardModel; c: C; story: boolean }) {
-  const xp = m.stats.find((s) => s.id === 'xp')
-  const areas = m.stats.filter((s) => s.n != null)
-  const num = m.hero?.value ?? null
-  const title = m.caption
-  const p = m.progress
-  const roomy = story || areas.length === 0
-  const numSize = num ? fit(num, W * 0.62, story ? 400 : roomy ? 360 : 176, 0.62) : 0
-  const numW = num ? Math.ceil(num.length * 0.62 * numSize) : 0
-  // The title sits beside the number while it can stay large; on a story, or when it would shrink too far, under it.
-  const besideSize = title && num && !story ? fit(title, W - numW - 56, roomy ? 112 : 80) : 0
-  const beside = besideSize >= 64
-  const titleSize = title ? (beside ? besideSize : fit(title, W, story ? 136 : 112)) : 0
-  // Beside the number the column is narrow, so the next title goes under the capsule (the goal of the bar) and the
-  // total XP under the title. Stacked, the next title stays with the title and the total sits under the capsule.
-  const nextUnderBar = beside && !!p
-  const size = story ? 36 : 32
-  const next = p?.next ? <Text size={size} color={c['ink-3']}>{p.next}</Text> : null
-  const total = xp ? <Text size={size} color={c['ink-3']}>{xp.value} XP in all</Text> : null
-  const underTitle = nextUnderBar ? total : next
-  return (
-    <Col style={{ gap: story ? 80 : roomy ? 64 : 36 }}>
-      <Col style={{ gap: story ? 40 : 28 }}>
-        <Row style={{ alignItems: 'flex-end', gap: 56 }}>
-          {num ? (
-            <Col style={{ gap: 8 }}>
-              <Text weight={600} size={story ? 40 : 34} color={c['ink-3']}>Level</Text>
-              <Text font={DISPLAY} weight={800} size={numSize} color={c['pill-ink']} style={{ lineHeight: 0.86 }}>{num}</Text>
-            </Col>
-          ) : null}
-          {beside ? (
-            <Col style={{ gap: 16, width: W - numW - 56, paddingBottom: Math.round(numSize * 0.04) }}>
-              <Text font={DISPLAY} weight={800} size={titleSize} color={c.ink}>{title}</Text>
-              {p ? underTitle : next}
-            </Col>
-          ) : null}
-        </Row>
-        {title && !beside ? (
-          <Col style={{ gap: 16 }}>
-            <Text font={DISPLAY} weight={800} size={titleSize} color={c.ink}>{title}</Text>
-            {next}
-          </Col>
-        ) : null}
-        {!title && next ? next : null}
-      </Col>
-
-      {p ? (
-        <Col style={{ gap: 20 }}>
-          <Capsule value={p.value} width={W} height={story ? 80 : 64} c={c} />
-          <Row style={{ justifyContent: 'space-between', alignItems: 'baseline', gap: 24 }}>
-            <Text weight={600} size={size} color={c['ink-2']}>{p.line}</Text>
-            {nextUnderBar ? next : total}
-          </Row>
-        </Col>
-      ) : xp ? (
-        <Row style={{ alignItems: 'baseline', gap: 16 }}>
-          <Text font={DISPLAY} weight={800} size={story ? 88 : 72} color={c.ink}>{xp.value}</Text>
-          <Text size={story ? 40 : 34} color={c['ink-2']}>XP in all</Text>
-        </Row>
-      ) : null}
-
-      {areas.length ? <AreaStats areas={areas} c={c} story={story} /> : null}
-    </Col>
-  )
-}
-
-const toneOf = (c: C, tone?: string) => (tone && (c as Record<string, string>)[`cat-${tone}`]) || c.pill
-
-/**
- * The character sheet's stat hexagon: one axis per area (clockwise from the top, in the app's area order), three quiet
- * rings, the shape of this person's levels filled in capsule blue, and a dot in each area's colour at its level.
- * Scaled to the highest area, so the shape shows the balance. Beside it, the same areas in the same order as figures
- * in their colours, so each dot has its name and number.
- */
-function AreaStats({ areas, c, story }: { areas: CardStat[]; c: C; story: boolean }) {
-  const H = story ? 400 : 336
-  const cols = story ? 2 : 3
-  const dot = story ? 13 : 10
-  const R = H / 2 - dot - 4
-  const top = Math.max(1, ...areas.map((a) => a.n!))
-  const n = areas.length
-  const at = (i: number, r: number) => {
-    const a = (-90 + (360 / n) * i) * (Math.PI / 180)
-    return [H / 2 + r * Math.cos(a), H / 2 + r * Math.sin(a)] as const
-  }
-  const ring = (f: number) => areas.map((_, i) => at(i, R * f).map((v) => v.toFixed(1)).join(',')).join(' ')
-  const pts = areas.map((a, i) => at(i, R * Math.max(0.1, a.n! / top)))
-  return (
-    <Row style={{ gap: story ? 56 : 64, alignItems: 'center' }}>
-      {n >= 3 ? (
-        <svg xmlns="http://www.w3.org/2000/svg" width={H} height={H} viewBox={`0 0 ${H} ${H}`}>
-          {[1, 2 / 3, 1 / 3].map((f) => <polygon key={f} points={ring(f)} fill={f === 1 ? c['surface-2'] : 'none'} stroke={c['surface-3']} strokeWidth={2} />)}
-          {areas.map((a, i) => { const [x, y] = at(i, R); return <line key={a.id} x1={H / 2} y1={H / 2} x2={x} y2={y} stroke={c['surface-3']} strokeWidth={2} /> })}
-          <polygon points={pts.map((p) => p.map((v) => v.toFixed(1)).join(',')).join(' ')} fill={c.pill} fillOpacity={0.32} stroke={c.pill} strokeWidth={story ? 5 : 4} strokeLinejoin="round" />
-          {areas.map((a, i) => <circle key={a.id} cx={pts[i][0]} cy={pts[i][1]} r={dot} fill={toneOf(c, a.tone)} stroke={c.bg} strokeWidth={story ? 5 : 4} />)}
-        </svg>
-      ) : null}
-      {/* The levels as a grid of figures, each in its area's colour (the dot it matches on the hexagon). */}
-      <Row style={{ flex: 1, flexWrap: 'wrap', rowGap: story ? 40 : 28 }}>
-        {areas.map((a) => (
-          <Col key={a.id} style={{ width: `${100 / cols}%`, gap: 4 }}>
-            <Text font={DISPLAY} weight={800} size={story ? 88 : 68} color={toneOf(c, a.tone)}>{a.n}</Text>
-            <Text size={story ? 34 : 28} color={c['ink-2']}>{a.label}</Text>
-          </Col>
-        ))}
-      </Row>
-    </Row>
-  )
-}
-
-/** A few sakura petals drifting from the top-right corner (the app's streak-milestone burst, held still). */
-function Petals({ c, story, clear }: { c: C; story: boolean; /** Petals stay right of this x, the end of the number. */ clear: number }) {
-  const petal = 'M0 24 C-15 12 -17 -8 -7 -20 L0 -13 L7 -20 C17 -8 15 12 0 24 Z'
-  // Placed in the calm space right of the number and under the header line, never over text.
-  const at = [[930, 230, 1.3, 20], [820, 330, 0.9, -35], [980, 420, 1.0, 60], [860, 500, 0.7, 110], [960, 600, 0.8, -70], [800, 190, 0.6, 25]]
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width={1080} height={story ? 760 : 680} viewBox={`0 0 1080 ${story ? 760 : 680}`} style={{ position: 'absolute', top: 0, left: 0 }}>
-      {at.filter(([x]) => x > clear).map(([x, y, s, r]) => <path key={`${x}:${y}`} d={petal} fill={c.sakura} fillOpacity={0.85} transform={`translate(${x} ${y}) rotate(${r}) scale(${s * 1.6})`} />)}
-    </svg>
-  )
-}
-
-const streakNumberSize = (m: CardModel, story: boolean) => (m.hero ? fit(m.hero.value, W * 0.66, story ? 420 : 340, 0.62) : 0)
-/** Where the flame and the number end, from the content's left edge. */
-function streakNumberEnd(m: CardModel, story: boolean) {
-  const size = streakNumberSize(m, story)
-  return m.hero ? Math.round(size * 0.6 + 24 + m.hero.value.length * 0.62 * size + 40) : 0
-}
-
-/** Streak: the flame and the days, then the capsule of this streak against the best one. */
-function StreakBody({ m, c, story }: { m: CardModel; c: C; story: boolean }) {
-  const days = m.hero ? Number(m.hero.value) : null
-  const best = m.stats.find((s) => s.id === 'best')
-  const rest = m.stats.filter((s) => s.id !== 'best')
-  const numSize = streakNumberSize(m, story)
-  const record = days != null && best?.n != null && days >= best.n
-  return (
-    <Col style={{ gap: story ? 88 : 56 }}>
-      <Col style={{ gap: 24 }}>
-        {m.hero ? (
-          <Row style={{ alignItems: 'flex-end', gap: 24 }}>
-            <div style={{ display: 'flex', marginBottom: numSize * 0.1 }}><Icon paths={FLAME} size={Math.round(numSize * 0.6)} color={c['medal-gold']} stroke={1.8} /></div>
-            <Text font={DISPLAY} weight={800} size={numSize} color={c['pill-ink']} style={{ lineHeight: 0.86 }}>{m.hero.value}</Text>
-          </Row>
-        ) : null}
-        {m.caption ? <Text font={DISPLAY} weight={800} size={story ? 104 : 88} color={c.ink}>{m.caption}</Text> : null}
-      </Col>
-      {best?.n != null && days != null ? (
-        <Col style={{ gap: 20 }}>
-          <Capsule value={best.n ? days / best.n : 1} width={W} height={story ? 80 : 64} c={c} />
-          <Row style={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <Text weight={600} size={story ? 36 : 32} color={c['ink-2']}>{record ? 'Your longest streak yet' : `${best.n - days} more to match your best`}</Text>
-            <Text size={story ? 36 : 32} color={c['ink-3']}>{`Best: ${best.value}`}</Text>
-          </Row>
-        </Col>
-      ) : best ? <StatRow s={best} c={c} width={W} /> : null}
-      {rest.length ? <Col>{rest.map((s) => <StatRow key={s.id} s={s} c={c} width={W} />)}</Col> : null}
-    </Col>
-  )
-}
-
-const TIER = (c: C): Record<TierName, string> => ({ bronze: c['medal-bronze'], silver: c['medal-silver'], gold: c['medal-gold'] })
-
-/** Achievement: the medal, the name set large, the tier and date as one quiet line. */
-function AchievementBody({ m, c, story }: { m: CardModel; c: C; story: boolean }) {
-  const tier = m.tier ? TIER(c)[m.tier] : c.pill
-  const medal = story ? 380 : 300
-  const name = m.hero?.value
-  return (
-    <Col style={{ gap: story ? 72 : 56 }}>
-      <div style={{ display: 'flex', width: medal, height: medal, borderRadius: 999, background: tier, alignItems: 'center', justifyContent: 'center' }}>
-        {/* An inner ring, so the disc reads as a struck medal rather than a dot. */}
-        <div style={{ display: 'flex', width: medal - 40, height: medal - 40, borderRadius: 999, border: '6px solid rgba(255, 255, 255, 0.45)', alignItems: 'center', justifyContent: 'center' }}>
-          <Icon paths={TROPHY} size={Math.round(medal * 0.48)} color="#ffffff" stroke={1.7} />
-        </div>
-      </div>
-      <Col style={{ gap: 24 }}>
-        {/* One line while the name stays large, else two lines at a size that still fits. */}
-        {name ? <Text font={DISPLAY} weight={800} size={Math.max(fit(name, W, story ? 144 : 120, 0.58), fit(name, W * 1.8, story ? 120 : 104, 0.58))} color={c.ink} style={{ width: W, lineHeight: 1.04 }}>{name}</Text> : null}
-        {m.caption ? <Text weight={600} size={story ? 44 : 40} color={c['ink-2']}>{m.caption}</Text> : null}
-      </Col>
-    </Col>
-  )
-}
-
-/** Week: the XP, the seven days as capsules, then the numbers as a ruled list. */
-function WeeklyBody({ m, c, story }: { m: CardModel; c: C; story: boolean }) {
-  const many = m.stats.length > 4
-  const heroSize = m.hero ? fit(`${m.hero.value} ${m.hero.unit ?? ''}`, W, story ? 220 : many ? 160 : 200, 0.62) : 0
-  const gap = 16
-  const pill = Math.floor((W - gap * 6) / 7)
-  return (
-    <Col style={{ gap: story ? 80 : many ? 40 : 56 }}>
-      {m.hero ? (
-        <Row style={{ alignItems: 'baseline', gap: Math.round(heroSize * 0.14) }}>
-          <Text font={DISPLAY} weight={800} size={heroSize} color={c['pill-ink']} style={{ lineHeight: 0.9 }}>{m.hero.value}</Text>
-          {m.hero.unit ? <Text font={DISPLAY} weight={800} size={Math.round(heroSize * 0.5)} color={c.ink}>{m.hero.unit}</Text> : null}
-        </Row>
-      ) : null}
-      {m.days ? (
-        <Col style={{ gap: 20 }}>
-          <Row style={{ gap }}>
-            {Array.from({ length: m.days.of }, (_, i) => <Capsule key={i} value={i < m.days!.shown ? 1 : 0} width={pill} height={story ? 56 : 48} c={c} />)}
-          </Row>
-          <Text weight={600} size={story ? 36 : 32} color={c['ink-2']}>{m.days.shown} of {m.days.of} days shown up</Text>
-        </Col>
-      ) : null}
-      {m.stats.length ? <Columns items={m.stats} cols={story || m.stats.length < 3 ? 1 : 2} gap={56} render={(s, width) => <StatRow key={s.id} s={s} c={c} width={width} />} /> : null}
-    </Col>
-  )
-}
+// ─── The card ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
 export function ShareCard({ model: m, theme, size, brand }: { model: CardModel; theme: CardTheme; size: ShareSize; brand: CardBrand }) {
   const c = og[theme]
+  const dark = theme === 'dark'
   const { width, height } = SHARE_SIZES[size]
   const story = size === 'story'
-  // The card's context, in words: the week's range, else what the card is (Level up, Streak, Achievement unlocked).
-  const context = m.range ?? m.label
-  const Body = { level: LevelBody, streak: StreakBody, achievement: AchievementBody, weekly: WeeklyBody }[m.kind]
+  const k = story ? 1.24 : 1
+  const px = (n: number) => Math.round(n * k)
+
+  const f = faceOf(m)
+  const frame = frameOf(c, tierOf(m))
+  const cw = story ? 880 : 712, ch = story ? 1600 : 968
+  const framePad = px(18), facePad = px(26), gap = px(18)
+  const inner = cw - (framePad + facePad) * 2
+
+  // Every block has a fixed height, so the art window gets exactly what is left and its object can be sized to it.
+  const headerH = px(108), typeH = px(52), footerH = px(40), rowH = px(46), meterH = px(70)
+  const cols = f.stats.length > 1 ? 2 : 1
+  const statRows = Math.ceil(f.stats.length / cols)
+  const blocks = [headerH, typeH, footerH, statRows ? statRows * rowH : 0, f.meter ? meterH : 0].filter(Boolean)
+  const artH = ch - (framePad + facePad) * 2 - blocks.reduce((a, b) => a + b, 0) - gap * blocks.length
+  const artW = inner - 6
+
+  const badgeD = px(100)
+  const titleRoom = inner - (f.badge ? badgeD + px(16) : 0)
+  const oneLine = fit(f.title, titleRoom, px(f.sub ? 54 : 62), 0.58)
+  const titleSize = m.kind === 'achievement' && oneLine < px(44) ? Math.min(px(48), fit(f.title, titleRoom * 1.85, px(48), 0.58)) : oneLine
+
+  const art = (() => {
+    switch (m.kind) {
+      case 'level': return <div style={{ display: 'flex', transform: 'rotate(-24deg)' }}><CapsuleObject w={Math.round(Math.min(artW * 0.8, artH * 1.15))} value={m.progress?.value ?? 1} c={c} /></div>
+      case 'streak': return <FlameObject size={Math.round(Math.min(artH * 0.72, artW * 0.66))} c={c} />
+      case 'achievement': return <MedalObject d={Math.round(Math.min(artH * 0.68, artW * 0.6))} colour={m.tier ? frame : c.pill} c={c} />
+      case 'weekly': return m.hero || m.days ? <WeekObject m={m} w={artW} h={artH} c={c} k={k} /> : <div style={{ display: 'flex', transform: 'rotate(-24deg)' }}><CapsuleObject w={Math.round(Math.min(artW * 0.8, artH * 1.15))} value={1} c={c} /></div>
+    }
+  })()
+
+  const sky = dark ? `linear-gradient(180deg, ${c.night} 0%, ${c.bg} 100%)` : `linear-gradient(180deg, ${c.sky} 0%, ${c['sky-soft']} 55%, ${c.bg} 100%)`
+  const artSky = dark ? `linear-gradient(180deg, ${c['sky-soft']} 0%, ${c.night} 100%)` : `linear-gradient(180deg, ${c.sky} 0%, ${c['sky-soft']} 100%)`
+  const outside = story
+    ? [[110, 260, 2.6, 30], [980, 180, 2.0, -40], [70, 1080, 1.8, 80], [1010, 1240, 2.8, 10], [960, 820, 1.4, 140], [130, 1700, 1.6, -60], [990, 1760, 2.0, 50]]
+    : [[110, 170, 2.2, 30], [975, 210, 1.6, -40], [80, 760, 1.4, 80], [990, 840, 2.4, 10], [985, 520, 1.1, 140], [95, 470, 1.0, -60]]
+
   return (
-    <div style={{
-      display: 'flex', flexDirection: 'column', width, height, padding: PAD, position: 'relative', fontFamily: TEXT, color: c.ink,
-      backgroundColor: c.bg, backgroundImage: `linear-gradient(180deg, ${c['sky-soft']} 0%, ${c.bg} ${story ? 36 : 52}%)`,
-    }}>
-      {m.kind === 'streak' ? <Petals c={c} story={story} clear={PAD + streakNumberEnd(m, story)} /> : null}
-      <Row style={{ justifyContent: 'space-between', alignItems: 'center', position: 'relative' }}>
-        <Wordmark brand={brand} c={c} />
-        {context ? <Text weight={600} size={30} color={c['ink-2']}>{context}</Text> : null}
-      </Row>
+    <div style={{ display: 'flex', width, height, alignItems: 'center', justifyContent: 'center', position: 'relative', fontFamily: TEXT, backgroundColor: c.bg, backgroundImage: sky }}>
+      <Petals color={c.sakura} w={width} h={height} at={outside} />
+      <div style={{
+        display: 'flex', width: cw, height: ch, padding: framePad, borderRadius: px(40), transform: `rotate(${story ? -2 : -3}deg)`,
+        backgroundColor: frame, backgroundImage: `linear-gradient(150deg, ${frame} 0%, ${frame} 50%, rgba(0, 0, 0, 0.35) 140%)`,
+        boxShadow: '0 40px 80px rgba(0, 0, 0, 0.28)',
+      }}>
+        <Col style={{ flex: 1, borderRadius: px(24), background: c.surface, padding: facePad, gap }}>
+          <Row style={{ height: headerH, alignItems: 'center', justifyContent: 'space-between', gap: px(16) }}>
+            <Col style={{ width: titleRoom, gap: px(6) }}>
+              <Text font={DISPLAY} weight={800} size={titleSize} color={c.ink}>{f.title}</Text>
+              {f.sub ? <Text size={px(24)} color={c['ink-3']}>{f.sub}</Text> : null}
+            </Col>
+            {f.badge ? (
+              <Col style={{ width: badgeD, height: badgeD, borderRadius: 999, background: frame, border: `${px(4)}px solid ${ON_COLOUR}`, alignItems: 'center', justifyContent: 'center' }}>
+                {'icon' in f.badge ? <Icon paths={f.badge.icon} size={px(48)} color={ON_COLOUR} /> : [
+                  <Text key="top" weight={600} size={px(18)} color={ON_COLOUR}>{f.badge.top}</Text>,
+                  <Text key="value" font={DISPLAY} weight={800} size={fit(f.badge.value, badgeD * 0.7, px(46), 0.62)} color={ON_COLOUR}>{f.badge.value}</Text>,
+                ]}
+              </Col>
+            ) : null}
+          </Row>
 
-      <Col style={{ flex: 1, justifyContent: 'center', paddingTop: 40, paddingBottom: 40, position: 'relative' }}>
-        <Body m={m} c={c} story={story} />
-      </Col>
+          <div style={{ display: 'flex', height: artH, borderRadius: px(16), position: 'relative', overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundImage: artSky, border: `3px solid ${frame}` }}>
+            <Petals color={c.sakura} w={artW} h={artH} at={[[artW * 0.12, artH * 0.18, 1.2 * k, 20], [artW * 0.86, artH * 0.2, 0.9 * k, -40], [artW * 0.8, artH * 0.78, 1.1 * k, 70], [artW * 0.18, artH * 0.82, 0.8 * k, 120]]} />
+            {art}
+            {f.serial ? <Text font={MONO} weight={600} size={px(20)} color={dark ? c['ink-2'] : og.dark.surface} style={{ position: 'absolute', left: px(16), bottom: px(12) }}>{f.serial}</Text> : null}
+          </div>
 
-      <Row style={{ justifyContent: 'space-between', alignItems: 'center', gap: 24, paddingTop: 28, borderTop: `2px solid ${c.divider}`, position: 'relative' }}>
-        <Text size={28} color={c['ink-3']}>Made with {brand.name} · runs on my own machine</Text>
-        {m.name ? <Text weight={600} size={30} color={c.ink} style={{ maxWidth: 280, overflow: 'hidden', whiteSpace: 'nowrap' }}>{m.name.length > 16 ? `${m.name.slice(0, 15)}…` : m.name}</Text> : null}
-      </Row>
+          <Row style={{ height: typeH, justifyContent: 'space-between', alignItems: 'center', gap: px(16), borderBottom: `2px solid ${c.divider}` }}>
+            <Text weight={600} size={px(26)} color={c['ink-2']}>{f.type}</Text>
+            {f.typeRight ? <Text size={px(24)} color={c['ink-3']}>{f.typeRight}</Text> : null}
+          </Row>
+
+          {statRows ? (
+            <Row style={{ flexWrap: 'wrap', columnGap: px(28) }}>
+              {f.stats.map((s) => {
+                const tone = s.tone ? (c as Record<string, string>)[`cat-${s.tone}`] : null
+                return (
+                  <Row key={s.id} style={{ width: (inner - px(28)) / cols, height: rowH, alignItems: 'center', gap: px(10) }}>
+                    {tone ? <div style={{ display: 'flex', width: px(14), height: px(14), borderRadius: 999, background: tone }} /> : null}
+                    <Text size={px(24)} color={c['ink-2']} style={{ flex: 1 }}>{s.label}</Text>
+                    <Text font={DISPLAY} weight={800} size={px(34)} color={c.ink}>{s.n != null && m.kind === 'level' ? String(s.n) : s.value}</Text>
+                  </Row>
+                )
+              })}
+            </Row>
+          ) : null}
+
+          {f.meter ? (
+            <Col style={{ height: meterH, justifyContent: 'center', gap: px(10) }}>
+              <Meter value={f.meter.value} width={inner} height={px(24)} c={c} />
+              <Row style={{ justifyContent: 'space-between' }}>
+                <Text weight={600} size={px(22)} color={c['ink-2']}>{f.meter.left}</Text>
+                {f.meter.right ? <Text size={px(22)} color={c['ink-3']}>{f.meter.right}</Text> : null}
+              </Row>
+            </Col>
+          ) : null}
+
+          <Row style={{ height: footerH, justifyContent: 'space-between', alignItems: 'center' }}>
+            <Wordmark brand={brand} c={c} k={k} />
+            {m.name
+              ? <Text weight={600} size={px(24)} color={c.ink} style={{ maxWidth: px(260), overflow: 'hidden', whiteSpace: 'nowrap' }}>{m.name.length > 16 ? `${m.name.slice(0, 15)}…` : m.name}</Text>
+              : <Text size={px(20)} color={c['ink-3']}>runs on my own machine</Text>}
+          </Row>
+        </Col>
+      </div>
     </div>
   )
 }
