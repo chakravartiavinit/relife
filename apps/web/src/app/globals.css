@@ -139,11 +139,6 @@
   --text-label--line-height: 16px;
   --text-label--font-weight: 500;
   --text-label--letter-spacing: 0.01em;
-  /* The Today greeting used the 56px hero. It is now the Display step. */
-  --text-hero: 44px;
-  --text-hero--line-height: 48px;
-  --text-hero--font-weight: 400;
-  --text-hero--letter-spacing: -0.01em;
 }
 
 @layer base {
@@ -337,8 +332,6 @@ details[open]::details-content { opacity: 1; }
   :root {
     --text-display: 34px;
     --text-display--line-height: 40px;
-    --text-hero: 34px;
-    --text-hero--line-height: 40px;
     --text-body: 16px;
     --text-body--line-height: 24px;
   }

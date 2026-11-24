@@ -37,7 +37,7 @@ export function TodayHeader({ d }: { d: HeaderData }) {
       <div className="grid grid-cols-1 items-end gap-x-6 gap-y-3 grid-md:grid-cols-12">
         <div className="min-w-0 grid-md:col-[1/10]">
           <SystemLabel>{d.date}{suffix}</SystemLabel>
-          <h1 className="mt-1.5 font-display text-hero text-ink">{d.greeting}, {d.name}.</h1>
+          <h1 className="mt-1.5 font-display text-display text-ink">{d.greeting}, {d.name}.</h1>
           <InsightLine className="mt-2 max-w-[64ch]" peek={d.why ? { type: 'brief', id: 'today' } : undefined}>{d.line}</InsightLine>
         </div>
         <div className="min-w-0 grid-md:col-[10/13] grid-md:justify-self-end">

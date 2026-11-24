@@ -43,7 +43,7 @@ async function Head() {
   return (
     <header>
       <SystemLabel>{formatDay(hub.today, { weekday: 'long', day: 'numeric', month: 'long' })}</SystemLabel>
-      <h1 className="mt-1.5 font-display text-hero text-ink">Life</h1>
+      <h1 className="mt-1.5 font-display text-display text-ink">Life</h1>
       <InsightLine className="mt-2 max-w-[64ch]" peek={hub.brief ? { type: 'brief', id: 'today' } : undefined}>{hub.opening}</InsightLine>
     </header>
   )
