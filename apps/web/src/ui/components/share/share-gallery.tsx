@@ -14,17 +14,17 @@ const fixtureUrl = (kind: ShareKind, show: string[], theme: 'light' | 'dark', si
 const noop = () => {}
 const base = (kind: ShareKind, over: Partial<ShareCardViewProps>): ShareCardViewProps => ({
   kind, state: 'ready', src: fixtureUrl(kind, defaultShow(kind), 'light', 'square'), show: defaultShow(kind), size: 'square', theme: 'light',
-  canShare: true, canCopy: true, secure: true, onToggle: noop, onSize: noop, onTheme: noop, onRetry: noop, onShare: noop, onDownload: noop, onCopy: noop, ...over,
+  canShare: true, canCopy: true, secure: true, onToggle: noop, onSize: noop, onTheme: noop, onRetry: noop, onShare: noop, onDownload: noop, onCopy: noop, onPost: noop, ...over,
 })
 
 const Panel = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <div data-panel={`share-${title.split(/[ (:,]/)[0].toLowerCase()}-${title.length}`} className="min-w-0">
     <p className="mb-2 text-small font-medium text-ink-3">{title}</p>
-    <div className="w-[440px] max-w-full rounded-xl bg-surface p-5 shadow-3">
+    <div className="w-[880px] max-w-full rounded-xl bg-surface p-6 shadow-3">
       <header className="mb-4 flex items-start gap-3">
         <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-md bg-pill-wash text-pill-ink"><Share2 className="size-5" strokeWidth={1.5} /></span>
         <div className="min-w-0">
-          <h2 className="text-heading text-ink">Share your week</h2>
+          <h2 className="text-heading text-ink">Share a card</h2>
           <p className="mt-0.5 text-small text-ink-3">Made on this machine. Only what you switch on is drawn.</p>
         </div>
       </header>
@@ -34,11 +34,11 @@ const Panel = ({ title, children }: { title: string; children: React.ReactNode }
 )
 
 export function ShareGallery() {
-  const [show, setShow] = useState(defaultShow('weekly'))
+  const [show, setShow] = useState(defaultShow('level'))
   const [size, setSize] = useState<ShareSize>('square')
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
-  const live = base('weekly', {
-    show, size, theme, src: fixtureUrl('weekly', show, theme, size),
+  const live = base('level', {
+    show, size, theme, src: fixtureUrl('level', show, theme, size),
     onToggle: (id, on) => setShow((s) => (on ? [...s, id] : s.filter((x) => x !== id))), onSize: setSize, onTheme: setTheme,
   })
   return (

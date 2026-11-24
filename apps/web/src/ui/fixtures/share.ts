@@ -6,7 +6,11 @@ import type { ShareData, ShareKind } from '@/domain/share-card'
 export const SHARE_FIXTURES: Record<ShareKind, ShareData> = {
   level: {
     kind: 'level', name: 'Alex', level: 22, title: 'Vanguard', totalXp: 20_418,
-    areas: [{ label: 'Health', level: 9 }, { label: 'Mind', level: 6 }, { label: 'Skills', level: 8 }, { label: 'Wealth', level: 3 }, { label: 'Hobbies', level: 5 }, { label: 'People', level: 4 }],
+    areas: [
+      { label: 'Health', level: 9, area: 'health' }, { label: 'Mind', level: 6, area: 'mind' }, { label: 'Skills', level: 8, area: 'skills' },
+      { label: 'Wealth', level: 3, area: 'wealth' }, { label: 'Hobbies', level: 5, area: 'hobbies' }, { label: 'People', level: 4, area: 'relationships' },
+    ],
+    next: { xpToGo: 1_386, progress: 0.62, title: { level: 25, title: 'Ascendant' } },
   },
   streak: { kind: 'streak', name: 'Alex', days: 30, best: 57, freezesUsed: 2 },
   achievement: { kind: 'achievement', name: 'Alex', title: 'Early bird 🌅', tier: 'gold', date: '2026-11-02' },

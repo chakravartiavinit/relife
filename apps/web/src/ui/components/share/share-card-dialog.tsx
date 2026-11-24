@@ -4,14 +4,16 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Share2 } from 'lucide-react'
 import brand from '@relife/brand/brand.json'
 import { defaultShow, type ShareKind, type ShareSize } from '@/domain/share-card'
-import { Sheet } from '../sheet'
+import { Dialog } from '../forms/dialog'
 import { useToast } from '../toast'
 import { SHARE_EVENT, type ShareRequest } from './share-event'
 import { ShareCardView, type ShareCardState } from './share-card-view'
+import type { ShareTarget } from './share-targets'
 
 // Share a card (level, streak, achievement or week). Mounted once in the app layout and opened with `openShareCard`.
 // The PNG is drawn by GET /api/share/card on this server; the browser fetches it as a Blob, so Share, Download and Copy
 // all use the picture on screen. Nothing is uploaded. Ticking a field draws a new card and dims the old one meanwhile.
+// A centred modal on every width (not the side panel): sharing is a full-attention task with a wide preview.
 
 const TITLE: Record<ShareKind, string> = { level: 'Share your level', streak: 'Share your streak', achievement: 'Share your achievement', weekly: 'Share your week' }
 
@@ -25,9 +27,10 @@ export function ShareCardDialog() {
     return () => window.removeEventListener(SHARE_EVENT, on)
   }, [])
   return (
-    <Sheet open={open} onOpenChange={setOpen} modal title={req ? TITLE[req.kind] : 'Share'} description="Made on this machine. Only what you switch on is drawn." icon={<span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-md bg-pill-wash text-pill-ink"><Share2 className="size-5" strokeWidth={1.5} /></span>} snapPoints={[0.92]}>
-      {open && req ? <ShareBody key={round} req={req} /> : null}
-    </Sheet>
+    <Dialog open={open} onClose={() => setOpen(false)} title={req ? TITLE[req.kind] : 'Share'} description="Made on this machine. Only what you switch on is drawn." icon={Share2} width="max-w-[880px]">
+      {/* Kept mounted after close, so the modal fades out with its content; the next open starts fresh (`key`). */}
+      {req ? <ShareBody key={round} req={req} /> : null}
+    </Dialog>
   )
 }
 
@@ -49,6 +52,7 @@ function ShareBody({ req }: { req: ShareRequest }) {
   const [refreshing, setRefreshing] = useState(false)
   const [attempt, setAttempt] = useState(0)
   const [caps, setCaps] = useState({ share: false, copy: false, secure: true })
+  const [text, setText] = useState('')
   const blob = useRef<Blob | null>(null)
   const last = useRef<string | null>(null)
 
@@ -75,6 +79,8 @@ function ShareBody({ req }: { req: ShareRequest }) {
           const j = await res.json().catch(() => null) as { error?: string | { message?: string } } | null
           throw new Error(typeof j?.error === 'string' ? (res.status === 404 ? j.error : 'The card could not be drawn.') : j?.error?.message ?? 'The card could not be drawn.')
         }
+        // The words for a post, made by the server from the same ticked fields as the picture.
+        setText(decodeURIComponent(res.headers.get('X-Share-Text') ?? ''))
         const b = await res.blob()
         const next = URL.createObjectURL(b)
         if (last.current) URL.revokeObjectURL(last.current)
@@ -106,13 +112,23 @@ function ShareBody({ req }: { req: ShareRequest }) {
     if (!blob.current) return
     try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob.current })]); toast('Image copied', 'good') } catch { toast.error('Could not copy the image', 'Download it instead.') }
   }
+  const post = (t: ShareTarget) => {
+    const b = blob.current
+    if (!b) return
+    // The clipboard and the new tab both need the click itself, so both start before anything is awaited.
+    const copying = caps.copy ? navigator.clipboard.write([new ClipboardItem({ 'image/png': b })]) : null
+    window.open(t.url(text || brand.tagline), '_blank', 'noopener,noreferrer')
+    const saved = () => { download(); toast('Picture saved', 'good', { description: `Attach it to your ${t.name} post.` }) }
+    if (copying) copying.then(() => toast('Picture copied', 'good', { description: `Paste it into your ${t.name} post.` }), saved)
+    else saved()
+  }
   const toggle = useCallback((id: string, on: boolean) => setShow((s) => (on ? [...s, id] : s.filter((x) => x !== id))), [])
 
   return (
     <ShareCardView
       kind={req.kind} state={state} src={src} error={error} show={show} size={size} theme={theme} refreshing={refreshing}
       canShare={caps.share} canCopy={caps.copy} secure={caps.secure}
-      onToggle={toggle} onSize={setSize} onTheme={setTheme} onRetry={() => setAttempt((n) => n + 1)} onShare={share} onDownload={download} onCopy={copy}
+      onToggle={toggle} onSize={setSize} onTheme={setTheme} onRetry={() => setAttempt((n) => n + 1)} onShare={share} onDownload={download} onCopy={copy} onPost={post}
     />
   )
 }

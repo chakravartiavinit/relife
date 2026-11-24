@@ -1,7 +1,8 @@
 import { connection } from 'next/server'
 import { authenticate, denied } from '@/core/auth/request'
 import { loadShareData } from '@/core/share-card'
-import { isShareKind, isShareSize, parseShow } from '@/domain/share-card'
+import brand from '@relife/brand/brand.json'
+import { cardModel, cardText, isShareKind, isShareSize, parseShow, shareText } from '@/domain/share-card'
 import { SHARE_FIXTURES } from '@/ui/fixtures/share'
 import { renderShareCard } from '@/ui/share/render'
 
@@ -34,6 +35,8 @@ export async function GET(req: Request) {
   try {
     return await renderShareCard({ data, show, theme, size }, {
       'Cache-Control': 'no-store', 'Content-Disposition': `inline; filename="relife-${kind}-${date}.png"`,
+      // The words for a post (X, LinkedIn, ...), from the same ticked fields. Encoded: a header is ASCII only.
+      'X-Share-Text': encodeURIComponent(shareText(cardModel(data, show), cardText(brand.name) || 'the app')),
     })
   } catch (e) {
     console.error('[share]', kind, e instanceof Error ? e.message : e)

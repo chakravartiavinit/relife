@@ -32,7 +32,8 @@ export async function loadShareData(user: User, kind: ShareKind, ref: string | n
       if (level > s.level) return notEarned('That level is not reached yet.')
       // An earlier level shows what it took then, not today's totals.
       const current = level === s.level
-      return { ok: true, data: { kind, name: user.name, level, title: titleFor(level), totalXp: current ? s.total : xpForLevel(level), areas: current ? s.areas.map((a) => ({ label: CATEGORY[a.area].label, level: a.level })) : [] } }
+      return { ok: true, data: { kind, name: user.name, level, title: titleFor(level), totalXp: current ? s.total : xpForLevel(level), areas: current ? s.areas.map((a) => ({ label: CATEGORY[a.area].label, level: a.level, area: a.area })) : [],
+        next: current ? { xpToGo: Math.max(0, s.next - s.total), progress: s.progress, title: s.nextTitle } : null } }
     }
     case 'streak': {
       const active = await activeDays(user, addDays(today, -400))
