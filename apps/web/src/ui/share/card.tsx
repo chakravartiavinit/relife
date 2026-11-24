@@ -264,7 +264,11 @@ function Wordmark({ brand, c, k }: { brand: CardBrand; c: C; k: number }) {
 
 // ─── The card ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
-export function ShareCard({ model: m, theme, size, brand }: { model: CardModel; theme: CardTheme; size: ShareSize; brand: CardBrand }) {
+export function ShareCard({ model: m, theme, size, brand, pictures = {} }: {
+  model: CardModel; theme: CardTheme; size: ShareSize; brand: CardBrand
+  /** Each area's 3D picture as a data URL, keyed by category; an area without one gets its colour dot. */
+  pictures?: Record<string, string>
+}) {
   const c = og[theme]
   const dark = theme === 'dark'
   const { width, height } = SHARE_SIZES[size]
@@ -279,7 +283,7 @@ export function ShareCard({ model: m, theme, size, brand }: { model: CardModel; 
   const inner = cw - (framePad + facePad) * 2 - 6
 
   // Every block has a fixed height, so the art window gets exactly what is left and its object can be sized to it.
-  const headerH = px(116), typeH = px(56), footerH = px(44), rowH = px(50), meterH = px(80)
+  const headerH = px(116), typeH = px(56), footerH = px(44), rowH = px(58), meterH = px(80)
   const cols = f.stats.length > 1 ? 2 : 1
   const statRows = Math.ceil(f.stats.length / cols)
   const blocks = [headerH, typeH, footerH, statRows ? statRows * rowH : 0, f.meter ? meterH : 0].filter(Boolean)
@@ -291,7 +295,9 @@ export function ShareCard({ model: m, theme, size, brand }: { model: CardModel; 
   const value = (s: CardStat) => (s.n != null && m.kind === 'level' ? String(s.n) : s.value)
   const longest = Math.max(1, ...f.stats.map((s) => s.label.length))
   const valueW = Math.max(0, ...f.stats.map((s) => value(s).length)) * 0.6 * px(30)
-  const labelSize = Math.max(px(22), Math.min(px(28), Math.floor((colW - valueW - px(36)) / (longest * 0.54))))
+  const tile = px(48)
+  const lead = f.stats.some((s) => s.tone) ? tile + px(12) : 0
+  const labelSize = Math.max(px(22), Math.min(px(28), Math.floor((colW - valueW - lead - px(24)) / (longest * 0.54))))
   const badgeD = px(112)
   const titleRoom = inner - (f.badge ? badgeD + px(20) : 0)
   const oneLine = fit(f.title, titleRoom, px(f.sub ? 60 : 68), 0.56)
@@ -357,8 +363,16 @@ export function ShareCard({ model: m, theme, size, brand }: { model: CardModel; 
               {f.stats.map((s) => {
                 const tone = s.tone ? (c as Record<string, string>)[`cat-${s.tone}`] : null
                 return (
-                  <Row key={s.id} style={{ width: colW, height: rowH, alignItems: 'center', gap: px(10) }}>
-                    {tone ? <div style={{ display: 'flex', width: px(16), height: px(16), borderRadius: 999, background: tone }} /> : null}
+                  <Row key={s.id} style={{ width: colW, height: rowH, alignItems: 'center', gap: px(12) }}>
+                    {tone ? (
+                      // The area's picture on a tile washed in its colour; no picture, the colour as a dot.
+                      <div style={{ display: 'flex', width: tile, height: tile, borderRadius: px(14), position: 'relative', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ display: 'flex', position: 'absolute', top: 0, left: 0, width: tile, height: tile, borderRadius: px(14), background: tone, opacity: dark ? 0.24 : 0.16 }} />
+                        {s.tone && pictures[s.tone]
+                          ? <img src={pictures[s.tone]} alt="" width={px(36)} height={px(36)} style={{ width: px(36), height: px(36) }} />
+                          : <div style={{ display: 'flex', width: px(16), height: px(16), borderRadius: 999, background: tone }} />}
+                      </div>
+                    ) : null}
                     <Text size={labelSize} color={c['ink-2']} style={{ flex: 1, whiteSpace: 'nowrap' }}>{s.label}</Text>
                     <Text weight={600} size={px(30)} color={c.ink} style={{ whiteSpace: 'nowrap' }}>{value(s)}</Text>
                   </Row>

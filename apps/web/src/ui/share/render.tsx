@@ -20,6 +20,20 @@ async function cardBrand(theme: CardTheme): Promise<CardBrand> {
   return { name, logo: png ? `data:image/png;base64,${png.toString('base64')}` : null }
 }
 
+/**
+ * Each area's 3D picture, the one the sidebar draws (Fluent 3D emoji, MIT; `NAV` in ui/components/nav.tsx), keyed by
+ * category. Read from public/ as data URLs, once per process, so a card never fetches a picture.
+ */
+const AREA_PICTURES = { health: 'heart', mind: 'brain', skills: 'code', wealth: 'money', hobbies: 'art', relationships: 'people' } as const
+let pictures: Promise<Record<string, string>> | undefined
+function areaPictures() {
+  pictures ??= Promise.all(Object.entries(AREA_PICTURES).map(async ([area, file]) => {
+    const png = await readFile(join(process.cwd(), 'public/routines', `${file}.png`)).catch(() => null)
+    return [area, png ? `data:image/png;base64,${png.toString('base64')}` : null] as const
+  })).then((rows) => Object.fromEntries(rows.filter((r): r is readonly [string, string] => !!r[1])))
+  return pictures
+}
+
 export type CardRequest = { data: ShareData; show: string[]; theme: CardTheme; size: ShareSize }
 
 /**
@@ -31,9 +45,9 @@ export type CardRequest = { data: ShareData; show: string[]; theme: CardTheme; s
  * an auto-width flex row too narrow (the header's week range lost its last word and the footer went missing).
  */
 export async function renderShareCard({ data, show, theme, size }: CardRequest, headers: Record<string, string> = {}) {
-  const [fonts, b] = await Promise.all([cardFonts(), cardBrand(theme)])
+  const [fonts, b, art] = await Promise.all([cardFonts(), cardBrand(theme), areaPictures()])
   const { width, height } = SHARE_SIZES[size]
-  const svg = await satori(<ShareCard model={cardModel(data, show)} theme={theme} size={size} brand={b} />, {
+  const svg = await satori(<ShareCard model={cardModel(data, show)} theme={theme} size={size} brand={b} pictures={art} />, {
     width, height, fonts, loadAdditionalAsset: async () => [],
   })
   const png = new Resvg(svg, { fitTo: { mode: 'width', value: width }, font: { loadSystemFonts: false } }).render().asPng()
