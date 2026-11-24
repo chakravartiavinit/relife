@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
-  SHARE_FIELDS, SHARE_KINDS, cardModel, defaultShow, isoWeek, parseShow, spendDirection, streakMilestone, cardText, reviewDateOf, reviewedWeekStart, weekRange, type ShareData,
+  SHARE_FIELDS, SHARE_KINDS, cardModel, defaultShow, isoWeek, parseShow, spendDirection, streakMilestone, cardText, shareText, reviewDateOf, reviewedWeekStart, weekRange, type ShareData,
 } from './share-card'
 
 const weekly: ShareData = {
@@ -12,7 +12,7 @@ const weekly: ShareData = {
 test('defaults hide the name, health numbers, money and everything beyond the headline', () => {
   for (const kind of SHARE_KINDS) assert.ok(!defaultShow(kind).includes('name'), `${kind} shows the name by default`)
   assert.deepEqual(defaultShow('weekly'), ['days', 'xp', 'quests'])
-  assert.deepEqual(defaultShow('level'), ['level', 'title'])
+  assert.deepEqual(defaultShow('level'), ['level', 'title', 'progress'])
   assert.deepEqual(defaultShow('streak'), ['streak'])
   assert.deepEqual(defaultShow('achievement'), ['title', 'tier'])
   const m = cardModel(weekly, defaultShow('weekly'))
@@ -125,4 +125,28 @@ test('a review is of the week before its date: Sunday is that week, Monday is th
   assert.equal(reviewDateOf('review:2026-11-15'), '2026-11-15')
   assert.equal(reviewDateOf('review:abc'), undefined)
   assert.equal(reviewDateOf(undefined), undefined)
+})
+
+type Level = Extract<ShareData, { kind: 'level' }>
+
+test('cardModel: level progress only when ticked and only for the level the user is on', () => {
+  const now: Level = { kind: 'level', name: 'Alex', level: 7, title: 'Initiate', totalXp: 2950, areas: [{ label: 'Health', level: 4, area: 'health' }], next: { xpToGo: 1450, progress: 1.2, title: { level: 10, title: 'Pathfinder' } } }
+  const m = cardModel(now, ['level', 'progress', 'areas'])
+  assert.deepEqual(m.progress, { value: 1, line: '1,450 XP to level 8', next: 'Next title: Pathfinder at level 10' })
+  assert.equal(m.stats[0].tone, 'health')
+  assert.equal(cardModel(now, ['level']).progress, null)
+  assert.equal(cardModel({ ...now, next: null }, ['level', 'progress']).progress, null)
+  assert.equal(cardModel({ ...now, next: { ...now.next!, title: null } }, ['progress']).progress?.next, null)
+})
+
+test('shareText says only what the card shows, and never the name', () => {
+  const lvl: Level = { kind: 'level', name: 'Alex', level: 7, title: 'Initiate', totalXp: 2950, areas: [] }
+  assert.equal(shareText(cardModel(lvl, ['level', 'title', 'name']), 'Acme'), 'I reached level 7 on Acme: Initiate.')
+  assert.equal(shareText(cardModel(lvl, ['level']), 'Acme'), 'I reached level 7 on Acme.')
+  assert.equal(shareText(cardModel(lvl, ['title']), 'Acme'), 'New title on Acme: Initiate.')
+  assert.equal(shareText(cardModel(lvl, []), 'Acme'), 'Levelling up my real life with Acme.')
+  assert.equal(shareText(cardModel({ kind: 'streak', name: 'A', days: 30, best: 30, freezesUsed: 0 }, ['streak']), 'Acme'), '30 days in a row on Acme.')
+  assert.equal(shareText(cardModel({ kind: 'achievement', name: 'A', title: 'Early bird', tier: 'gold', date: null }, ['title', 'tier']), 'Acme'), 'Achievement unlocked on Acme: Early bird (Gold medal).')
+  assert.equal(shareText(cardModel(weekly, ['xp', 'days', 'quests']), 'Acme'), 'My week on Acme: +1,284 XP, 5 of 7 days shown up, quests cleared: 2.')
+  for (const t of [shareText(cardModel(lvl, ['level', 'title', 'name']), 'Acme')]) assert.ok(!t.includes('Alex'))
 })

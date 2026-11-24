@@ -19,6 +19,7 @@ export const SHARE_FIELDS: Record<ShareKind, ShareField[]> = {
   level: [
     { id: 'level', label: 'Level', defaultOn: true },
     { id: 'title', label: 'Title', defaultOn: true },
+    { id: 'progress', label: 'Progress to next level', defaultOn: true },
     { id: 'xp', label: 'Total XP', defaultOn: false },
     { id: 'areas', label: 'Area levels', defaultOn: false },
     NAME,
@@ -80,7 +81,13 @@ export function cardText(text: string) {
 export type TierName = 'bronze' | 'silver' | 'gold'
 
 export type ShareData =
-  | { kind: 'level'; name: string; level: number; title: string; totalXp: number; areas: { label: string; level: number }[] }
+  | {
+    kind: 'level'; name: string; level: number; title: string; totalXp: number
+    /** `area` is the category key (`health`, ...), for the tile's colour. */
+    areas: { label: string; level: number; area?: string }[]
+    /** Only for the level the user is on now: what is left to the next one. An earlier level has no progress. */
+    next?: { xpToGo: number; progress: number; title: { level: number; title: string } | null } | null
+  }
   | { kind: 'streak'; name: string; days: number; best: number; freezesUsed: number }
   | { kind: 'achievement'; name: string; title: string; tier: TierName; date: string | null }
   | {
@@ -89,7 +96,7 @@ export type ShareData =
     stepsAvg: number | null; sleepAvgHours: number | null; spend: 'less' | 'more' | 'same' | null
   }
 
-export type CardStat = { id: string; label: string; value: string }
+export type CardStat = { id: string; label: string; value: string; /** A category key: the level card colours its area tiles. */ tone?: string }
 export type CardModel = {
   kind: ShareKind
   /** The mono label above the headline: LEVEL UP, STREAK, ACHIEVEMENT, WEEKLY RECAP. */
@@ -103,6 +110,8 @@ export type CardModel = {
   /** The medal tier of an achievement. */
   tier: TierName | null
   stats: CardStat[]
+  /** Level: the ring's fill (0..1) and the lines under the title. */
+  progress: { value: number; line: string; next: string | null } | null
   name: string | null
 }
 
@@ -136,13 +145,14 @@ const SPEND_LABEL = { less: 'Less', more: 'More', same: 'Same' } as const
  */
 export function cardModel(data: ShareData, show: readonly string[]): CardModel {
   const on = (id: string) => show.includes(id)
-  const base = { range: null, hero: null, caption: null, days: null, tier: null, stats: [] as CardStat[], name: on('name') ? cardText(data.name) || null : null }
+  const base = { range: null, hero: null, caption: null, days: null, tier: null, stats: [] as CardStat[], progress: null, name: on('name') ? cardText(data.name) || null : null }
   // Every string on the card passes through `cardText`; a headline or a stat left empty is dropped, not drawn blank.
   const clean = (m: CardModel): CardModel => {
     const hero = m.hero ? { ...m.hero, value: cardText(m.hero.value), ...(m.hero.unit ? { unit: cardText(m.hero.unit) } : {}) } : null
     return {
       ...m, label: cardText(m.label), range: m.range ? cardText(m.range) : null,
       hero: hero?.value ? hero : null, caption: (m.caption && cardText(m.caption)) || null,
+      progress: m.progress ? { ...m.progress, line: cardText(m.progress.line), next: m.progress.next ? cardText(m.progress.next) : null } : null,
       stats: m.stats.map((s) => ({ ...s, label: cardText(s.label), value: cardText(s.value) })).filter((s) => s.label && s.value),
     }
   }
@@ -150,8 +160,14 @@ export function cardModel(data: ShareData, show: readonly string[]): CardModel {
     case 'level': {
       const stats: CardStat[] = []
       if (on('xp')) stats.push({ id: 'xp', label: 'Total XP', value: data.totalXp.toLocaleString('en-US') })
-      if (on('areas')) for (const a of data.areas) stats.push({ id: `area:${a.label}`, label: a.label, value: `Level ${a.level}` })
-      return clean({ ...base, kind: 'level', label: 'Level up', hero: on('level') ? { value: String(data.level), unit: 'Level' } : null, caption: on('title') ? data.title : null, stats })
+      if (on('areas')) for (const a of data.areas) stats.push({ id: `area:${a.label}`, label: a.label, value: `Level ${a.level}`, ...(a.area ? { tone: a.area } : {}) })
+      const n = data.next
+      const progress = on('progress') && n ? {
+        value: Math.max(0, Math.min(1, n.progress)),
+        line: `${n.xpToGo.toLocaleString('en-US')} XP to level ${data.level + 1}`,
+        next: n.title ? `Next title: ${n.title.title} at level ${n.title.level}` : null,
+      } : null
+      return clean({ ...base, kind: 'level', label: 'Level up', hero: on('level') ? { value: String(data.level), unit: 'Level' } : null, caption: on('title') ? data.title : null, stats, progress })
     }
     case 'streak': {
       const stats: CardStat[] = []
@@ -182,6 +198,33 @@ export function cardModel(data: ShareData, show: readonly string[]): CardModel {
       })
     }
   }
+}
+
+/**
+ * The words that go with the picture when it is posted (X, LinkedIn, WhatsApp, ...). Made from the card's model, so it
+ * says only what the card shows: a field the user left off is not in the text either. The name is never in it.
+ */
+export function shareText(m: CardModel, app: string): string {
+  const hero = m.hero?.value
+  switch (m.kind) {
+    case 'level':
+      if (hero && m.caption) return `I reached level ${hero} on ${app}: ${m.caption}.`
+      if (hero) return `I reached level ${hero} on ${app}.`
+      if (m.caption) return `New title on ${app}: ${m.caption}.`
+      break
+    case 'streak':
+      if (hero) return `${hero} ${m.caption ?? 'days in a row'} on ${app}.`
+      break
+    case 'achievement':
+      if (hero) return `Achievement unlocked on ${app}: ${hero}${m.caption ? ` (${m.caption})` : ''}.`
+      break
+    case 'weekly': {
+      const parts = [hero ? `${hero} XP` : null, m.days ? `${m.days.shown} of ${m.days.of} days shown up` : null, ...m.stats.map((s) => `${s.label.toLowerCase()}: ${s.value}`)].filter(Boolean)
+      if (parts.length) return `My week on ${app}: ${parts.join(', ')}.`
+      break
+    }
+  }
+  return `Levelling up my real life with ${app}.`
 }
 
 /**

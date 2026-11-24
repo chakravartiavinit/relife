@@ -101,6 +101,83 @@ function Days({ shown, of, c }: { shown: number; of: number; c: typeof og.light 
   )
 }
 
+/**
+ * The level card: the level inside a ring that fills toward the next level, the title beside it (below it on a story),
+ * then the area levels as tiles in their category colours. Without the progress field the ring is drawn full.
+ */
+function LevelBody({ m, c, story }: { m: CardModel; c: typeof og.light; story: boolean }) {
+  const xp = m.stats.find((s) => s.id === 'xp')
+  const areas = m.stats.filter((s) => s.id !== 'xp')
+  const roomy = story || areas.length === 0
+  const ring = story ? 560 : roomy ? 420 : 320
+  const stroke = Math.round(ring * 0.055)
+  const r = (ring - stroke) / 2, arc = 2 * Math.PI * r
+  const fill = m.progress ? m.progress.value : 1
+  const num = m.hero?.value
+  const numSize = num ? Math.min(Math.round(ring * 0.46), Math.floor((ring * 0.7) / (num.length * 0.6))) : 0
+  // The column beside the ring: the card's inner width (936) less the ring and the gap.
+  const side = story ? 936 : 936 - (num ? ring + 64 : 0)
+  const title = m.caption
+  const titleSize = title ? Math.min(story ? 120 : 100, Math.floor(side / (title.length * 0.56))) : 0
+  const cols = 3, gap = 20
+  const tile = Math.floor((936 - gap * (cols - 1)) / cols)
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'center', gap: story ? 72 : roomy ? 56 : 44, position: 'relative' }}>
+      <div style={{ display: 'flex', flexDirection: story ? 'column' : 'row', alignItems: story ? 'flex-start' : 'center', gap: story ? 56 : 64 }}>
+        {num ? (
+          <div style={{ display: 'flex', position: 'relative', width: ring, height: ring, alignItems: 'center', justifyContent: 'center' }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width={ring} height={ring} viewBox={`0 0 ${ring} ${ring}`} style={{ position: 'absolute', top: 0, left: 0 }}>
+              <circle cx={ring / 2} cy={ring / 2} r={r} fill="none" stroke={c['surface-2']} strokeWidth={stroke} />
+              {fill > 0 ? (
+                <circle cx={ring / 2} cy={ring / 2} r={r} fill="none" stroke={c.pill} strokeWidth={stroke} strokeLinecap="round"
+                  strokeDasharray={`${(arc * fill).toFixed(1)} ${arc.toFixed(1)}`} transform={`rotate(-90 ${ring / 2} ${ring / 2})`} />
+              ) : null}
+            </svg>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              {/* Letter spacing trails the last letter too; the same padding in front keeps the word centred. */}
+              <div style={{ display: 'flex', fontFamily: MONO, fontWeight: 600, fontSize: Math.round(ring * 0.068), letterSpacing: Math.round(ring * 0.018), paddingLeft: Math.round(ring * 0.018), color: c['ink-3'], textTransform: 'uppercase' }}>Level</div>
+              <div style={{ display: 'flex', fontFamily: DISPLAY, fontWeight: 800, fontSize: numSize, lineHeight: 1, letterSpacing: -numSize * 0.04, color: c['pill-ink'] }}>{num}</div>
+            </div>
+          </div>
+        ) : null}
+        {title || m.progress || xp ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20, width: side }}>
+            {title ? <div style={{ display: 'flex', fontFamily: DISPLAY, fontWeight: 800, fontSize: titleSize, lineHeight: 1, letterSpacing: -2, color: c.ink }}>{title}</div> : null}
+            {m.progress ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', fontFamily: TEXT, fontWeight: 600, fontSize: 36, color: c['ink-2'] }}>{m.progress.line}</div>
+                {m.progress.next ? <div style={{ display: 'flex', fontFamily: TEXT, fontSize: 30, color: c['ink-3'] }}>{m.progress.next}</div> : null}
+              </div>
+            ) : null}
+            {xp ? (
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginTop: 8 }}>
+                <div style={{ display: 'flex', fontFamily: DISPLAY, fontWeight: 800, fontSize: 64, letterSpacing: -1, color: c.ink }}>{xp.value}</div>
+                <div style={{ display: 'flex', fontFamily: TEXT, fontSize: 32, color: c['ink-2'] }}>{xp.label}</div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+      {areas.length ? (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap }}>
+          {areas.map((a) => {
+            const tone = (a.tone && (c as Record<string, string>)[`cat-${a.tone}`]) || c.pill
+            return (
+              <div key={a.id} style={{ display: 'flex', flexDirection: 'column', width: tile, padding: '22px 28px', borderRadius: 32, background: c['surface-2'], gap: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ display: 'flex', width: 18, height: 18, borderRadius: 999, background: tone }} />
+                  <div style={{ display: 'flex', fontFamily: TEXT, fontSize: 28, color: c['ink-2'] }}>{a.label}</div>
+                </div>
+                <div style={{ display: 'flex', fontFamily: DISPLAY, fontWeight: 800, fontSize: 48, letterSpacing: -1, lineHeight: 1.1, color: c.ink }}>{a.value}</div>
+              </div>
+            )
+          })}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 export function ShareCard({ model: m, theme, size, brand }: { model: CardModel; theme: CardTheme; size: ShareSize; brand: CardBrand }) {
   const c = og[theme]
   const { width, height } = SHARE_SIZES[size]
@@ -114,13 +191,15 @@ export function ShareCard({ model: m, theme, size, brand }: { model: CardModel; 
       <Halftone color={c.pill} size={story ? 640 : 560} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative' }}>
         <Wordmark brand={brand} c={c} />
-        {m.range ? <div style={{ display: 'flex', fontFamily: MONO, fontWeight: 600, fontSize: 30, letterSpacing: 6, color: c['pill-ink'], textTransform: 'uppercase' }}>{m.range}</div> : null}
+        {/* The level card has no label row in its body, so its label (LEVEL UP) sits where a week's range does. */}
+        {m.range || m.kind === 'level' ? <div style={{ display: 'flex', fontFamily: MONO, fontWeight: 600, fontSize: 30, letterSpacing: 6, color: c['pill-ink'], textTransform: 'uppercase' }}>{m.range ?? m.label}</div> : null}
       </div>
 
+      {m.kind === 'level' ? <LevelBody m={m} c={c} story={story} /> : (
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'center', gap: compact ? 24 : 40, position: 'relative' }}>
         <div style={{ display: 'flex', fontFamily: MONO, fontWeight: 600, fontSize: 32, letterSpacing: 8, color: c['ink-3'], textTransform: 'uppercase' }}>{m.label}</div>
         <Hero m={m} c={c} compact={compact} story={story} />
-        {m.caption ? <div style={{ display: 'flex', fontFamily: m.kind === 'level' ? DISPLAY : TEXT, fontWeight: m.kind === 'level' ? 800 : 400, fontSize: m.kind === 'level' ? 88 : 48, letterSpacing: m.kind === 'level' ? -2 : 0, color: m.kind === 'level' ? c.ink : c['ink-2'] }}>{m.caption}</div> : null}
+        {m.caption ? <div style={{ display: 'flex', fontFamily: TEXT, fontWeight: 400, fontSize: 48, color: c['ink-2'] }}>{m.caption}</div> : null}
         {m.days ? <Days shown={m.days.shown} of={m.days.of} c={c} /> : null}
         {m.stats.length ? (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap }}>
@@ -133,6 +212,7 @@ export function ShareCard({ model: m, theme, size, brand }: { model: CardModel; 
           </div>
         ) : null}
       </div>
+      )}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 24, fontFamily: TEXT, fontSize: 30, color: c['ink-3'], position: 'relative' }}>
         <div style={{ display: 'flex' }}>Made with {brand.name} · runs on my own machine</div>
